@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Linux desktop integration (D-Bus single instance, KDE colours, recent files, file manager) for PdfViewerLite.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Tmds.DBus.Protocol" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PdfViewerLite.Core.Tests" />
+  </ItemGroup>
+</Project>

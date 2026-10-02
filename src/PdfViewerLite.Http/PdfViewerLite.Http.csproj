@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Refit based HTTP clients (update checks, remote documents) for PdfViewerLite.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Refit" />
+  </ItemGroup>
+</Project>

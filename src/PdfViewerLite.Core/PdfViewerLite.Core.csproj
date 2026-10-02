@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>UI-agnostic document model, render scheduling, tile caching and search for PdfViewerLite.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PdfViewerLite.Core.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.Benchmarks" />
+  </ItemGroup>
+</Project>

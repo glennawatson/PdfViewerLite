@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsTestProject>false</IsTestProject>
+    <IsBenchmarkProject>true</IsBenchmarkProject>
+    <IsPackable>false</IsPackable>
+    <Description>Generates small deterministic PDF files for tests and benchmarks.</Description>
+  </PropertyGroup>
+</Project>

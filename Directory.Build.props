@@ -1,0 +1,73 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DebugType>embedded</DebugType>
+    <Authors>Glenn Watson</Authors>
+    <Company>Glenn Watson</Company>
+    <Product>PdfViewerLite</Product>
+    <Copyright>Copyright (c) 2026 Glenn Watson</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/glennawatson/PdfViewerLite</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors>nullable;CS4014</WarningsAsErrors>
+    <Deterministic>true</Deterministic>
+
+    <IsTestProject Condition="'$(IsTestProject)' == ''">$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectName)', '(^|\.)Tests$'))</IsTestProject>
+    <IsBenchmarkProject Condition="'$(IsBenchmarkProject)' == ''">$(MSBuildProjectName.EndsWith('Benchmarks'))</IsBenchmarkProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Every shipped assembly must be trim and Native AOT safe. -->
+  <PropertyGroup Condition="'$(IsTestProject)' != 'true' and '$(IsBenchmarkProject)' != 'true'">
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <TUnitImplicitUsings>true</TUnitImplicitUsings>
+    <TUnitAssertionsImplicitUsings>true</TUnitAssertionsImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+    <None Include="$(MSBuildThisFileDirectory)testconfig.json">
+      <Link>$(AssemblyName).testconfig.json</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- System.Threading.Lock on .NET 9+. -->
+  <ItemGroup>
+    <Using Include="System.Threading.Lock" Alias="Lock" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+
+  <!-- Analyzer set shared with ReactiveUI. -->
+  <ItemGroup>
+    <PackageReference Include="StyleSharp.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="PerformanceSharp.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="SecuritySharp.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

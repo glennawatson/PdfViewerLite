@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <Description>Allocation and throughput benchmarks for PdfViewerLite.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
+    <ProjectReference Include="..\..\tests\PdfViewerLite.TestAssets\PdfViewerLite.TestAssets.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+</Project>
