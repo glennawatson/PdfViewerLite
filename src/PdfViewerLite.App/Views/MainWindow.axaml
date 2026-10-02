@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PdfViewerLite.App.ViewModels"
+        xmlns:views="using:PdfViewerLite.App.Views"
+        x:Class="PdfViewerLite.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding WindowTitle}" Width="1200" Height="850" MinWidth="480" MinHeight="320"
+        Background="{DynamicResource AppWindowBackground}"
+        DragDrop.AllowDrop="True">
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
+    <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseTabCommand}" />
+    <KeyBinding Gesture="Ctrl+F4" Command="{Binding CloseTabCommand}" />
+    <KeyBinding Gesture="Ctrl+PageDown" Command="{Binding NextTabCommand}" />
+    <KeyBinding Gesture="Ctrl+PageUp" Command="{Binding PreviousTabCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
+    <KeyBinding Gesture="Ctrl+I" Command="{Binding ToggleNightModeCommand}" />
+    <KeyBinding Gesture="Alt+Enter" Command="{Binding PropertiesCommand}" />
+    <KeyBinding Gesture="Ctrl+F" Command="{Binding SelectedTab.FindCommand}" />
+    <KeyBinding Gesture="F3" Command="{Binding SelectedTab.Search.NextCommand}" />
+    <KeyBinding Gesture="Shift+F3" Command="{Binding SelectedTab.Search.PreviousCommand}" />
+    <KeyBinding Gesture="Ctrl+G" Command="{Binding SelectedTab.Search.NextCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+G" Command="{Binding SelectedTab.Search.PreviousCommand}" />
+    <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding SelectedTab.ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+Add" Command="{Binding SelectedTab.ZoomInCommand}" />
+    <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding SelectedTab.ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding SelectedTab.ZoomOutCommand}" />
+    <KeyBinding Gesture="Ctrl+D0" Command="{Binding SelectedTab.ZoomResetCommand}" />
+    <KeyBinding Gesture="Ctrl+D1" Command="{Binding SelectedTab.FitPageCommand}" />
+    <KeyBinding Gesture="Ctrl+D2" Command="{Binding SelectedTab.FitWidthCommand}" />
+    <KeyBinding Gesture="Ctrl+Left" Command="{Binding SelectedTab.RotateLeftCommand}" />
+    <KeyBinding Gesture="Ctrl+Right" Command="{Binding SelectedTab.RotateRightCommand}" />
+    <KeyBinding Gesture="Alt+Left" Command="{Binding SelectedTab.GoBackCommand}" />
+    <KeyBinding Gesture="Alt+Right" Command="{Binding SelectedTab.GoForwardCommand}" />
+    <KeyBinding Gesture="Ctrl+Home" Command="{Binding SelectedTab.FirstPageCommand}" />
+    <KeyBinding Gesture="Ctrl+End" Command="{Binding SelectedTab.LastPageCommand}" />
+    <KeyBinding Gesture="F9" Command="{Binding SelectedTab.ToggleSidebarCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding SelectedTab.ReloadCommand}" />
+  </Window.KeyBindings>
+
+  <DockPanel>
+    <!-- Tab strip. -->
+    <Border DockPanel.Dock="Top" Classes="tabbar">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <ListBox x:Name="TabStrip" Classes="tabstrip" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DocumentTabViewModel">
+              <DockPanel Background="Transparent" ToolTip.Tip="{Binding FilePath}">
+                <DockPanel.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="_Close" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding}" />
+                    <MenuItem Header="Close _Other Tabs" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseOtherTabsCommand}" CommandParameter="{Binding}" />
+                    <MenuItem Header="Close _All Tabs" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseAllTabsCommand}" />
+                    <Separator />
+                    <MenuItem Header="Re_load" Command="{Binding ReloadCommand}" />
+                  </ContextMenu>
+                </DockPanel.ContextMenu>
+                <Button DockPanel.Dock="Right" Classes="tabclose" ToolTip.Tip="Close (Ctrl+W)"
+                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding}">
+                  <Path Classes="icon" Data="{StaticResource IconClose}" />
+                </Button>
+                <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              </DockPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <Button Grid.Column="1" Classes="tool" ToolTip.Tip="Open (Ctrl+O)" Command="{Binding OpenCommand}">
+          <Path Classes="icon" Data="{StaticResource IconAdd}" />
+        </Button>
+        <Button Grid.Column="2" Classes="tool" ToolTip.Tip="Menu" Margin="0,0,4,0">
+          <Path Classes="icon" Data="{StaticResource IconMenu}" />
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedRight">
+              <MenuItem Header="_Open…" InputGesture="Ctrl+O" Command="{Binding OpenCommand}" />
+              <MenuItem Header="_Reopen Closed Tab" InputGesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
+              <Separator />
+              <MenuItem Header="_Night Mode" InputGesture="Ctrl+I" Command="{Binding ToggleNightModeCommand}" />
+              <Separator />
+              <MenuItem Header="Close _All Tabs" Command="{Binding CloseAllTabsCommand}" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+      </Grid>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Classes="toolbar" BorderThickness="0,1,0,0"
+            IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <TextBlock Margin="6,2" Text="{Binding StatusMessage}" />
+    </Border>
+
+    <Panel>
+      <views:StartView IsVisible="{Binding !HasTabs}" />
+      <ContentControl x:Name="DocumentHost" Content="{Binding SelectedTab}" IsVisible="{Binding HasTabs}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:DocumentTabViewModel">
+            <views:DocumentView />
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+    </Panel>
+  </DockPanel>
+</Window>

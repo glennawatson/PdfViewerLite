@@ -1,0 +1,121 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Icon glyphs: stroked paths sized like 16px Breeze action icons. -->
+  <Style Selector="Path.icon">
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="StrokeThickness" Value="1.6" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="Stroke" Value="{DynamicResource AppForeground}" />
+  </Style>
+
+  <!-- Flat tool bar buttons. -->
+  <Style Selector=":is(Button).tool">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="7" />
+    <Setter Property="Margin" Value="1,0" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.tool">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="7" />
+    <Setter Property="Margin" Value="1,0" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="ToggleButton.tool:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppTabHoverBackground}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+  </Style>
+  <Style Selector="ToggleButton.tool:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppTabHoverBackground}" />
+  </Style>
+  <Style Selector="Button.accent Path.icon">
+    <Setter Property="Stroke" Value="White" />
+  </Style>
+
+  <Style Selector="Border.toolbar">
+    <Setter Property="Background" Value="{DynamicResource AppHeaderBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="4,3" />
+  </Style>
+
+  <Style Selector="Rectangle.separator">
+    <Setter Property="Width" Value="1" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="Margin" Value="5,0" />
+    <Setter Property="Fill" Value="{DynamicResource AppBorderBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- The document tab strip. -->
+  <Style Selector="Border.tabbar">
+    <Setter Property="Background" Value="{DynamicResource AppWindowBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="ListBox.tabstrip">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4,4,4,0" />
+  </Style>
+  <Style Selector="ListBox.tabstrip > ListBoxItem">
+    <Setter Property="Padding" Value="10,5,4,5" />
+    <Setter Property="Margin" Value="0,0,2,0" />
+    <Setter Property="MinWidth" Value="80" />
+    <Setter Property="MaxWidth" Value="240" />
+    <Setter Property="CornerRadius" Value="4,4,0,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource AppSecondaryForeground}" />
+  </Style>
+  <Style Selector="ListBox.tabstrip > ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppTabHoverBackground}" />
+  </Style>
+  <Style Selector="ListBox.tabstrip > ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppHeaderBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+    <Setter Property="BorderThickness" Value="0,2,0,0" />
+  </Style>
+  <Style Selector="ListBox.tabstrip > ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+  </Style>
+  <Style Selector="Button.tabclose">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="Margin" Value="6,0,0,0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+  <Style Selector="Button.tabclose:pointerover">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Button.tabclose Path.icon">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="StrokeThickness" Value="1.8" />
+  </Style>
+
+  <!-- Sidebar. -->
+  <Style Selector="Border.sidebar">
+    <Setter Property="Background" Value="{DynamicResource AppViewBackground}" />
+  </Style>
+  <Style Selector="ListBox.thumbnails > ListBoxItem">
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+
+  <Style Selector="TextBlock.secondary">
+    <Setter Property="Foreground" Value="{DynamicResource AppSecondaryForeground}" />
+  </Style>
+</Styles>

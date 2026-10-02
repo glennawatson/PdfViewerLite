@@ -1,0 +1,18 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+namespace PdfViewerLite.App.ViewModels;
+
+/// <summary>The panel shown in the sidebar.</summary>
+public enum SidebarMode
+{
+    /// <summary>Page thumbnails.</summary>
+    Thumbnails = 0,
+
+    /// <summary>The document outline.</summary>
+    Outline = 1,
+
+    /// <summary>Search results.</summary>
+    Search = 2,
+}

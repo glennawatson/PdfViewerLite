@@ -15,6 +15,9 @@ internal static class PdfiumLibrary
     /// <summary>Whether the library has been initialised.</summary>
     private static bool _initialized;
 
+    /// <summary>Initializes static members of the <see cref="PdfiumLibrary"/> class.</summary>
+    static PdfiumLibrary() => PdfiumLibraryResolver.Install();
+
     /// <summary>Enters the PDFium lock, initialising the library on first use.</summary>
     /// <returns>The scope to dispose when done.</returns>
     internal static Lock.Scope EnterScope()

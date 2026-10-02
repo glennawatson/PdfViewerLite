@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PdfViewerLite.App.ViewModels"
+             xmlns:platform="using:PdfViewerLite.Core.Platform"
+             x:Class="PdfViewerLite.App.Views.StartView"
+             x:DataType="vm:MainViewModel">
+  <Border Background="{DynamicResource AppCanvasBackground}">
+    <Grid RowDefinitions="Auto,*" MaxWidth="720" Margin="32">
+      <StackPanel Grid.Row="0" Spacing="12" HorizontalAlignment="Center" Margin="0,24,0,24">
+        <Path Classes="icon" Width="56" Height="56" StrokeThickness="1.2" Stroke="{DynamicResource AppSecondaryForeground}"
+              Data="{StaticResource IconDocument}" HorizontalAlignment="Center" />
+        <TextBlock FontSize="20" HorizontalAlignment="Center" Text="Open a document to get started" />
+        <TextBlock Classes="secondary" HorizontalAlignment="Center" Text="Drop PDF files here, or choose them from a folder." />
+        <Button Classes="accent" HorizontalAlignment="Center" Padding="16,6" Command="{Binding OpenCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Path Classes="icon" Data="{StaticResource IconOpen}" />
+            <TextBlock Text="Open…" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+
+      <DockPanel Grid.Row="1" IsVisible="{Binding RecentDocuments.Count}">
+        <TextBlock DockPanel.Dock="Top" Classes="secondary" FontWeight="SemiBold" Margin="4,0,0,8" Text="Recent documents" />
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding RecentDocuments}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="platform:RecentDocument">
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Background="Transparent" Padding="8,6" Margin="0,1"
+                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).OpenRecentCommand}" CommandParameter="{Binding}"
+                        ToolTip.Tip="{Binding FilePath}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Path Classes="icon" Data="{StaticResource IconDocument}" />
+                    <StackPanel>
+                      <TextBlock Text="{Binding FileName}" />
+                      <TextBlock Classes="secondary" FontSize="11" Text="{Binding Folder}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Grid>
+  </Border>
+</UserControl>

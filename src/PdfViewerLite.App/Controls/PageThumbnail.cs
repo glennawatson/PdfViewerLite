@@ -1,0 +1,175 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System.ComponentModel;
+using System.Diagnostics;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using PdfViewerLite.App.Rendering;
+using PdfViewerLite.App.ViewModels;
+using PdfViewerLite.Core.Documents;
+using PdfViewerLite.Core.Geometry;
+using PdfViewerLite.Core.Rendering;
+
+namespace PdfViewerLite.App.Controls;
+
+/// <summary>Draws a page preview from the shared tile cache, requesting it at thumbnail priority when missing.</summary>
+[DebuggerDisplay("Page {PageIndex}")]
+public sealed class PageThumbnail : Control
+{
+    /// <summary>Defines the <see cref="Tab"/> property.</summary>
+    public static readonly StyledProperty<DocumentTabViewModel?> TabProperty = AvaloniaProperty.Register<PageThumbnail, DocumentTabViewModel?>(nameof(Tab));
+
+    /// <summary>Defines the <see cref="PageIndex"/> property.</summary>
+    public static readonly StyledProperty<int> PageIndexProperty = AvaloniaProperty.Register<PageThumbnail, int>(nameof(PageIndex), -1);
+
+    /// <summary>The border brush.</summary>
+    private static readonly IBrush BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0));
+
+    /// <summary>The border pen.</summary>
+    private static readonly IPen BorderPen = new Pen(BorderBrush);
+
+    /// <summary>Whether the preview has been drawn, so tile arrivals no longer need a repaint.</summary>
+    private bool _hasImage;
+
+    /// <summary>The hub currently subscribed to.</summary>
+    private RenderHub? _hub;
+
+    /// <summary>The tab currently subscribed to.</summary>
+    private DocumentTabViewModel? _tab;
+
+    /// <summary>Initializes static members of the <see cref="PageThumbnail"/> class.</summary>
+    static PageThumbnail() => AffectsRender<PageThumbnail>(TabProperty, PageIndexProperty);
+
+    /// <summary>Gets or sets the tab.</summary>
+    public DocumentTabViewModel? Tab
+    {
+        get => GetValue(TabProperty);
+        set => SetValue(TabProperty, value);
+    }
+
+    /// <summary>Gets or sets the zero based page index.</summary>
+    public int PageIndex
+    {
+        get => GetValue(PageIndexProperty);
+        set => SetValue(PageIndexProperty, value);
+    }
+
+    /// <inheritdoc/>
+    public override void Render(DrawingContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var rect = new Rect(Bounds.Size);
+        var tab = Tab;
+        var page = PageIndex;
+        _hasImage = false;
+        context.FillRectangle(tab?.NightMode == true ? Brushes.Black : Brushes.White, rect);
+        context.DrawRectangle(BorderPen, rect);
+        if (tab is null || page < 0 || page >= tab.Source.PageCount)
+        {
+            return;
+        }
+
+        var key = TileKey.Preview(tab.Source.Id, page, PageRotation.None, tab.NightMode);
+        if (tab.RenderHub.Cache.TryGet(key, out var surface))
+        {
+            using (context.PushRenderOptions(new() { BitmapInterpolationMode = BitmapInterpolationMode.HighQuality }))
+            {
+                context.DrawImage(((AvaloniaRenderSurface)surface).Bitmap, new(0, 0, surface.Width, surface.Height), rect);
+            }
+
+            _hasImage = true;
+            return;
+        }
+
+        var document = tab.TryGetDocument();
+        if (document is null)
+        {
+            return;
+        }
+
+        var size = tab.Source.PageSizes[page];
+        var scale = TileGrid.GetPreviewScale(size, PageRotation.None);
+        TileGrid.GetPagePixelSize(size, PageRotation.None, scale, out var width, out var height);
+        var flags = RenderFlags.Annotations | (tab.NightMode ? RenderFlags.Invert : RenderFlags.None);
+        var info = new PageRenderInfo(page, scale, PageRotation.None, 0, 0, flags);
+        _ = tab.RenderHub.Scheduler.Request(new(key, document, info, width, height, RenderPriority.Thumbnail, tab.ThumbnailClient, tab.ThumbnailClient.Generation));
+    }
+
+    /// <inheritdoc/>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        Subscribe(Tab?.RenderHub);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Subscribe(null);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        base.OnPropertyChanged(change);
+        if (change.Property == TabProperty && TopLevel.GetTopLevel(this) is not null)
+        {
+            Subscribe(Tab?.RenderHub);
+        }
+    }
+
+    /// <summary>Subscribes to tile arrivals and tab changes.</summary>
+    /// <param name="hub">The hub, or <see langword="null"/> to unsubscribe.</param>
+    private void Subscribe(RenderHub? hub)
+    {
+        if (_hub is not null)
+        {
+            _hub.TilesArrived -= OnTilesArrived;
+        }
+
+        if (_tab is not null)
+        {
+            _tab.PropertyChanged -= OnTabPropertyChanged;
+        }
+
+        _hub = hub;
+        _tab = hub is null ? null : Tab;
+        if (hub is not null)
+        {
+            hub.TilesArrived += OnTilesArrived;
+        }
+
+        if (_tab is not null)
+        {
+            _tab.PropertyChanged += OnTabPropertyChanged;
+        }
+    }
+
+    /// <summary>Repaints when night mode toggles.</summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The event.</param>
+    private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DocumentTabViewModel.NightMode))
+        {
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>Repaints when tiles arrive and the preview is still missing.</summary>
+    /// <param name="sender">The sender.</param>
+    /// <param name="e">The event.</param>
+    private void OnTilesArrived(object? sender, EventArgs e)
+    {
+        if (!_hasImage)
+        {
+            InvalidateVisual();
+        }
+    }
+}

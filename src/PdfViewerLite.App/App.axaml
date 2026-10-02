@@ -1,0 +1,41 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PdfViewerLite.App.App"
+             RequestedThemeVariant="Default">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://pdfviewerlite/Styles/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <!-- Breeze and Breeze Dark defaults; replaced by the desktop colour scheme when one is available. -->
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppWindowBackground" Color="#EFF0F1" />
+          <SolidColorBrush x:Key="AppHeaderBackground" Color="#F7F7F8" />
+          <SolidColorBrush x:Key="AppViewBackground" Color="#FCFCFC" />
+          <SolidColorBrush x:Key="AppCanvasBackground" Color="#D3D5D7" />
+          <SolidColorBrush x:Key="AppForeground" Color="#232629" />
+          <SolidColorBrush x:Key="AppSecondaryForeground" Color="#707275" />
+          <SolidColorBrush x:Key="AppAccentBrush" Color="#3DAEE9" />
+          <SolidColorBrush x:Key="AppBorderBrush" Color="#33232629" />
+          <SolidColorBrush x:Key="AppTabHoverBackground" Color="#1A3DAEE9" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppWindowBackground" Color="#202326" />
+          <SolidColorBrush x:Key="AppHeaderBackground" Color="#2A2E32" />
+          <SolidColorBrush x:Key="AppViewBackground" Color="#1B1E20" />
+          <SolidColorBrush x:Key="AppCanvasBackground" Color="#141618" />
+          <SolidColorBrush x:Key="AppForeground" Color="#FCFCFC" />
+          <SolidColorBrush x:Key="AppSecondaryForeground" Color="#A1A9B1" />
+          <SolidColorBrush x:Key="AppAccentBrush" Color="#3DAEE9" />
+          <SolidColorBrush x:Key="AppBorderBrush" Color="#33FCFCFC" />
+          <SolidColorBrush x:Key="AppTabHoverBackground" Color="#263DAEE9" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://pdfviewerlite/Styles/AppStyles.axaml" />
+  </Application.Styles>
+</Application>

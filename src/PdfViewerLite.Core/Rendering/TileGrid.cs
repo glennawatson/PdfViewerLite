@@ -18,11 +18,20 @@ public static class TileGrid
     /// <summary>The preview width.</summary>
     private const int PreviewEdge = 220;
 
+    /// <summary>The largest zoom factor rendered at full resolution.</summary>
+    private const float MaxZoom = 64F;
+
+    /// <summary>Device independent pixels per point at 100% zoom.</summary>
+    private const float PixelsPerPoint = 96F / 72F;
+
     /// <summary>Gets the edge length of a tile in device pixels.</summary>
     public static int TileSize => TileEdge;
 
     /// <summary>Gets the width, in device pixels, of page preview images used for thumbnails and as a placeholder.</summary>
     public static int PreviewWidth => PreviewEdge;
+
+    /// <summary>Gets the largest render scale permitted, in device pixels per point (6400% at 96 DPI).</summary>
+    public static float MaxScale => MaxZoom * PixelsPerPoint;
 
     /// <summary>Quantises a render scale so that scales which differ only by rounding share tiles.</summary>
     /// <param name="scale">Device pixels per point.</param>

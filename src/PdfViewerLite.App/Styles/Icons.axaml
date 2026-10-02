@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Simple line icons on a 24x24 grid, drawn with the foreground colour like Breeze action icons. -->
+  <StreamGeometry x:Key="IconOpen">M3,7 L3,19 L21,19 L21,9 L11,9 L9,7 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconSidebar">M3,5 L21,5 L21,19 L3,19 Z M9,5 L9,19</StreamGeometry>
+  <StreamGeometry x:Key="IconBack">M15,5 L8,12 L15,19</StreamGeometry>
+  <StreamGeometry x:Key="IconForward">M9,5 L16,12 L9,19</StreamGeometry>
+  <StreamGeometry x:Key="IconPageUp">M5,15 L12,8 L19,15</StreamGeometry>
+  <StreamGeometry x:Key="IconPageDown">M5,9 L12,16 L19,9</StreamGeometry>
+  <StreamGeometry x:Key="IconZoomIn">M17,10 A7,7 0 1 1 3,10 A7,7 0 1 1 17,10 Z M15,15 L21,21 M10,7 L10,13 M7,10 L13,10</StreamGeometry>
+  <StreamGeometry x:Key="IconZoomOut">M17,10 A7,7 0 1 1 3,10 A7,7 0 1 1 17,10 Z M15,15 L21,21 M7,10 L13,10</StreamGeometry>
+  <StreamGeometry x:Key="IconFitWidth">M7,8 L3,12 L7,16 M17,8 L21,12 L17,16 M3,12 L21,12</StreamGeometry>
+  <StreamGeometry x:Key="IconFitPage">M6,3 L18,3 L18,21 L6,21 Z M9,8 L15,8 M9,12 L15,12 M9,16 L13,16</StreamGeometry>
+  <StreamGeometry x:Key="IconRotateLeft">M4,13 A8,8 0 1 0 7,6 M4,3 L4,9 L10,9</StreamGeometry>
+  <StreamGeometry x:Key="IconRotateRight">M20,13 A8,8 0 1 1 17,6 M20,3 L20,9 L14,9</StreamGeometry>
+  <StreamGeometry x:Key="IconDual">M3,5 L11,5 L11,19 L3,19 Z M13,5 L21,5 L21,19 L13,19 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconSearch">M16,10 A6,6 0 1 1 4,10 A6,6 0 1 1 16,10 Z M14.5,14.5 L21,21</StreamGeometry>
+  <StreamGeometry x:Key="IconNight">M20,14 A8,8 0 1 1 10,4 A6,6 0 0 0 20,14 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconMenu">M4,6 L20,6 M4,12 L20,12 M4,18 L20,18</StreamGeometry>
+  <StreamGeometry x:Key="IconClose">M7,7 L17,17 M17,7 L7,17</StreamGeometry>
+  <StreamGeometry x:Key="IconAdd">M12,5 L12,19 M5,12 L19,12</StreamGeometry>
+  <StreamGeometry x:Key="IconDocument">M6,3 L14,3 L19,8 L19,21 L6,21 Z M14,3 L14,8 L19,8</StreamGeometry>
+  <StreamGeometry x:Key="IconThumbnails">M4,4 L10,4 L10,10 L4,10 Z M14,4 L20,4 L20,10 L14,10 Z M4,14 L10,14 L10,20 L4,20 Z M14,14 L20,14 L20,20 L14,20 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconOutline">M4,6 L6,6 M9,6 L20,6 M7,12 L9,12 M12,12 L20,12 M7,18 L9,18 M12,18 L20,18</StreamGeometry>
+  <StreamGeometry x:Key="IconCase">M3,18 L7.5,6 L12,18 M4.7,14 L10.3,14 M19,11 A3,3 0 1 0 19,17 L19,10</StreamGeometry>
+  <StreamGeometry x:Key="IconWholeWord">M3,7 L5,17 L7,10 L9,17 L11,7 M14,17 L21,17 M14,7 L14,17 M21,7 L21,17</StreamGeometry>
+</ResourceDictionary>

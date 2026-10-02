@@ -52,6 +52,22 @@ public sealed class PdfiumEngine : IDocumentEngine
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
         var fullPath = Path.GetFullPath(path);
+        try
+        {
+            return OpenCore(fullPath, password);
+        }
+        catch (DllNotFoundException ex)
+        {
+            throw new DocumentOpenException("The PDFium library could not be loaded. Reinstall PdfViewerLite.", ex);
+        }
+    }
+
+    /// <summary>Opens a document once the library is available.</summary>
+    /// <param name="fullPath">The absolute file path.</param>
+    /// <param name="password">The password.</param>
+    /// <returns>The document.</returns>
+    private static PdfiumDocument OpenCore(string fullPath, string? password)
+    {
         using var scope = PdfiumLibrary.EnterScope();
         var handle = NativeMethods.FPDF_LoadDocument(fullPath, password);
         if (handle.IsInvalid)
@@ -61,7 +77,7 @@ public sealed class PdfiumEngine : IDocumentEngine
             throw CreateOpenException(error, fullPath);
         }
 
-        return new PdfiumDocument(handle, fullPath);
+        return new(handle, fullPath);
     }
 
     /// <summary>Maps a PDFium error code to an exception.</summary>

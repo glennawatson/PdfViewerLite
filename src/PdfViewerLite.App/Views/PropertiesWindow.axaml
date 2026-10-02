@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PdfViewerLite.App.ViewModels"
+        x:Class="PdfViewerLite.App.Views.PropertiesWindow"
+        x:DataType="vm:PropertiesViewModel"
+        Title="{Binding Title, StringFormat='Properties — {0}'}"
+        Width="560" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppWindowBackground}">
+  <StackPanel Margin="20" Spacing="16">
+    <ItemsControl ItemsSource="{Binding Entries}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:PropertyEntry">
+          <Grid ColumnDefinitions="120,*" Margin="0,3">
+            <TextBlock Classes="secondary" HorizontalAlignment="Right" Margin="0,0,12,0" Text="{Binding Name}" />
+            <SelectableTextBlock Grid.Column="1" TextWrapping="Wrap" Text="{Binding Value}" />
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <Button HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" Click="OnCloseClick" />
+  </StackPanel>
+</Window>
