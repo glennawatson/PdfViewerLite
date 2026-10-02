@@ -5,7 +5,6 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using Avalonia.Threading;
 using PdfViewerLite.App.Rendering;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Documents;
@@ -15,6 +14,7 @@ using PdfViewerLite.Core.Navigation;
 using PdfViewerLite.Core.Rendering;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -34,8 +34,17 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>The services.</summary>
     private readonly AppServices _services;
 
+    /// <summary>Emits navigation requests for the canvas.</summary>
+    private readonly Signal<NavigationRequest> _navigationRequests = new();
+
+    /// <summary>Emits external links to open.</summary>
+    private readonly Signal<Uri> _uriRequests = new();
+
+    /// <summary>Emits when the document must be laid out again.</summary>
+    private readonly Signal<RxVoid> _documentChanges = new();
+
     /// <summary>Watches the file for changes once loaded.</summary>
-    private DocumentFileWatcher? _watcher;
+    private IDisposable? _fileWatch;
 
     /// <summary>Initializes a new instance of the <see cref="DocumentTabViewModel"/> class.</summary>
     /// <param name="source">The document source.</param>
@@ -75,14 +84,14 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         ReloadCommand = ReactiveCommand.Create(Reload);
     }
 
-    /// <summary>Raised when the canvas should scroll.</summary>
-    public event EventHandler<NavigationRequest>? NavigationRequested;
+    /// <summary>Gets the requests for the canvas to scroll.</summary>
+    public IObservable<NavigationRequest> NavigationRequests => _navigationRequests;
 
-    /// <summary>Raised when an external link is activated.</summary>
-    public event EventHandler<Uri>? UriRequested;
+    /// <summary>Gets the external links the user activated.</summary>
+    public IObservable<Uri> UriRequests => _uriRequests;
 
-    /// <summary>Raised when the document must be laid out again (loaded, reloaded).</summary>
-    public event EventHandler? DocumentChanged;
+    /// <summary>Gets notifications that the document must be laid out again (loaded or reloaded).</summary>
+    public IObservable<RxVoid> DocumentChanges => _documentChanges;
 
     /// <summary>Gets the document source.</summary>
     public DocumentSource Source { get; }
@@ -428,7 +437,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
             case LinkTargetKind.Uri when Uri.TryCreate(target.Uri, UriKind.Absolute, out var uri):
             {
-                UriRequested?.Invoke(this, uri);
+                _uriRequests.OnNext(uri);
                 break;
             }
 
@@ -445,7 +454,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(request);
         History.Push(Position);
-        NavigationRequested?.Invoke(this, request);
+        _navigationRequests.OnNext(request);
     }
 
     /// <summary>Called by the canvas as the view scrolls.</summary>
@@ -502,8 +511,11 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        _watcher?.Dispose();
+        _fileWatch?.Dispose();
         Search.Dispose();
+        _navigationRequests.Dispose();
+        _uriRequests.Dispose();
+        _documentChanges.Dispose();
         RenderHub.Cache.RemoveDocument(Source.Id);
         _ = CanvasClient.Advance();
         _ = ThumbnailClient.Advance();
@@ -534,27 +546,21 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         PageEntry = GetPageDisplay(CurrentPageIndex);
         _services.RecentDocuments.Add(FilePath);
         WatchFile();
-        DocumentChanged?.Invoke(this, EventArgs.Empty);
+        _documentChanges.OnNext(RxVoid.Default);
     }
 
     /// <summary>Starts watching the file for changes.</summary>
-    private void WatchFile()
-    {
-        if (_watcher is not null)
-        {
-            return;
-        }
-
-        _watcher = new(FilePath);
-        _watcher.Changed += (_, _) => Dispatcher.UIThread.Post(Reload);
-    }
+    private void WatchFile() =>
+        _fileWatch ??= FileChanges.Watch(FilePath)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .SubscribeSafe(_ => Reload(), static ex => Trace.TraceError(ex.ToString()));
 
     /// <summary>Goes back in history.</summary>
     private void GoBack()
     {
         if (History.TryGoBack(Position, out var target))
         {
-            NavigationRequested?.Invoke(this, new(target.PageIndex, null, target.OffsetFraction));
+            _navigationRequests.OnNext(new(target.PageIndex, null, target.OffsetFraction));
         }
     }
 
@@ -563,7 +569,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     {
         if (History.TryGoForward(Position, out var target))
         {
-            NavigationRequested?.Invoke(this, new(target.PageIndex, null, target.OffsetFraction));
+            _navigationRequests.OnNext(new(target.PageIndex, null, target.OffsetFraction));
         }
     }
 

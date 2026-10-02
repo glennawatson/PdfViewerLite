@@ -48,6 +48,7 @@ public static class Program
         }
         finally
         {
+            (Avalonia.Application.Current as App)?.Release();
             InstanceHost?.Dispose();
         }
     }

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -13,7 +14,11 @@ using PdfViewerLite.App.Services;
 using PdfViewerLite.App.Theming;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
+using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Platform.Linux.DBus;
+using ReactiveUI;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App;
 
@@ -21,14 +26,11 @@ namespace PdfViewerLite.App;
 [DebuggerDisplay("PdfViewerLite")]
 public sealed class App : Application
 {
-    /// <summary>The services, once started.</summary>
-    private AppServices? _services;
+    /// <summary>Subscriptions and resources owned for the application's lifetime.</summary>
+    private readonly MultipleDisposable _lifetime = [];
 
     /// <summary>The main window, once created.</summary>
     private MainWindow? _window;
-
-    /// <summary>Shuts down cleanly on SIGTERM (for example at logout) so the session is saved.</summary>
-    private PosixSignalRegistration? _terminateRegistration;
 
     /// <inheritdoc/>
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -38,71 +40,80 @@ public sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var services = AppServices.CreateDefault();
-            _services = services;
-            ApplyTheme();
-            if (services.ThemeSource is { } themeSource)
-            {
-                themeSource.PaletteChanged += (_, _) => Dispatcher.UIThread.Post(ApplyTheme);
-            }
-
-            var viewModel = new MainViewModel(services);
-            var window = new MainWindow { DataContext = viewModel, Width = services.Settings.WindowWidth, Height = services.Settings.WindowHeight };
-            if (services.Settings.WindowMaximized)
-            {
-                window.WindowState = Avalonia.Controls.WindowState.Maximized;
-            }
-
-            DesktopThemeApplier.ApplyFont(window, services.ThemeSource?.Palette);
-            _window = window;
-            viewModel.RestoreSession();
-            viewModel.Open(Program.StartupDocuments);
-            if (Program.InstanceHost is { } host)
-            {
-                host.OpenRequested += OnOpenRequested;
-            }
-
-            window.Closing += (_, _) => RememberWindow(window, services);
-            desktop.MainWindow = window;
-            if (!OperatingSystem.IsWindows())
-            {
-                _terminateRegistration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
-                {
-                    context.Cancel = true;
-                    Dispatcher.UIThread.Post(static state => ((IClassicDesktopStyleApplicationLifetime)state!).Shutdown(), desktop);
-                });
-            }
-
-            desktop.Exit += (_, _) =>
-            {
-                _terminateRegistration?.Dispose();
-                viewModel.Dispose();
-                services.Dispose();
-            };
+            Start(desktop);
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    /// <summary>Records the window size for the next start.</summary>
-    /// <param name="window">The window.</param>
-    /// <param name="services">The services.</param>
-    private static void RememberWindow(MainWindow window, AppServices services)
+    /// <summary>Releases the services once the desktop lifetime has ended.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void Release() => _lifetime.Dispose();
+
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Creates the services and the main window.</summary>
+    /// <param name="desktop">The desktop lifetime.</param>
+    private void Start(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        services.Settings.WindowMaximized = window.WindowState == Avalonia.Controls.WindowState.Maximized;
-        if (window.WindowState == Avalonia.Controls.WindowState.Normal)
+        var services = AppServices.CreateDefault();
+        var viewModel = new MainViewModel(services);
+        var window = new MainWindow { DataContext = viewModel, Width = services.Settings.WindowWidth, Height = services.Settings.WindowHeight };
+        if (services.Settings.WindowMaximized)
         {
-            services.Settings.WindowWidth = window.Width;
-            services.Settings.WindowHeight = window.Height;
+            window.WindowState = WindowState.Maximized;
         }
 
-        services.SaveSettings();
+        _window = window;
+        _lifetime.Add(services);
+        _lifetime.Add(viewModel);
+
+        // The palette's current value arrives synchronously on subscription, so the first frame is already themed.
+        if (services.ThemeSource is { } themeSource)
+        {
+            _lifetime.Add(themeSource.Palette.SubscribeSafe(OnPalette, OnError));
+        }
+
+        if (Program.InstanceHost is { } host)
+        {
+            _lifetime.Add(host.OpenRequests.ObserveOn(RxSchedulers.MainThreadScheduler).SubscribeSafe(OpenForwarded, OnError));
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            // Shut down cleanly on SIGTERM (for example at logout) so the session is saved.
+            _lifetime.Add(PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
+            {
+                context.Cancel = true;
+                Dispatcher.UIThread.Post(static state => ((IClassicDesktopStyleApplicationLifetime)state!).Shutdown(), desktop);
+            }));
+        }
+
+        viewModel.RestoreSession();
+        viewModel.Open(Program.StartupDocuments);
+        desktop.MainWindow = window;
     }
 
-    /// <summary>Applies the desktop colour scheme.</summary>
-    private void ApplyTheme()
+    /// <summary>Applies a palette on the UI thread.</summary>
+    /// <param name="palette">The palette.</param>
+    private void OnPalette(DesktopPalette? palette)
     {
-        var palette = _services?.ThemeSource?.Palette;
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(static state => ((App)Current!).ApplyPalette((DesktopPalette?)state), palette);
+            return;
+        }
+
+        ApplyPalette(palette);
+    }
+
+    /// <summary>Applies a palette to the resources and window font.</summary>
+    /// <param name="palette">The palette.</param>
+    private void ApplyPalette(DesktopPalette? palette)
+    {
         DesktopThemeApplier.Apply(this, palette);
         if (_window is not null)
         {
@@ -110,17 +121,11 @@ public sealed class App : Application
         }
     }
 
-    /// <summary>Queues documents forwarded by another launch, for example from Dolphin.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The request.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void OnOpenRequested(object? sender, OpenRequestEventArgs e) => Dispatcher.UIThread.Post(OpenForwarded, e);
-
     /// <summary>Opens forwarded documents and raises the window.</summary>
-    /// <param name="state">The <see cref="OpenRequestEventArgs"/>.</param>
-    private void OpenForwarded(object? state)
+    /// <param name="request">The request.</param>
+    private void OpenForwarded(OpenRequest request)
     {
-        if (state is not OpenRequestEventArgs request || _window?.ViewModel is not { } viewModel)
+        if (_window?.ViewModel is not { } viewModel)
         {
             return;
         }

@@ -4,12 +4,9 @@
 
 namespace PdfViewerLite.Core.Platform;
 
-/// <summary>Supplies the desktop colour scheme and reports changes.</summary>
+/// <summary>Supplies the desktop colour scheme.</summary>
 public interface IDesktopThemeSource
 {
-    /// <summary>Raised when the palette changes.</summary>
-    event EventHandler? PaletteChanged;
-
-    /// <summary>Gets the current palette, or <see langword="null"/> when the desktop offers none.</summary>
-    DesktopPalette? Palette { get; }
+    /// <summary>Gets the palette: the current value on subscription, then each change; null when the desktop has none.</summary>
+    IObservable<DesktopPalette?> Palette { get; }
 }

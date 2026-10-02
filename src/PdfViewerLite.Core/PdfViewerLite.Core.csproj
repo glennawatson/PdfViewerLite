@@ -4,6 +4,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ReactiveUI.Primitives" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="PdfViewerLite.Core.Tests" />
     <InternalsVisibleTo Include="PdfViewerLite.Benchmarks" />
   </ItemGroup>

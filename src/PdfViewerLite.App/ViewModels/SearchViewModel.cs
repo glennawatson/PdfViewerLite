@@ -9,6 +9,7 @@ using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Search;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -31,6 +32,9 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     /// <summary>Hits grouped by page, for highlighting.</summary>
     private readonly Dictionary<int, List<SearchHit>> _hitsByPage = [];
 
+    /// <summary>Emits when highlights change.</summary>
+    private readonly Signal<RxVoid> _highlightChanges = new();
+
     /// <summary>Cancels the running search.</summary>
     private CancellationTokenSource? _search;
 
@@ -47,8 +51,8 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
             .SubscribeSafe(_ => StartSearch(), OnSearchError);
     }
 
-    /// <summary>Raised when highlights change so the canvas can repaint.</summary>
-    public event EventHandler? HighlightsChanged;
+    /// <summary>Gets notifications that the highlights changed, so the canvas can repaint.</summary>
+    public IObservable<RxVoid> HighlightChanges => _highlightChanges;
 
     /// <summary>Gets or sets the query.</summary>
     public string Query
@@ -180,6 +184,8 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
         NextCommand.Dispose();
         PreviousCommand.Dispose();
         CloseCommand.Dispose();
+        _highlightChanges.OnCompleted();
+        _highlightChanges.Dispose();
     }
 
     /// <summary>Restarts the search after the document reloads.</summary>
@@ -213,7 +219,7 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
         UpdateStatus();
         var bounds = item.Hit.Bounds;
         _owner.NavigateTo(new(item.PageIndex, bounds.Length > 0 ? bounds[0] : null, 0));
-        HighlightsChanged?.Invoke(this, EventArgs.Empty);
+        _highlightChanges.OnNext(RxVoid.Default);
     }
 
     /// <summary>Cancels the running search.</summary>
@@ -233,7 +239,7 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
         CurrentIndex = -1;
         SelectedResult = null;
         Status = string.Empty;
-        HighlightsChanged?.Invoke(this, EventArgs.Empty);
+        _highlightChanges.OnNext(RxVoid.Default);
     }
 
     /// <summary>Starts a new search for the current query.</summary>
@@ -281,7 +287,7 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
                 }
 
                 UpdateStatus();
-                HighlightsChanged?.Invoke(this, EventArgs.Empty);
+                _highlightChanges.OnNext(RxVoid.Default);
             }
         }
         catch (OperationCanceledException)

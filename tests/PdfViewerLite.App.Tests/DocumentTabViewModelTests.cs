@@ -48,7 +48,7 @@ public sealed class DocumentTabViewModelTests
         main.Open([test.CreateDocument(DocumentName, Pages)]);
         var tab = main.SelectedTab!;
         var requests = new List<NavigationRequest>();
-        tab.NavigationRequested += (_, request) => requests.Add(request);
+        using var navigation = tab.NavigationRequests.SubscribeSafe(requests.Add, static _ => { });
         const int fourthPage = 3;
 
         tab.PageEntry = "4";

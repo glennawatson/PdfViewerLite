@@ -40,10 +40,20 @@ can still be laid out. This is what makes hundreds of tabs cheap.
 4. The scheduler's single render thread takes requests by priority (visible previews, visible tiles, prefetch,
    thumbnails, background) and renders straight into an Avalonia `WriteableBitmap` through `IRenderSurface`. Night
    mode inverts colours in place with SIMD.
-5. Completed tiles are batched back to the UI thread, added to the `TileCache` (an LRU bounded by bytes, 256 MB by
-   default), and the canvas repaints.
+5. The scheduler's `Completed` observable emits once per batch; `RenderHub` observes it on the main thread
+   sequencer, moves the tiles into the `TileCache` (an LRU bounded by bytes, 256 MB by default) and emits
+   `TilesArrived`, which visible canvases and thumbnails subscribe to.
 
 The render path allocates no managed memory per tile; see the benchmarks.
+
+## Notifications
+
+There are no .NET events in the codebase's APIs. Everything that notifies is an `IObservable<T>` built on
+ReactiveUI.Primitives: render completion, tile arrival, navigation and link requests, search highlight changes,
+file changes (`FileChanges.Watch`, a cold observable that owns a `FileSystemWatcher` while subscribed), the desktop
+palette (current value then changes) and D-Bus open requests. Views observe view model properties with
+`WhenAnyValue`, Avalonia properties and routed events with `GetObservable`, and dispose subscriptions through
+`MultipleDisposable`.
 
 ## Application
 

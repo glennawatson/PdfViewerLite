@@ -12,6 +12,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -28,8 +29,11 @@ public sealed partial class MainWindow : Window
     /// <summary>The PDF file type filter.</summary>
     private static readonly FilePickerFileType PdfFileType = new("PDF documents") { Patterns = ["*.pdf", "*.PDF"], MimeTypes = ["application/pdf"] };
 
-    /// <summary>Interaction handler registrations.</summary>
-    private readonly List<IDisposable> _registrations = [];
+    /// <summary>Input subscriptions for the window's lifetime.</summary>
+    private readonly MultipleDisposable _inputSubscriptions;
+
+    /// <summary>Interaction handler registrations for the current view model.</summary>
+    private MultipleDisposable? _registrations;
 
     /// <summary>The tab being dragged.</summary>
     private DocumentTabViewModel? _draggedTab;
@@ -41,14 +45,16 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        AddHandler(DragDrop.DragOverEvent, OnDragOver);
-        AddHandler(DragDrop.DropEvent, OnDrop);
-        AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
-        TabStrip.AddHandler(PointerPressedEvent, OnTabPointerPressed, RoutingStrategies.Tunnel);
-        TabStrip.AddHandler(PointerMovedEvent, OnTabPointerMoved, RoutingStrategies.Tunnel);
-        TabStrip.AddHandler(PointerReleasedEvent, OnTabPointerReleased, RoutingStrategies.Tunnel);
-        TabStrip.AddHandler(PointerWheelChangedEvent, OnTabWheel, RoutingStrategies.Tunnel);
-        Closing += OnClosing;
+        _inputSubscriptions =
+        [
+            this.GetObservable(DragDrop.DragOverEvent).SubscribeSafe(OnDragOver, OnError),
+            this.GetObservable(DragDrop.DropEvent).SubscribeSafe(OnDrop, OnError),
+            this.GetObservable(KeyDownEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnPreviewKeyDown, OnError),
+            TabStrip.GetObservable(PointerPressedEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnTabPointerPressed, OnError),
+            TabStrip.GetObservable(PointerMovedEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnTabPointerMoved, OnError),
+            TabStrip.GetObservable(PointerReleasedEvent, RoutingStrategies.Tunnel).SubscribeSafe(_ => _draggedTab = null, OnError),
+            TabStrip.GetObservable(PointerWheelChangedEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnTabWheel, OnError),
+        ];
     }
 
     /// <summary>Gets the view model.</summary>
@@ -69,19 +75,35 @@ public sealed partial class MainWindow : Window
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        foreach (var registration in _registrations)
-        {
-            registration.Dispose();
-        }
-
-        _registrations.Clear();
+        _registrations?.Dispose();
+        _registrations = null;
         if (ViewModel is not { } viewModel)
         {
             return;
         }
 
-        _registrations.Add(viewModel.OpenFileInteraction.RegisterHandler(OpenFilesAsync));
-        _registrations.Add(viewModel.ShowPropertiesInteraction.RegisterHandler(ShowPropertiesAsync));
+        _registrations = [viewModel.OpenFileInteraction.RegisterHandler(OpenFilesAsync), viewModel.ShowPropertiesInteraction.RegisterHandler(ShowPropertiesAsync)];
+    }
+
+    /// <inheritdoc/>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        viewModel.RememberWindow(Width, Height, WindowState == WindowState.Maximized, WindowState == WindowState.Normal);
+        viewModel.SaveSession();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        _inputSubscriptions.Dispose();
+        _registrations?.Dispose();
     }
 
     /// <summary>Converts storage items to local paths.</summary>
@@ -101,10 +123,14 @@ public sealed partial class MainWindow : Window
         return paths;
     }
 
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
     /// <summary>Accepts dragged files.</summary>
-    /// <param name="sender">The sender.</param>
     /// <param name="e">The event.</param>
-    private static void OnDragOver(object? sender, DragEventArgs e) =>
+    private static void OnDragOver(DragEventArgs e) =>
         e.DragEffects = e.DataTransfer.Contains(DataFormat.File) || e.DataTransfer.Contains(DataFormat.Text) ? DragDropEffects.Copy : DragDropEffects.None;
 
     /// <summary>Shows the open dialog; on KDE this goes through the XDG portal and shows the KDE file dialog.</summary>
@@ -127,9 +153,8 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Opens dropped files, for example from Dolphin, or a dropped web address.</summary>
-    /// <param name="sender">The sender.</param>
     /// <param name="e">The event.</param>
-    private void OnDrop(object? sender, DragEventArgs e)
+    private void OnDrop(DragEventArgs e)
     {
         if (ViewModel is not { } viewModel)
         {
@@ -147,9 +172,8 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Handles shortcuts that would otherwise move keyboard focus.</summary>
-    /// <param name="sender">The sender.</param>
     /// <param name="e">The event.</param>
-    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    private void OnPreviewKeyDown(KeyEventArgs e)
     {
         if (ViewModel is not { } viewModel)
         {
@@ -221,9 +245,8 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Starts a possible tab drag, or closes the tab on middle click.</summary>
-    /// <param name="sender">The sender.</param>
     /// <param name="e">The event.</param>
-    private void OnTabPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnTabPointerPressed(PointerPressedEventArgs e)
     {
         var properties = e.GetCurrentPoint(TabStrip).Properties;
         var tab = GetTabAt(e);
@@ -244,9 +267,8 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>Reorders tabs while dragging.</summary>
-    /// <param name="sender">The sender.</param>
     /// <param name="e">The event.</param>
-    private void OnTabPointerMoved(object? sender, PointerEventArgs e)
+    private void OnTabPointerMoved(PointerEventArgs e)
     {
         if (_draggedTab is null || ViewModel is not { } viewModel || Math.Abs(e.GetPosition(TabStrip).X - _dragStart.X) < DragThreshold)
         {
@@ -263,15 +285,9 @@ public sealed partial class MainWindow : Window
         _dragStart = e.GetPosition(TabStrip);
     }
 
-    /// <summary>Ends a tab drag.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnTabPointerReleased(object? sender, PointerReleasedEventArgs e) => _draggedTab = null;
-
     /// <summary>Scrolls the tab strip horizontally with the mouse wheel.</summary>
-    /// <param name="sender">The sender.</param>
     /// <param name="e">The event.</param>
-    private void OnTabWheel(object? sender, PointerWheelEventArgs e)
+    private void OnTabWheel(PointerWheelEventArgs e)
     {
         if (TabStrip.FindDescendantOfType<ScrollViewer>() is not { } scroller)
         {
@@ -281,10 +297,4 @@ public sealed partial class MainWindow : Window
         scroller.Offset = new(Math.Max(0, scroller.Offset.X - ((e.Delta.Y + e.Delta.X) * TabWheelStep)), scroller.Offset.Y);
         e.Handled = true;
     }
-
-    /// <summary>Saves the session when the window closes.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void OnClosing(object? sender, WindowClosingEventArgs e) => ViewModel?.SaveSession();
 }

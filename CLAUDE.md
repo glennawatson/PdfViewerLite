@@ -26,4 +26,9 @@ Headless UI tests save screenshots when `PDFVIEWERLITE_SCREENSHOTS` is set.
   expression-bodied members, C# 14 extension blocks instead of classic extension methods, `in` for large structs.
 - Everything shipped must be trim and AOT safe: no reflection, source-generated JSON, compiled XAML bindings,
   `RestService.ForGenerated` for Refit, and no `ReactiveWindow`/`WhenActivated` (they require unreferenced code).
+- No raw .NET events. Expose notifications as `IObservable<T>` built on ReactiveUI.Primitives (`Signal<T>`,
+  `BehaviorSignal<T>`, `Signal.Defer`/`Using`), consume them with Primitives operators and `SubscribeSafe`, and keep
+  subscriptions in a `MultipleDisposable`. Observe view model properties with `WhenAnyValue`, Avalonia properties
+  with `GetObservable(property)` and routed events with `GetObservable(routedEvent)`. Framework CLR events are only
+  bridged at the edge with `Signal.FromEvent` (see `FileChanges`). Prefer overriding `OnXxx` methods in controls.
 - PDFium calls must hold `PdfiumLibrary.EnterScope()`. The render hot path must not allocate.

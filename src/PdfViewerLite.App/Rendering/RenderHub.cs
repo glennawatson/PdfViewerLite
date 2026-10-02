@@ -3,9 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using Avalonia.Threading;
 using PdfViewerLite.Core.Rendering;
+using ReactiveUI;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Rendering;
 
@@ -16,20 +17,25 @@ namespace PdfViewerLite.App.Rendering;
 [DebuggerDisplay("{Cache}")]
 public sealed class RenderHub : IDisposable
 {
-    /// <summary>The cached drain callback, avoiding a delegate allocation per batch.</summary>
-    private readonly Action _drain;
+    /// <summary>Emits on the UI thread after tiles were added to the cache.</summary>
+    private readonly Signal<RxVoid> _tilesArrived = new();
+
+    /// <summary>The subscription draining completed tiles.</summary>
+    private readonly IDisposable _drainSubscription;
 
     /// <summary>Initializes a new instance of the <see cref="RenderHub"/> class.</summary>
     /// <param name="cacheBytes">The tile cache budget in bytes.</param>
     public RenderHub(long cacheBytes)
     {
         Cache = new(cacheBytes);
-        _drain = Drain;
-        Scheduler = new(new AvaloniaSurfaceFactory(), OnTilesCompleted);
+        Scheduler = new(new AvaloniaSurfaceFactory());
+        _drainSubscription = Scheduler.Completed
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .SubscribeSafe(_ => Drain(), static ex => Trace.TraceError(ex.ToString()));
     }
 
-    /// <summary>Raised on the UI thread after new tiles were added to the cache.</summary>
-    public event EventHandler? TilesArrived;
+    /// <summary>Gets notifications, on the UI thread, that new tiles were added to the cache.</summary>
+    public IObservable<RxVoid> TilesArrived => _tilesArrived;
 
     /// <summary>Gets the tile cache. Use only on the UI thread.</summary>
     public TileCache Cache { get; }
@@ -40,13 +46,12 @@ public sealed class RenderHub : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        _drainSubscription.Dispose();
         Scheduler.Dispose();
         Cache.Dispose();
+        _tilesArrived.OnCompleted();
+        _tilesArrived.Dispose();
     }
-
-    /// <summary>Schedules a drain on the UI thread; called on the render thread.</summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void OnTilesCompleted() => Dispatcher.UIThread.Post(_drain, DispatcherPriority.Render);
 
     /// <summary>Moves completed tiles into the cache.</summary>
     private void Drain()
@@ -60,7 +65,7 @@ public sealed class RenderHub : IDisposable
 
         if (any)
         {
-            TilesArrived?.Invoke(this, EventArgs.Empty);
+            _tilesArrived.OnNext(RxVoid.Default);
         }
     }
 }

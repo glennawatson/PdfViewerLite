@@ -2,8 +2,8 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -13,6 +13,8 @@ using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Rendering;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Controls;
 
@@ -35,11 +37,8 @@ public sealed class PageThumbnail : Control
     /// <summary>Whether the preview has been drawn, so tile arrivals no longer need a repaint.</summary>
     private bool _hasImage;
 
-    /// <summary>The hub currently subscribed to.</summary>
-    private RenderHub? _hub;
-
-    /// <summary>The tab currently subscribed to.</summary>
-    private DocumentTabViewModel? _tab;
+    /// <summary>Subscriptions to the tab and render hub while attached.</summary>
+    private MultipleDisposable? _subscriptions;
 
     /// <summary>Initializes static members of the <see cref="PageThumbnail"/> class.</summary>
     static PageThumbnail() => AffectsRender<PageThumbnail>(TabProperty, PageIndexProperty);
@@ -103,7 +102,7 @@ public sealed class PageThumbnail : Control
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        Subscribe(Tab?.RenderHub);
+        Subscribe(Tab);
     }
 
     /// <inheritdoc/>
@@ -120,56 +119,30 @@ public sealed class PageThumbnail : Control
         base.OnPropertyChanged(change);
         if (change.Property == TabProperty && TopLevel.GetTopLevel(this) is not null)
         {
-            Subscribe(Tab?.RenderHub);
+            Subscribe(Tab);
         }
     }
 
-    /// <summary>Subscribes to tile arrivals and tab changes.</summary>
-    /// <param name="hub">The hub, or <see langword="null"/> to unsubscribe.</param>
-    private void Subscribe(RenderHub? hub)
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Subscribes to tile arrivals and night mode changes, replacing any previous subscriptions.</summary>
+    /// <param name="tab">The tab, or <see langword="null"/> to unsubscribe.</param>
+    private void Subscribe(DocumentTabViewModel? tab)
     {
-        if (_hub is not null)
+        _subscriptions?.Dispose();
+        _subscriptions = null;
+        if (tab is null)
         {
-            _hub.TilesArrived -= OnTilesArrived;
+            return;
         }
 
-        if (_tab is not null)
-        {
-            _tab.PropertyChanged -= OnTabPropertyChanged;
-        }
-
-        _hub = hub;
-        _tab = hub is null ? null : Tab;
-        if (hub is not null)
-        {
-            hub.TilesArrived += OnTilesArrived;
-        }
-
-        if (_tab is not null)
-        {
-            _tab.PropertyChanged += OnTabPropertyChanged;
-        }
-    }
-
-    /// <summary>Repaints when night mode toggles.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(DocumentTabViewModel.NightMode))
-        {
-            InvalidateVisual();
-        }
-    }
-
-    /// <summary>Repaints when tiles arrive and the preview is still missing.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnTilesArrived(object? sender, EventArgs e)
-    {
-        if (!_hasImage)
-        {
-            InvalidateVisual();
-        }
+        _subscriptions =
+        [
+            tab.RenderHub.TilesArrived.Where(_ => !_hasImage).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.WhenAnyValue(static x => x.NightMode).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+        ];
     }
 }

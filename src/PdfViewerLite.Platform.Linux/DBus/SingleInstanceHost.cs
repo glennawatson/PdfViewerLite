@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
+using ReactiveUI.Primitives.Signals;
 using Tmds.DBus.Protocol;
 
 namespace PdfViewerLite.Platform.Linux.DBus;
@@ -22,12 +22,15 @@ public sealed class SingleInstanceHost : IDisposable
     /// <summary>The connection that owns the name.</summary>
     private readonly DBusConnection _connection;
 
+    /// <summary>Requests received from other processes.</summary>
+    private readonly Signal<OpenRequest> _openRequests = new();
+
     /// <summary>Initializes a new instance of the <see cref="SingleInstanceHost"/> class.</summary>
     /// <param name="connection">The connection that owns the name.</param>
     private SingleInstanceHost(DBusConnection connection) => _connection = connection;
 
-    /// <summary>Raised on a D-Bus thread when another process asks to open documents or activate the window.</summary>
-    public event EventHandler<OpenRequestEventArgs>? OpenRequested;
+    /// <summary>Gets the requests from other processes to open documents or activate the window, emitted on a D-Bus thread.</summary>
+    public IObservable<OpenRequest> OpenRequests => _openRequests;
 
     /// <summary>Asks a running instance to open documents.</summary>
     /// <param name="uris">Paths or URIs to open; empty to just raise the window.</param>
@@ -86,7 +89,7 @@ public sealed class SingleInstanceHost : IDisposable
         }
 
         var host = new SingleInstanceHost(connection);
-        connection.AddMethodHandler(new ApplicationMethodHandler(host.Raise));
+        connection.AddMethodHandler(new ApplicationMethodHandler(host._openRequests.OnNext));
         try
         {
             if (await connection.TryRequestNameAsync(AppIdentity.ApplicationId, RequestNameOptions.None).ConfigureAwait(false))
@@ -112,11 +115,10 @@ public sealed class SingleInstanceHost : IDisposable
     }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Dispose() => _connection.Dispose();
-
-    /// <summary>Raises <see cref="OpenRequested"/>.</summary>
-    /// <param name="args">The request.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void Raise(OpenRequestEventArgs args) => OpenRequested?.Invoke(this, args);
+    public void Dispose()
+    {
+        _connection.Dispose();
+        _openRequests.OnCompleted();
+        _openRequests.Dispose();
+    }
 }

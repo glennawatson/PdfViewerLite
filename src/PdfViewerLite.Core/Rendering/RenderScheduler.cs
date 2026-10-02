@@ -5,14 +5,16 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using PdfViewerLite.Core.Documents;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Core.Rendering;
 
 /// <summary>
 /// Runs every page rasterisation on a single dedicated thread, highest priority first. Requests that became stale
 /// (their client advanced its generation without re-requesting them) are dropped before any work is done. Results are
-/// handed back through <see cref="TryTakeCompleted"/>, and <c>completionCallback</c> is raised once per batch so the UI
-/// can drain them on its own thread.
+/// handed back through <see cref="TryTakeCompleted"/>, and <see cref="Completed"/> emits once per batch so the UI can
+/// drain them on its own thread.
 /// </summary>
 [DebuggerDisplay("Queue {QueueLength}")]
 public sealed class RenderScheduler : IDisposable
@@ -33,16 +35,16 @@ public sealed class RenderScheduler : IDisposable
     private readonly Dictionary<TileKey, int> _pending = [];
 
     /// <summary>Completed renders waiting for the UI.</summary>
-    private readonly ConcurrentQueue<RenderedTile> _completed = new();
+    private readonly ConcurrentQueue<RenderedTile> _finished = new();
+
+    /// <summary>Emits on the render thread when finished tiles are waiting.</summary>
+    private readonly Signal<RxVoid> _completed = new();
 
     /// <summary>Wakes the render thread.</summary>
     private readonly SemaphoreSlim _signal = new(0);
 
     /// <summary>Creates surfaces.</summary>
     private readonly IRenderSurfaceFactory _surfaceFactory;
-
-    /// <summary>Notifies the UI that completed tiles are waiting.</summary>
-    private readonly Action _completionCallback;
 
     /// <summary>The render thread.</summary>
     private readonly Thread _thread;
@@ -61,16 +63,20 @@ public sealed class RenderScheduler : IDisposable
 
     /// <summary>Initializes a new instance of the <see cref="RenderScheduler"/> class.</summary>
     /// <param name="surfaceFactory">Creates output surfaces on the render thread.</param>
-    /// <param name="completionCallback">Raised on the render thread when completed tiles become available.</param>
-    public RenderScheduler(IRenderSurfaceFactory surfaceFactory, Action completionCallback)
+    public RenderScheduler(IRenderSurfaceFactory surfaceFactory)
     {
         ArgumentNullException.ThrowIfNull(surfaceFactory);
-        ArgumentNullException.ThrowIfNull(completionCallback);
         _surfaceFactory = surfaceFactory;
-        _completionCallback = completionCallback;
         _thread = new(Run) { IsBackground = true, Name = "PdfViewerLite render" };
         _thread.Start();
     }
+
+    /// <summary>
+    /// Gets notifications, raised on the render thread, that finished tiles are waiting to be taken with
+    /// <see cref="TryTakeCompleted"/>. Bursts are coalesced: one notification covers every tile finished before the next
+    /// drain starts.
+    /// </summary>
+    public IObservable<RxVoid> Completed => _completed;
 
     /// <summary>Gets the number of queued requests, including stale ones not yet discarded.</summary>
     public int QueueLength
@@ -130,7 +136,7 @@ public sealed class RenderScheduler : IDisposable
     {
         // Clear the flag first so a render finishing during the drain raises a fresh notification.
         _ = Interlocked.Exchange(ref _notificationPending, 0);
-        if (!_completed.TryDequeue(out tile))
+        if (!_finished.TryDequeue(out tile))
         {
             return false;
         }
@@ -153,11 +159,13 @@ public sealed class RenderScheduler : IDisposable
 
         _shutdown.Cancel();
         _ = _thread.Join(ShutdownTimeout);
-        while (_completed.TryDequeue(out var tile))
+        while (_finished.TryDequeue(out var tile))
         {
             tile.Surface.Dispose();
         }
 
+        _completed.OnCompleted();
+        _completed.Dispose();
         _signal.Dispose();
         _shutdown.Dispose();
     }
@@ -258,10 +266,10 @@ public sealed class RenderScheduler : IDisposable
             return false;
         }
 
-        _completed.Enqueue(new(request.Key, surface));
+        _finished.Enqueue(new(request.Key, surface));
         if (Interlocked.Exchange(ref _notificationPending, 1) == 0)
         {
-            _completionCallback();
+            _completed.OnNext(RxVoid.Default);
         }
 
         return true;

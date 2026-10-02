@@ -3,23 +3,17 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Platform;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Platform.Linux.Kde;
 
-/// <summary>Supplies the KDE colour scheme and raises <see cref="PaletteChanged"/> when <c>kdeglobals</c> changes.</summary>
+/// <summary>Supplies the KDE colour scheme from <c>kdeglobals</c>, re-reading it whenever the file changes.</summary>
 [DebuggerDisplay("{FilePath}")]
-public sealed class KdeThemeSource : IDesktopThemeSource, IDisposable
+public sealed class KdeThemeSource : IDesktopThemeSource
 {
-    /// <summary>How long to wait for writes to settle before re-reading.</summary>
-    private static readonly TimeSpan SettleTime = TimeSpan.FromMilliseconds(300);
-
-    /// <summary>The file watcher.</summary>
-    private readonly FileSystemWatcher? _watcher;
-
-    /// <summary>The debounce timer.</summary>
-    private readonly Timer _timer;
-
     /// <summary>Initializes a new instance of the <see cref="KdeThemeSource"/> class using the user's <c>kdeglobals</c>.</summary>
     public KdeThemeSource()
         : this(Path.Combine(XdgDirectories.ConfigHome, "kdeglobals"))
@@ -32,36 +26,17 @@ public sealed class KdeThemeSource : IDesktopThemeSource, IDisposable
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         FilePath = filePath;
-        _timer = new(_ => Reload(), null, Timeout.Infinite, Timeout.Infinite);
-        Palette = Read(filePath);
-        var directory = Path.GetDirectoryName(filePath);
-        if (directory is null || !Directory.Exists(directory))
-        {
-            return;
-        }
-
-        _watcher = new(directory, Path.GetFileName(filePath)) { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName };
-        _watcher.Changed += OnFileEvent;
-        _watcher.Created += OnFileEvent;
-        _watcher.Renamed += OnFileEvent;
-        _watcher.EnableRaisingEvents = true;
+        Palette = Signal.Defer(() => FileChanges.Watch(filePath)
+            .Select(_ => Read(filePath))
+            .StartWith(Read(filePath))
+            .DistinctUntilChanged());
     }
-
-    /// <inheritdoc/>
-    public event EventHandler? PaletteChanged;
 
     /// <summary>Gets the watched file.</summary>
     public string FilePath { get; }
 
     /// <inheritdoc/>
-    public DesktopPalette? Palette { get; private set; }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        _watcher?.Dispose();
-        _timer.Dispose();
-    }
+    public IObservable<DesktopPalette?> Palette { get; }
 
     /// <summary>Reads and parses the file.</summary>
     /// <param name="filePath">The file.</param>
@@ -80,23 +55,5 @@ public sealed class KdeThemeSource : IDesktopThemeSource, IDisposable
         {
             return null;
         }
-    }
-
-    /// <summary>Schedules a reload.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnFileEvent(object sender, FileSystemEventArgs e) => _ = _timer.Change(SettleTime, Timeout.InfiniteTimeSpan);
-
-    /// <summary>Re-reads the file and raises <see cref="PaletteChanged"/> when the palette differs.</summary>
-    private void Reload()
-    {
-        var palette = Read(FilePath);
-        if (palette == Palette)
-        {
-            return;
-        }
-
-        Palette = palette;
-        PaletteChanged?.Invoke(this, EventArgs.Empty);
     }
 }

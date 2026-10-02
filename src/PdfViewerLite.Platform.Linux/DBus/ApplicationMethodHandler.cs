@@ -23,11 +23,11 @@ internal sealed class ApplicationMethodHandler : IPathMethodHandler
         """u8.ToArray();
 
     /// <summary>Receives requests.</summary>
-    private readonly Action<OpenRequestEventArgs> _onRequest;
+    private readonly Action<OpenRequest> _onRequest;
 
     /// <summary>Initializes a new instance of the <see cref="ApplicationMethodHandler"/> class.</summary>
     /// <param name="onRequest">Receives requests on a D-Bus thread.</param>
-    internal ApplicationMethodHandler(Action<OpenRequestEventArgs> onRequest) => _onRequest = onRequest;
+    internal ApplicationMethodHandler(Action<OpenRequest> onRequest) => _onRequest = onRequest;
 
     /// <inheritdoc/>
     public string Path => AppIdentity.ObjectPath;

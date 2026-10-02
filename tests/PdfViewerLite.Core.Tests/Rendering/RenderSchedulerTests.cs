@@ -6,6 +6,7 @@ using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Rendering;
 using PdfViewerLite.Core.Tests.Fakes;
+using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.Core.Tests.Rendering;
 
@@ -33,7 +34,8 @@ public sealed class RenderSchedulerTests
     public async Task RendersAndCompletes()
     {
         using var completed = new SemaphoreSlim(0);
-        using var scheduler = new RenderScheduler(new FakeSurfaceFactory(), () => completed.Release());
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
         var document = new FakeDocument(DocumentName, FakeEngine.A4);
         var client = new RenderClient();
         var key = Key(0);
@@ -54,7 +56,7 @@ public sealed class RenderSchedulerTests
     public async Task CoalescesDuplicates()
     {
         using var gate = new ManualResetEventSlim(false);
-        using var scheduler = new RenderScheduler(new FakeSurfaceFactory(), static () => { });
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
         var document = new FakeDocument(DocumentName, FakeEngine.A4) { Gate = gate };
         var client = new RenderClient();
 
@@ -73,7 +75,8 @@ public sealed class RenderSchedulerTests
     {
         using var gate = new ManualResetEventSlim(false);
         using var completed = new SemaphoreSlim(0);
-        using var scheduler = new RenderScheduler(new FakeSurfaceFactory(), () => completed.Release());
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
         var blocker = new FakeDocument("blocker.pdf", FakeEngine.A4) { Gate = gate };
         var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4, FakeEngine.A4);
         var client = new RenderClient();
@@ -115,7 +118,8 @@ public sealed class RenderSchedulerTests
     {
         using var gate = new ManualResetEventSlim(false);
         using var completed = new SemaphoreSlim(0);
-        using var scheduler = new RenderScheduler(new FakeSurfaceFactory(), () => completed.Release());
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
         var blocker = new FakeDocument("blocker.pdf", FakeEngine.A4) { Gate = gate };
         var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
         var client = new RenderClient();
@@ -149,7 +153,8 @@ public sealed class RenderSchedulerTests
     public async Task InvertsWhenRequested()
     {
         using var completed = new SemaphoreSlim(0);
-        using var scheduler = new RenderScheduler(new FakeSurfaceFactory(), () => completed.Release());
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
         var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
         var request = Request(Key(1), document, new(), RenderPriority.Visible);
         request = request with { Info = request.Info with { PageIndex = 1, Flags = RenderFlags.Invert } };

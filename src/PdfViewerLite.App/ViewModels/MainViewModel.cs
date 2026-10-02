@@ -210,6 +210,24 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         _services.SaveSettings();
     }
 
+    /// <summary>Records the window size and state for the next start.</summary>
+    /// <param name="width">The window width.</param>
+    /// <param name="height">The window height.</param>
+    /// <param name="maximized">Whether the window is maximised.</param>
+    /// <param name="restored">Whether the window is in its normal state, so its size is meaningful.</param>
+    public void RememberWindow(double width, double height, bool maximized, bool restored)
+    {
+        var settings = _services.Settings;
+        settings.WindowMaximized = maximized;
+        if (!restored)
+        {
+            return;
+        }
+
+        settings.WindowWidth = width;
+        settings.WindowHeight = height;
+    }
+
     /// <summary>Moves a tab, used by drag and drop reordering.</summary>
     /// <param name="oldIndex">The current index.</param>
     /// <param name="newIndex">The new index.</param>

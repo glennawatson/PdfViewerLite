@@ -2,7 +2,6 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -13,6 +12,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Rendering;
 using PdfViewerLite.App.ViewModels;
@@ -21,6 +21,9 @@ using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Layout;
 using PdfViewerLite.Core.Navigation;
 using PdfViewerLite.Core.Rendering;
+using ReactiveUI;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Controls;
 
@@ -100,6 +103,12 @@ public sealed class PageCanvas : Control
 
     /// <summary>The tab currently wired up.</summary>
     private DocumentTabViewModel? _wiredTab;
+
+    /// <summary>Subscriptions to the wired tab.</summary>
+    private MultipleDisposable? _tabSubscriptions;
+
+    /// <summary>Subscriptions to the hosting scroll viewer.</summary>
+    private MultipleDisposable? _scrollerSubscriptions;
 
     /// <summary>A position to restore once the layout has been measured.</summary>
     private Action? _pendingScroll;
@@ -203,13 +212,18 @@ public sealed class PageCanvas : Control
     {
         base.OnAttachedToVisualTree(e);
         _scroller = this.FindAncestorOfType<ScrollViewer>();
-        if (_scroller is not null)
+        if (_scroller is { } scroller)
         {
-            _scroller.ScrollChanged += OnScrollChanged;
-            _scroller.SizeChanged += OnScrollerSizeChanged;
+            _scrollerSubscriptions =
+            [
+                scroller.GetObservable(ScrollViewer.OffsetProperty).Skip(1).SubscribeSafe(_ => OnScrolled(), OnError),
+                scroller.GetObservable(BoundsProperty).Select(static bounds => bounds.Size).DistinctUntilChanged().Skip(1).SubscribeSafe(_ => OnViewportResized(), OnError),
+
+                // The extent changes after a layout pass; apply any pending scroll once the dispatcher is idle again.
+                scroller.GetObservable(ScrollViewer.ExtentProperty).ObserveOn(RxSchedulers.MainThreadScheduler).SubscribeSafe(_ => ApplyPendingScroll(), OnError),
+            ];
         }
 
-        LayoutUpdated += OnLayoutUpdated;
         Wire(Tab);
     }
 
@@ -217,14 +231,9 @@ public sealed class PageCanvas : Control
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
-        if (_scroller is not null)
-        {
-            _scroller.ScrollChanged -= OnScrollChanged;
-            _scroller.SizeChanged -= OnScrollerSizeChanged;
-            _scroller = null;
-        }
-
-        LayoutUpdated -= OnLayoutUpdated;
+        _scrollerSubscriptions?.Dispose();
+        _scrollerSubscriptions = null;
+        _scroller = null;
         Wire(null);
     }
 
@@ -346,6 +355,11 @@ public sealed class PageCanvas : Control
 
         base.OnKeyDown(e);
     }
+
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
     /// <summary>Draws the low resolution preview of a page, requesting it when missing.</summary>
     /// <param name="context">The drawing context.</param>
@@ -589,17 +603,14 @@ public sealed class PageCanvas : Control
         return null;
     }
 
-    /// <summary>Subscribes to a tab's changes, replacing any previous subscription.</summary>
+    /// <summary>Subscribes to a tab's changes, replacing any previous subscriptions.</summary>
     /// <param name="tab">The tab.</param>
     private void Wire(DocumentTabViewModel? tab)
     {
+        _tabSubscriptions?.Dispose();
+        _tabSubscriptions = null;
         if (_wiredTab is { } old)
         {
-            old.PropertyChanged -= OnTabPropertyChanged;
-            old.NavigationRequested -= OnNavigationRequested;
-            old.DocumentChanged -= OnDocumentChanged;
-            old.Search.HighlightsChanged -= OnHighlightsChanged;
-            old.RenderHub.TilesArrived -= OnTilesArrived;
             _ = old.CanvasClient.Advance();
         }
 
@@ -612,11 +623,18 @@ public sealed class PageCanvas : Control
             return;
         }
 
-        tab.PropertyChanged += OnTabPropertyChanged;
-        tab.NavigationRequested += OnNavigationRequested;
-        tab.DocumentChanged += OnDocumentChanged;
-        tab.Search.HighlightsChanged += OnHighlightsChanged;
-        tab.RenderHub.TilesArrived += OnTilesArrived;
+        _tabSubscriptions =
+        [
+            tab.WhenAnyValue(static x => x.ZoomMode, static x => x.LayoutMode, static x => x.Rotation, static (_, _, _) => RxVoid.Default)
+                .Skip(1)
+                .SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
+            tab.WhenAnyValue(static x => x.Zoom).Skip(1).Where(_ => tab.ZoomMode == ZoomMode.Free).SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
+            tab.WhenAnyValue(static x => x.NightMode).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.NavigationRequests.SubscribeSafe(OnNavigationRequested, OnError),
+            tab.DocumentChanges.SubscribeSafe(_ => OnDocumentChanged(), OnError),
+            tab.Search.HighlightChanges.SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateVisual(), OnError),
+        ];
         tab.EnsureLoaded();
         var position = tab.Position;
         RebuildLayout();
@@ -680,11 +698,13 @@ public sealed class PageCanvas : Control
             var target = transform.ToCanvas(pagePoint);
             _scroller.Offset = new(target.X - screenOffset.X, target.Y - screenOffset.Y);
         };
+        SchedulePendingScroll();
     }
 
     /// <summary>Scrolls to a remembered position once laid out.</summary>
     /// <param name="position">The position.</param>
-    private void ScrollToPosition(DocumentPosition position) =>
+    private void ScrollToPosition(DocumentPosition position)
+    {
         _pendingScroll = () =>
         {
             if (_scroller is null || position.PageIndex < 0 || position.PageIndex >= _layout.PageCount)
@@ -695,6 +715,12 @@ public sealed class PageCanvas : Control
             var bounds = _layout.GetPageBounds(position.PageIndex);
             _scroller.Offset = new(_scroller.Offset.X, bounds.Y + (bounds.Height * position.OffsetFraction) - ContentMargin);
         };
+        SchedulePendingScroll();
+    }
+
+    /// <summary>Applies the pending scroll after the next layout pass, covering layouts whose extent did not change.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SchedulePendingScroll() => Dispatcher.UIThread.Post(ApplyPendingScroll, DispatcherPriority.Loaded);
 
     /// <summary>Reports the current position to the tab.</summary>
     private void ReportPosition()
@@ -713,9 +739,7 @@ public sealed class PageCanvas : Control
     }
 
     /// <summary>Applies a pending scroll once the scroll viewer's extent matches the layout.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnLayoutUpdated(object? sender, EventArgs e)
+    private void ApplyPendingScroll()
     {
         if (_pendingScroll is null || _scroller is null || Math.Abs(_scroller.Extent.Height - _layout.ExtentHeight) > 1)
         {
@@ -729,9 +753,7 @@ public sealed class PageCanvas : Control
     }
 
     /// <summary>Repaints and reports the position after scrolling.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+    private void OnScrolled()
     {
         InvalidateVisual();
         if (_pendingScroll is null)
@@ -741,9 +763,7 @@ public sealed class PageCanvas : Control
     }
 
     /// <summary>Relayouts when the viewport size changes, keeping the current position.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnScrollerSizeChanged(object? sender, SizeChangedEventArgs e)
+    private void OnViewportResized()
     {
         if (Tab is not { } tab)
         {
@@ -755,47 +775,26 @@ public sealed class PageCanvas : Control
         ScrollToPosition(position);
     }
 
-    /// <summary>Reacts to tab setting changes.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    /// <summary>Relayouts when zoom, arrangement or rotation change, keeping the current position.</summary>
+    private void OnLayoutSettingsChanged()
     {
-        switch (e.PropertyName)
+        if (Tab is not { } tab)
         {
-            case nameof(DocumentTabViewModel.ZoomMode):
-            case nameof(DocumentTabViewModel.LayoutMode):
-            case nameof(DocumentTabViewModel.Rotation):
-            case nameof(DocumentTabViewModel.Zoom) when Tab?.ZoomMode == ZoomMode.Free:
-            {
-                var tab = Tab!;
-                var position = tab.Position;
-                var hasAnchor = _pendingScroll is not null;
-                RebuildLayout();
-                if (!hasAnchor)
-                {
-                    ScrollToPosition(position);
-                }
+            return;
+        }
 
-                break;
-            }
-
-            case nameof(DocumentTabViewModel.NightMode):
-            {
-                InvalidateVisual();
-                break;
-            }
-
-            default:
-            {
-                break;
-            }
+        var position = tab.Position;
+        var hasAnchor = _pendingScroll is not null;
+        RebuildLayout();
+        if (!hasAnchor)
+        {
+            ScrollToPosition(position);
         }
     }
 
     /// <summary>Scrolls to a navigation target.</summary>
-    /// <param name="sender">The sender.</param>
     /// <param name="request">The request.</param>
-    private void OnNavigationRequested(object? sender, NavigationRequest request)
+    private void OnNavigationRequested(NavigationRequest request)
     {
         if (_scroller is null || Tab is not { } tab || request.PageIndex < 0 || request.PageIndex >= _layout.PageCount)
         {
@@ -821,9 +820,7 @@ public sealed class PageCanvas : Control
     }
 
     /// <summary>Relayouts after the document loads or reloads.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    private void OnDocumentChanged(object? sender, EventArgs e)
+    private void OnDocumentChanged()
     {
         _links.Clear();
         ClearSelection();
@@ -831,16 +828,4 @@ public sealed class PageCanvas : Control
         RebuildLayout();
         ScrollToPosition(position);
     }
-
-    /// <summary>Repaints when search highlights change.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void OnHighlightsChanged(object? sender, EventArgs e) => InvalidateVisual();
-
-    /// <summary>Repaints when tiles arrive.</summary>
-    /// <param name="sender">The sender.</param>
-    /// <param name="e">The event.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void OnTilesArrived(object? sender, EventArgs e) => OnHighlightsChanged(sender, e);
 }
