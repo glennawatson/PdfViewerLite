@@ -1,0 +1,11 @@
+# Every text file uses LF, including on Windows checkouts: the analyzers require LF line endings (SST1532).
+* text=auto eol=lf
+
+# Binary files.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.onnx binary
+*.ico binary
+*.icns binary
+*.wav binary

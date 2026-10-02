@@ -1,0 +1,51 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+namespace PdfViewerLite.App.ViewModels;
+
+/// <summary>What a press on the page does.</summary>
+public enum AnnotationTool
+{
+    /// <summary>Select text, follow links and pick annotations.</summary>
+    Select = 0,
+
+    /// <summary>Selecting text highlights it.</summary>
+    Highlight = 1,
+
+    /// <summary>Selecting text underlines it.</summary>
+    Underline = 2,
+
+    /// <summary>Selecting text strikes it out.</summary>
+    StrikeOut = 3,
+
+    /// <summary>Dragging draws freehand.</summary>
+    Draw = 4,
+
+    /// <summary>Clicking adds a sticky note.</summary>
+    Note = 5,
+
+    /// <summary>Clicking writes text on the page.</summary>
+    Text = 6,
+
+    /// <summary>Dragging draws a signature; used by Fill &amp; Sign.</summary>
+    DrawSignature = 7,
+
+    /// <summary>Clicking places the typed signature; used by Fill &amp; Sign.</summary>
+    PlaceSignature = 8,
+
+    /// <summary>Dragging draws a rectangle.</summary>
+    Rectangle = 9,
+
+    /// <summary>Dragging draws an ellipse.</summary>
+    Ellipse = 10,
+
+    /// <summary>Dragging draws an arrow pointing where the drag ends.</summary>
+    Arrow = 11,
+
+    /// <summary>Dragging draws a straight line.</summary>
+    Line = 12,
+
+    /// <summary>Clicking places the chosen stamp.</summary>
+    Stamp = 13,
+}

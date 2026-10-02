@@ -1,0 +1,90 @@
+{
+  "comment": "The Read Aloud listening corpus. Cases check that written English is turned into the words a person reading aloud would say; passages are read by the real Kokoro voice to check pronunciation coverage and that long sessions stay even in loudness, pace and pauses. All text is original to this project.",
+  "cases": [
+    { "category": "money", "text": "The ticket costs $1,200.50 today.", "expect": ["1,200 dollars and 50 cents"], "forbid": ["$"] },
+    { "category": "money", "text": "It sold for £3 million last year.", "expect": ["3 million pounds"], "forbid": ["£"] },
+    { "category": "money", "text": "Coffee is €3.20 here.", "expect": ["3 euros and 20 cents"] },
+    { "category": "money", "text": "A stamp now costs $1.", "expect": ["1 dollar"], "forbid": ["dollars"] },
+    { "category": "money", "text": "That leaves only $0.75 for lunch.", "expect": ["75 cents"], "forbid": ["0 dollars"] },
+    { "category": "money", "text": "Revenue reached $2.5bn in the quarter.", "expect": ["2.5 billion dollars"] },
+    { "category": "dates", "text": "The meeting is on 2024-03-12 in Brisbane.", "expect": ["March twelfth, twenty twenty four"], "forbid": ["-03-"] },
+    { "category": "dates", "text": "The meeting is on 2024-03-12 in Brisbane.", "british": true, "expect": ["the twelfth of March twenty twenty four"] },
+    { "category": "dates", "text": "She was born on 3 May 1987.", "expect": ["May third"] },
+    { "category": "dates", "text": "She was born on 3 May 1987.", "british": true, "expect": ["the third of May"] },
+    { "category": "dates", "text": "The report is due March 21, 2025.", "expect": ["March twenty first"] },
+    { "category": "dates", "text": "Submissions close Sept. 30.", "expect": ["September thirtieth"] },
+    { "category": "dates", "text": "Music changed a great deal in the 1960s.", "expect": ["nineteen sixties"], "forbid": ["1960s"] },
+    { "category": "dates", "text": "Prices rose sharply in the 2000s.", "expect": ["two thousands"] },
+    { "category": "times", "text": "The train leaves at 10:30.", "expect": ["ten thirty"] },
+    { "category": "times", "text": "Doors open at 9:05 sharp.", "expect": ["nine oh five"] },
+    { "category": "times", "text": "We start at 7:00.", "expect": ["seven o'clock"] },
+    { "category": "times", "text": "The shop closes at 5:45 p.m. on Fridays.", "expect": ["five forty five P M"] },
+    { "category": "times", "text": "Breakfast is served from 7am.", "expect": ["7 A M"] },
+    { "category": "times", "text": "Read John 3:16 aloud.", "expect": ["three sixteen"] },
+    { "category": "ordinals", "text": "She finished 1st, he came 2nd and I was 3rd.", "expect": ["first", "second", "third"], "forbid": ["1st", "2nd", "3rd"] },
+    { "category": "ordinals", "text": "This is the 21st edition, not the 112th.", "expect": ["twenty first", "one hundred twelfth"] },
+    { "category": "ordinals", "text": "The 40th anniversary falls on a Sunday.", "expect": ["fortieth"] },
+    { "category": "ranges", "text": "See pages 12–15 for details.", "expect": ["12 to 15"] },
+    { "category": "ranges", "text": "The war lasted from 1939-1945.", "expect": ["1939 to 1945"] },
+    { "category": "ranges", "text": "This is covered in pp. 101–110.", "expect": ["pages 101 to 110"] },
+    { "category": "ranges", "text": "The quote is on p. 7.", "expect": ["page 7"] },
+    { "category": "numbers", "text": "The temperature fell to -5 overnight.", "expect": ["minus 5"] },
+    { "category": "numbers", "text": "Add 3/4 of a cup and 1/2 a teaspoon.", "expect": ["three quarters", "one half"] },
+    { "category": "numbers", "text": "Roughly 2/3 of voters agreed.", "expect": ["two thirds"] },
+    { "category": "numbers", "text": "The sample took ~40 minutes.", "expect": ["about 40"], "forbid": ["~"] },
+    { "category": "numbers", "text": "Ticket #42 is the winner.", "expect": ["number 42"] },
+    { "category": "numbers", "text": "This is case No. 7 of the series.", "expect": ["number 7"] },
+    { "category": "units", "text": "The trail is 12 km long.", "expect": ["12 kilometres"] },
+    { "category": "units", "text": "The parcel weighs 1 kg.", "expect": ["1 kilogram"], "forbid": ["kilograms"] },
+    { "category": "units", "text": "Bake at 180°C for 25 minutes.", "expect": ["180 degrees Celsius"] },
+    { "category": "units", "text": "The file is 250 MB and the drive holds 2 TB.", "expect": ["250 megabytes", "2 terabytes"] },
+    { "category": "units", "text": "The processor runs at 3.2 GHz.", "expect": ["3.2 gigahertz"] },
+    { "category": "units", "text": "Response time is under 20 ms.", "expect": ["20 milliseconds"] },
+    { "category": "abbreviations", "text": "Dr. Smith met Mrs. Jones and Prof. Lee.", "expect": ["Doctor Smith", "Missus Jones", "Professor Lee"] },
+    { "category": "abbreviations", "text": "Bring fruit, e.g. apples, pears, etc.", "expect": ["for example", "et cetera"] },
+    { "category": "abbreviations", "text": "Use the shortest route, i.e. the coastal one.", "expect": ["that is"] },
+    { "category": "abbreviations", "text": "The final was Brazil vs. Germany.", "expect": ["versus"] },
+    { "category": "abbreviations", "text": "As shown in Fig. 3 and Eq. 2, the curve flattens.", "expect": ["Figure 3", "Equation 2"] },
+    { "category": "abbreviations", "text": "St. Paul's Cathedral is near Fleet St. in London.", "expect": ["Saint Paul", "Fleet Street"] },
+    { "category": "abbreviations", "text": "Acme Ltd. merged with Widgets Inc. last week.", "expect": ["Limited", "Incorporated"] },
+    { "category": "abbreviations", "text": "The total was approx. 300 people.", "expect": ["approximately 300"] },
+    { "category": "roman", "text": "Chapter IV describes the voyage.", "expect": ["Chapter four"] },
+    { "category": "roman", "text": "He served in World War II.", "expect": ["War two"] },
+    { "category": "roman", "text": "Henry VIII had six wives.", "expect": ["Henry the eighth"] },
+    { "category": "roman", "text": "Elizabeth II reigned for seventy years.", "expect": ["Elizabeth the second"] },
+    { "category": "roman", "text": "I think the answer is clear.", "expect": ["I think"], "forbid": ["one think"] },
+    { "category": "web", "text": "Visit https://www.example.com/help for more.", "expect": ["example dot com slash help"], "forbid": ["https", "www"] },
+    { "category": "web", "text": "Write to support@example.org with questions.", "expect": ["support at example dot org"] },
+    { "category": "technical", "text": "Upgrade to v2.1.3 before Friday.", "expect": ["version 2 point 1 point 3"] },
+    { "category": "technical", "text": "Accuracy was 95% ± 2%.", "expect": ["plus or minus"] },
+    { "category": "technical", "text": "When x ≥ 3, the loop exits.", "expect": ["greater than or equal to"] },
+    { "category": "technical", "text": "A 3 × 3 matrix has nine entries.", "expect": ["3 times 3"] },
+    { "category": "citations", "text": "Earlier work [12] and later studies [3, 4–6] agree.", "expect": ["Earlier work and later studies agree."], "forbid": ["12", "["] },
+    { "category": "citations", "text": "This was first reported in 1998.² It has been repeated since.", "expect": ["1998."], "forbid": ["²"] },
+    { "category": "punctuation", "text": "Introduction . . . . . . . . . 1", "expect": ["Introduction, 1"], "forbid": [". ."] },
+    { "category": "punctuation", "text": "Service is available 24/7 w/o booking.", "expect": ["twenty four seven", "without"] },
+    { "category": "punctuation", "text": "Section § 4 and §§ 7–9 apply.", "expect": ["section 4", "sections 7 to 9"] }
+  ],
+  "passages": [
+    {
+      "category": "prose",
+      "text": "The harbour was quiet that morning. A thin mist lay over the water, and the gulls had not yet begun their arguments. Margaret walked along the sea wall with her hands in her pockets, counting the boats as she had done since she was a child. Most of them were still tied up, their ropes creaking softly. Only the old ferry was moving, a dark shape sliding out towards the islands. She stopped by the lighthouse and watched it go, wondering, not for the first time, what it would be like to leave."
+    },
+    {
+      "category": "technical",
+      "text": "A PDF file is built from objects: dictionaries, arrays, strings, numbers and streams. The cross-reference table at the end of the file records where each object begins, so a reader can jump straight to the page it needs. When a document is edited, the changes are usually appended as an incremental update rather than rewriting the whole file. This keeps earlier digital signatures valid, because the bytes they cover never change. Tagged documents add a structure tree that describes headings, paragraphs, lists and tables in their logical order, which assistive technology uses to read the content sensibly."
+    },
+    {
+      "category": "numbers",
+      "text": "On 2024-07-01 the council approved a budget of $4.75 million, roughly 12% more than in 2023. Of that, $1,250,000 goes to roads, 3/4 of which is set aside for repairs. The work begins at 8:30 a.m. on the 15th of July and should take 6–8 weeks. Residents within 2 km of the site will receive a letter by Sept. 1."
+    },
+    {
+      "category": "punctuation",
+      "text": "\"Are you coming?\" she asked. He hesitated; the rain was getting heavier. \"Perhaps,\" he said at last, \"if you wait five minutes.\" She did not wait. Instead she pulled up her hood (the blue one, with the broken zip) and set off down the lane, leaving him to decide on his own: stay dry, or keep his promise."
+    },
+    {
+      "category": "long-session",
+      "text": "Reading for a long time should feel restful. The voice must not drift louder or quieter as the minutes pass, and the pauses between sentences should stay even. Short sentences help. So do clear breaks between paragraphs. A listener who loses their place should be able to find it again without effort. The garden behind the library had been neglected for years. Brambles covered the old brick paths, and the fountain had long since stopped. Every spring, though, the tulips came back, red and yellow among the weeds. The librarian, a patient man called Thomas, began to clear a corner each Saturday morning. He started with the bench under the apple tree. Then he found the sundial, its numbers worn almost smooth. By midsummer the path to the fountain was open again. Children from the reading group came out to help him. They pulled weeds, carried stones and argued about where the herbs should go. Nobody remembered who had planted the garden in the first place. There were rumours, of course: a retired sea captain, a botanist, a pair of sisters who ran the school. Thomas preferred not to choose. He liked the idea that it belonged to everyone. In the autumn the council noticed and offered a small grant. It paid for a new pump, some tools and a sign by the gate. The sign simply said that the garden was open to all, from dawn until dusk. Visitors began to bring books outside on warm afternoons. Some read quietly; others read aloud to friends. The sound of turning pages mixed with birdsong and the trickle of the fountain. It was, Thomas thought, exactly what a library should be. When winter came, the garden rested. The paths stayed clear, and the bench was swept after every frost. In the new year the children planted bulbs along the wall. They wrote their names on little wooden labels so they would know which flowers were theirs. Spring, when it arrived, was early and generous. The tulips returned, joined now by daffodils and a ragged line of crocuses. Thomas sat on the bench with a cup of tea and watched the first visitors arrive. He did not say much. He did not need to."
+    }
+  ]
+}

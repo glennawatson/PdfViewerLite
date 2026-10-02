@@ -1,0 +1,354 @@
+[
+  // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
+  // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
+  {
+    "type": "",
+    "frame": "PdfViewerLite.App.ViewModels.PropertiesViewModel..ctor(",
+    "reason": "Opening document properties creates a file-info object, display strings and property entries in a list. The dialog owns this snapshot."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.App.ViewModels.PropertiesViewModel.FormatSize(",
+    "reason": "The properties dialog formats the file size as a display string. Its units array is local to that conversion."
+  },
+  {
+    "type": "PdfViewerLite.App.ViewModels.PropertyEntry",
+    "frame": "PdfViewerLite.App.ViewModels.PropertiesViewModel.Add(",
+    "reason": "Each metadata value shown by the properties dialog becomes one entry in its snapshot."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Core.Annotations.SignatureImage.Create(",
+    "reason": "Importing a signature copies the source pixels into an owned buffer. It runs when the user imports an image."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Annotations.SignatureImage.Trim(",
+    "reason": "A visible signature becomes one immutable image record. Cropping also creates an exact-sized pixel buffer. Full-size images reuse the owned source buffer."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.Native.PdfiumLibraryResolver.Resolve(",
+    "reason": "The first call to each native entry point probes absolute library paths. This builds path strings during native binding. Later calls use the bound entry point."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Platform.Cups.CupsPrinting.BuildOptions(",
+    "reason": "Each submitted print job builds its CUPS option array and formats its copy count. These options carry paper, colour and duplex binding to the printer."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumEngine.OpenCore(",
+    "reason": "Opening a document creates its PdfiumDocument, once per file opened."
+  },
+  {
+    "type": "PdfViewerLite.Pdfium.Native.PdfiumDocumentHandle",
+    "frame": "PdfViewerLite.Pdfium.Native.NativeMethods.FPDF_LoadCustomDocument(",
+    "reason": "Opening a document wraps PDFium's document in one SafeHandle so it is always closed, once per file opened."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.Native.PdfiumFileSource..ctor(",
+    "reason": "Opening a document opens its file handle and the read structure PDFium keeps for the document's life, once per file opened."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument..ctor(",
+    "reason": "A newly opened document sets up its page sizes, its page and annotation caches and its form environment, once per file opened."
+  },
+  {
+    "type": "PdfViewerLite.Pdfium.PdfiumPage",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetPage(",
+    "reason": "The first use of a page loads it into a PdfiumPage, kept in the document's page cache, so it happens once per page while the document stays open."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Search.FolderSearch.",
+    "reason": "Search in Folder keeps each match with its snippet (the result) and lists the file's matches; it runs off the UI thread once per file searched."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Core.Measuring.Measurement.Describe(",
+    "reason": "The measurement's description is the result shown in the Measure bar and beside the shape; one string per pointer move while measuring."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Measuring.",
+    "reason": "Reading a drawing's declared scale parses the file's cross-reference data and its viewport and measure dictionaries, once per page when measuring starts on it."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.English.TextNormalizer+",
+    "reason": "The replacements of the sentence normalizer read their match groups and build the spoken words, once per sentence before it is phonemized; see TextNormalizer."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.English.TextNormalizer.",
+    "reason": "Normalizing a sentence for the voice rewrites it with generated regular expressions, each replacement making a new string, once per sentence before it is phonemized. Synthesizing the sentence takes hundreds of milliseconds, so this is negligible."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument+StructureWalker.",
+    "reason": "Reading a tagged page's structure tree makes one TaggedBlock (with its character index array) per element, which is the result, and remembers which marked content it has used. It runs once per page when Focus Mode or Read Aloud first reads it; ReadingDocument caches the page."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.IsBold(",
+    "reason": "The per-page cache of whether each font is bold grows its buckets when a page uses a new font; see GetCharacters."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ReadUtf16(",
+    "reason": "A string read from PDFium, such as an outline title or a figure's alternative text, is the result; one per call."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.Native.NativeText.FromUtf16(",
+    "reason": "A string read from PDFium, such as an outline title or a figure's alternative text, is the result; one per call."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.MapMarkedContent(",
+    "reason": "Reading a tagged page groups its characters by marked content id in a dictionary of index lists, once per page; ReadingDocument caches the result."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ReadTree(",
+    "reason": "Reading a tagged page creates the structure walker and its used-id set once per page; ReadingDocument caches the result."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ReadElementString(",
+    "reason": "An element's /ActualText or a figure's /Alt text is read into a string only when the element has one; it becomes the block's text."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetCharacters(",
+    "reason": "Reading a page's characters remembers whether each of its fonts is bold, so each font's name is read once per page rather than once per character. Runs once per page when its reading order is worked out."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetText(",
+    "reason": "The extracted text is the result; one string per call, sized exactly."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.SignatureVerifier.",
+    "reason": "Checking a signature decodes the CMS and builds the certificate chain with System.Security.Cryptography, which allocates, and SignedCms needs the signed bytes as one array. It runs only when the user asks to check signatures."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Core.Ocr.OcrRunner.",
+    "reason": "The page and strip pixel buffers are rented from ArrayPool<byte>.Shared. The pool allocates them the first time a page is recognised (or after it trims idle buffers on a gen 2 GC); later pages reuse them. Seen once per trace."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Ocr.",
+    "reason": "Each recognised word becomes a string (the result), and Tesseract's result iterator is wrapped in one SafeHandle per page. Recognition itself takes hundreds of milliseconds in Tesseract's native code."
+  },
+  {
+    "type": "RuntimeTypeCache",
+    "frame": "PdfViewerLite.",
+    "reason": "The first time a LibraryImport returns a given SafeHandle type, the generated marshaller creates it with new T(), which builds the runtime's per-type activator cache once for the life of the process."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Layout.DocumentLayout.Create(",
+    "reason": "The layout is the result: one immutable object with arrays sized exactly to the pages and rows. It is built only when the zoom, arrangement, rotation or viewport size changes, never while scrolling; lookups on it allocate nothing."
+  },
+  {
+    "type": "PdfViewerLite.Pdfium.Native.Pdfium",
+    "frame": "PdfViewerLite.Pdfium.",
+    "reason": "Exporting pages for printing opens new native documents (the copy and, for several pages per sheet, the sheets) and each page whose annotations are left out; each is owned by one small SafeHandle so it is always closed. Exporting runs when print settings change, never while viewing."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.Signing.",
+    "reason": "Signing writes a new file: the original bytes plus an incremental update built as text, the cross-reference data it reads (inflated object and cross-reference streams), and a CMS signature from System.Security.Cryptography over the signed bytes, which SignedCms needs as one array. A damaged file also gets its cross-reference entries rebuilt by scanning (PdfRepair) and a full cross-reference stream. It runs once, when the user signs."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Documents.PdfLayers.",
+    "reason": "Reading layers parses the file's structure and returns new layer records; switching a layer writes a new copy of the file (the original bytes plus a small update with the new default visibility). Both run when the layers panel opens or a box is ticked, never while scrolling."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.RebuildLayerView",
+    "reason": "Switching a layer rebuilds the in-memory copy pages are drawn from: the file's bytes, the layers left hidden and the copy itself. Once per tick of a layer box; drawing from the copy allocates nothing."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.CurrentBytes",
+    "reason": "Switching a layer reads the document's current bytes (from the file, or with unsaved edits written in) to build the copy pages are drawn from. Once per tick of a layer box."
+  },
+  {
+    "type": "PdfViewerLite.Core.Documents.DocumentLayer",
+    "frame": "PdfViewerLite.",
+    "reason": "A layer's visibility is an immutable record, replaced when its box is ticked."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumLayerView.",
+    "reason": "The layer view's page cache and the SafeHandles owning its native copy and pages, created when a layer is switched; reused for every page drawn afterwards."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.Native.NativeBufferHandle",
+    "reason": "The SafeHandle owning the native memory that holds the layer view's copy, one per switch."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.English.EnglishPhonemizer.",
+    "reason": "Phonemizing runs once per sentence read aloud, while the previous sentence plays. Each word is cut out as a string to look it up in the pronunciation dictionary (and lower-cased when it is not listed as written), and the phonemes are the returned string. The token list and output builder are reused between sentences; a trace can still show the reused builder growing its chunks."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.English.NumberWords.",
+    "reason": "Numbers in a sentence are said as words, for example 1984 as 'nineteen eighty four'; the words are a new string per number, made only for sentences that contain digits."
+  },
+  {
+    "type": "System.",
+    "frame": "PdfViewerLite.Core.Speech.SentenceSplitter.ToSpeech(",
+    "reason": "Preparing a sentence for the voice returns it as a new string with line breaks joined; one per sentence read aloud, built in a StringBuilder sized to the sentence."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Http.Speech.AzureSpeechEngine.BuildSsml(",
+    "reason": "The SSML document sent to Azure for one sentence is the result; one string per sentence, with the text escaped."
+  },
+  {
+    "type": "System.Single[]",
+    "frame": "PdfViewerLite.Http.Speech.AzureSpeechEngine.ToSamples(",
+    "reason": "The samples are the returned audio for one sentence, handed to the sound output; one array per sentence, sized exactly."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Reading.ReadingOrder",
+    "reason": "Reading order runs once per page, when the page is first read aloud or shown in Focus Mode, and the result is kept by ReadingDocument. It builds a line object per line of text, a block object per paragraph, the joined text of each block with the page character index of every character (the map that lets the spoken sentence be highlighted on the page), and the lists the XY-cut groups blocks into; all proportional to the page's text."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Reading.ReadingDocument.Flatten(",
+    "reason": "Flattening a page for Read Aloud returns its text and the matching character map, one string and one int array per page read, sized exactly."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetCharacters(",
+    "reason": "Reading a page's characters loads PDFium's text page the first time it is used; the list it fills is the caller's and is reused."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.Melo.WordPieceTokenizer.Clean(",
+    "reason": "MeloTTS's front end runs once per sentence read aloud, while the previous sentence plays. BERT's cleaning lower-cases and decomposes the sentence into new strings, and the reused cleaning buffer grows once to the longest sentence seen; the piece ids, phones and model input lists are reused between sentences."
+  },
+  {
+    "type": "System.String[]",
+    "frame": "PdfViewerLite.Speech.Melo.SpellingToSound.Predict(",
+    "reason": "The caller's reused list of guessed phones grows once to the longest guess; the phone names themselves are shared strings and the network's state is reused."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Annotations.AnnotationReplyLinks.",
+    "reason": "Linking replies runs once per save of a document that gained replies: it parses the saved file, gives inline annotations on pages with replies objects of their own, rewrites each reply with its /IRT reference, and returns the file with the update appended as a new array."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.ReadReplies(",
+    "reason": "A comment's thread is read when the annotations list is refreshed: each reply's text, author and status are new strings in a new record, and the comment's name is read once to match replies saved before linking."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.ReadString(",
+    "reason": "Reading an annotation's text value (contents, author, name or status) returns it as a new string; done when the list is refreshed, not while drawing."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.RepliesTo(",
+    "reason": "Matching a reply to its comment reads the reply's pending comment name as a string; only replies added since the last save have one."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.CreateReply(",
+    "reason": "Replying writes the reply's name, the comment it answers and its modification date; the name is a new string per reply."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.NewName(",
+    "reason": "Each reply, and a comment the first time it is replied to, gets a unique name as a new string."
+  },
+  {
+    "type": "System.Collections.Generic.List",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ExportPages(",
+    "reason": "Printing a booklet lists the pages in booklet order, once per print preview or print; the booklet step is inlined into the export."
+  },
+  {
+    "type": "System.Int32[]",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ExportPages(",
+    "reason": "The booklet page order's backing array, sized to the sheets, once per print preview or print."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ImportBooklet(",
+    "reason": "The booklet page order, sized to the sheets, once per print preview or print."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.TestAssets.TestTimestampAuthority.",
+    "reason": "The benchmark's local timestamp authority, standing in for a remote one: it builds and signs each token. The app makes none of these allocations; its tokens come from the network."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.DocumentSecurityStore.",
+    "reason": "The document security store is read once when the user checks a document's signatures: the file's structure, the store's certificate streams, and a certificate object for each."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.SignatureVerifier.",
+    "reason": "Checking a signature runs when the user asks to see the signatures: it reads the signed bytes, decodes the CMS and any timestamp token, and builds certificate chains."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.Signing.PdfSigner.",
+    "reason": "Signing or timestamping writes a new copy of the file with an incremental update, the CMS signature or token, and its hex form; once per signature."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormScript.",
+    "reason": "Field scripts are recognised once, when a form is first edited: the regular expressions' matches, the arguments and field names as strings, and the script record."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormExpression",
+    "reason": "Evaluating a calculation reads each field name as a string to look its value up; once per calculated field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormNumbers.",
+    "reason": "Formatting or reading a number builds the text, with its separators and currency, as new strings; once per field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormDates.",
+    "reason": "Formatting or reading a date converts the field's format into a pattern string; once per date field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormScriptEngine",
+    "reason": "Running a script works on new strings for the value it formats or checks, and a closure for a calculation's field lookups; once per field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumForm.ReadFieldScripts(",
+    "reason": "Reading a form's scripts, once when it is first edited: each widget's name and action scripts as strings, and its scripts record."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumForm.ReadScripts(",
+    "reason": "Reading a form's scripts, once when it is first edited: the list of scripted fields grows."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumForm.ReadUtf16(",
+    "reason": "A form field's name, value or script is read from PDFium as a new string; when fields are listed after an edit, or scripts are read once."
+  }
+]

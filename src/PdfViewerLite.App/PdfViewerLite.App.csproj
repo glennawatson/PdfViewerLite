@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <OutputType>WinExe</OutputType>
+    <ApplicationIcon>..\..\packaging\windows\PdfViewerLite.ico</ApplicationIcon>
+    <Description>PdfViewerLite: a fast, tabbed PDF viewer.</Description>
+    <AssemblyName>pdfviewerlite</AssemblyName>
+    <RootNamespace>PdfViewerLite.App</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Native AOT">
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <StripSymbols>true</StripSymbols>
+    <TieredPGO>true</TieredPGO>
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Ocr\PdfViewerLite.Ocr.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Http\PdfViewerLite.Http.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Platform.Linux\PdfViewerLite.Platform.Linux.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Platform.MacOS\PdfViewerLite.Platform.MacOS.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Platform.Windows\PdfViewerLite.Platform.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Wayland" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="ReactiveUI.Avalonia" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PdfViewerLite.App.Tests" />
+  </ItemGroup>
+</Project>

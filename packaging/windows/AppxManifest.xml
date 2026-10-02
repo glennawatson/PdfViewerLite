@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:desktop2="http://schemas.microsoft.com/appx/manifest/desktop/windows10/2"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap desktop2 rescap">
+  <Identity Name="net.glennwatson.PdfViewerLite"
+            Publisher="CN=Glenn Andrew Watson, O=Glenn Andrew Watson, L=Mooroolbark, S=Victoria, C=AU"
+            Version="0.1.0.0" ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>PdfViewerLite</DisplayName>
+    <PublisherDisplayName>Glenn Watson</PublisherDisplayName>
+    <Description>A calm PDF viewer</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Resources><Resource Language="en-us" /></Resources>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Applications>
+    <Application Id="PdfViewerLite" Executable="pdfviewerlite.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="PdfViewerLite" Description="A calm PDF viewer"
+                          BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="pdf" desktop2:Parameters="&quot;%1&quot;">
+            <uap:DisplayName>PDF document</uap:DisplayName>
+            <uap:SupportedFileTypes><uap:FileType>.pdf</uap:FileType></uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+</Package>

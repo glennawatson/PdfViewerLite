@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Source-generated, allocation-conscious PDFium interop and document engine for PdfViewerLite.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="bblanchon.PDFium.Linux" />
+    <PackageReference Include="bblanchon.PDFium.Win32" />
+    <PackageReference Include="bblanchon.PDFium.macOS" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PdfViewerLite.Pdfium.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.Benchmarks" />
+  </ItemGroup>
+</Project>
