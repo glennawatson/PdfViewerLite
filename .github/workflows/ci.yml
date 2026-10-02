@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Build
+        run: dotnet build PdfViewerLite.slnx -c Release
+      - name: Test
+        run: dotnet test --solution PdfViewerLite.slnx -c Release --coverage --coverage-output-format cobertura
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: '**/TestResults/**'
+          if-no-files-found: ignore
+
+  package:
+    name: Package ${{ matrix.rid }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-24.04
+            appimage: x86_64
+            nfpm: amd64
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            appimage: aarch64
+            nfpm: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install native toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev desktop-file-utils
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.1.0~ci${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish (Native AOT)
+        run: scripts/publish-linux.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: Validate desktop entry
+        run: desktop-file-validate packaging/linux/net.glennwatson.PdfViewerLite.desktop
+      - name: AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: |
+          curl -sSfL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.appimage }}.AppImage"
+          chmod +x appimagetool && sudo mv appimagetool /usr/local/bin/
+          packaging/linux/build-appimage.sh artifacts/${{ matrix.rid }} ${{ matrix.appimage }} ${{ steps.version.outputs.value }}
+      - name: deb and rpm
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          NFPM_ARCH: ${{ matrix.nfpm }}
+          PUBLISH_DIR: artifacts/${{ matrix.rid }}
+          MAINTAINER: Glenn Watson
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          for packager in deb rpm; do "$(go env GOPATH)/bin/nfpm" package -f packaging/linux/nfpm.yaml -p "$packager" -t artifacts/; done
+      - name: Tarball
+        run: tar -C artifacts -czf "artifacts/pdfviewerlite-${{ steps.version.outputs.value }}-${{ matrix.rid }}.tar.gz" ${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.rid }}
+          path: |
+            artifacts/*.AppImage
+            artifacts/*.deb
+            artifacts/*.rpm
+            artifacts/*.tar.gz
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: packages
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: packages/*

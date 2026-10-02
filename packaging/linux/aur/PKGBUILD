@@ -1,0 +1,40 @@
+# Maintainer: Glenn Watson
+pkgname=pdfviewerlite
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Fast, tabbed PDF viewer that integrates with KDE Plasma and Dolphin"
+arch=('x86_64' 'aarch64')
+url="https://github.com/glennawatson/PdfViewerLite"
+license=('MIT')
+depends=('fontconfig' 'libx11' 'libice' 'libsm' 'gcc-libs' 'glibc')
+makedepends=('dotnet-sdk>=10.0' 'clang' 'zlib')
+options=('!strip' '!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+_rid() {
+  case "$CARCH" in
+    x86_64) echo linux-x64 ;;
+    aarch64) echo linux-arm64 ;;
+  esac
+}
+
+build() {
+  cd "PdfViewerLite-$pkgver"
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+  dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -r "$(_rid)" -o "$srcdir/publish"
+}
+
+package() {
+  cd "PdfViewerLite-$pkgver"
+  install -Dm755 "$srcdir/publish/pdfviewerlite" "$pkgdir/usr/lib/pdfviewerlite/pdfviewerlite"
+  for lib in "$srcdir"/publish/*.so; do
+    install -Dm644 "$lib" "$pkgdir/usr/lib/pdfviewerlite/$(basename "$lib")"
+  done
+  install -d "$pkgdir/usr/bin"
+  ln -s /usr/lib/pdfviewerlite/pdfviewerlite "$pkgdir/usr/bin/pdfviewerlite"
+  install -Dm644 packaging/linux/net.glennwatson.PdfViewerLite.desktop "$pkgdir/usr/share/applications/net.glennwatson.PdfViewerLite.desktop"
+  install -Dm644 packaging/linux/net.glennwatson.PdfViewerLite.metainfo.xml "$pkgdir/usr/share/metainfo/net.glennwatson.PdfViewerLite.metainfo.xml"
+  install -Dm644 packaging/linux/icons/net.glennwatson.PdfViewerLite.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/net.glennwatson.PdfViewerLite.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

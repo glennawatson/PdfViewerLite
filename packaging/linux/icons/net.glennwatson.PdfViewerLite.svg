@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Back tab -->
+  <path d="M14 8 h18 l3 4 h-21 z" fill="#93cee9"/>
+  <rect x="14" y="12" width="36" height="46" rx="2" fill="#dbe9f3"/>
+  <!-- Front document -->
+  <path d="M8 14 h20 l3 4 h-23 z" fill="#3daee9"/>
+  <path d="M8 18 h28 l8 8 v32 a2 2 0 0 1 -2 2 h-32 a2 2 0 0 1 -2 -2 z" fill="#fcfcfc" stroke="#232629" stroke-opacity="0.25"/>
+  <path d="M36 18 v8 h8 z" fill="#d6dee5"/>
+  <!-- PDF label -->
+  <rect x="12" y="42" width="24" height="10" rx="2" fill="#da4453"/>
+  <text x="24" y="50" font-family="Noto Sans, sans-serif" font-size="8" font-weight="bold" text-anchor="middle" fill="#ffffff">PDF</text>
+  <!-- Text lines -->
+  <rect x="12" y="26" width="18" height="2" rx="1" fill="#7f8c8d"/>
+  <rect x="12" y="31" width="26" height="2" rx="1" fill="#bdc3c7"/>
+  <rect x="12" y="36" width="22" height="2" rx="1" fill="#bdc3c7"/>
+</svg>
