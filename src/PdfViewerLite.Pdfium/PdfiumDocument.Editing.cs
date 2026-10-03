@@ -24,6 +24,9 @@ public sealed partial class PdfiumDocument
     /// <summary>The number of edits since opening or the last save.</summary>
     private int _unsavedChanges;
 
+    /// <summary>1 once a reply has been added, so saving links replies to their comments.</summary>
+    private int _repliesAdded;
+
     /// <inheritdoc/>
     public bool HasUnsavedChanges => Volatile.Read(ref _unsavedChanges) != 0;
 
@@ -95,6 +98,31 @@ public sealed partial class PdfiumDocument
     }
 
     /// <inheritdoc/>
+    public void GetReplies(int pageIndex, int index, List<AnnotationReply> output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        using var scope = PdfiumLibrary.EnterScope();
+        if (EditablePage(pageIndex) is { } page)
+        {
+            PdfiumAnnotations.ReadReplies(page, index, output);
+        }
+    }
+
+    /// <inheritdoc/>
+    public int AddReply(int pageIndex, int index, string contents, ReviewState state)
+    {
+        ArgumentNullException.ThrowIfNull(contents);
+        using var scope = PdfiumLibrary.EnterScope();
+        var reply = EditablePage(pageIndex) is { } page ? PdfiumAnnotations.AddReply(page, index, contents, state) : -1;
+        if (reply >= 0)
+        {
+            Volatile.Write(ref _repliesAdded, 1);
+        }
+
+        return Changed(pageIndex, reply);
+    }
+
+    /// <inheritdoc/>
     public bool SetColor(int pageIndex, int index, uint color)
     {
         using var scope = PdfiumLibrary.EnterScope();
@@ -127,9 +155,23 @@ public sealed partial class PdfiumDocument
         }
 
         var flags = NativeMethods.FPDF_GetSignatureCount(_handle) > 0 ? SaveIncremental : SaveFull;
-        if (!WriteDocument(_handle, destination, flags))
+        if (Volatile.Read(ref _repliesAdded) == 0)
         {
-            return false;
+            if (!WriteDocument(_handle, destination, flags))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            // Replies name the comment they answer until saved; link them with standard references on the way out.
+            using var buffer = new MemoryStream();
+            if (!WriteDocument(_handle, buffer, flags))
+            {
+                return false;
+            }
+
+            destination.Write(AnnotationReplyLinks.Link(buffer.ToArray()));
         }
 
         Volatile.Write(ref _unsavedChanges, 0);

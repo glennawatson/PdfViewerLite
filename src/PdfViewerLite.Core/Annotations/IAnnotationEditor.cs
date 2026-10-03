@@ -75,6 +75,20 @@ public interface IAnnotationEditor
     /// <returns>The new annotation's index, or -1.</returns>
     int AddStamp(int pageIndex, PagePoint location, string label, uint color);
 
+    /// <summary>Appends the replies to a comment and its review status changes, oldest first.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="index">The comment's annotation index.</param>
+    /// <param name="output">The list receiving the replies.</param>
+    void GetReplies(int pageIndex, int index, List<AnnotationReply> output);
+
+    /// <summary>Replies to a comment, or records a review status for it.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="index">The comment's annotation index.</param>
+    /// <param name="contents">The reply's text; may be empty when setting a status.</param>
+    /// <param name="state">The review status to record, or <see cref="ReviewState.None"/> for a plain reply.</param>
+    /// <returns>The reply's annotation index, or -1.</returns>
+    int AddReply(int pageIndex, int index, string contents, ReviewState state);
+
     /// <summary>Changes an annotation's colour.</summary>
     /// <param name="pageIndex">The zero based page index.</param>
     /// <param name="index">The annotation index.</param>

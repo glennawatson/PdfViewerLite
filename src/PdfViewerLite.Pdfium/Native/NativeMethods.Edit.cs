@@ -121,6 +121,13 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial int FPDFAnnot_SetFlags(nint annotation, int flags);
 
+    /// <summary>Native <c>FPDFAnnot_GetLinkedAnnot</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="key">The ASCII key of the reference, such as <c>IRT</c>.</param>
+    /// <returns>The linked annotation, to be closed, or zero.</returns>
+    [LibraryImport(Library)]
+    internal static partial nint FPDFAnnot_GetLinkedAnnot(nint annotation, byte* key);
+
     /// <summary>Native <c>FPDFAnnot_SetStringValue</c> entry point.</summary>
     /// <param name="annotation">The annotation.</param>
     /// <param name="key">The ASCII dictionary key.</param>

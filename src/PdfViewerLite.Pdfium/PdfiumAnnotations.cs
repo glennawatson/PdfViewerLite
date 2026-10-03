@@ -130,7 +130,7 @@ internal static unsafe partial class PdfiumAnnotations
             try
             {
                 var kind = GetKind(annotation);
-                if (kind is not { } known || NativeMethods.FPDFAnnot_GetRect(annotation, out var rect) == 0)
+                if (kind is not { } known || IsReply(annotation) || NativeMethods.FPDFAnnot_GetRect(annotation, out var rect) == 0)
                 {
                     continue;
                 }
