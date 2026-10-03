@@ -35,5 +35,10 @@
     "type": "PdfViewerLite.Pdfium.Native.Pdfium",
     "frame": "PdfViewerLite.Pdfium.",
     "reason": "Exporting pages for printing opens new native documents (the copy and, for several pages per sheet, the sheets) and each page whose annotations are left out; each is owned by one small SafeHandle so it is always closed. Exporting runs when print settings change, never while viewing."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.Signing.",
+    "reason": "Signing writes a new file: the original bytes plus an incremental update built as text, the cross-reference data it reads (inflated object and cross-reference streams), and a CMS signature from System.Security.Cryptography over the signed bytes, which SignedCms needs as one array. It runs once, when the user signs."
   }
 ]

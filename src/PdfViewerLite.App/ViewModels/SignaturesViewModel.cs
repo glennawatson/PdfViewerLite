@@ -4,7 +4,11 @@
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using PdfViewerLite.App.Services;
+using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Signatures;
+using PdfViewerLite.Core.Signatures.Signing;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 
@@ -20,13 +24,25 @@ public sealed class SignaturesViewModel : ReactiveObject
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
 
+    /// <summary>The application services.</summary>
+    private readonly AppServices _services;
+
     /// <summary>Initializes a new instance of the <see cref="SignaturesViewModel"/> class.</summary>
     /// <param name="owner">The owning tab.</param>
-    public SignaturesViewModel(DocumentTabViewModel owner)
+    /// <param name="services">The application services.</param>
+    public SignaturesViewModel(DocumentTabViewModel owner, AppServices services)
     {
         _owner = owner;
+        _services = services;
         CheckCommand = ReactiveCommand.CreateFromTask(CheckAsync);
+        SignWithCertificateCommand = ReactiveCommand.CreateFromTask(SignWithCertificateAsync);
     }
+
+    /// <summary>Gets the interaction showing the "Sign with Certificate" window; the output says whether to sign.</summary>
+    public Interaction<CertificateSignViewModel, bool> CertificateSignInteraction { get; } = new();
+
+    /// <summary>Gets the command signing a copy of the document with a certificate.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> SignWithCertificateCommand { get; }
 
     /// <summary>Gets the interaction asking the view to show the checked signatures.</summary>
     public Interaction<SignaturesViewModel, RxVoid> ShowInteraction { get; } = new();
@@ -74,6 +90,60 @@ public sealed class SignaturesViewModel : ReactiveObject
         }
 
         return results;
+    }
+
+    /// <summary>Gets the document as it is now: its saved bytes, or with unsaved edits written in.</summary>
+    /// <returns>The bytes, or <see langword="null"/> when the document is not open.</returns>
+    private byte[]? ReadCurrent()
+    {
+        var document = _owner.TryGetDocument();
+        if (document is IAnnotationEditor { HasUnsavedChanges: true } editor)
+        {
+            using var stream = new MemoryStream();
+            return editor.Save(stream) ? stream.ToArray() : null;
+        }
+
+        return document is null ? null : File.ReadAllBytes(_owner.FilePath);
+    }
+
+    /// <summary>Asks for the certificate and where to save, signs a copy off the UI thread and opens it.</summary>
+    /// <returns>A task.</returns>
+    private async Task SignWithCertificateAsync()
+    {
+        using var request = new CertificateSignViewModel(_services.Settings.SigningCertificatePath);
+        if (!await CertificateSignInteraction.Handle(request).ToTask().ConfigureAwait(true) || request.TakeCertificate() is not { } certificate)
+        {
+            return;
+        }
+
+        using (certificate)
+        {
+            _services.Settings.SigningCertificatePath = request.CertificatePath;
+            _services.SaveSettings();
+            var suggested = $"{Path.GetFileNameWithoutExtension(_owner.FileName)}-signed.pdf";
+            var destination = await _owner.SaveAsInteraction.Handle(suggested).ToTask().ConfigureAwait(true);
+            if (string.IsNullOrEmpty(destination) || ReadCurrent() is not { } source)
+            {
+                return;
+            }
+
+            var signing = new SigningRequest(Math.Max(0, _owner.CurrentPageIndex), request.Reason, request.Location, TimeProvider.System.GetUtcNow());
+            try
+            {
+                var signed = await Task.Run(() => PdfSigner.Sign(source, certificate, signing)).ConfigureAwait(true);
+                var temporary = $"{destination}.signing";
+                await File.WriteAllBytesAsync(temporary, signed).ConfigureAwait(true);
+                File.Move(temporary, destination, true);
+            }
+            catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or CryptographicException or IOException or UnauthorizedAccessException)
+            {
+                _owner.Notice = $"Could not sign: {ex.Message}";
+                return;
+            }
+
+            _owner.Notice = $"Signed copy saved as {Path.GetFileName(destination)}.";
+            _services.RequestOpen(destination);
+        }
     }
 
     /// <summary>Checks every signature off the UI thread, then shows the results.</summary>

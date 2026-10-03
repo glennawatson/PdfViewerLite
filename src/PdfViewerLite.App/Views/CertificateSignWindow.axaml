@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PdfViewerLite.App.Views.CertificateSignWindow"
+        Title="Sign with Certificate" Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppWindowBackground}">
+  <StackPanel Margin="20" Spacing="12">
+    <TextBlock Classes="secondary" TextWrapping="Wrap"
+               Text="Signs a copy of this document with your digital certificate. People who open it can check who signed it and that it has not changed since." />
+    <Grid ColumnDefinitions="110,*,Auto">
+      <TextBlock Text="Certificate" VerticalAlignment="Center" />
+      <TextBox x:Name="CertificateBox" Grid.Column="1" PlaceholderText=".p12 or .pfx file" />
+      <Button x:Name="BrowseButton" Grid.Column="2" Margin="8,0,0,0" Content="Choose…" />
+    </Grid>
+    <Grid ColumnDefinitions="110,*">
+      <TextBlock Text="Password" VerticalAlignment="Center" />
+      <TextBox x:Name="PasswordBox" Grid.Column="1" PasswordChar="●" />
+    </Grid>
+    <Grid ColumnDefinitions="110,*">
+      <TextBlock Text="Reason" VerticalAlignment="Center" />
+      <TextBox x:Name="ReasonBox" Grid.Column="1" PlaceholderText="Optional, for example Approved" />
+    </Grid>
+    <Grid ColumnDefinitions="110,*">
+      <TextBlock Text="Location" VerticalAlignment="Center" />
+      <TextBox x:Name="LocationBox" Grid.Column="1" PlaceholderText="Optional" />
+    </Grid>
+    <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+      <Button x:Name="CancelButton" Content="Cancel" IsCancel="True" />
+      <Button x:Name="SignButton" Content="Sign…" IsDefault="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

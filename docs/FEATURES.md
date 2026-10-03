@@ -40,7 +40,7 @@ documents. Every feature has a BenchmarkDotNet benchmark; allocations are checke
 | Text recognition (OCR) | No | More ▸ Recognise Text adds a searchable text layer with Tesseract | Done |
 | Caret navigation | Yes | F7: a steady cursor moved with the arrow keys, Shift selects | Done |
 | Layers (optional content) | Yes | PDFium has no public API to switch layers | Blocked |
-| Signing with a certificate | Yes | Signatures are visual; certificate signing needs a PDF writer for incremental updates | Planned |
+| Signing with a certificate | Yes | Fill & Sign ▸ Sign with Certificate (.p12/.pfx): an incremental update with a detached CMS (SHA-256) signature; earlier signatures stay valid | Done |
 | Other formats (DjVu, comics, TIFF) | Partly | Engine interface ready | Later |
 | Tear tabs off into new windows | n/a | | Later |
 

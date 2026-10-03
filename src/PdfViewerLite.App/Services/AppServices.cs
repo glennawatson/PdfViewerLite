@@ -33,6 +33,9 @@ public sealed class AppServices : IDisposable
     /// <summary>The resolved theme, re-published when the settings or the desktop palette change.</summary>
     private readonly BehaviorSignal<ResolvedTheme> _theme;
 
+    /// <summary>Documents the app is asked to open as tabs, for example a signed copy.</summary>
+    private readonly Signal<string> _openRequests = new();
+
     /// <summary>The latest desktop palette, if any.</summary>
     private DesktopPalette? _palette;
 
@@ -87,6 +90,9 @@ public sealed class AppServices : IDisposable
     /// <summary>Gets the resolved theme; the current value is replayed on subscription.</summary>
     public IObservable<ResolvedTheme> Theme => _theme;
 
+    /// <summary>Gets the documents the app is asked to open as tabs.</summary>
+    public IObservable<string> OpenRequests => _openRequests;
+
     /// <summary>Gets the current resolved theme.</summary>
     public ResolvedTheme CurrentTheme => _theme.Value;
 
@@ -100,6 +106,11 @@ public sealed class AppServices : IDisposable
     /// <returns>The recogniser, which reports whether Tesseract was found.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IOcrEngine CreateOcrEngine() => new TesseractEngine(string.IsNullOrWhiteSpace(Settings.OcrLanguage) ? DefaultOcrLanguage : Settings.OcrLanguage);
+
+    /// <summary>Asks the window to open a document as a tab.</summary>
+    /// <param name="path">The document.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RequestOpen(string path) => _openRequests.OnNext(path);
 
     /// <summary>Records a new desktop palette and re-resolves the theme. Call on the UI thread.</summary>
     /// <param name="palette">The palette, or <see langword="null"/> when the desktop has none.</param>
@@ -137,6 +148,7 @@ public sealed class AppServices : IDisposable
     public void Dispose()
     {
         _theme.Dispose();
+        _openRequests.Dispose();
         RenderHub.Dispose();
         Pool.Dispose();
         (ThemeSource as IDisposable)?.Dispose();

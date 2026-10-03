@@ -371,7 +371,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     public AnnotationsViewModel Annotations => field ??= new(this);
 
     /// <summary>Gets the digital signature state.</summary>
-    public SignaturesViewModel Signatures => field ??= new(this);
+    public SignaturesViewModel Signatures => field ??= new(this, _services);
 
     /// <summary>Gets the tab's text recognition, created on first use.</summary>
     public TextRecognitionViewModel TextRecognition => field ??= new(this, _services);

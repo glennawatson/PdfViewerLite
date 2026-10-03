@@ -243,6 +243,12 @@
               <TextBlock Classes="label" Text="Type Signature" />
             </StackPanel>
           </Button>
+          <Button x:Name="CertificateSignButton" Classes="tool" ToolTip.Tip="Sign a copy with your digital certificate (.p12 or .pfx)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconCertificate}" />
+              <TextBlock Classes="label" Text="Sign with Certificate…" />
+            </StackPanel>
+          </Button>
           <TextBlock x:Name="FillSignHint" Classes="secondary" VerticalAlignment="Center" Margin="12,0" Text="Click a form field to fill it in." />
         </StackPanel>
       </DockPanel>

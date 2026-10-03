@@ -238,6 +238,8 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DoneCommand, static v => v.FillSignDoneButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DrawSignatureCommand, static v => v.DrawSignatureButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.TypeSignatureCommand, static v => v.TypeSignatureButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Signatures.SignWithCertificateCommand, static v => v.CertificateSignButton));
+        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Signatures.CertificateSignInteraction, ShowCertificateSignAsync));
         bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Annotations.PromptInteraction, PromptAsync));
         bindings.Add(this.BindInteraction(ViewModel, static vm => vm.SaveAsInteraction, SaveAsAsync));
     }
@@ -440,6 +442,20 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
 
         var file = await storage.SaveFilePickerAsync(new() { Title = "Save a Copy", SuggestedFileName = context.Input, DefaultExtension = "pdf" });
         context.SetOutput(file?.TryGetLocalPath());
+    }
+
+    /// <summary>Shows the "Sign with Certificate" window.</summary>
+    /// <param name="context">The interaction context, holding the request.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowCertificateSignAsync(IInteractionContext<CertificateSignViewModel, bool> context)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            context.SetOutput(false);
+            return;
+        }
+
+        context.SetOutput(await new CertificateSignWindow { ViewModel = context.Input }.ShowDialog<bool>(owner));
     }
 
     /// <summary>Shows the print preview window.</summary>

@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Buffers.Binary;
 using System.Globalization;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
@@ -41,6 +42,24 @@ public static class TestPdf
 
     /// <summary>The standard Helvetica font dictionary.</summary>
     private const string HelveticaFont = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+
+    /// <summary>A free cross-reference entry.</summary>
+    private const byte XrefFree = 0;
+
+    /// <summary>A cross-reference entry at a byte offset.</summary>
+    private const byte XrefOffset = 1;
+
+    /// <summary>A cross-reference entry inside an object stream.</summary>
+    private const byte XrefPacked = 2;
+
+    /// <summary>The object stream's number in the compressed document.</summary>
+    private const int ObjectStreamNumber = 6;
+
+    /// <summary>The bytes in a cross-reference stream row: type, four byte offset, index.</summary>
+    private const int XrefRowLength = 6;
+
+    /// <summary>The PNG Up filter.</summary>
+    private const byte PngUp = 2;
 
     /// <summary>The page that is landscape.</summary>
     private const int LandscapePage = 2;
@@ -229,6 +248,60 @@ public static class TestPdf
         return Serialize(objects, catalog, info);
     }
 
+    /// <summary>
+    /// Creates a one page document in the compressed PDF 1.5 layout: the catalog, page tree, page and font are packed in
+    /// an object stream, and the cross-reference information is a Flate encoded stream with the PNG Up predictor.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateCompressed()
+    {
+        const string content = "BT /F1 24 Tf 72 720 Td (Compressed) Tj ET";
+        string[] packed =
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            string.Create(CultureInfo.InvariantCulture, $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PortraitWidth} {PortraitHeight}] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"),
+            HelveticaFont,
+        ];
+        var header = new StringBuilder();
+        var body = new StringBuilder();
+        for (var i = 0; i < packed.Length; i++)
+        {
+            _ = header.Append(CultureInfo.InvariantCulture, $"{i + 1} {body.Length} ");
+            _ = body.Append(packed[i]).Append('\n');
+        }
+
+        var objectStream = Deflate(Encoding.ASCII.GetBytes(header.ToString() + body));
+        var output = new MemoryStream();
+        void Write(string text) => output.Write(Encoding.Latin1.GetBytes(text));
+        Write("%PDF-1.7\n%\u00e2\u00e3\u00cf\u00d3\n");
+        var contentOffset = (int)output.Length;
+        Write(string.Create(CultureInfo.InvariantCulture, $"5 0 obj\n<< /Length {content.Length} >>\nstream\n{content}\nendstream\nendobj\n"));
+        var streamOffset = (int)output.Length;
+        Write(string.Create(CultureInfo.InvariantCulture, $"6 0 obj\n<< /Type /ObjStm /N {packed.Length} /First {header.Length} /Filter /FlateDecode /Length {objectStream.Length} >>\nstream\n"));
+        output.Write(objectStream);
+        Write("\nendstream\nendobj\n");
+        var xrefOffset = (int)output.Length;
+
+        // Rows of [type(1) field2(4) field3(1)]: object 0 is free, 1-4 sit in object stream 6, 5-7 at byte offsets.
+        var rows = new List<(byte Type, int Second, byte Third)> { (XrefFree, 0, byte.MaxValue) };
+        for (var i = 0; i < packed.Length; i++)
+        {
+            rows.Add((XrefPacked, ObjectStreamNumber, (byte)i));
+        }
+
+        rows.Add((XrefOffset, contentOffset, 0));
+        rows.Add((XrefOffset, streamOffset, 0));
+        rows.Add((XrefOffset, xrefOffset, 0));
+        var raw = PngUpRows(rows);
+        var xref = Deflate(raw);
+        Write(string.Create(CultureInfo.InvariantCulture, $"7 0 obj\n<< /Type /XRef /Size {rows.Count} /W [1 4 1] /Root 1 0 R /Filter /FlateDecode"));
+        Write(string.Create(CultureInfo.InvariantCulture, $" /DecodeParms << /Predictor 12 /Columns {XrefRowLength} >> /Length {xref.Length} >>\nstream\n"));
+        output.Write(xref);
+        Write(string.Create(CultureInfo.InvariantCulture, $"\nendstream\nendobj\nstartxref\n{xrefOffset}\n%%EOF\n"));
+        return output.ToArray();
+    }
+
     /// <summary>Writes a PDF to a new temporary file.</summary>
     /// <param name="pageCount">The number of pages.</param>
     /// <returns>The file path.</returns>
@@ -264,6 +337,45 @@ public static class TestPdf
     {
         objects.Add(body);
         return objects.Count;
+    }
+
+    /// <summary>Encodes cross-reference rows with the PNG Up predictor: each row is a filter byte, then its bytes minus the row above.</summary>
+    /// <param name="rows">The rows.</param>
+    /// <returns>The encoded bytes.</returns>
+    private static byte[] PngUpRows(List<(byte Type, int Second, byte Third)> rows)
+    {
+        var raw = new byte[rows.Count * (XrefRowLength + 1)];
+        var previous = new byte[XrefRowLength];
+        var row = new byte[XrefRowLength];
+        for (var r = 0; r < rows.Count; r++)
+        {
+            row[0] = rows[r].Type;
+            BinaryPrimitives.WriteInt32BigEndian(row.AsSpan(1), rows[r].Second);
+            row[^1] = rows[r].Third;
+            raw[r * (XrefRowLength + 1)] = PngUp;
+            for (var c = 0; c < XrefRowLength; c++)
+            {
+                raw[(r * (XrefRowLength + 1)) + 1 + c] = (byte)(row[c] - previous[c]);
+            }
+
+            row.CopyTo(previous, 0);
+        }
+
+        return raw;
+    }
+
+    /// <summary>Compresses bytes with zlib, as PDF's FlateDecode expects.</summary>
+    /// <param name="data">The bytes.</param>
+    /// <returns>The compressed bytes.</returns>
+    private static byte[] Deflate(byte[] data)
+    {
+        using var output = new MemoryStream();
+        using (var zlib = new ZLibStream(output, CompressionLevel.Optimal, true))
+        {
+            zlib.Write(data);
+        }
+
+        return output.ToArray();
     }
 
     /// <summary>Writes one page, its content stream and its annotations.</summary>

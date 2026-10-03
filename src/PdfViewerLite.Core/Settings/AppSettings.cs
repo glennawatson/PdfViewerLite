@@ -39,6 +39,9 @@ public sealed class AppSettings
     /// <summary>Gets or sets the name used for typed signatures.</summary>
     public string SignatureName { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets the certificate file last used to sign, so it is offered again.</summary>
+    public string SigningCertificatePath { get; set; } = string.Empty;
+
     /// <summary>Gets or sets the Tesseract languages used to recognise text, for example <c>eng</c> or <c>eng+deu</c>.</summary>
     public string OcrLanguage { get; set; } = "eng";
 

@@ -42,6 +42,9 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Follows the resolved theme so every tab draws pages in the current tone.</summary>
     private readonly IDisposable _themeSubscription;
 
+    /// <summary>The subscription opening documents other parts of the app ask for.</summary>
+    private readonly IDisposable _openSubscription;
+
     /// <summary>Initializes a new instance of the <see cref="MainViewModel"/> class.</summary>
     /// <param name="services">The application services.</param>
     public MainViewModel(AppServices services)
@@ -65,6 +68,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         PreferencesCommand = ReactiveCommand.CreateFromTask(async () => await ShowPreferencesInteraction.Handle(new(services)).ToTask().ConfigureAwait(true));
         RefreshRecentDocuments();
         _themeSubscription = services.Theme.SubscribeSafe(OnTheme, static error => Trace.TraceError(error.ToString()));
+        _openSubscription = services.OpenRequests.SubscribeSafe(path => Open([path]), static error => Trace.TraceError(error.ToString()));
     }
 
     /// <summary>Gets the interaction asking the view for files to open.</summary>
@@ -420,6 +424,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     public void Dispose()
     {
         _themeSubscription.Dispose();
+        _openSubscription.Dispose();
         _tabFinderRequests.Dispose();
         foreach (var tab in Tabs)
         {
