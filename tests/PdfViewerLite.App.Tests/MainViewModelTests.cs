@@ -68,7 +68,7 @@ public sealed class MainViewModelTests
         main.Open([first]);
         main.Open([second]);
 
-        main.CloseTab(main.SelectedTab);
+        main.CloseTabWithoutAsking(main.SelectedTab);
         await Assert.That(main.Tabs.Count).IsEqualTo(1);
         await Assert.That(main.SelectedTab!.FilePath).IsEqualTo(first);
 

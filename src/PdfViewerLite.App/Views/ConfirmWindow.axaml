@@ -1,18 +1,15 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:PdfViewerLite.App.ViewModels"
         x:Class="PdfViewerLite.App.Views.ConfirmWindow"
-        x:DataType="vm:ConfirmRequest"
-        Title="{Binding Title}"
         Width="420" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppWindowBackground}">
   <!-- Cancel is the default button and Esc cancels, so the safe choice is always the easy one. -->
   <StackPanel Margin="20" Spacing="12">
-    <TextBlock FontSize="16" Text="{Binding Title}" TextWrapping="Wrap" />
-    <TextBlock Classes="secondary" Text="{Binding Message}" TextWrapping="Wrap" />
+    <TextBlock x:Name="TitleText" FontSize="16" TextWrapping="Wrap" />
+    <TextBlock x:Name="MessageText" Classes="secondary" TextWrapping="Wrap" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
-      <Button x:Name="ConfirmButton" Content="{Binding ConfirmText}" Click="OnConfirmClick" />
-      <Button x:Name="CancelButton" Content="Cancel" IsDefault="True" IsCancel="True" Click="OnCancelClick" />
+      <Button x:Name="ConfirmButton" />
+      <Button x:Name="CancelButton" Content="Cancel" IsDefault="True" IsCancel="True" />
     </StackPanel>
   </StackPanel>
 </Window>

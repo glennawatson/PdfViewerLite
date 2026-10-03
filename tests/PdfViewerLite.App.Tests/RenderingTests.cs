@@ -58,6 +58,14 @@ public sealed class RenderingTests
             Save(frame, "window.png");
             await Assert.That(frame).IsNotNull();
 
+            // The code-behind bindings fill the tool bar.
+            var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
+            var pageCount = view.GetVisualDescendants().OfType<TextBlock>().Single(static t => t.Name == "PageCountText");
+            var zoom = view.GetVisualDescendants().OfType<Button>().Single(static b => b.Name == "ZoomButton");
+            await Assert.That(pageCount.Text).IsEqualTo($"of {Pages}");
+            await Assert.That(zoom.Content as string).EndsWith("%");
+            await Assert.That(pageCount.IsVisible && pageCount.Bounds.Width > 0).IsTrue();
+
             var canvas = window.GetVisualDescendants().OfType<PageCanvas>().Single();
             var scroller = canvas.FindAncestorOfType<ScrollViewer>()!;
             tab.GoToPage(MiddlePage);

@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:PdfViewerLite.App.Controls"
+             x:Class="PdfViewerLite.App.Views.TabItemView"
+             ToolTip.ShowDelay="600" ToolTip.Placement="Bottom">
+  <!-- Hover preview: the page the tab is on, its name and where it lives. It appears only on hover and does not animate. -->
+  <ToolTip.Tip>
+    <StackPanel x:Name="Preview" Spacing="6" Margin="2">
+      <controls:PageThumbnail x:Name="PreviewPage" />
+      <TextBlock x:Name="PreviewTitle" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+      <TextBlock x:Name="PreviewCaption" Classes="secondary" />
+      <TextBlock x:Name="PreviewPath" Classes="secondary" TextWrapping="Wrap" FontSize="11" />
+    </StackPanel>
+  </ToolTip.Tip>
+  <DockPanel Background="Transparent">
+    <Button x:Name="CloseButton" DockPanel.Dock="Right" Classes="tabclose" ToolTip.Tip="Close (Ctrl+W)">
+      <Path Classes="icon remove" Data="{StaticResource IconClose}" />
+    </Button>
+    <!-- A steady dot marks unsaved annotations or form entries; it never blinks. -->
+    <Ellipse x:Name="UnsavedDot" DockPanel.Dock="Left" Classes="unsaved" />
+    <TextBlock x:Name="NameText" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+  </DockPanel>
+</UserControl>

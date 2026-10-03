@@ -3,10 +3,12 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -19,9 +21,13 @@ using ReactiveUI.Primitives.Signals;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>The main window: a strip of document tabs above the selected document.</summary>
+/// <summary>The main window: the tab strip, the start page and the document of the selected tab.</summary>
 [DebuggerDisplay("{Title}")]
-public sealed partial class MainWindow : Window
+public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
 {
+    /// <summary>Defines the <see cref="ViewModel"/> property.</summary>
+    public static readonly StyledProperty<MainViewModel?> ViewModelProperty = AvaloniaProperty.Register<MainWindow, MainViewModel?>(nameof(ViewModel));
+
     /// <summary>How far the pointer must move before a tab drag starts.</summary>
     private const double DragThreshold = 6;
 
@@ -34,8 +40,8 @@ public sealed partial class MainWindow : Window
     /// <summary>Input subscriptions for the window's lifetime.</summary>
     private readonly MultipleDisposable _inputSubscriptions;
 
-    /// <summary>Interaction handler registrations for the current view model.</summary>
-    private MultipleDisposable? _registrations;
+    /// <summary>Bindings and interaction handlers made while the window is shown.</summary>
+    private MultipleDisposable? _bindings;
 
     /// <summary>The tab being dragged.</summary>
     private DocumentTabViewModel? _draggedTab;
@@ -43,10 +49,16 @@ public sealed partial class MainWindow : Window
     /// <summary>Where the tab drag started.</summary>
     private Point _dragStart;
 
+    /// <summary>Whether the user agreed to close with unsaved edits.</summary>
+    private bool _closeConfirmed;
+
     /// <summary>Initializes a new instance of the <see cref="MainWindow"/> class.</summary>
     public MainWindow()
     {
         InitializeComponent();
+        TabStrip.ItemTemplate = new FuncDataTemplate<DocumentTabViewModel>(static (_, _) => new TabItemView());
+        TabFinderList.ItemTemplate = new FuncDataTemplate<DocumentTabViewModel>(static (_, _) => new TabSummaryView());
+        DocumentHost.ContentTemplate = new FuncDataTemplate<DocumentTabViewModel>(static (_, _) => new DocumentView(), true);
         _inputSubscriptions =
         [
             this.GetObservable(DragDrop.DragOverEvent).SubscribeSafe(OnDragOver, OnError),
@@ -57,7 +69,10 @@ public sealed partial class MainWindow : Window
             TabStrip.GetObservable(PointerReleasedEvent, RoutingStrategies.Tunnel).SubscribeSafe(_ => _draggedTab = null, OnError),
             TabStrip.GetObservable(PointerWheelChangedEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnTabWheel, OnError),
             TabStrip.GetObservable(ToolTip.ToolTipOpeningEvent).SubscribeSafe(OnTabPreviewOpening, OnError),
+            TabStrip.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(OnTabButtonClick, OnError),
+            TabStrip.GetObservable(ContextRequestedEvent, RoutingStrategies.Bubble).SubscribeSafe(OnTabContextRequested, OnError),
             TabFinderList.GetObservable(SelectingItemsControl.SelectionChangedEvent).SubscribeSafe(_ => OnTabFound(), OnError),
+            TabFinderBox.GetObservable(KeyDownEvent, RoutingStrategies.Bubble).Where(static args => args.Key == Key.Enter).SubscribeSafe(_ => PickFirstFoundTab(), OnError),
             Signal.FromEvent<EventHandler, RxVoid>(
                 static handler => (_, _) => handler(RxVoid.Default),
                 handler => TabFinderButton.Flyout!.Opened += handler,
@@ -65,8 +80,19 @@ public sealed partial class MainWindow : Window
         ];
     }
 
-    /// <summary>Gets the view model.</summary>
-    public MainViewModel? ViewModel => DataContext as MainViewModel;
+    /// <inheritdoc/>
+    public MainViewModel? ViewModel
+    {
+        get => GetValue(ViewModelProperty);
+        set => SetValue(ViewModelProperty, value);
+    }
+
+    /// <inheritdoc/>
+    object? IViewFor.ViewModel
+    {
+        get => ViewModel;
+        set => ViewModel = value as MainViewModel;
+    }
 
     /// <summary>Brings the window to the front, for example when another launch forwards files.</summary>
     public void BringToFront()
@@ -83,29 +109,57 @@ public sealed partial class MainWindow : Window
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        _registrations?.Dispose();
-        _registrations = null;
-        if (ViewModel is not { } viewModel)
-        {
-            return;
-        }
+        ViewModel = DataContext as MainViewModel;
+    }
 
-        _registrations =
+    /// <inheritdoc/>
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        _bindings =
         [
-            viewModel.TabFinderRequests.SubscribeSafe(_ => TabFinderButton.Flyout?.ShowAt(TabFinderButton), OnError),
-            viewModel.OpenFileInteraction.RegisterHandler(OpenFilesAsync),
-            viewModel.ShowPropertiesInteraction.RegisterHandler(ShowPropertiesAsync),
-            viewModel.ConfirmInteraction.RegisterHandler(ConfirmAsync),
-            viewModel.ShowPreferencesInteraction.RegisterHandler(ShowPreferencesAsync),
+            this.OneWayBind(ViewModel, static vm => vm.WindowTitle, static v => v.Title),
+            this.OneWayBind(ViewModel, static vm => vm.Tabs, static v => v.TabStrip.ItemsSource),
+            this.Bind(ViewModel, static vm => vm.SelectedTab, static v => v.TabStrip.SelectedItem, static tab => tab, static item => item as DocumentTabViewModel),
+            this.OneWayBind(ViewModel, static vm => vm.HasTabs, static v => v.TabFinderButton.IsVisible),
+            this.OneWayBind(ViewModel, static vm => vm.Tabs.Count, static v => v.TabCountText.Text, static count => string.Create(CultureInfo.CurrentCulture, $"Tabs {count}")),
+            this.Bind(ViewModel, static vm => vm.TabQuery, static v => v.TabFinderBox.Text, static query => query, static text => text ?? string.Empty),
+            this.OneWayBind(ViewModel, static vm => vm.FoundTabs, static v => v.TabFinderList.ItemsSource),
+            this.BindCommand(ViewModel, static vm => vm.OpenCommand, static v => v.OpenButton),
+            this.BindCommand(ViewModel, static vm => vm.OpenCommand, static v => v.OpenMenuItem),
+            this.BindCommand(ViewModel, static vm => vm.ReopenClosedTabCommand, static v => v.ReopenMenuItem),
+            this.BindCommand(ViewModel, static vm => vm.TogglePageToneCommand, static v => v.PageToneMenuItem),
+            this.OneWayBind(ViewModel, static vm => vm.PageToneEnabled, static v => v.PageToneMenuItem.IsChecked),
+            this.BindCommand(ViewModel, static vm => vm.PreferencesCommand, static v => v.PreferencesMenuItem),
+            this.BindCommand(ViewModel, static vm => vm.CloseAllTabsCommand, static v => v.CloseAllMenuItem),
+            this.OneWayBind(ViewModel, static vm => vm.StatusMessage, static v => v.StatusText.Text),
+            this.OneWayBind(ViewModel, static vm => vm.StatusMessage, static v => v.StatusBar.IsVisible, static message => message is not null),
+            this.BindCommand(ViewModel, static vm => vm.DismissStatusCommand, static v => v.DismissStatusButton),
+            this.OneWayBind(ViewModel, static vm => vm.HasTabs, static v => v.StartPage.IsVisible, static hasTabs => !hasTabs),
+            this.OneWayBind(ViewModel, static vm => vm.HasTabs, static v => v.DocumentHost.IsVisible),
+            this.OneWayBind(ViewModel, static vm => vm.SelectedTab, static v => v.DocumentHost.Content),
+            this.BindInteraction(ViewModel, static vm => vm.OpenFileInteraction, OpenFilesAsync),
+            this.BindInteraction(ViewModel, static vm => vm.ShowPropertiesInteraction, ShowPropertiesAsync),
+            this.BindInteraction(ViewModel, static vm => vm.ConfirmInteraction, ConfirmAsync),
+            this.BindInteraction(ViewModel, static vm => vm.ShowPreferencesInteraction, ShowPreferencesAsync),
+            this.WhenAnyObservable(static v => v.ViewModel!.TabFinderRequests).SubscribeSafe(_ => TabFinderButton.Flyout?.ShowAt(TabFinderButton), OnError),
         ];
     }
 
     /// <inheritdoc/>
     protected override void OnClosing(WindowClosingEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnClosing(e);
         if (ViewModel is not { } viewModel)
         {
+            return;
+        }
+
+        if (!_closeConfirmed && viewModel.HasUnsavedTabs)
+        {
+            e.Cancel = true;
+            _ = ConfirmCloseAsync(viewModel);
             return;
         }
 
@@ -118,7 +172,8 @@ public sealed partial class MainWindow : Window
     {
         base.OnClosed(e);
         _inputSubscriptions.Dispose();
-        _registrations?.Dispose();
+        _bindings?.Dispose();
+        _bindings = null;
     }
 
     /// <summary>Converts storage items to local paths.</summary>
@@ -189,12 +244,73 @@ public sealed partial class MainWindow : Window
         TabStrip.ScrollIntoView(tab);
     }
 
+    /// <summary>Asks before closing the window with unsaved edits, then closes when the user agrees.</summary>
+    /// <param name="viewModel">The view model.</param>
+    /// <returns>A task.</returns>
+    private async Task ConfirmCloseAsync(MainViewModel viewModel)
+    {
+        if (!await viewModel.ConfirmDiscardAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
+        _closeConfirmed = true;
+        Close();
+    }
+
+    /// <summary>Closes a tab when its close button is clicked.</summary>
+    /// <param name="e">The event.</param>
+    private void OnTabButtonClick(RoutedEventArgs e)
+    {
+        if (e.Source is not Button { Name: "CloseButton", DataContext: DocumentTabViewModel tab } || ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        _ = viewModel.CloseTabCommand.Execute(tab).Subscribe();
+        e.Handled = true;
+    }
+
+    /// <summary>Opens the menu of the tab under the pointer: close it, close the others, close all, reload.</summary>
+    /// <param name="e">The event.</param>
+    private void OnTabContextRequested(ContextRequestedEventArgs e)
+    {
+        if ((e.Source as Control)?.DataContext is not DocumentTabViewModel tab || ViewModel is not { } viewModel || e.Source is not Control source)
+        {
+            return;
+        }
+
+        var menu = new ContextMenu
+        {
+            ItemsSource = new Control[]
+            {
+                new MenuItem { Header = "_Close", Command = viewModel.CloseTabCommand, CommandParameter = tab, InputGesture = new(Key.W, KeyModifiers.Control) },
+                new MenuItem { Header = "Close _Other Tabs", Command = viewModel.CloseOtherTabsCommand, CommandParameter = tab },
+                new MenuItem { Header = "Close _All Tabs", Command = viewModel.CloseAllTabsCommand },
+                new Separator(),
+                new MenuItem { Header = "_Save", Command = tab.SaveCommand, IsEnabled = tab.HasUnsavedChanges },
+                new MenuItem { Header = "Re_load", Command = tab.ReloadCommand },
+            },
+        };
+        menu.Open(source);
+        e.Handled = true;
+    }
+
+    /// <summary>Selects the first tab the finder lists.</summary>
+    private void PickFirstFoundTab()
+    {
+        if (ViewModel is { FoundTabs.Count: > 0 } viewModel)
+        {
+            TabFinderList.SelectedItem = viewModel.FoundTabs[0];
+        }
+    }
+
     /// <summary>Asks the user to confirm a destructive action.</summary>
     /// <param name="context">The interaction context.</param>
     /// <returns>A task.</returns>
     private async Task ConfirmAsync(IInteractionContext<ConfirmRequest, bool> context)
     {
-        var dialog = new ConfirmWindow { DataContext = context.Input };
+        var dialog = new ConfirmWindow { ViewModel = context.Input };
         context.SetOutput(await dialog.ShowDialog<bool>(this));
     }
 
@@ -203,7 +319,7 @@ public sealed partial class MainWindow : Window
     /// <returns>A task.</returns>
     private async Task ShowPreferencesAsync(IInteractionContext<PreferencesViewModel, RxVoid> context)
     {
-        await new PreferencesWindow { DataContext = context.Input }.ShowDialog(this);
+        await new PreferencesWindow { ViewModel = context.Input }.ShowDialog(this);
         context.SetOutput(RxVoid.Default);
     }
 
@@ -212,7 +328,7 @@ public sealed partial class MainWindow : Window
     /// <returns>A task.</returns>
     private async Task ShowPropertiesAsync(IInteractionContext<DocumentTabViewModel, RxVoid> context)
     {
-        var dialog = new PropertiesWindow { DataContext = new PropertiesViewModel(context.Input) };
+        var dialog = new PropertiesWindow { ViewModel = new(context.Input) };
         await dialog.ShowDialog(this);
         context.SetOutput(RxVoid.Default);
     }
@@ -236,12 +352,18 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>Handles shortcuts that would otherwise move keyboard focus.</summary>
+    /// <summary>Runs the command of a keyboard shortcut, then handles shortcuts that would otherwise move keyboard focus.</summary>
     /// <param name="e">The event.</param>
     private void OnPreviewKeyDown(KeyEventArgs e)
     {
         if (ViewModel is not { } viewModel)
         {
+            return;
+        }
+
+        if (Shortcuts.TryRun(viewModel, e))
+        {
+            e.Handled = true;
             return;
         }
 
@@ -317,7 +439,11 @@ public sealed partial class MainWindow : Window
         var tab = GetTabAt(e);
         if (properties.IsMiddleButtonPressed && tab is not null)
         {
-            ViewModel?.CloseTab(tab);
+            if (ViewModel is { } viewModel)
+            {
+                _ = viewModel.CloseTabCommand.Execute(tab).Subscribe();
+            }
+
             e.Handled = true;
             return;
         }

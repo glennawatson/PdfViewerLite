@@ -1,148 +1,274 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:PdfViewerLite.App.ViewModels"
              xmlns:controls="using:PdfViewerLite.App.Controls"
-             xmlns:views="using:PdfViewerLite.App.Views"
-             x:Class="PdfViewerLite.App.Views.DocumentView"
-             x:DataType="vm:DocumentTabViewModel">
+             x:Class="PdfViewerLite.App.Views.DocumentView">
+  <!-- Layout only: every binding is made in code with ReactiveUI.Binding (DocumentView.axaml.cs). -->
   <DockPanel>
     <!-- Document tool bar: the main actions carry text labels (rule 7.3); rarer ones live in More. -->
     <Border DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <ToggleButton Classes="tool" ToolTip.Tip="Ctrl+F" IsChecked="{Binding Search.IsOpen}">
+          <Button x:Name="SaveButton" Classes="tool" ToolTip.Tip="Save annotations and form entries (Ctrl+S)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconSave}" />
+              <TextBlock Classes="label" Text="Save" />
+            </StackPanel>
+          </Button>
+          <ToggleButton x:Name="AnnotateToggle" Classes="tool" ToolTip.Tip="Highlight, draw, add notes and text">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconHighlight}" />
+              <TextBlock Classes="label" Text="Annotate" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="FillSignToggle" Classes="tool" ToolTip.Tip="Fill in forms and sign">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconFillSign}" />
+              <TextBlock Classes="label" Text="Fill &amp; Sign" />
+            </StackPanel>
+          </ToggleButton>
+          <Rectangle Classes="separator" />
+          <ToggleButton x:Name="FindToggle" Classes="tool" ToolTip.Tip="Ctrl+F">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
               <TextBlock Classes="label" Text="Find" />
             </StackPanel>
           </ToggleButton>
-          <Button Classes="tool" ToolTip.Tip="Rotate, page layout, reload, properties">
+          <Button Classes="tool" ToolTip.Tip="Rotate, page layout, save, reload, properties">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon" Data="{StaticResource IconMenu}" />
               <TextBlock Classes="label" Text="More" />
             </StackPanel>
             <Button.Flyout>
               <MenuFlyout Placement="BottomEdgeAlignedRight">
-                <MenuItem Header="Rotate _Left" InputGesture="Ctrl+Left" Command="{Binding RotateLeftCommand}" />
-                <MenuItem Header="Rotate _Right" InputGesture="Ctrl+Right" Command="{Binding RotateRightCommand}" />
+                <MenuItem x:Name="RotateLeftItem" Header="Rotate _Left" InputGesture="Ctrl+Left" />
+                <MenuItem x:Name="RotateRightItem" Header="Rotate _Right" InputGesture="Ctrl+Right" />
                 <Separator />
-                <MenuItem Header="_Single Page" Command="{Binding SetLayoutCommand}" CommandParameter="Single" />
-                <MenuItem Header="_Dual Page" Command="{Binding SetLayoutCommand}" CommandParameter="Dual" />
-                <MenuItem Header="Dual Page with _Cover" Command="{Binding SetLayoutCommand}" CommandParameter="DualCover" />
+                <MenuItem x:Name="SingleLayoutItem" Header="_Single Page" />
+                <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
+                <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
                 <Separator />
-                <MenuItem Header="Re_load" InputGesture="F5" Command="{Binding ReloadCommand}" />
-                <MenuItem Header="Show in _Folder" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ShowInFolderCommand}" />
-                <MenuItem Header="_Properties" InputGesture="Alt+Enter" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).PropertiesCommand}" />
+                <MenuItem x:Name="SaveItem" Header="_Save" InputGesture="Ctrl+S" />
+                <MenuItem x:Name="SaveAsItem" Header="Save _As…" InputGesture="Ctrl+Shift+S" />
+                <MenuItem x:Name="ReloadItem" Header="Re_load" InputGesture="F5" />
+                <MenuItem x:Name="ShowInFolderItem" Header="Show in _Folder" />
+                <MenuItem x:Name="PropertiesItem" Header="_Properties" InputGesture="Alt+Enter" />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
         </StackPanel>
 
-        <StackPanel Orientation="Horizontal">
-          <ToggleButton Classes="tool" ToolTip.Tip="F9" IsChecked="{Binding SidebarVisible}">
+        <!-- Wraps rather than clips when the window is narrow, so no control is ever hidden. -->
+        <WrapPanel Orientation="Horizontal">
+          <ToggleButton x:Name="SidebarToggle" Classes="tool" ToolTip.Tip="F9">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconSidebar}" />
               <TextBlock Classes="label" Text="Sidebar" />
             </StackPanel>
           </ToggleButton>
           <Rectangle Classes="separator" />
-          <Button Classes="tool" ToolTip.Tip="Alt+Left" Command="{Binding GoBackCommand}">
+          <Button x:Name="BackButton" Classes="tool" ToolTip.Tip="Alt+Left">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconBack}" />
               <TextBlock Classes="label" Text="Back" />
             </StackPanel>
           </Button>
-          <Button Classes="tool" ToolTip.Tip="Alt+Right" Command="{Binding GoForwardCommand}">
+          <Button x:Name="ForwardButton" Classes="tool" ToolTip.Tip="Alt+Right">
             <StackPanel Orientation="Horizontal">
               <TextBlock Classes="label leading" Text="Forward" />
               <Path Classes="icon nav" Data="{StaticResource IconForward}" />
             </StackPanel>
           </Button>
           <Rectangle Classes="separator" />
-          <Button Classes="tool" ToolTip.Tip="Previous page (Page Up)" Command="{Binding PreviousPageCommand}">
+          <Button x:Name="PreviousPageButton" Classes="tool" ToolTip.Tip="Previous page (Page Up)">
             <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
           </Button>
           <TextBox x:Name="PageBox" Width="56" MinHeight="28" Padding="6,3" VerticalAlignment="Center" HorizontalContentAlignment="Center"
-                   Text="{Binding PageEntry}" ToolTip.Tip="Go to page (Ctrl+L)">
-            <TextBox.KeyBindings>
-              <KeyBinding Gesture="Enter" Command="{Binding GoToPageEntryCommand}" />
-            </TextBox.KeyBindings>
-          </TextBox>
-          <TextBlock Classes="secondary" VerticalAlignment="Center" Margin="6,0">
-            <Run Text="of " /><Run Text="{Binding PageCount}" />
-          </TextBlock>
-          <Button Classes="tool" ToolTip.Tip="Next page (Page Down)" Command="{Binding NextPageCommand}">
+                   ToolTip.Tip="Go to page (Ctrl+L)" />
+          <TextBlock x:Name="PageCountText" Classes="secondary" VerticalAlignment="Center" Margin="6,0" />
+          <Button x:Name="NextPageButton" Classes="tool" ToolTip.Tip="Next page (Page Down)">
             <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
           </Button>
           <Rectangle Classes="separator" />
-          <Button Classes="tool" ToolTip.Tip="Zoom out (Ctrl+-)" Command="{Binding ZoomOutCommand}">
+          <Button x:Name="ZoomOutButton" Classes="tool" ToolTip.Tip="Zoom out (Ctrl+-)">
             <Path Classes="icon nav" Data="{StaticResource IconZoomOut}" />
           </Button>
-          <Button Classes="tool" MinWidth="64" Content="{Binding ZoomText}" ToolTip.Tip="Zoom: fit width, fit page or a fixed size">
+          <Button x:Name="ZoomButton" Classes="tool" MinWidth="64" ToolTip.Tip="Zoom: fit width, fit page or a fixed size">
             <Button.Flyout>
               <MenuFlyout>
-                <MenuItem Header="Fit _Width" InputGesture="Ctrl+2" Command="{Binding FitWidthCommand}" />
-                <MenuItem Header="Fit _Page" InputGesture="Ctrl+1" Command="{Binding FitPageCommand}" />
+                <MenuItem x:Name="FitWidthItem" Header="Fit _Width" InputGesture="Ctrl+2" />
+                <MenuItem x:Name="FitPageItem" Header="Fit _Page" InputGesture="Ctrl+1" />
                 <Separator />
-                <MenuItem Header="50%" Command="{Binding SetZoomCommand}" CommandParameter="50" />
-                <MenuItem Header="75%" Command="{Binding SetZoomCommand}" CommandParameter="75" />
-                <MenuItem Header="100%" InputGesture="Ctrl+0" Command="{Binding SetZoomCommand}" CommandParameter="100" />
-                <MenuItem Header="125%" Command="{Binding SetZoomCommand}" CommandParameter="125" />
-                <MenuItem Header="150%" Command="{Binding SetZoomCommand}" CommandParameter="150" />
-                <MenuItem Header="200%" Command="{Binding SetZoomCommand}" CommandParameter="200" />
-                <MenuItem Header="400%" Command="{Binding SetZoomCommand}" CommandParameter="400" />
+                <MenuItem x:Name="Zoom50Item" Header="50%" />
+                <MenuItem x:Name="Zoom75Item" Header="75%" />
+                <MenuItem x:Name="Zoom100Item" Header="100%" InputGesture="Ctrl+0" />
+                <MenuItem x:Name="Zoom125Item" Header="125%" />
+                <MenuItem x:Name="Zoom150Item" Header="150%" />
+                <MenuItem x:Name="Zoom200Item" Header="200%" />
+                <MenuItem x:Name="Zoom400Item" Header="400%" />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
-          <Button Classes="tool" ToolTip.Tip="Zoom in (Ctrl++)" Command="{Binding ZoomInCommand}">
+          <Button x:Name="ZoomInButton" Classes="tool" ToolTip.Tip="Zoom in (Ctrl++)">
             <Path Classes="icon nav" Data="{StaticResource IconZoomIn}" />
           </Button>
-          <Button Classes="tool" ToolTip.Tip="Ctrl+2" Command="{Binding FitWidthCommand}">
+        </WrapPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Annotate tools: shown only while annotating. Each tool has its name beside its icon. -->
+    <Border x:Name="AnnotateBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button x:Name="UndoButton" Classes="tool" ToolTip.Tip="Remove the last annotation added (Ctrl+Z)">
             <StackPanel Orientation="Horizontal">
-              <Path Classes="icon nav" Data="{StaticResource IconFitWidth}" />
-              <TextBlock Classes="label" Text="Fit Width" />
+              <Path Classes="icon edit" Data="{StaticResource IconUndo}" />
+              <TextBlock Classes="label" Text="Undo" />
             </StackPanel>
           </Button>
+          <Button x:Name="AnnotateDoneButton" Classes="tool" ToolTip.Tip="Put the annotation tools away">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+              <TextBlock Classes="label" Text="Done" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <ToggleButton x:Name="SelectTool" Classes="tool" ToolTip.Tip="Select text and pick annotations">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconCursor}" />
+              <TextBlock Classes="label" Text="Select" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="HighlightTool" Classes="tool" ToolTip.Tip="Select text to highlight it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconHighlight}" />
+              <TextBlock Classes="label" Text="Highlight" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="UnderlineTool" Classes="tool" ToolTip.Tip="Select text to underline it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconUnderline}" />
+              <TextBlock Classes="label" Text="Underline" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="StrikeOutTool" Classes="tool" ToolTip.Tip="Select text to strike it out">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconStrike}" />
+              <TextBlock Classes="label" Text="Strike" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="DrawTool" Classes="tool" ToolTip.Tip="Drag on the page to draw">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconDraw}" />
+              <TextBlock Classes="label" Text="Draw" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="NoteTool" Classes="tool" ToolTip.Tip="Click on the page to add a sticky note">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconNote}" />
+              <TextBlock Classes="label" Text="Note" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="TextTool" Classes="tool" ToolTip.Tip="Click on the page to write text">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconText}" />
+              <TextBlock Classes="label" Text="Text" />
+            </StackPanel>
+          </ToggleButton>
+          <Rectangle Classes="separator" />
+          <!-- Colours always carry their name, so colour is never the only cue. -->
+          <RadioButton x:Name="YellowChoice" Classes="swatch" GroupName="AnnotationColour">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Border Classes="swatch" Background="#F0DC96" />
+              <TextBlock Text="Yellow" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="GreenChoice" Classes="swatch" GroupName="AnnotationColour">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Border Classes="swatch" Background="#BCDCB0" />
+              <TextBlock Text="Green" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="BlueChoice" Classes="swatch" GroupName="AnnotationColour">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Border Classes="swatch" Background="#B4CCDC" />
+              <TextBlock Text="Blue" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="RedChoice" Classes="swatch" GroupName="AnnotationColour">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Border Classes="swatch" Background="#E8BCB4" />
+              <TextBlock Text="Red" VerticalAlignment="Center" />
+            </StackPanel>
+          </RadioButton>
         </StackPanel>
       </DockPanel>
     </Border>
 
-    <!-- Shown only when the user chose to be asked before reloading a changed file. -->
-    <Border DockPanel.Dock="Top" Classes="toolbar" IsVisible="{Binding HasPendingReload}">
+    <!-- Fill & Sign tools: form fields are filled by clicking them; signatures are drawn or typed, then placed. -->
+    <Border x:Name="FillSignBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <Button x:Name="FillSignDoneButton" DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Put the Fill &amp; Sign tools away">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+            <TextBlock Classes="label" Text="Done" />
+          </StackPanel>
+        </Button>
+        <StackPanel Orientation="Horizontal">
+          <Button x:Name="DrawSignatureButton" Classes="tool" ToolTip.Tip="Then drag on the page to sign">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconDraw}" />
+              <TextBlock Classes="label" Text="Draw Signature" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="TypeSignatureButton" Classes="tool" ToolTip.Tip="Type your name, then click on the page to sign">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconSignature}" />
+              <TextBlock Classes="label" Text="Type Signature" />
+            </StackPanel>
+          </Button>
+          <TextBlock x:Name="FillSignHint" Classes="secondary" VerticalAlignment="Center" Margin="12,0" Text="Click a form field to fill it in." />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- A message that waits until dismissed, for example a failed save. -->
+    <Border x:Name="NoticeBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="DismissNoticeButton" DockPanel.Dock="Right" Content="Dismiss" />
+        <TextBlock x:Name="NoticeText" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+
+    <!-- Shown when the user chose to be asked before reloading a changed file, or has unsaved edits. -->
+    <Border x:Name="ReloadBar" DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
-          <Button Content="Reload" Command="{Binding ReloadCommand}" />
-          <Button Content="Dismiss" Command="{Binding DismissReloadCommand}" />
+          <Button x:Name="ReloadButton" Content="Reload" />
+          <Button x:Name="DismissReloadButton" Content="Dismiss" />
         </StackPanel>
         <TextBlock VerticalAlignment="Center" Margin="6,0" Text="This file changed on disk." />
       </DockPanel>
     </Border>
 
     <!-- Find bar. -->
-    <Border DockPanel.Dock="Top" Classes="toolbar" IsVisible="{Binding Search.IsOpen}">
+    <Border x:Name="FindBar" DockPanel.Dock="Top" Classes="toolbar">
       <StackPanel Orientation="Horizontal" Spacing="2">
-        <TextBox x:Name="SearchBox" Width="280" MinHeight="28" Padding="8,3" VerticalAlignment="Center"
-                 PlaceholderText="Find in document" Text="{Binding Search.Query}">
-          <TextBox.KeyBindings>
-            <KeyBinding Gesture="Enter" Command="{Binding Search.NextCommand}" />
-            <KeyBinding Gesture="Shift+Enter" Command="{Binding Search.PreviousCommand}" />
-            <KeyBinding Gesture="Escape" Command="{Binding Search.CloseCommand}" />
-          </TextBox.KeyBindings>
-        </TextBox>
-        <ToggleButton Classes="tool" ToolTip.Tip="Match case" IsChecked="{Binding Search.MatchCase}">
+        <TextBox x:Name="SearchBox" Width="280" MinHeight="28" Padding="8,3" VerticalAlignment="Center" PlaceholderText="Find in document" />
+        <ToggleButton x:Name="MatchCaseToggle" Classes="tool" ToolTip.Tip="Match case">
           <Path Classes="icon" Data="{StaticResource IconCase}" />
         </ToggleButton>
-        <ToggleButton Classes="tool" ToolTip.Tip="Whole words" IsChecked="{Binding Search.WholeWord}">
+        <ToggleButton x:Name="WholeWordToggle" Classes="tool" ToolTip.Tip="Whole words">
           <Path Classes="icon" Data="{StaticResource IconWholeWord}" />
         </ToggleButton>
-        <Button Classes="tool" ToolTip.Tip="Previous result (Shift+F3)" Command="{Binding Search.PreviousCommand}">
+        <Button x:Name="PreviousResultButton" Classes="tool" ToolTip.Tip="Previous result (Shift+F3)">
           <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
         </Button>
-        <Button Classes="tool" ToolTip.Tip="Next result (F3)" Command="{Binding Search.NextCommand}">
+        <Button x:Name="NextResultButton" Classes="tool" ToolTip.Tip="Next result (F3)">
           <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
         </Button>
-        <TextBlock Classes="secondary" VerticalAlignment="Center" Margin="8,0" Text="{Binding Search.Status}" />
-        <Button Classes="tool" ToolTip.Tip="Close (Esc)" Command="{Binding Search.CloseCommand}">
+        <TextBlock x:Name="SearchStatusText" Classes="secondary" VerticalAlignment="Center" Margin="8,0" />
+        <Button x:Name="CloseFindButton" Classes="tool" ToolTip.Tip="Close (Esc)">
           <Path Classes="icon remove" Data="{StaticResource IconClose}" />
         </Button>
       </StackPanel>
@@ -150,92 +276,60 @@
 
     <Grid ColumnDefinitions="Auto,Auto,*">
       <!-- Sidebar. -->
-      <Border Grid.Column="0" Width="220" Classes="sidebar" IsVisible="{Binding SidebarVisible}">
+      <Border x:Name="Sidebar" Grid.Column="0" Width="220" Classes="sidebar">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center" Margin="4">
-            <ToggleButton Classes="tool" ToolTip.Tip="Thumbnails" IsChecked="{Binding IsThumbnailsMode}">
+            <ToggleButton x:Name="ThumbnailsToggle" Classes="tool" ToolTip.Tip="Thumbnails">
               <Path Classes="icon nav" Data="{StaticResource IconThumbnails}" />
             </ToggleButton>
-            <ToggleButton Classes="tool" ToolTip.Tip="Outline" IsChecked="{Binding IsOutlineMode}">
+            <ToggleButton x:Name="OutlineToggle" Classes="tool" ToolTip.Tip="Outline">
               <Path Classes="icon nav" Data="{StaticResource IconOutline}" />
             </ToggleButton>
-            <ToggleButton Classes="tool" ToolTip.Tip="Search results" IsChecked="{Binding IsSearchMode}">
+            <ToggleButton x:Name="SearchResultsToggle" Classes="tool" ToolTip.Tip="Search results">
               <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
+            </ToggleButton>
+            <ToggleButton x:Name="AnnotationsToggle" Classes="tool" ToolTip.Tip="Annotations">
+              <Path Classes="icon nav" Data="{StaticResource IconAnnotations}" />
             </ToggleButton>
           </StackPanel>
           <Panel>
-            <ListBox x:Name="ThumbnailList" Classes="thumbnails" Background="Transparent"
-                     IsVisible="{Binding IsThumbnailsMode}"
-                     ItemsSource="{Binding Thumbnails}" SelectedItem="{Binding SelectedThumbnail}">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:ThumbnailItemViewModel">
-                  <StackPanel Spacing="4">
-                    <controls:PageThumbnail Width="{Binding Width}" Height="{Binding Height}" PageIndex="{Binding PageIndex}"
-                                            Tab="{Binding $parent[views:DocumentView].((vm:DocumentTabViewModel)DataContext)}" />
-                    <TextBlock HorizontalAlignment="Center" Classes="secondary" Text="{Binding Label}" />
-                  </StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-            <Panel IsVisible="{Binding IsOutlineMode}">
-              <TreeView ItemsSource="{Binding Outline}" SelectedItem="{Binding SelectedOutlineItem}" Background="Transparent">
-                <TreeView.ItemTemplate>
-                  <TreeDataTemplate x:DataType="vm:OutlineItemViewModel" ItemsSource="{Binding Children}">
-                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
-                  </TreeDataTemplate>
-                </TreeView.ItemTemplate>
-                <TreeView.Styles>
-                  <Style Selector="TreeViewItem" x:DataType="vm:OutlineItemViewModel">
-                    <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
-                  </Style>
-                </TreeView.Styles>
-              </TreeView>
-              <TextBlock Classes="secondary" Margin="12" TextWrapping="Wrap" IsVisible="{Binding !HasOutline}"
-                         Text="This document has no outline." />
+            <ListBox x:Name="ThumbnailList" Classes="thumbnails" Background="Transparent" />
+            <Panel x:Name="OutlinePanel">
+              <TreeView x:Name="OutlineTree" Background="Transparent" />
+              <TextBlock x:Name="NoOutlineText" Classes="secondary" Margin="12" TextWrapping="Wrap" Text="This document has no outline." />
             </Panel>
-            <ListBox IsVisible="{Binding IsSearchMode}" Background="Transparent"
-                     ItemsSource="{Binding Search.Results}" SelectedItem="{Binding Search.SelectedResult}">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:SearchResultItemViewModel">
-                  <StackPanel Spacing="2">
-                    <TextBlock Classes="secondary" FontSize="11">
-                      <Run Text="Page " /><Run Text="{Binding PageNumber}" />
-                    </TextBlock>
-                    <TextBlock Text="{Binding Context}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
+            <Panel x:Name="AnnotationsPanel">
+              <ListBox x:Name="AnnotationList" Background="Transparent" />
+              <TextBlock x:Name="NoAnnotationsText" Classes="secondary" Margin="12" TextWrapping="Wrap"
+                         Text="No annotations yet. Choose Annotate, or right-click selected text." />
+            </Panel>
+            <ListBox x:Name="SearchResultList" Background="Transparent" />
           </Panel>
         </DockPanel>
       </Border>
-      <GridSplitter Grid.Column="1" Width="1" Background="{DynamicResource AppBorderBrush}" IsVisible="{Binding SidebarVisible}" />
+      <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="1" Background="{DynamicResource AppBorderBrush}" />
 
       <!-- Pages. -->
       <Panel Grid.Column="2">
         <ScrollViewer x:Name="Scroller" Background="{DynamicResource AppCanvasBackground}"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-          <controls:PageCanvas x:Name="Canvas" Tab="{Binding}" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}" SelectionBrush="{DynamicResource AppTextSelectionBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+          <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
+                               SelectionBrush="{DynamicResource AppTextSelectionBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
         </ScrollViewer>
 
-        <Border IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="{DynamicResource AppCanvasBackground}">
+        <Border x:Name="ErrorPanel" Background="{DynamicResource AppCanvasBackground}">
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="480">
             <Path Classes="icon" Width="48" Height="48" Stroke="{DynamicResource AppSecondaryForeground}" Data="{StaticResource IconDocument}" />
             <TextBlock FontSize="16" HorizontalAlignment="Center" Text="This document could not be opened" />
-            <TextBlock Classes="secondary" TextWrapping="Wrap" HorizontalAlignment="Center" Text="{Binding ErrorMessage}" />
+            <TextBlock x:Name="ErrorText" Classes="secondary" TextWrapping="Wrap" HorizontalAlignment="Center" />
           </StackPanel>
         </Border>
 
-        <Border IsVisible="{Binding NeedsPassword}" Background="{DynamicResource AppCanvasBackground}">
+        <Border x:Name="PasswordPanel" Background="{DynamicResource AppCanvasBackground}">
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Width="320">
             <TextBlock FontSize="16" HorizontalAlignment="Center" Text="This document is password protected" />
-            <TextBox x:Name="PasswordBox" PasswordChar="●" PlaceholderText="Password" Text="{Binding PasswordEntry}">
-              <TextBox.KeyBindings>
-                <KeyBinding Gesture="Enter" Command="{Binding SubmitPasswordCommand}" />
-              </TextBox.KeyBindings>
-            </TextBox>
-            <Button HorizontalAlignment="Right" Content="Unlock" Command="{Binding SubmitPasswordCommand}" />
+            <TextBox x:Name="PasswordBox" PasswordChar="●" PlaceholderText="Password" />
+            <Button x:Name="UnlockButton" HorizontalAlignment="Right" Content="Unlock" />
           </StackPanel>
         </Border>
       </Panel>

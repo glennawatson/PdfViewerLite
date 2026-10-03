@@ -9,7 +9,6 @@ using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
@@ -34,7 +33,7 @@ namespace PdfViewerLite.App.Controls;
 /// for regions that scrolled away is dropped by the scheduler before it reaches PDFium.
 /// </summary>
 [DebuggerDisplay("{Tab}")]
-public sealed class PageCanvas : Control
+public sealed partial class PageCanvas : Control
 {
     /// <summary>Defines the <see cref="Tab"/> property.</summary>
     public static readonly StyledProperty<DocumentTabViewModel?> TabProperty = AvaloniaProperty.Register<PageCanvas, DocumentTabViewModel?>(nameof(Tab));
@@ -230,6 +229,8 @@ public sealed class PageCanvas : Control
                 DrawPage(context, frame, page);
             }
         }
+
+        DrawAnnotationOverlay(context, tab);
     }
 
     /// <inheritdoc/>
@@ -301,6 +302,13 @@ public sealed class PageCanvas : Control
         ArgumentNullException.ThrowIfNull(e);
         base.OnPointerPressed(e);
         var point = e.GetCurrentPoint(this);
+        if (point.Properties.IsRightButtonPressed)
+        {
+            ShowContextMenu(point.Position);
+            e.Handled = true;
+            return;
+        }
+
         if (!point.Properties.IsLeftButtonPressed)
         {
             return;
@@ -308,6 +316,11 @@ public sealed class PageCanvas : Control
 
         _ = Focus();
         _pressPoint = point.Position;
+        if (BeginAnnotationPress(point.Position, e))
+        {
+            return;
+        }
+
         _pressedLink = HitTestLink(point.Position, out _);
         ClearSelection();
         if (_pressedLink is not null || !TryHitTestCharacter(point.Position, out var page, out var character))
@@ -327,6 +340,11 @@ public sealed class PageCanvas : Control
         ArgumentNullException.ThrowIfNull(e);
         base.OnPointerMoved(e);
         var position = e.GetPosition(this);
+        if (ContinueStroke(position))
+        {
+            return;
+        }
+
         if (_selecting)
         {
             if (TryHitTestCharacter(position, out var page, out var character))
@@ -353,8 +371,18 @@ public sealed class PageCanvas : Control
     {
         ArgumentNullException.ThrowIfNull(e);
         base.OnPointerReleased(e);
-        _selecting = false;
         e.Pointer.Capture(null);
+        if (EndAnnotationPress(e.GetPosition(this)))
+        {
+            return;
+        }
+
+        if (_selecting)
+        {
+            _selecting = false;
+            ApplyMarkupTool();
+        }
+
         var link = _pressedLink;
         _pressedLink = null;
         var travel = e.GetPosition(this) - _pressPoint;
@@ -370,19 +398,15 @@ public sealed class PageCanvas : Control
         ArgumentNullException.ThrowIfNull(e);
         if (e.Key == Key.C && (e.KeyModifiers & KeyModifiers.Control) != 0)
         {
-            var text = GetSelectedText();
-            if (text.Length > 0 && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
-            {
-                _ = clipboard.SetTextAsync(text);
-            }
-
+            CopySelection();
             e.Handled = true;
             return;
         }
 
-        if (e.Key == Key.Escape)
+        if (HandleAnnotationKey(e.Key))
         {
-            ClearSelection();
+            e.Handled = true;
+            return;
         }
 
         base.OnKeyDown(e);
@@ -672,6 +696,8 @@ public sealed class PageCanvas : Control
             tab.DocumentChanges.SubscribeSafe(_ => OnDocumentChanged(), OnError),
             tab.Search.HighlightChanges.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.PageEdits.SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.Annotations.WhenAnyValue(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
         tab.EnsureLoaded();
         var position = tab.Position;

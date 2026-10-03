@@ -1,8 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:PdfViewerLite.App.ViewModels"
         x:Class="PdfViewerLite.App.Views.PreferencesWindow"
-        x:DataType="vm:PreferencesViewModel"
         Title="Preferences"
         Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppWindowBackground}">
@@ -12,27 +10,20 @@
                Text="Changes apply straight away and are kept for next time." />
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Colour scheme" />
-      <ComboBox x:Name="SchemeBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch"
-                ItemsSource="{x:Static vm:PreferencesViewModel.ColorSchemeOptions}" SelectedIndex="{Binding ColorScheme}" />
+      <ComboBox x:Name="SchemeBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Page colour" />
-      <ComboBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch"
-                ItemsSource="{x:Static vm:PreferencesViewModel.PageToneOptions}" SelectedIndex="{Binding PageTone}" />
+      <ComboBox x:Name="PageToneBox" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Tool bar" />
-      <ComboBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch"
-                ItemsSource="{x:Static vm:PreferencesViewModel.ToolbarOptions}" SelectedIndex="{Binding Toolbar}" />
+      <ComboBox x:Name="ToolbarBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="When a file changes on disk" />
-      <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch"
-                ItemsSource="{x:Static vm:PreferencesViewModel.FileChangeOptions}" SelectedIndex="{Binding FileChange}" />
+      <ComboBox x:Name="FileChangeBox" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Motion" />
-      <ComboBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch"
-                ItemsSource="{x:Static vm:PreferencesViewModel.MotionOptions}" SelectedIndex="{Binding Motion}" />
+      <ComboBox x:Name="MotionBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Text cursor" />
-      <ComboBox Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch"
-                ItemsSource="{x:Static vm:PreferencesViewModel.CaretOptions}" SelectedIndex="{Binding Caret}" />
+      <ComboBox x:Name="CaretBox" Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Interface text size" />
-      <ComboBox Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch"
-                ItemsSource="{x:Static vm:PreferencesViewModel.FontSizeOptions}" SelectedIndex="{Binding FontSize}" />
+      <ComboBox x:Name="FontSizeBox" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch" />
     </Grid>
-    <Button HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" Click="OnCloseClick" />
+    <Button x:Name="CloseButton" HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" />
   </StackPanel>
 </Window>

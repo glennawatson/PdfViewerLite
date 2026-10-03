@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Geometry;
 
 namespace PdfViewerLite.Core.Documents;
@@ -48,6 +49,9 @@ public sealed class DocumentSource
 
     /// <summary>Gets a value indicating whether the native document is open.</summary>
     public bool IsOpen => _document is { IsDisposed: false };
+
+    /// <summary>Gets a value indicating whether the open document has edits that are not saved; such documents are never closed to save memory.</summary>
+    public bool HasUnsavedChanges => _document is IAnnotationEditor { HasUnsavedChanges: true } && IsOpen;
 
     /// <summary>Gets the page sizes, or an empty array before the first open.</summary>
     public PageSize[] PageSizes { get; private set; } = [];

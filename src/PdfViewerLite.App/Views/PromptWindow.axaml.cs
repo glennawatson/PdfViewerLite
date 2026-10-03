@@ -12,29 +12,35 @@ using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
-/// <summary>Asks before a destructive action; closes with <see langword="true"/> only when the user goes ahead.</summary>
+/// <summary>Asks for some text, for example a note; closes with the text, or <see langword="null"/> when cancelled.</summary>
 [DebuggerDisplay("{Title}")]
-public sealed partial class ConfirmWindow : Window, IViewFor<ConfirmRequest>
+public sealed partial class PromptWindow : Window, IViewFor<TextPrompt>
 {
     /// <summary>Defines the <see cref="ViewModel"/> property.</summary>
-    public static readonly StyledProperty<ConfirmRequest?> ViewModelProperty = AvaloniaProperty.Register<ConfirmWindow, ConfirmRequest?>(nameof(ViewModel));
+    public static readonly StyledProperty<TextPrompt?> ViewModelProperty = AvaloniaProperty.Register<PromptWindow, TextPrompt?>(nameof(ViewModel));
+
+    /// <summary>The height of a multi-line text box.</summary>
+    private const double MultilineHeight = 96;
+
+    /// <summary>The height of a single line text box.</summary>
+    private const double SingleLineHeight = 32;
 
     /// <summary>The button subscriptions.</summary>
     private readonly MultipleDisposable _buttons;
 
-    /// <summary>Initializes a new instance of the <see cref="ConfirmWindow"/> class.</summary>
-    public ConfirmWindow()
+    /// <summary>Initializes a new instance of the <see cref="PromptWindow"/> class.</summary>
+    public PromptWindow()
     {
         InitializeComponent();
         _buttons =
         [
-            ConfirmButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(true), static error => Trace.TraceError(error.ToString())),
-            CancelButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(false), static error => Trace.TraceError(error.ToString())),
+            ConfirmButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(InputBox.Text ?? string.Empty), static error => Trace.TraceError(error.ToString())),
+            CancelButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(null), static error => Trace.TraceError(error.ToString())),
         ];
     }
 
     /// <inheritdoc/>
-    public ConfirmRequest? ViewModel
+    public TextPrompt? ViewModel
     {
         get => GetValue(ViewModelProperty);
         set => SetValue(ViewModelProperty, value);
@@ -44,7 +50,7 @@ public sealed partial class ConfirmWindow : Window, IViewFor<ConfirmRequest>
     object? IViewFor.ViewModel
     {
         get => ViewModel;
-        set => ViewModel = value as ConfirmRequest;
+        set => ViewModel = value as TextPrompt;
     }
 
     /// <inheritdoc/>
@@ -59,16 +65,21 @@ public sealed partial class ConfirmWindow : Window, IViewFor<ConfirmRequest>
 
         // The request is immutable, so it is shown once rather than bound.
         Title = request.Title;
-        TitleText.Text = request.Title;
-        MessageText.Text = request.Message;
-        ConfirmButton.Content = request.ConfirmText;
+        LabelText.Text = request.Label;
+        InputBox.Text = request.Text;
+        InputBox.AcceptsReturn = request.Multiline;
+        InputBox.TextWrapping = request.Multiline ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap;
+        InputBox.MinHeight = request.Multiline ? MultilineHeight : SingleLineHeight;
+        ConfirmButton.Content = request.AcceptText;
+        ConfirmButton.IsDefault = !request.Multiline;
     }
 
     /// <inheritdoc/>
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        _ = CancelButton.Focus();
+        _ = InputBox.Focus();
+        InputBox.SelectAll();
     }
 
     /// <inheritdoc/>

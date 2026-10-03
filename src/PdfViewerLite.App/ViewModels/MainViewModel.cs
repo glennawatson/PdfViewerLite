@@ -49,7 +49,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
         OpenCommand = ReactiveCommand.CreateFromTask(OpenWithDialogAsync);
-        CloseTabCommand = ReactiveCommand.Create<DocumentTabViewModel?>(tab => CloseTab(tab ?? SelectedTab));
+        CloseTabCommand = ReactiveCommand.CreateFromTask<DocumentTabViewModel?>(tab => CloseTabAsync(tab ?? SelectedTab));
         CloseOtherTabsCommand = ReactiveCommand.CreateFromTask<DocumentTabViewModel?>(tab => CloseOtherTabsAsync(tab ?? SelectedTab));
         CloseAllTabsCommand = ReactiveCommand.CreateFromTask(CloseAllTabsAsync);
         DismissStatusCommand = ReactiveCommand.Create(() => StatusMessage = null);
@@ -116,6 +116,23 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Gets a value indicating whether any tab has unsaved annotations or form entries.</summary>
+    public bool HasUnsavedTabs
+    {
+        get
+        {
+            foreach (var tab in Tabs)
+            {
+                if (tab.HasUnsavedChanges)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 
     /// <summary>Gets the window title.</summary>
@@ -304,9 +321,9 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         SelectedTab = selected;
     }
 
-    /// <summary>Closes a tab.</summary>
+    /// <summary>Closes a tab straight away, even with unsaved edits; the tab can be reopened.</summary>
     /// <param name="tab">The tab.</param>
-    public void CloseTab(DocumentTabViewModel? tab)
+    public void CloseTabWithoutAsking(DocumentTabViewModel? tab)
     {
         if (tab is null)
         {
@@ -340,6 +357,53 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         {
             FoundTabs.Add(Tabs[matches[i]]);
         }
+    }
+
+    /// <summary>Asks whether to discard unsaved edits in every tab; true when there are none.</summary>
+    /// <returns><see langword="true"/> to go ahead.</returns>
+    public async Task<bool> ConfirmDiscardAsync()
+    {
+        var unsaved = 0;
+        foreach (var tab in Tabs)
+        {
+            unsaved += tab.HasUnsavedChanges ? 1 : 0;
+        }
+
+        if (unsaved == 0)
+        {
+            return true;
+        }
+
+        var request = new ConfirmRequest(
+            unsaved == 1 ? "Close without saving?" : $"Close {unsaved} documents without saving?",
+            "Annotations and form entries you have not saved will be lost. Choose Cancel, then Save (Ctrl+S) to keep them.",
+            "Close Without Saving");
+        return await ConfirmInteraction.Handle(request).ToTask().ConfigureAwait(true);
+    }
+
+    /// <summary>Closes a tab, asking first when it has unsaved edits.</summary>
+    /// <param name="tab">The tab.</param>
+    /// <returns>A task.</returns>
+    public async Task CloseTabAsync(DocumentTabViewModel? tab)
+    {
+        if (tab is null)
+        {
+            return;
+        }
+
+        if (tab.HasUnsavedChanges)
+        {
+            var request = new ConfirmRequest(
+                $"Close {tab.FileName} without saving?",
+                "Annotations and form entries you have not saved will be lost. Choose Cancel, then Save (Ctrl+S) to keep them.",
+                "Close Without Saving");
+            if (!await ConfirmInteraction.Handle(request).ToTask().ConfigureAwait(true))
+            {
+                return;
+            }
+        }
+
+        CloseTabWithoutAsking(tab);
     }
 
     /// <summary>Reloads the recent documents list.</summary>
@@ -499,7 +563,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     {
         if (count < ConfirmCloseThreshold)
         {
-            return true;
+            return count == 0 || await ConfirmDiscardAsync().ConfigureAwait(true);
         }
 
         var request = new ConfirmRequest($"Close {count} tabs?", "You can reopen them together with Reopen Closed Tabs (Ctrl+Shift+T).", "Close Tabs");

@@ -27,7 +27,13 @@ benchmarks target `net10.0`.
   Rules that come up often: XML docs on every member, `[DebuggerDisplay]` on public types, named constants instead
   of magic numbers, explicit enum values, no optional parameters, `[MethodImpl(AggressiveInlining)]` on trivial
   expression-bodied members, C# 14 extension blocks instead of classic extension methods, `in` for large structs.
-- Everything shipped must be trim and AOT safe: no reflection, source-generated JSON, compiled XAML bindings,
+- Views bind in code with ReactiveUI.Binding's source-generated `OneWayBind`, `Bind`, `BindCommand`, `BindInteraction`,
+  `InvokeCommand`, `BindTo` and `WhenAnyValue`. XAML is layout and styling only: no `{Binding}`, no `Click=` handlers.
+  Views implement `IViewFor<T>` with a `ViewModel` styled property synced from `DataContext`, create bindings in
+  `OnLoaded` (not on attach, which can run mid-measure) and dispose them in `OnUnloaded`. Item templates are
+  `FuncDataTemplate`s creating small item views. ReactiveUI.Avalonia's `ReactiveUserControl`/`ReactiveWindow`
+  constructors and `WhenActivated` are `[RequiresUnreferencedCode]` in 12.1.5, so they are not used yet.
+- Everything shipped must be trim and AOT safe: no reflection, source-generated JSON, generated bindings,
   `RestService.ForGenerated` for Refit, and no `ReactiveWindow`/`WhenActivated` (they require unreferenced code).
 - No raw .NET events. Expose notifications as `IObservable<T>` built on ReactiveUI.Primitives (`Signal<T>`,
   `BehaviorSignal<T>`, `Signal.Defer`/`Using`), consume them with Primitives operators and `SubscribeSafe`, and keep

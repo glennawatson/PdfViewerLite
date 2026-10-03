@@ -109,6 +109,26 @@ public sealed class TileCache : IDisposable
         }
     }
 
+    /// <summary>Removes every tile of one page, for example after it was annotated.</summary>
+    /// <param name="documentId">The document identifier.</param>
+    /// <param name="pageIndex">The page index.</param>
+    public void RemovePage(int documentId, int pageIndex)
+    {
+        var node = _recency.First;
+        while (node is not null)
+        {
+            var next = node.Next;
+            var key = node.Value.Key;
+            if (key.DocumentId == documentId && key.PageIndex == pageIndex)
+            {
+                _ = _entries.Remove(key);
+                Release(node);
+            }
+
+            node = next;
+        }
+    }
+
     /// <summary>Removes every tile.</summary>
     public void Clear()
     {

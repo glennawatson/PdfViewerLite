@@ -107,7 +107,7 @@ public sealed class DocumentPool : IDisposable
         return document;
     }
 
-    /// <summary>Closes documents beyond capacity, never the one just used.</summary>
+    /// <summary>Closes documents beyond capacity, never the one just used nor one with unsaved edits.</summary>
     /// <param name="keep">The source to keep open.</param>
     private void Trim(DocumentSource keep)
     {
@@ -116,7 +116,7 @@ public sealed class DocumentPool : IDisposable
             DocumentSource? oldest = null;
             foreach (var source in _sources)
             {
-                if (source != keep && source.IsOpen && (oldest is null || source.LastUsed < oldest.LastUsed))
+                if (source != keep && source.IsOpen && !source.HasUnsavedChanges && (oldest is null || source.LastUsed < oldest.LastUsed))
                 {
                     oldest = source;
                 }

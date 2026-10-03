@@ -36,6 +36,9 @@ public sealed class AppSettings
     /// <summary>Gets or sets the interface font size in points, or <see langword="null"/> to follow the desktop.</summary>
     public double? InterfaceFontSizePoints { get; set; }
 
+    /// <summary>Gets or sets the name used for typed signatures.</summary>
+    public string SignatureName { get; set; } = string.Empty;
+
     /// <summary>Gets or sets a value indicating whether the sidebar is shown.</summary>
     public bool ShowSidebar { get; set; } = true;
 

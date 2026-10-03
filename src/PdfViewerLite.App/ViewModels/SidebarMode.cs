@@ -15,4 +15,7 @@ public enum SidebarMode
 
     /// <summary>Search results.</summary>
     Search = 2,
+
+    /// <summary>The document's annotations.</summary>
+    Annotations = 3,
 }

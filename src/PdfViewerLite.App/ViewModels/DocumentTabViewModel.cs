@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Rendering;
 using PdfViewerLite.App.Services;
+using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Layout;
@@ -26,6 +27,9 @@ namespace PdfViewerLite.App.ViewModels;
 [DebuggerDisplay("{FileName}")]
 public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 {
+    /// <summary>How long after saving a file change notice is taken to be our own save.</summary>
+    private const long SelfSaveWindowMilliseconds = 2000;
+
     /// <summary>The width of tab hover previews, in device independent pixels.</summary>
     private const double PreviewSize = 180;
 
@@ -46,6 +50,12 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Emits when the document must be laid out again.</summary>
     private readonly Signal<RxVoid> _documentChanges = new();
+
+    /// <summary>Emits the index of each page whose content was edited.</summary>
+    private readonly Signal<int> _pageEdits = new();
+
+    /// <summary>When the file was last saved from this tab, so the change notice that follows is not taken for an outside edit.</summary>
+    private long _savedAt;
 
     /// <summary>Watches the file for changes once loaded.</summary>
     private IDisposable? _fileWatch;
@@ -87,6 +97,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         SubmitPasswordCommand = ReactiveCommand.Create(SubmitPassword);
         ReloadCommand = ReactiveCommand.Create(Reload);
         DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
+        SaveCommand = ReactiveCommand.Create(() => Save(FilePath));
+        DismissNoticeCommand = ReactiveCommand.Create(() => { Notice = null; });
+        SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync);
     }
 
     /// <summary>Gets the width of the hover preview of a tab.</summary>
@@ -268,6 +281,11 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             this.RaisePropertyChanged(nameof(IsThumbnailsMode));
             this.RaisePropertyChanged(nameof(IsOutlineMode));
             this.RaisePropertyChanged(nameof(IsSearchMode));
+            this.RaisePropertyChanged(nameof(IsAnnotationsMode));
+            if (value == SidebarMode.Annotations)
+            {
+                Annotations.RefreshItems();
+            }
         }
     }
 
@@ -291,6 +309,29 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         get => SidebarMode == SidebarMode.Search;
         set => SetSidebarMode(value, SidebarMode.Search);
     }
+
+    /// <summary>Gets or sets a value indicating whether the annotations panel is shown.</summary>
+    public bool IsAnnotationsMode
+    {
+        get => SidebarMode == SidebarMode.Annotations;
+        set => SetSidebarMode(value, SidebarMode.Annotations);
+    }
+
+    /// <summary>Gets the annotation state.</summary>
+    public AnnotationsViewModel Annotations => field ??= new(this);
+
+    /// <summary>Gets the Fill &amp; Sign state.</summary>
+    public FillAndSignViewModel FillAndSign => field ??= new(this, _services);
+
+    /// <summary>Gets a value indicating whether the document has annotations or form entries that are not saved.</summary>
+    public bool HasUnsavedChanges
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Gets the pages whose content changed, for example after annotating, so views redraw them.</summary>
+    public IObservable<int> PageEdits => _pageEdits;
 
     /// <summary>Gets the outline.</summary>
     public IReadOnlyList<OutlineItemViewModel> Outline
@@ -396,6 +437,25 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the reload command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ReloadCommand { get; }
+
+    /// <summary>Gets a message about the document that waits until dismissed, for example a failed save.</summary>
+    public string? Notice
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Gets the command dismissing <see cref="Notice"/>.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> DismissNoticeCommand { get; }
+
+    /// <summary>Gets the command saving annotations and form entries into the file.</summary>
+    public ReactiveCommand<RxVoid, bool> SaveCommand { get; }
+
+    /// <summary>Gets the command saving a copy under a new name.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> SaveAsCommand { get; }
+
+    /// <summary>Gets the interaction asking where to save a copy.</summary>
+    public Interaction<string, string?> SaveAsInteraction { get; } = new();
 
     /// <summary>Gets the command dismissing the "file changed" bar without reloading.</summary>
     public ReactiveCommand<RxVoid, bool> DismissReloadCommand { get; }
@@ -570,6 +630,60 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         this.RaisePropertyChanged(nameof(PreviewPageIndex));
     }
 
+    /// <summary>Drops an edited page's tiles so it redraws, and tells views about it.</summary>
+    /// <param name="pageIndex">The page.</param>
+    public void OnPageEdited(int pageIndex)
+    {
+        RenderHub.Cache.RemovePage(Source.Id, pageIndex);
+        HasUnsavedChanges = Source.HasUnsavedChanges;
+        _pageEdits.OnNext(pageIndex);
+    }
+
+    /// <summary>
+    /// Saves the document. The new file is written next to the old one and then moved over it, so a failure never
+    /// leaves a half written file behind.
+    /// </summary>
+    /// <param name="path">Where to save.</param>
+    /// <returns><see langword="true"/> when saved.</returns>
+    public bool Save(string path)
+    {
+        if (TryGetDocument() is not IAnnotationEditor editor)
+        {
+            return false;
+        }
+
+        var temporary = $"{path}.saving";
+        try
+        {
+            bool saved;
+            using (var stream = File.Create(temporary))
+            {
+                saved = editor.Save(stream);
+            }
+
+            if (!saved)
+            {
+                File.Delete(temporary);
+                return false;
+            }
+
+            _ = Interlocked.Exchange(ref _savedAt, Environment.TickCount64);
+            File.Move(temporary, path, true);
+            HasUnsavedChanges = Source.HasUnsavedChanges;
+            return true;
+        }
+        catch (IOException ex)
+        {
+            Notice = $"Could not save: {ex.Message}";
+            return false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Notice = $"Could not save: {ex.Message}";
+            return false;
+        }
+    }
+
     /// <summary>Closes the native document while the tab is in the background; it reopens on demand.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Unload() => RenderHub.Cache.RemoveDocument(Source.Id);
@@ -582,6 +696,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         _navigationRequests.Dispose();
         _uriRequests.Dispose();
         _documentChanges.Dispose();
+        _pageEdits.Dispose();
         RenderHub.Cache.RemoveDocument(Source.Id);
         _ = CanvasClient.Advance();
         _ = ThumbnailClient.Advance();
@@ -621,16 +736,32 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             .ObserveOn(RxSchedulers.MainThreadScheduler)
             .SubscribeSafe(_ => OnFileChanged(), static ex => Trace.TraceError(ex.ToString()));
 
-    /// <summary>Reloads a changed file, or offers to, depending on the user's choice.</summary>
+    /// <summary>Reloads a changed file, or offers to, depending on the user's choice. Unsaved edits are never discarded silently.</summary>
     private void OnFileChanged()
     {
-        if (_services.Settings.FileChangeAction == FileChangeAction.AskToReload)
+        if (Environment.TickCount64 - Interlocked.Read(ref _savedAt) < SelfSaveWindowMilliseconds)
+        {
+            return;
+        }
+
+        if (_services.Settings.FileChangeAction == FileChangeAction.AskToReload || Source.HasUnsavedChanges)
         {
             HasPendingReload = true;
             return;
         }
 
         Reload();
+    }
+
+    /// <summary>Asks where to save a copy and saves it there.</summary>
+    /// <returns>A task.</returns>
+    private async Task SaveAsAsync()
+    {
+        var path = await SaveAsInteraction.Handle(FileName).ToTask().ConfigureAwait(true);
+        if (!string.IsNullOrEmpty(path))
+        {
+            _ = Save(path);
+        }
     }
 
     /// <summary>Goes back in history.</summary>

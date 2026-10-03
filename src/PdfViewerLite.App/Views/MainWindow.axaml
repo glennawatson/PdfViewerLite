@@ -1,51 +1,16 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:PdfViewerLite.App.ViewModels"
         xmlns:views="using:PdfViewerLite.App.Views"
-        xmlns:controls="using:PdfViewerLite.App.Controls"
         x:Class="PdfViewerLite.App.Views.MainWindow"
-        x:DataType="vm:MainViewModel"
-        Title="{Binding WindowTitle}" Width="1200" Height="850" MinWidth="480" MinHeight="320"
+        Title="PdfViewerLite" Width="1200" Height="850" MinWidth="480" MinHeight="320"
         Background="{DynamicResource AppWindowBackground}"
         DragDrop.AllowDrop="True">
-  <Window.KeyBindings>
-    <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
-    <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseTabCommand}" />
-    <KeyBinding Gesture="Ctrl+F4" Command="{Binding CloseTabCommand}" />
-    <KeyBinding Gesture="Ctrl+PageDown" Command="{Binding NextTabCommand}" />
-    <KeyBinding Gesture="Ctrl+PageUp" Command="{Binding PreviousTabCommand}" />
-    <KeyBinding Gesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
-    <KeyBinding Gesture="Ctrl+Shift+A" Command="{Binding ShowTabFinderCommand}" />
-    <KeyBinding Gesture="Ctrl+I" Command="{Binding TogglePageToneCommand}" />
-    <KeyBinding Gesture="Ctrl+OemComma" Command="{Binding PreferencesCommand}" />
-    <KeyBinding Gesture="Alt+Enter" Command="{Binding PropertiesCommand}" />
-    <KeyBinding Gesture="Ctrl+F" Command="{Binding SelectedTab.FindCommand}" />
-    <KeyBinding Gesture="F3" Command="{Binding SelectedTab.Search.NextCommand}" />
-    <KeyBinding Gesture="Shift+F3" Command="{Binding SelectedTab.Search.PreviousCommand}" />
-    <KeyBinding Gesture="Ctrl+G" Command="{Binding SelectedTab.Search.NextCommand}" />
-    <KeyBinding Gesture="Ctrl+Shift+G" Command="{Binding SelectedTab.Search.PreviousCommand}" />
-    <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding SelectedTab.ZoomInCommand}" />
-    <KeyBinding Gesture="Ctrl+Add" Command="{Binding SelectedTab.ZoomInCommand}" />
-    <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding SelectedTab.ZoomOutCommand}" />
-    <KeyBinding Gesture="Ctrl+Subtract" Command="{Binding SelectedTab.ZoomOutCommand}" />
-    <KeyBinding Gesture="Ctrl+D0" Command="{Binding SelectedTab.ZoomResetCommand}" />
-    <KeyBinding Gesture="Ctrl+D1" Command="{Binding SelectedTab.FitPageCommand}" />
-    <KeyBinding Gesture="Ctrl+D2" Command="{Binding SelectedTab.FitWidthCommand}" />
-    <KeyBinding Gesture="Ctrl+Left" Command="{Binding SelectedTab.RotateLeftCommand}" />
-    <KeyBinding Gesture="Ctrl+Right" Command="{Binding SelectedTab.RotateRightCommand}" />
-    <KeyBinding Gesture="Alt+Left" Command="{Binding SelectedTab.GoBackCommand}" />
-    <KeyBinding Gesture="Alt+Right" Command="{Binding SelectedTab.GoForwardCommand}" />
-    <KeyBinding Gesture="Ctrl+Home" Command="{Binding SelectedTab.FirstPageCommand}" />
-    <KeyBinding Gesture="Ctrl+End" Command="{Binding SelectedTab.LastPageCommand}" />
-    <KeyBinding Gesture="F9" Command="{Binding SelectedTab.ToggleSidebarCommand}" />
-    <KeyBinding Gesture="F5" Command="{Binding SelectedTab.ReloadCommand}" />
-  </Window.KeyBindings>
-
+  <!-- Layout only: bindings, commands and shortcuts are set up in code with ReactiveUI.Binding (MainWindow.axaml.cs). -->
   <DockPanel>
     <!-- Tab strip. -->
     <Border DockPanel.Dock="Top" Classes="tabbar">
       <Grid ColumnDefinitions="*,Auto,Auto,Auto">
-        <ListBox x:Name="TabStrip" Classes="tabstrip" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
+        <ListBox x:Name="TabStrip" Classes="tabstrip"
                  ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled">
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate>
@@ -53,68 +18,22 @@
               <VirtualizingStackPanel Orientation="Horizontal" />
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:DocumentTabViewModel">
-              <DockPanel Background="Transparent" ToolTip.ShowDelay="600" ToolTip.Placement="Bottom">
-                <!-- Hover preview: the page the tab is on, its name and where it lives. It appears only on hover and does not animate. -->
-                <ToolTip.Tip>
-                  <StackPanel Width="{x:Static vm:DocumentTabViewModel.PreviewWidth}" Spacing="6" Margin="2">
-                    <controls:PageThumbnail Tab="{Binding}" PageIndex="{Binding PreviewPageIndex}" Height="{Binding PreviewHeight}"
-                                            IsVisible="{Binding PreviewHeight}" />
-                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Classes="secondary" Text="{Binding PreviewCaption}" />
-                    <TextBlock Classes="secondary" Text="{Binding FilePath}" TextWrapping="Wrap" FontSize="11" />
-                  </StackPanel>
-                </ToolTip.Tip>
-                <DockPanel.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="_Close" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding}" />
-                    <MenuItem Header="Close _Other Tabs" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseOtherTabsCommand}" CommandParameter="{Binding}" />
-                    <MenuItem Header="Close _All Tabs" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseAllTabsCommand}" />
-                    <Separator />
-                    <MenuItem Header="Re_load" Command="{Binding ReloadCommand}" />
-                  </ContextMenu>
-                </DockPanel.ContextMenu>
-                <Button DockPanel.Dock="Right" Classes="tabclose" ToolTip.Tip="Close (Ctrl+W)"
-                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding}">
-                  <Path Classes="icon remove" Data="{StaticResource IconClose}" />
-                </Button>
-                <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-              </DockPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
         </ListBox>
-        <Button x:Name="TabFinderButton" Grid.Column="1" Classes="tool" ToolTip.Tip="Find an open tab (Ctrl+Shift+A)" IsVisible="{Binding HasTabs}">
+        <Button x:Name="TabFinderButton" Grid.Column="1" Classes="tool" ToolTip.Tip="Find an open tab (Ctrl+Shift+A)">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
-            <TextBlock Classes="label">
-              <Run Text="Tabs" /><Run Text=" " /><Run Text="{Binding Tabs.Count}" />
-            </TextBlock>
+            <TextBlock x:Name="TabCountText" Classes="label" />
           </StackPanel>
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
               <DockPanel Width="380" Height="420">
-                <TextBox x:Name="TabFinderBox" DockPanel.Dock="Top" Margin="0,0,0,6" PlaceholderText="Type part of a name, title or folder"
-                         Text="{Binding TabQuery}">
-                  <TextBox.KeyBindings>
-                    <KeyBinding Gesture="Enter" Command="{Binding GoToTabCommand}" CommandParameter="{Binding FoundTabs[0]}" />
-                  </TextBox.KeyBindings>
-                </TextBox>
-                <ListBox x:Name="TabFinderList" ItemsSource="{Binding FoundTabs}" Background="Transparent">
-                  <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:DocumentTabViewModel">
-                      <StackPanel Spacing="1">
-                        <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Classes="secondary" FontSize="11" Text="{Binding Folder}" TextTrimming="CharacterEllipsis" />
-                      </StackPanel>
-                    </DataTemplate>
-                  </ListBox.ItemTemplate>
-                </ListBox>
+                <TextBox x:Name="TabFinderBox" DockPanel.Dock="Top" Margin="0,0,0,6" PlaceholderText="Type part of a name, title or folder" />
+                <ListBox x:Name="TabFinderList" Background="Transparent" />
               </DockPanel>
             </Flyout>
           </Button.Flyout>
         </Button>
-        <Button Grid.Column="2" Classes="tool" ToolTip.Tip="Ctrl+O" Command="{Binding OpenCommand}">
+        <Button x:Name="OpenButton" Grid.Column="2" Classes="tool" ToolTip.Tip="Ctrl+O">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon add" Data="{StaticResource IconAdd}" />
             <TextBlock Classes="label" Text="Open" />
@@ -127,36 +46,29 @@
           </StackPanel>
           <Button.Flyout>
             <MenuFlyout Placement="BottomEdgeAlignedRight">
-              <MenuItem Header="_Open…" InputGesture="Ctrl+O" Command="{Binding OpenCommand}" />
-              <MenuItem Header="_Reopen Closed Tabs" InputGesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
+              <MenuItem x:Name="OpenMenuItem" Header="_Open…" InputGesture="Ctrl+O" />
+              <MenuItem x:Name="ReopenMenuItem" Header="_Reopen Closed Tabs" InputGesture="Ctrl+Shift+T" />
               <Separator />
-              <MenuItem Header="_Comfort Page Colour" InputGesture="Ctrl+I" ToggleType="CheckBox" IsChecked="{Binding PageToneEnabled, Mode=OneWay}" Command="{Binding TogglePageToneCommand}" />
-              <MenuItem Header="_Preferences…" InputGesture="Ctrl+OemComma" Command="{Binding PreferencesCommand}" />
+              <MenuItem x:Name="PageToneMenuItem" Header="_Comfort Page Colour" InputGesture="Ctrl+I" ToggleType="CheckBox" />
+              <MenuItem x:Name="PreferencesMenuItem" Header="_Preferences…" InputGesture="Ctrl+OemComma" />
               <Separator />
-              <MenuItem Header="Close _All Tabs" Command="{Binding CloseAllTabsCommand}" />
+              <MenuItem x:Name="CloseAllMenuItem" Header="Close _All Tabs" />
             </MenuFlyout>
           </Button.Flyout>
         </Button>
       </Grid>
     </Border>
 
-    <Border DockPanel.Dock="Bottom" Classes="toolbar" BorderThickness="0,1,0,0"
-            IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+    <Border x:Name="StatusBar" DockPanel.Dock="Bottom" Classes="toolbar" BorderThickness="0,1,0,0">
       <DockPanel>
-        <Button DockPanel.Dock="Right" Content="Dismiss" Command="{Binding DismissStatusCommand}" />
-        <TextBlock Margin="6,2" VerticalAlignment="Center" Text="{Binding StatusMessage}" />
+        <Button x:Name="DismissStatusButton" DockPanel.Dock="Right" Content="Dismiss" />
+        <TextBlock x:Name="StatusText" Margin="6,2" VerticalAlignment="Center" />
       </DockPanel>
     </Border>
 
     <Panel>
-      <views:StartView IsVisible="{Binding !HasTabs}" />
-      <ContentControl x:Name="DocumentHost" Content="{Binding SelectedTab}" IsVisible="{Binding HasTabs}">
-        <ContentControl.ContentTemplate>
-          <DataTemplate x:DataType="vm:DocumentTabViewModel">
-            <views:DocumentView />
-          </DataTemplate>
-        </ContentControl.ContentTemplate>
-      </ContentControl>
+      <views:StartView x:Name="StartPage" />
+      <ContentControl x:Name="DocumentHost" />
     </Panel>
   </DockPanel>
 </Window>
