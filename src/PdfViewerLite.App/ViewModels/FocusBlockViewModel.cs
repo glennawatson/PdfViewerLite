@@ -13,6 +13,9 @@ namespace PdfViewerLite.App.ViewModels;
 [DebuggerDisplay("{Kind}: {Text}")]
 public sealed class FocusBlockViewModel : ReactiveObject
 {
+    /// <summary>The level given to a heading found from the layout rather than from tags.</summary>
+    private const int LayoutHeadingLevel = 2;
+
     /// <summary>Initializes a new instance of the <see cref="FocusBlockViewModel"/> class.</summary>
     /// <param name="pageIndex">The page.</param>
     /// <param name="block">The block.</param>
@@ -22,6 +25,10 @@ public sealed class FocusBlockViewModel : ReactiveObject
         ArgumentNullException.ThrowIfNull(block);
         PageIndex = pageIndex;
         Kind = block.Kind;
+
+        // A heading found from the layout has no level of its own; assistive technology still needs one.
+        var headingLevel = block.Level > 0 ? block.Level : LayoutHeadingLevel;
+        Level = block.Kind == ReadingBlockKind.Heading ? headingLevel : 0;
         Text = block.Text;
         Bounds = block.Bounds;
         FirstCharacter = Array.Find(block.CharIndices, static index => index >= 0);
@@ -30,6 +37,15 @@ public sealed class FocusBlockViewModel : ReactiveObject
 
     /// <summary>Gets the page.</summary>
     public int PageIndex { get; }
+
+    /// <summary>Gets the heading level, 1 to 6, for a heading; zero otherwise.</summary>
+    public int Level { get; }
+
+    /// <summary>Gets the list item's position in its list, from 1; zero when the block is not a list item.</summary>
+    public int PositionInList { get; init; }
+
+    /// <summary>Gets the number of items in the list the block belongs to; zero when it is not a list item.</summary>
+    public int ListSize { get; init; }
 
     /// <summary>Gets what the block is.</summary>
     public ReadingBlockKind Kind { get; }

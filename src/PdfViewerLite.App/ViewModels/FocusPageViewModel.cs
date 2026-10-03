@@ -70,6 +70,21 @@ public sealed class FocusPageViewModel : ReactiveObject
         }
     }
 
+    /// <summary>Counts the consecutive list items starting at a block.</summary>
+    /// <param name="blocks">The page's blocks.</param>
+    /// <param name="start">The first item.</param>
+    /// <returns>The number of items.</returns>
+    private static int ListLength(IReadOnlyList<ReadingBlock> blocks, int start)
+    {
+        var end = start;
+        while (end < blocks.Count && blocks[end].Kind == ReadingBlockKind.ListItem)
+        {
+            end++;
+        }
+
+        return end - start;
+    }
+
     /// <summary>Works out the page's blocks off the UI thread.</summary>
     /// <returns>A task.</returns>
     private async Task LoadCoreAsync()
@@ -87,9 +102,13 @@ public sealed class FocusPageViewModel : ReactiveObject
     {
         var blocks = new FocusBlockViewModel[page.Blocks.Count];
         var offset = 0;
+        var listStart = 0;
         for (var i = 0; i < blocks.Length; i++)
         {
-            blocks[i] = new(PageIndex, page.Blocks[i], offset);
+            // Consecutive list items form one list, so each can say "item 2 of 5".
+            var isItem = page.Blocks[i].Kind == ReadingBlockKind.ListItem;
+            listStart = isItem && i > 0 && page.Blocks[i - 1].Kind == ReadingBlockKind.ListItem ? listStart : i;
+            blocks[i] = new(PageIndex, page.Blocks[i], offset) { PositionInList = isItem ? i - listStart + 1 : 0, ListSize = isItem ? ListLength(page.Blocks, listStart) : 0 };
             offset += page.Blocks[i].Text.Length + SeparatorLength;
         }
 

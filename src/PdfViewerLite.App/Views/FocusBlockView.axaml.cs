@@ -28,7 +28,7 @@ public sealed partial class FocusBlockView : UserControl, IViewFor<FocusBlockVie
     private const double DimmedOpacity = 0.4;
 
     /// <summary>The style classes for each kind of block.</summary>
-    private static readonly string[] KindClasses = ["paragraph", "heading", "item", "caption", "footnote"];
+    private static readonly string[] KindClasses = ["paragraph", "heading", "item", "caption", "footnote", "cell", "figure"];
 
     /// <summary>The bindings made while loaded.</summary>
     private MultipleDisposable? _bindings;
@@ -142,6 +142,7 @@ public sealed partial class FocusBlockView : UserControl, IViewFor<FocusBlockVie
         {
             Body.Classes.Add(KindClasses[(int)block.Kind]);
             AutomationProperties.SetName(Body, block.Text);
+            FocusAccessibility.Describe(Body, block);
         }
 
         ShowMarks();

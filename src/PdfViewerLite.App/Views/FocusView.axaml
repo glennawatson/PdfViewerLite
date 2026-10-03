@@ -24,6 +24,13 @@
       <Setter Property="FontStyle" Value="Italic" />
       <Setter Property="Foreground" Value="{DynamicResource FocusMutedForeground}" />
     </Style>
+    <Style Selector="TextBlock.focus.cell">
+      <Setter Property="Margin" Value="{DynamicResource FocusItemMargin}" />
+    </Style>
+    <Style Selector="TextBlock.focus.figure">
+      <Setter Property="FontStyle" Value="Italic" />
+      <Setter Property="Foreground" Value="{DynamicResource FocusMutedForeground}" />
+    </Style>
     <Style Selector="TextBlock.focus.footnote">
       <Setter Property="FontSize" Value="{DynamicResource FocusSmallSize}" />
       <Setter Property="Foreground" Value="{DynamicResource FocusMutedForeground}" />
