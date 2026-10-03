@@ -5,6 +5,7 @@
 
   <ItemGroup>
     <PackageReference Include="ReactiveUI.Primitives" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
 
   <ItemGroup>

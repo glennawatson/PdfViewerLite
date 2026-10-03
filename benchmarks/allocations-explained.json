@@ -5,5 +5,10 @@
     "type": "System.String",
     "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetText(",
     "reason": "The extracted text is the result; one string per call, sized exactly."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.SignatureVerifier.",
+    "reason": "Checking a signature decodes the CMS and builds the certificate chain with System.Security.Cryptography, which allocates, and SignedCms needs the signed bytes as one array. It runs only when the user asks to check signatures."
   }
 ]

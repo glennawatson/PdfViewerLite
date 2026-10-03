@@ -320,6 +320,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the annotation state.</summary>
     public AnnotationsViewModel Annotations => field ??= new(this);
 
+    /// <summary>Gets the digital signature state.</summary>
+    public SignaturesViewModel Signatures => field ??= new(this);
+
     /// <summary>Gets the form filling state.</summary>
     public FormsViewModel Forms => field ??= new(this);
 
@@ -729,6 +732,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         IsLoaded = true;
         PageEntry = GetPageDisplay(CurrentPageIndex);
         _services.RecentDocuments.Add(FilePath);
+        Signatures.Refresh();
         WatchFile();
         _documentChanges.OnNext(RxVoid.Default);
     }

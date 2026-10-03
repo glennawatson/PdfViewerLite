@@ -11,13 +11,14 @@ using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Rendering;
+using PdfViewerLite.Core.Signatures;
 using PdfViewerLite.Pdfium.Native;
 
 namespace PdfViewerLite.Pdfium;
 
 /// <summary>A PDF document backed by PDFium. Every member is serialised through the process wide PDFium lock.</summary>
 [DebuggerDisplay("{FilePath} ({PageCount} pages)")]
-public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, IFormFiller
+public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, IFormFiller, ISignatureSource
 {
     /// <summary>The number of parsed pages kept loaded.</summary>
     private const int PageCacheSize = 8;

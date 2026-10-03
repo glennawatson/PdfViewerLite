@@ -238,6 +238,17 @@
       </DockPanel>
     </Border>
 
+    <!-- Shown for digitally signed documents. Signatures are checked only when asked, as checking may go online. -->
+    <Border x:Name="SignedBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="CheckSignaturesButton" DockPanel.Dock="Right" Content="Check Signatures" />
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="6,0">
+          <Path Classes="icon nav" Data="{StaticResource IconSignature}" />
+          <TextBlock x:Name="SignedText" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
     <!-- A message that waits until dismissed, for example a failed save. -->
     <Border x:Name="NoticeBar" DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>

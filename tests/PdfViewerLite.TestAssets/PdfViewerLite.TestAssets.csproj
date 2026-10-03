@@ -5,4 +5,8 @@
     <IsPackable>false</IsPackable>
     <Description>Generates small deterministic PDF files for tests and benchmarks.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+  </ItemGroup>
 </Project>

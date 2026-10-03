@@ -141,6 +141,12 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsOn(bool? value) => value == true;
 
+    /// <summary>Describes how many signatures a document has.</summary>
+    /// <param name="count">The number of signatures.</param>
+    /// <returns>The sentence.</returns>
+    private static string DescribeSignatures(int count) =>
+        count == 1 ? "This document is digitally signed." : string.Create(CultureInfo.CurrentCulture, $"This document has {count} digital signatures.");
+
     /// <summary>Creates a stream of key presses of one key in a control.</summary>
     /// <param name="control">The control.</param>
     /// <param name="key">The key.</param>
@@ -220,10 +226,15 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.BindInteraction(ViewModel, static vm => vm.SaveAsInteraction, SaveAsAsync));
     }
 
-    /// <summary>Binds the notice and reload bars.</summary>
+    /// <summary>Binds the signed, notice and reload bars.</summary>
     /// <param name="bindings">The bindings.</param>
     private void BindBars(MultipleDisposable bindings)
     {
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Signatures.SignatureCount, static v => v.SignedBar.IsVisible, static count => count > 0));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Signatures.SignatureCount, static v => v.SignedText.Text, DescribeSignatures));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Signatures.CheckCommand, static v => v.CheckSignaturesButton));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Signatures.IsChecking, static v => v.CheckSignaturesButton.Content, static checking => checking ? "Checking…" : "Check Signatures"));
+        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Signatures.ShowInteraction, ShowSignaturesAsync));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Notice, static v => v.NoticeText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Notice, static v => v.NoticeBar.IsVisible, static notice => notice is not null));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissNoticeCommand, static v => v.DismissNoticeButton));
@@ -359,6 +370,19 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
     {
         e.Handled = true;
         _ = ViewModel?.Forms.CommitAndMoveNext();
+    }
+
+    /// <summary>Shows the checked signatures.</summary>
+    /// <param name="context">The interaction context.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowSignaturesAsync(IInteractionContext<SignaturesViewModel, RxVoid> context)
+    {
+        if (TopLevel.GetTopLevel(this) is Window owner)
+        {
+            await new SignaturesWindow { ViewModel = context.Input }.ShowDialog(owner);
+        }
+
+        context.SetOutput(RxVoid.Default);
     }
 
     /// <summary>Asks the user for text.</summary>
