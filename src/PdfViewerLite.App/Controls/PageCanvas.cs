@@ -47,11 +47,20 @@ public sealed partial class PageCanvas : Control
     /// <summary>Defines the <see cref="SelectionBrush"/> property.</summary>
     public static readonly StyledProperty<IBrush?> SelectionBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(SelectionBrush));
 
+    /// <summary>Defines the <see cref="DimBrush"/> property.</summary>
+    public static readonly StyledProperty<IBrush?> DimBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(DimBrush));
+
     /// <summary>Defines the <see cref="SpokenBrush"/> property.</summary>
     public static readonly StyledProperty<IBrush?> SpokenBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(SpokenBrush));
 
     /// <summary>The gap between pages.</summary>
     private const double PageSpacing = 12;
+
+    /// <summary>The thickness of the line under the word being read.</summary>
+    private const double WordUnderline = 1.5;
+
+    /// <summary>How far the focus band reaches above and below the sentence being read.</summary>
+    private const double FocusBandMargin = 6;
 
     /// <summary>The margin around the pages.</summary>
     private const double ContentMargin = 16;
@@ -140,7 +149,7 @@ public sealed partial class PageCanvas : Control
     /// <summary>Initializes static members of the <see cref="PageCanvas"/> class.</summary>
     static PageCanvas()
     {
-        AffectsRender<PageCanvas>(TabProperty, HitBrushProperty, CurrentHitOutlineProperty, SelectionBrushProperty, SpokenBrushProperty);
+        AffectsRender<PageCanvas>(TabProperty, HitBrushProperty, CurrentHitOutlineProperty, SelectionBrushProperty, SpokenBrushProperty, DimBrushProperty);
         FocusableProperty.OverrideDefaultValue<PageCanvas>(true);
     }
 
@@ -170,6 +179,13 @@ public sealed partial class PageCanvas : Control
     {
         get => GetValue(SelectionBrushProperty);
         set => SetValue(SelectionBrushProperty, value);
+    }
+
+    /// <summary>Gets or sets the translucent paper colour laid over text away from what is being read, for the focus band.</summary>
+    public IBrush? DimBrush
+    {
+        get => GetValue(DimBrushProperty);
+        set => SetValue(DimBrushProperty, value);
     }
 
     /// <summary>Gets or sets the soft fill marking the sentence being read aloud.</summary>
@@ -508,10 +524,13 @@ public sealed partial class PageCanvas : Control
 
         DrawPreview(context, frame, page, rect, visible);
         DrawTiles(context, frame, page, rect, visible);
-        if (visible)
+        if (!visible)
         {
-            DrawHighlights(context, frame.Tab, page, bounds);
+            return;
         }
+
+        DrawHighlights(context, frame.Tab, page, bounds);
+        DrawFocusBand(context, frame.Tab, page, bounds, new(bounds, _sizes[page], frame.Tab.Rotation, _layout.Options.Scale));
     }
 
     /// <summary>Draws the full resolution tiles of a page that intersect the viewport, requesting missing ones.</summary>
@@ -595,15 +614,60 @@ public sealed partial class PageCanvas : Control
     /// <param name="transform">The page transform.</param>
     private void DrawSpoken(DrawingContext context, DocumentTabViewModel tab, int page, in PageTransform transform)
     {
-        if (SpokenBrush is not { } brush || tab.ReadAloud.SpokenPage != page)
+        var reader = tab.ReadAloud;
+        if (SpokenBrush is not { } brush || reader.SpokenPage != page)
         {
             return;
         }
 
-        foreach (var rect in tab.ReadAloud.SpokenBounds)
+        foreach (var rect in reader.SpokenBounds)
         {
             context.FillRectangle(brush, transform.ToCanvas(rect));
         }
+
+        // The word is underlined rather than filled, so the marks stay quiet.
+        var pen = _currentHitPen;
+        foreach (var rect in reader.SpokenWordBounds)
+        {
+            var word = transform.ToCanvas(rect);
+            context.DrawLine(pen ?? new Pen(brush, WordUnderline), word.BottomLeft, word.BottomRight);
+        }
+    }
+
+    /// <summary>
+    /// Dims the page away from the sentence being read, when the focus band is on: a band around the sentence stays
+    /// clear and the rest of its page, and every other page, is laid over with the translucent paper colour.
+    /// </summary>
+    /// <param name="context">The drawing context.</param>
+    /// <param name="tab">The tab.</param>
+    /// <param name="page">The page.</param>
+    /// <param name="bounds">The page's bounds on the canvas.</param>
+    /// <param name="transform">The page transform.</param>
+    private void DrawFocusBand(DrawingContext context, DocumentTabViewModel tab, int page, in LayoutRect bounds, in PageTransform transform)
+    {
+        var reader = tab.ReadAloud;
+        if (DimBrush is not { } dim || !tab.FocusMode.FocusBand || reader.SpokenPage < 0 || reader.SpokenBounds.Count == 0)
+        {
+            return;
+        }
+
+        var pageRect = new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        if (reader.SpokenPage != page)
+        {
+            context.FillRectangle(dim, pageRect);
+            return;
+        }
+
+        var band = transform.ToCanvas(reader.SpokenBounds[0]);
+        foreach (var rect in reader.SpokenBounds)
+        {
+            band = band.Union(transform.ToCanvas(rect));
+        }
+
+        var top = Math.Max(pageRect.Top, band.Top - FocusBandMargin);
+        var bottom = Math.Min(pageRect.Bottom, band.Bottom + FocusBandMargin);
+        context.FillRectangle(dim, new(pageRect.Left, pageRect.Top, pageRect.Width, Math.Max(0, top - pageRect.Top)));
+        context.FillRectangle(dim, new(pageRect.Left, bottom, pageRect.Width, Math.Max(0, pageRect.Bottom - bottom)));
     }
 
     /// <summary>Gets the selection rectangles on a page, computing them on first use.</summary>
@@ -733,6 +797,8 @@ public sealed partial class PageCanvas : Control
             tab.DocumentChanges.SubscribeSafe(_ => OnDocumentChanged(), OnError),
             tab.Search.HighlightChanges.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.ReadAloud.WhenAnyValue(static x => x.SpokenBounds).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.ReadAloud.MarksChanged.SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.FocusMode.WhenAnyValue(static x => x.FocusBand).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.PageEdits.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.WhenAnyValue(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),

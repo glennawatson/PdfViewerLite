@@ -27,6 +27,7 @@
       <SolidColorBrush x:Key="AppCurrentHitOutline" Color="#8FA8B8" />
       <SolidColorBrush x:Key="AppTextSelectionBrush" Color="#598FA8B8" />
       <SolidColorBrush x:Key="AppSpokenBrush" Color="#409DBF93" />
+      <SolidColorBrush x:Key="AppDimBrush" Color="#992A2826" />
       <SolidColorBrush x:Key="AppPaperBrush" Color="#2A2826" />
     </ResourceDictionary>
   </Application.Resources>

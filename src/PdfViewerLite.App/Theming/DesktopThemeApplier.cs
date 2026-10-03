@@ -29,6 +29,9 @@ internal static class DesktopThemeApplier
     /// <summary>The alpha of search hit and text selection fills, soft enough to keep the text readable.</summary>
     private const byte HighlightAlpha = 0x59;
 
+    /// <summary>The opacity of the paper laid over text away from what is read aloud, when the focus band is on.</summary>
+    private const byte DimAlpha = 0x99;
+
     /// <summary>The opacity of the mark on the sentence being read aloud, lighter than a highlight.</summary>
     private const byte SpokenAlpha = 0x40;
 
@@ -154,7 +157,9 @@ internal static class DesktopThemeApplier
         resources["AppCurrentHitOutline"] = Brush(scheme.Accent);
         resources["AppTextSelectionBrush"] = new SolidColorBrush(ToColor(tints.Navigation, HighlightAlpha));
         resources["AppSpokenBrush"] = new SolidColorBrush(ToColor(tints.Add, SpokenAlpha));
-        resources["AppPaperBrush"] = Brush(theme.PageTone.IsIdentity ? 0xFFFFFFU : theme.PageTone.Paper);
+        var paper = theme.PageTone.IsIdentity ? 0xFFFFFFU : theme.PageTone.Paper;
+        resources["AppPaperBrush"] = Brush(paper);
+        resources["AppDimBrush"] = new SolidColorBrush(ToColor(paper, DimAlpha));
     }
 
     /// <summary>Builds a Fluent palette from a scheme.</summary>

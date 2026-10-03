@@ -312,6 +312,17 @@
           </Button>
           <ComboBox x:Name="VoiceBox" Width="250" VerticalAlignment="Center" Margin="8,0,2,0" ToolTip.Tip="Voice" />
           <ComboBox x:Name="SpeedBox" Width="150" VerticalAlignment="Center" ToolTip.Tip="Speed" />
+          <Button x:Name="ReadAloudOptionsButton" Classes="tool" ToolTip.Tip="How what is read aloud is marked">
+            <TextBlock Classes="label" Text="Options" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="8" Margin="4">
+                  <CheckBox x:Name="WordMarkCheck" Content="Mark the word being read" />
+                  <CheckBox x:Name="FocusBandCheck" Content="Dim text away from what is read" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
           <Button x:Name="DownloadVoiceButton" Content="Download Voice" VerticalAlignment="Center" Margin="8,0,0,0" />
           <ProgressBar x:Name="VoiceDownloadProgress" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
         </StackPanel>
@@ -421,7 +432,7 @@
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
           <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
             <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
-                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" />
+                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" DimBrush="{DynamicResource AppDimBrush}" />
             <!-- The text field editor sits exactly over the field being filled in. -->
             <Canvas x:Name="FieldOverlay">
               <TextBox x:Name="FieldEditor" Classes="field" IsVisible="False" />

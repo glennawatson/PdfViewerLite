@@ -20,6 +20,12 @@ public sealed class ReadAloudViewModelTests
     /// <summary>The fastest speed.</summary>
     private const float Fastest = 1.5F;
 
+    /// <summary>How close two speeds must be to count as the same.</summary>
+    private const float SpeedTolerance = 0.01F;
+
+    /// <summary>Halfway through a sentence.</summary>
+    private const double Middle = 0.5;
+
     /// <summary>A speed between two offered ones.</summary>
     private const double BetweenSpeeds = 1.3;
 
@@ -164,6 +170,88 @@ public sealed class ReadAloudViewModelTests
 
         await Assert.That(await UiWait.UntilAsync(() => !first.IsPlaying && second.IsPlaying)).IsTrue();
         second.IsOpen = false;
+    }
+
+    /// <summary>Reading resumes at the sentence it stopped on, the next time Read Aloud opens on that page.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ResumesWhereItStopped()
+    {
+        var speech = new FakeSpeech(true, true);
+        using var test = new TestServices(new Services.FallbackPlatform(), speech);
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("resume.pdf", Pages)]);
+        var reader = main.SelectedTab!.ReadAloud;
+        reader.IsOpen = true;
+        await Assert.That(await UiWait.UntilAsync(() => !reader.SpokenRange.IsEmpty)).IsTrue();
+        var first = reader.SpokenRange;
+
+        _ = await reader.NextCommand.Execute().ToTask();
+        await Assert.That(await UiWait.UntilAsync(() => reader.SpokenRange != first && !reader.SpokenRange.IsEmpty)).IsTrue();
+        var second = reader.SpokenRange;
+        reader.IsOpen = false;
+        reader.IsOpen = true;
+
+        await Assert.That(await UiWait.UntilAsync(() => !reader.SpokenRange.IsEmpty)).IsTrue();
+        await Assert.That(reader.SpokenRange).IsEqualTo(second);
+        reader.IsOpen = false;
+    }
+
+    /// <summary>Changing the speed while reading carries on from the same sentence at the new speed.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ChangingSpeedKeepsTheSentence()
+    {
+        var speech = new FakeSpeech(true, true);
+        using var test = new TestServices(new Services.FallbackPlatform(), speech);
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("speed-change.pdf", Pages)]);
+        var reader = main.SelectedTab!.ReadAloud;
+        reader.IsOpen = true;
+        await Assert.That(await UiWait.UntilAsync(() => !reader.SpokenRange.IsEmpty)).IsTrue();
+        var sentence = reader.SpokenRange;
+        var spokenBefore = speech.Spoken.ToArray()[0].Text;
+
+        reader.SpeedIndex = FastestSpeed;
+
+        await Assert.That(await UiWait.UntilAsync(() => speech.Spoken.ToArray().Any(static s => s.Speed > Fastest - SpeedTolerance))).IsTrue();
+        var fast = speech.Spoken.ToArray().First(static s => s.Speed > Fastest - SpeedTolerance);
+        await Assert.That(fast.Text).IsEqualTo(spokenBefore);
+        await Assert.That(reader.SpokenRange).IsEqualTo(sentence);
+        reader.IsOpen = false;
+    }
+
+    /// <summary>With word marking on, the word being read is marked on the page as the sentence plays.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task MarksTheWord()
+    {
+        var speech = new FakeSpeech(true, true);
+        using var test = new TestServices(new Services.FallbackPlatform(), speech);
+        test.Services.Settings.ReadAloudHighlight = Core.Settings.ReadAloudHighlight.SentenceAndWord;
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("words.pdf", 1)]);
+        var reader = main.SelectedTab!.ReadAloud;
+
+        reader.IsOpen = true;
+
+        await Assert.That(await UiWait.UntilAsync(() => !reader.SpokenWord.IsEmpty && reader.SpokenWordBounds.Count > 0)).IsTrue();
+        await Assert.That(reader.SpokenWord.Start).IsGreaterThanOrEqualTo(reader.SpokenRange.Start);
+        await Assert.That(reader.SpokenWord.End).IsLessThanOrEqualTo(reader.SpokenRange.End);
+        reader.IsOpen = false;
+    }
+
+    /// <summary>The word a share of the way through a sentence is found, even at the edges.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task FindsWords()
+    {
+        const string Text = "The quick brown fox.";
+        var sentence = new Core.Speech.SpeechSentence(0, Text.Length);
+
+        await Assert.That(Text.Substring(ReadAloudViewModel.WordAt(Text, sentence, 0).Start, ReadAloudViewModel.WordAt(Text, sentence, 0).Length)).IsEqualTo("The");
+        await Assert.That(Text.Substring(ReadAloudViewModel.WordAt(Text, sentence, Middle).Start, ReadAloudViewModel.WordAt(Text, sentence, Middle).Length)).IsEqualTo("brown");
+        await Assert.That(Text.Substring(ReadAloudViewModel.WordAt(Text, sentence, 1).Start, ReadAloudViewModel.WordAt(Text, sentence, 1).Length)).IsEqualTo("fox.");
     }
 
     /// <summary>Speeds are matched to the nearest offered and sentences found from a character.</summary>

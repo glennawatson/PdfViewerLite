@@ -296,6 +296,8 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.IsDownloading, static v => v.VoiceDownloadProgress.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.DownloadProgress, static v => v.VoiceDownloadProgress.Value));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.StatusText, static v => v.ReadAloudText.Text));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.FocusMode.WordHighlight, static v => v.WordMarkCheck.IsChecked, static on => on, IsOn));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.FocusMode.FocusBand, static v => v.FocusBandCheck.IsChecked, static on => on, IsOn));
     }
 
     /// <summary>Binds the find bar.</summary>
