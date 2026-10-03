@@ -495,6 +495,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the command handing the document, with its annotations and filled fields, to the desktop's print dialog.</summary>
     public ReactiveCommand<RxVoid, RxVoid> PrintCommand { get; }
 
+    /// <summary>Gets the interaction showing the print preview; the output says whether to print.</summary>
+    public Interaction<PrintPreviewViewModel, bool> PrintPreviewInteraction { get; } = new();
+
     /// <summary>Gets the reload command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ReloadCommand { get; }
 
@@ -777,42 +780,6 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         }
     }
 
-    /// <summary>
-    /// Writes the document as it looks now, including annotations and filled fields, to a new temporary file for
-    /// printing. The caller deletes the file.
-    /// </summary>
-    /// <returns>The file, or <see langword="null"/> when it could not be written.</returns>
-    public string? WritePrintCopy()
-    {
-        if (TryGetDocument() is not IAnnotationEditor editor)
-        {
-            return null;
-        }
-
-        var path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-print-{Guid.NewGuid():N}.pdf");
-        try
-        {
-            using (var stream = File.Create(path))
-            {
-                if (editor.Save(stream))
-                {
-                    return path;
-                }
-            }
-
-            File.Delete(path);
-            return null;
-        }
-        catch (IOException)
-        {
-            return null;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
-
     /// <summary>Closes the native document while the tab is in the background; it reopens on demand.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Unload() => RenderHub.Cache.RemoveDocument(Source.Id);
@@ -884,26 +851,35 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         Reload();
     }
 
-    /// <summary>Writes a print copy and hands it to the desktop's print dialog, saying so in the notice when it cannot.</summary>
+    /// <summary>
+    /// Shows the print preview, then hands the file it built to the desktop's print dialog or saves it as a PDF, saying
+    /// so in the notice when that cannot be done.
+    /// </summary>
     /// <returns>A task.</returns>
     private async Task PrintAsync()
     {
-        var printer = _services.Platform.Printer;
-        if (!printer.IsAvailable)
+        using var preview = new PrintPreviewViewModel(this, _services);
+        if (!await PrintPreviewInteraction.Handle(preview).ToTask().ConfigureAwait(true) || preview.TakePrintFile() is not { } file)
         {
-            Notice = "Printing is not available on this desktop.";
-            return;
-        }
-
-        if (WritePrintCopy() is not { } copy)
-        {
-            Notice = "Could not prepare the document for printing.";
             return;
         }
 
         try
         {
-            if (!await printer.PrintAsync(copy, FileName, CancellationToken.None).ConfigureAwait(true))
+            if (preview.Destination == PrintDestination.SaveAsPdf)
+            {
+                await SavePrintAsPdfAsync(file).ConfigureAwait(true);
+                return;
+            }
+
+            var printer = _services.Platform.Printer;
+            if (!printer.IsAvailable)
+            {
+                Notice = "Printing is not available on this desktop. Choose Save as PDF instead.";
+                return;
+            }
+
+            if (!await printer.PrintAsync(file, FileName, CancellationToken.None).ConfigureAwait(true))
             {
                 Notice = "The print dialog could not be opened.";
             }
@@ -911,7 +887,32 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         finally
         {
             // The desktop holds its own handle to the file, so the name can go now.
-            File.Delete(copy);
+            File.Delete(file);
+        }
+    }
+
+    /// <summary>Asks where to save the printed pages as a PDF and copies them there.</summary>
+    /// <param name="file">The printed pages.</param>
+    /// <returns>A task.</returns>
+    private async Task SavePrintAsPdfAsync(string file)
+    {
+        var path = await SaveAsInteraction.Handle(FileName).ToTask().ConfigureAwait(true);
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Copy(file, path, true);
+        }
+        catch (IOException ex)
+        {
+            Notice = $"Could not save: {ex.Message}";
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Notice = $"Could not save: {ex.Message}";
         }
     }
 

@@ -64,6 +64,19 @@
     <Setter Property="Background" Value="{DynamicResource AppTabHoverBackground}" />
   </Style>
 
+  <!-- Print preview sheets: no selection highlight, the sheets are only to look at. -->
+  <Style Selector="ListBox.sheets ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ListBox.sheets ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.sheets ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
   <Style Selector="Border.toolbar">
     <Setter Property="Background" Value="{DynamicResource AppHeaderBackground}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />

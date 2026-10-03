@@ -102,7 +102,7 @@ public sealed partial class PdfiumDocument
     }
 
     /// <inheritdoc/>
-    public unsafe bool Save(Stream destination)
+    public bool Save(Stream destination)
     {
         ArgumentNullException.ThrowIfNull(destination);
         using var scope = PdfiumLibrary.EnterScope();
@@ -112,22 +112,32 @@ public sealed partial class PdfiumDocument
         }
 
         var flags = NativeMethods.FPDF_GetSignatureCount(_handle) > 0 ? SaveIncremental : SaveFull;
+        if (!WriteDocument(_handle, destination, flags))
+        {
+            return false;
+        }
+
+        Volatile.Write(ref _unsavedChanges, 0);
+        return true;
+    }
+
+    /// <summary>Writes a document into a stream. Callers hold the PDFium lock.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="destination">The stream.</param>
+    /// <param name="flags">Incremental or full.</param>
+    /// <returns><see langword="true"/> when written.</returns>
+    private static unsafe bool WriteDocument(PdfiumDocumentHandle document, Stream destination, int flags)
+    {
         var stream = new GCHandle<Stream>(destination);
         try
         {
             var writer = new FileWrite(&WriteBlock, stream);
-            if (NativeMethods.FPDF_SaveAsCopy(_handle, &writer, flags) == 0)
-            {
-                return false;
-            }
+            return NativeMethods.FPDF_SaveAsCopy(document, &writer, flags) != 0;
         }
         finally
         {
             stream.Dispose();
         }
-
-        Volatile.Write(ref _unsavedChanges, 0);
-        return true;
     }
 
     /// <summary>PDFium's write callback: copies a block into the destination stream.</summary>

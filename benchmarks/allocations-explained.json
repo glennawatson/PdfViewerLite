@@ -30,5 +30,10 @@
     "type": "",
     "frame": "PdfViewerLite.Core.Layout.DocumentLayout.Create(",
     "reason": "The layout is the result: one immutable object with arrays sized exactly to the pages and rows. It is built only when the zoom, arrangement, rotation or viewport size changes, never while scrolling; lookups on it allocate nothing."
+  },
+  {
+    "type": "PdfViewerLite.Pdfium.Native.Pdfium",
+    "frame": "PdfViewerLite.Pdfium.",
+    "reason": "Exporting pages for printing opens new native documents (the copy and, for several pages per sheet, the sheets) and each page whose annotations are left out; each is owned by one small SafeHandle so it is always closed. Exporting runs when print settings change, never while viewing."
   }
 ]

@@ -235,6 +235,31 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial void FPDFPageObj_Destroy(nint pageObject);
 
+    /// <summary>Native <c>FPDF_CreateNewDocument</c> entry point.</summary>
+    /// <returns>An empty document.</returns>
+    [LibraryImport(Library)]
+    internal static partial PdfiumDocumentHandle FPDF_CreateNewDocument();
+
+    /// <summary>Native <c>FPDF_ImportPagesByIndex</c> entry point.</summary>
+    /// <param name="destination">The document receiving the pages.</param>
+    /// <param name="source">The document the pages come from.</param>
+    /// <param name="pageIndices">Zero based page indices.</param>
+    /// <param name="length">The number of indices.</param>
+    /// <param name="insertAt">Where to insert in the destination.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDF_ImportPagesByIndex(PdfiumDocumentHandle destination, PdfiumDocumentHandle source, int* pageIndices, CULong length, int insertAt);
+
+    /// <summary>Native <c>FPDF_ImportNPagesToOne</c> entry point.</summary>
+    /// <param name="source">The document whose pages are laid out.</param>
+    /// <param name="sheetWidth">The sheet width in points.</param>
+    /// <param name="sheetHeight">The sheet height in points.</param>
+    /// <param name="columns">Pages across each sheet.</param>
+    /// <param name="rows">Pages down each sheet.</param>
+    /// <returns>A new document of sheets.</returns>
+    [LibraryImport(Library)]
+    internal static partial PdfiumDocumentHandle FPDF_ImportNPagesToOne(PdfiumDocumentHandle source, float sheetWidth, float sheetHeight, nuint columns, nuint rows);
+
     /// <summary>Native <c>FPDF_SaveAsCopy</c> entry point.</summary>
     /// <param name="document">The document.</param>
     /// <param name="fileWrite">The writer.</param>

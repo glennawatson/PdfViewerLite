@@ -47,6 +47,7 @@ public sealed class AppServices : IDisposable
         Platform = platform;
         SettingsStore = settingsStore;
         Settings = settingsStore.Load();
+        Engine = engine;
         Pool = new(engine, Math.Max(1, Settings.MaxOpenDocuments));
         RenderHub = new(Math.Max(MinCacheMegabytes, Settings.TileCacheMegabytes) * BytesPerMegabyte);
         Downloader = new(Path.Combine(Path.GetTempPath(), "pdfviewerlite-downloads"));
@@ -58,6 +59,9 @@ public sealed class AppServices : IDisposable
 
     /// <summary>Gets the user settings.</summary>
     public AppSettings Settings { get; }
+
+    /// <summary>Gets the document engine, for documents outside the pool such as print previews.</summary>
+    public IDocumentEngine Engine { get; }
 
     /// <summary>Gets the document pool.</summary>
     public DocumentPool Pool { get; }

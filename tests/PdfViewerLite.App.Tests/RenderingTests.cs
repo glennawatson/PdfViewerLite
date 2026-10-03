@@ -422,6 +422,33 @@ public sealed class RenderingTests
         }
     }
 
+    /// <summary>Verifies the print preview shows a sheet for each page that will print, saving a screenshot.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ShowsPrintPreview()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("preview.pdf", PageByPagePages)]);
+        using var preview = new PrintPreviewViewModel(main.SelectedTab!, test.Services);
+        var window = new PrintPreviewWindow { ViewModel = preview, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var ready = await UiWait.UntilAsync(() => preview.IsValid && window.GetVisualDescendants().OfType<Image>().Any(static image => image.Source is not null));
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "print-preview.png");
+
+            await Assert.That(ready).IsTrue();
+            await Assert.That(preview.Sheets.Count).IsEqualTo(PageByPagePages);
+            await Assert.That(preview.Summary).IsEqualTo("4 sheets");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     /// <summary>Finds a named control.</summary>
     /// <typeparam name="T">The control type.</typeparam>
     /// <param name="root">Where to look.</param>

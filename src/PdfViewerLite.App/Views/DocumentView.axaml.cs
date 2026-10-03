@@ -182,6 +182,7 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetLayoutCommand, static v => v.CoverLayoutItem, Signal.Return("DualCover")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveCommand, static v => v.SaveItem));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PrintCommand, static v => v.PrintItem));
+        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.PrintPreviewInteraction, ShowPrintPreviewAsync));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PresentCommand, static v => v.PresentItem));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Chrome.IsVisible, static presenting => !presenting));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.VerticalScrollBarVisibility, ScrollBars));
@@ -439,6 +440,20 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
 
         var file = await storage.SaveFilePickerAsync(new() { Title = "Save a Copy", SuggestedFileName = context.Input, DefaultExtension = "pdf" });
         context.SetOutput(file?.TryGetLocalPath());
+    }
+
+    /// <summary>Shows the print preview window.</summary>
+    /// <param name="context">The interaction context, holding the preview.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowPrintPreviewAsync(IInteractionContext<PrintPreviewViewModel, bool> context)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            context.SetOutput(false);
+            return;
+        }
+
+        context.SetOutput(await new PrintPreviewWindow { ViewModel = context.Input }.ShowDialog<bool>(owner));
     }
 
     /// <summary>Asks where to save an embedded file, through the desktop's save dialog.</summary>
