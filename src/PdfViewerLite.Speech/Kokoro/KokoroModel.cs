@@ -8,8 +8,8 @@ using PdfViewerLite.Core.Speech;
 namespace PdfViewerLite.Speech.Kokoro;
 
 /// <summary>
-/// The files and voices of Kokoro-82M (Apache-2.0): the quantised ONNX model from onnx-community, a handful of voices,
-/// and the misaki pronunciation dictionaries. About 95 MB, downloaded once into the voice folder.
+/// The files and voices of Kokoro-82M (Apache-2.0): the unsigned 8 bit ONNX model from onnx-community, a handful of voices,
+/// and the misaki pronunciation dictionaries. About 190 MB, downloaded once into the voice folder.
 /// </summary>
 public static class KokoroModel
 {
@@ -26,7 +26,7 @@ public static class KokoroModel
     private const long Megabyte = 1024 * 1024;
 
     /// <summary>The model's approximate size.</summary>
-    private const long ModelBytes = 92 * Megabyte;
+    private const long ModelBytes = 170 * Megabyte;
 
     /// <summary>A voice pack's approximate size.</summary>
     private const long VoiceBytes = 522 * 1024;
@@ -34,8 +34,13 @@ public static class KokoroModel
     /// <summary>A dictionary's approximate size.</summary>
     private const long LexiconBytes = 4 * Megabyte;
 
-    /// <summary>Gets the model's file name inside the voice folder.</summary>
-    public static string ModelFile => "model_quantized.onnx";
+    /// <summary>
+    /// Gets the model's file name inside the voice folder. The unsigned 8 bit export is used: on CPUs it synthesises
+    /// about five times faster than the default quantised export (which is slower than real time, leaving gaps between
+    /// sentences), the half precision export can overflow to silence on some voices, and it is about half the size of
+    /// the full precision model.
+    /// </summary>
+    public static string ModelFile => "model_uint8.onnx";
 
     /// <summary>Gets the audio sample rate Kokoro produces.</summary>
     public static int SampleRate => Hertz;

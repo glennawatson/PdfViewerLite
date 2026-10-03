@@ -29,9 +29,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libtesseract5 tesseract-ocr-eng pulseaudio
       - name: Start a silent sound server
         run: pulseaudio --daemonize=true --exit-idle-time=-1 -n --load="module-null-sink sink_name=silent" --load="module-native-protocol-unix"
+      - name: Cache the Kokoro voice files
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pdfviewerlite/kokoro
+          key: kokoro-${{ hashFiles('src/PdfViewerLite.Speech/Kokoro/KokoroModel.cs') }}
       - name: Build
         run: dotnet build PdfViewerLite.slnx -c Release
       - name: Test
+        env:
+          # The Read Aloud integration tests run the real Kokoro model, downloaded by the app's own downloader.
+          PDFVIEWERLITE_KOKORO_DOWNLOAD: '1'
         run: dotnet test --solution PdfViewerLite.slnx -c Release --coverage --coverage-output-format cobertura
       - uses: actions/upload-artifact@v4
         if: always()

@@ -7,8 +7,9 @@ using PdfViewerLite.Core.Speech;
 namespace PdfViewerLite.Http.Speech;
 
 /// <summary>
-/// Downloads an on-device voice's files with Refit. Each file is written to a <c>.part</c> file and moved into place
-/// once complete, so an interrupted download is never mistaken for a finished one; files already present are kept.
+/// Downloads an on-device voice's files with Refit. Each file is written to its own <c>.part</c> file and moved into
+/// place once complete, so an interrupted download is never mistaken for a finished one and two downloads at once do
+/// not collide; files already present are kept.
 /// </summary>
 public static class SpeechModelDownloader
 {
@@ -74,7 +75,7 @@ public static class SpeechModelDownloader
             }
 
             _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            var partial = $"{target}.part";
+            var partial = $"{target}.{Guid.NewGuid():N}.part";
             using (var response = await RefitClients.Download(file.Source, cancellationToken).ConfigureAwait(false))
             {
                 _ = response.EnsureSuccessStatusCode();
