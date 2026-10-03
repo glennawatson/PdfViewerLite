@@ -1,8 +1,8 @@
 # PdfViewerLite
 
-A fast, tabbed PDF viewer for Linux, built for KDE Plasma first. Every document opens as a tab in one window, so you
-never end up with a hundred viewer windows. It aims for the feature set of GNOME's Papers ("Document Viewer") and
-the tabbed workflow of Adobe Reader, while looking at home on KDE.
+A fast, tabbed PDF viewer for Linux, Windows and macOS. Every document opens as a tab in one window, so you never end
+up with a hundred viewer windows. It aims for the reading features of Adobe Acrobat Reader without the cloud, while
+looking at home on each desktop, and it was built for KDE Plasma first.
 
 - **Tabs**: open many documents at once. Middle-click to close, drag to reorder, Ctrl+Tab / Ctrl+W / Ctrl+Shift+T,
   and tabs are restored on the next start. Background tabs cost almost nothing: at most 16 documents stay open in
@@ -10,22 +10,31 @@ the tabbed workflow of Adobe Reader, while looking at home on KDE.
 - **Fast rendering**: [PDFium](https://pdfium.googlesource.com/pdfium/) renders 512px tiles on a dedicated thread
   straight into the bitmaps the UI draws. Work for areas you scrolled past is dropped before it reaches PDFium, and
   low-resolution previews appear instantly while sharp tiles render.
-- **KDE integration**: KWin draws the window frame, the window content follows your colour scheme and font from
-  `kdeglobals` (live), files opened from Dolphin open as tabs in the running window over D-Bus, opened files show in
-  Dolphin's *Recent Files*, the open dialog is the KDE one (via the XDG portal), and *Show in Folder* opens Dolphin.
+- **Desktop integration on each platform**: files opened from the file manager open as tabs in the running window,
+  opened files join the platform's recent documents, *Show in Folder* opens Dolphin, Explorer or Finder, the theme
+  follows the desktop live, and printing uses the platform's printer system. On KDE, KWin draws the frame, colours
+  and font come from `kdeglobals`, and the open dialog is the KDE one via the XDG portal.
 - **Viewer features**: continuous, page by page, dual and book (cover) layouts; fit width, fit page and free zoom
   (Ctrl+wheel zooms around the pointer); rotation; thumbnails, outline, annotations, attachments and search results
   sidebars; find with match case and whole words; text selection and copy; links; back/forward history; page labels;
   comfort page colours; document properties; password protected documents; reload when the file changes on disk;
-  presentation mode; printing through the desktop's print dialog.
+  presentation mode; printing with a preview or through the platform's print dialog.
 - **Annotate, fill and sign**: highlight, underline, strike out, notes, text boxes and drawing from context menus that
   follow what you are doing; fill in forms; draw or type a signature; list and check digital signatures; save or save
   a copy.
 - **Text recognition**: *Recognise Text* gives scanned pages a searchable, selectable text layer using Tesseract.
+- **Focus Mode** (Ctrl+4): the document's text reflowed in a calm reading view, with your choice of font, size, line
+  spacing, paragraph spacing, text width and page colour. Two-column layouts, headings, lists, captions and footnotes
+  come out in a sensible order, page numbers and running headers are left out, and switching back to the pages keeps
+  your place.
 - **Read Aloud**: a natural sounding neural voice (Kokoro-82M) that runs on your computer, so nothing you read is sent
-  anywhere. It is downloaded once (about 95 MB) the first time, with your go-ahead. The sentence being read is softly
-  marked and the view follows it; pause, skip a sentence, change voice or speed, or right-click and *Read Aloud from
-  Here* (Ctrl+Shift+Y). Azure AI Speech can be used instead with your own key.
+  anywhere. It is downloaded once (about 180 MB) the first time, with your go-ahead. It reads in the same order as
+  Focus Mode; the sentence being read is softly marked and followed, with optional word highlighting and a focus band
+  that dims the rest. Pause, skip a sentence, change voice or speed without losing your place, right-click *Read
+  Aloud from Here* (Ctrl+Shift+Y), and pick up where you stopped next time. Azure AI Speech can be used instead with
+  your own key.
+- **Accessible**: every control has a name for screen readers and can be reached with the keyboard in a predictable
+  order; a CI check walks the Linux AT-SPI tree of the released build.
 - **Hundreds of tabs**: hover over a tab to see a preview of its page, and find any open tab by name (Ctrl+Shift+A).
 
 - **Comfort first**: calm by default and predictable, following [comfort design rules](docs/COMFORT.md) for ADHD
@@ -33,12 +42,18 @@ the tabbed workflow of Adobe Reader, while looking at home on KDE.
   of glaring white, text labels on the tool bar, reduced motion, a steady text cursor, and confirmation before
   closing several tabs. Everything is in Preferences (Ctrl+,).
 
-See [docs/FEATURES.md](docs/FEATURES.md) for parity with GNOME Papers 51 and what is planned.
+See [docs/ACROBAT-PARITY.md](docs/ACROBAT-PARITY.md) for parity with Adobe Acrobat Reader, what is planned and what
+is out of scope.
 
 ## Install
 
-Release builds publish an AppImage plus `.deb` and `.rpm` packages for x86_64 and aarch64, and the AUR recipe lives
-in [packaging/linux/aur](packaging/linux/aur/PKGBUILD).
+Release builds publish:
+
+- **Linux**: an AppImage plus `.deb` and `.rpm` packages for x86_64 and aarch64; the AUR recipe lives in
+  [packaging/linux/aur](packaging/linux/aur/PKGBUILD).
+- **Windows**: an installer (registered for *Open with* PDF, not taking over `.pdf`) and a portable zip, for x64 and
+  arm64.
+- **macOS**: `PdfViewerLite.app` in a `.dmg` for Apple silicon and Intel.
 
 To build and install from source for the current user:
 
@@ -67,12 +82,12 @@ set `PDFVIEWERLITE_SCREENSHOTS=<dir>` to save the rendered frames.
 | Concern | Choice | License |
 |---|---|---|
 | UI | [Avalonia 12](https://avaloniaui.net) with compiled bindings | MIT |
-| MVVM | [ReactiveUI 25](https://reactiveui.net) and ReactiveUI.Avalonia | MIT |
+| MVVM | [ReactiveUI 26](https://reactiveui.net), ReactiveUI.Binding and ReactiveUI.Avalonia | MIT |
 | PDF engine | PDFium through our own source-generated `LibraryImport` bindings; binaries from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) | BSD-3 / Apache-2.0 |
 | D-Bus | [Tmds.DBus.Protocol](https://github.com/tmds/Tmds.DBus) | MIT |
 | HTTP | [Refit](https://github.com/reactiveui/refit) with generated clients and source-generated JSON | MIT |
 | Text recognition | Tesseract through source-generated `LibraryImport` bindings, loaded when installed | Apache-2.0 |
-| Read Aloud | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (downloaded on first use) on [ONNX Runtime](https://onnxruntime.ai), pronunciations from [misaki](https://github.com/hexgrad/misaki); sound through libpulse-simple | Apache-2.0 / MIT / Apache-2.0 / LGPL (loaded at run time) |
+| Read Aloud | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (downloaded on first use) on [ONNX Runtime](https://onnxruntime.ai), pronunciations from [misaki](https://github.com/hexgrad/misaki); sound through PulseAudio/PipeWire, WASAPI or Core Audio | Apache-2.0 / MIT / Apache-2.0 / LGPL (loaded at run time) |
 | Tests and benchmarks | TUnit, Avalonia.Headless, BenchmarkDotNet | MIT / Apache-2.0 |
 
 Every shipped assembly is trimmable and Native AOT compatible; `dotnet publish` produces a single native binary with
