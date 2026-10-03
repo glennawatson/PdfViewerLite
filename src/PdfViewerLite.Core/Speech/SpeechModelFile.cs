@@ -4,11 +4,11 @@
 
 using System.Diagnostics;
 
-namespace PdfViewerLite.Speech.Kokoro;
+namespace PdfViewerLite.Core.Speech;
 
 /// <summary>A file the on-device voice needs, downloaded once.</summary>
 /// <param name="Source">Where it is downloaded from.</param>
 /// <param name="LocalName">Its path inside the voice folder.</param>
 /// <param name="ApproximateBytes">About how large it is, for the download message.</param>
 [DebuggerDisplay("{LocalName}")]
-public sealed record KokoroModelFile(Uri Source, string LocalName, long ApproximateBytes);
+public sealed record SpeechModelFile(Uri Source, string LocalName, long ApproximateBytes);

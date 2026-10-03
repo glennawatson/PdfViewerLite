@@ -51,7 +51,7 @@ public static class KokoroModel
     ];
 
     /// <summary>Gets the files to download.</summary>
-    public static IReadOnlyList<KokoroModelFile> Files { get; } = BuildFiles();
+    public static IReadOnlyList<SpeechModelFile> Files { get; } = BuildFiles();
 
     /// <summary>Gets the local path of a voice pack.</summary>
     /// <param name="voiceId">The voice.</param>
@@ -72,9 +72,9 @@ public static class KokoroModel
 
     /// <summary>Lists the files to download.</summary>
     /// <returns>The files.</returns>
-    private static List<KokoroModelFile> BuildFiles()
+    private static List<SpeechModelFile> BuildFiles()
     {
-        var files = new List<KokoroModelFile> { new(new($"{ModelRepository}onnx/{ModelFile}"), ModelFile, ModelBytes) };
+        var files = new List<SpeechModelFile> { new(new($"{ModelRepository}onnx/{ModelFile}"), ModelFile, ModelBytes) };
         foreach (var voice in Voices)
         {
             files.Add(new(new($"{ModelRepository}voices/{voice.Id}.bin"), VoiceFile(voice.Id), VoiceBytes));

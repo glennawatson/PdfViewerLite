@@ -2,8 +2,10 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Collections.Concurrent;
 using PdfViewerLite.Http.GitHub;
 using PdfViewerLite.Http.Remote;
+using PdfViewerLite.Http.Speech;
 using Refit;
 
 namespace PdfViewerLite.Http;
@@ -14,6 +16,9 @@ namespace PdfViewerLite.Http;
 /// </summary>
 public static class RefitClients
 {
+    /// <summary>Refit resolves paths against a client's base address, so one download client is kept per host.</summary>
+    private static readonly ConcurrentDictionary<string, IRemoteDocumentApi> DownloadClients = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Gets the GitHub API base address.</summary>
     public static Uri GitHubApiAddress { get; } = new("https://api.github.com");
 
@@ -34,5 +39,26 @@ public static class RefitClients
     {
         ArgumentNullException.ThrowIfNull(httpClient);
         return RestService.ForGenerated<IRemoteDocumentApi>(httpClient, HttpJsonContext.Default);
+    }
+
+    /// <summary>Creates an Azure Speech client for a region.</summary>
+    /// <param name="httpClient">The HTTP client; its base address defaults to the region's speech endpoint.</param>
+    /// <param name="region">The Azure region, for example <c>uksouth</c>.</param>
+    /// <returns>The client.</returns>
+    public static IAzureSpeechApi CreateAzureSpeechApi(HttpClient httpClient, string region)
+    {
+        ArgumentNullException.ThrowIfNull(httpClient);
+        httpClient.BaseAddress ??= AzureSpeechEngine.EndpointFor(region);
+        return RestService.ForGenerated<IAzureSpeechApi>(httpClient, HttpJsonContext.Default);
+    }
+
+    /// <summary>Starts downloading a file, sharing one client per host.</summary>
+    /// <param name="uri">The absolute address.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The response; the caller disposes it.</returns>
+    internal static Task<HttpResponseMessage> Download(Uri uri, CancellationToken cancellationToken)
+    {
+        var api = DownloadClients.GetOrAdd(uri.GetLeftPart(UriPartial.Authority), static authority => CreateRemoteDocumentApi(new() { BaseAddress = new(authority) }));
+        return api.DownloadAsync(uri.PathAndQuery.TrimStart('/'), cancellationToken);
     }
 }

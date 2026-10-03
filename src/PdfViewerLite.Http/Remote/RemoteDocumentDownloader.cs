@@ -2,7 +2,6 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace PdfViewerLite.Http.Remote;
@@ -13,9 +12,6 @@ public sealed class RemoteDocumentDownloader
 {
     /// <summary>The largest document downloaded, guarding against runaway responses.</summary>
     private const long MaxBytes = 512L * 1024 * 1024;
-
-    /// <summary>Refit resolves paths against a client's base address, so one client is kept per host.</summary>
-    private static readonly ConcurrentDictionary<string, IRemoteDocumentApi> Clients = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The directory downloads are written to.</summary>
     private readonly string _downloadDirectory;
@@ -44,8 +40,7 @@ public sealed class RemoteDocumentDownloader
     public async Task<string> DownloadAsync(Uri uri, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(uri);
-        var api = Clients.GetOrAdd(uri.GetLeftPart(UriPartial.Authority), static authority => RefitClients.CreateRemoteDocumentApi(new() { BaseAddress = new(authority) }));
-        using var response = await api.DownloadAsync(uri.PathAndQuery.TrimStart('/'), cancellationToken).ConfigureAwait(false);
+        using var response = await RefitClients.Download(uri, cancellationToken).ConfigureAwait(false);
         _ = response.EnsureSuccessStatusCode();
         if (response.Content.Headers.ContentLength > MaxBytes)
         {
