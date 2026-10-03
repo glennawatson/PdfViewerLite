@@ -76,6 +76,27 @@ public static class TestPdf
     /// <summary>The size of both boxes, in points.</summary>
     public static readonly int LayerBoxSize = 100;
 
+    /// <summary>The top of the first calculated form field.</summary>
+    private const int FirstFieldTop = 700;
+
+    /// <summary>The distance between calculated form fields.</summary>
+    private const int FieldSpacing = 40;
+
+    /// <summary>The height of a calculated form field.</summary>
+    private const int FieldHeight = 24;
+
+    /// <summary>The Total field's place among the calculated form's fields.</summary>
+    private const int TotalField = 2;
+
+    /// <summary>The Tax field's place among the calculated form's fields.</summary>
+    private const int TaxField = 3;
+
+    /// <summary>A number field's keystroke and format actions.</summary>
+    private const string NumberActions = "/K << /S /JavaScript /JS (AFNumber_Keystroke(2, 0, 0, 0, \"\", true);) >> /F << /S /JavaScript /JS (AFNumber_Format(2, 0, 0, 0, \"\", true);) >>";
+
+    /// <summary>A currency format action.</summary>
+    private const string CurrencyFormat = "/F << /S /JavaScript /JS (AFNumber_Format(2, 0, 0, 0, \"$\", true);) >>";
+
     /// <summary>The standard Helvetica font dictionary.</summary>
     private const string HelveticaFont = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
 
@@ -123,6 +144,23 @@ public static class TestPdf
 
     /// <summary>The width of link rectangles.</summary>
     private const int LinkWidth = 260;
+
+    /// <summary>The Total field's actions: the product of Price and Quantity, shown as currency.</summary>
+    private const string TotalActions = $"/C << /S /JavaScript /JS (AFSimple_Calculate(\"PRD\", new Array (\"Price\", \"Quantity\"));) >> {CurrencyFormat}";
+
+    /// <summary>The Tax field's actions: a tenth of Total in simplified field notation, shown as currency.</summary>
+    private const string TaxActions = $"/C << /S /JavaScript /JS (/** BVCALC Total * 0.1 EVCALC **/ event.value = 0.1 * this.getField\\(\"Total\"\\).value;) >> {CurrencyFormat}";
+
+    /// <summary>The calculated form's fields and their actions.</summary>
+    private static readonly (string Name, string Actions)[] CalculatedFields =
+    [
+        ("Price", NumberActions),
+        ("Quantity", NumberActions),
+        ("Total", TotalActions),
+        ("Tax", TaxActions),
+        ("Percent", "/V << /S /JavaScript /JS (AFRange_Validate(true, 0, true, 100);) >>"),
+        ("Date", "/K << /S /JavaScript /JS (AFDate_KeystrokeEx(\"dd/mm/yyyy\");) >> /F << /S /JavaScript /JS (AFDate_FormatEx(\"dd/mm/yyyy\");) >>"),
+    ];
 
     /// <summary>Creates a PDF document.</summary>
     /// <param name="pageCount">The number of pages.</param>
@@ -210,6 +248,48 @@ public static class TestPdf
                             /DR << /Font << /Helv {{font}} 0 R /ZaDb {{zapf}} 0 R >> >> >> >>
             """);
         var info = Add(objects, $"<< /Title (Form) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page form whose fields carry Acrobat's built-in form scripts: Price and Quantity are numbers, Total
+    /// is their product shown as currency, Tax is Total times 0.1 in simplified field notation, Percent must be between
+    /// 0 and 100, and Date is shown as day/month/year.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateCalculatedForm()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, HelveticaFont);
+        var ids = new int[CalculatedFields.Length];
+        for (var i = 0; i < ids.Length; i++)
+        {
+            var top = FirstFieldTop - (i * FieldSpacing);
+            ids[i] = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+                << /Type /Annot /Subtype /Widget /FT /Tx /T ({{CalculatedFields[i].Name}}) /Rect [72 {{top - FieldHeight}} 300 {{top}}] /P {{page}} 0 R /F 4
+                   /DA (/Helv 12 Tf 0 g) /MK << /BC [0.5 0.5 0.5] >> /AA << {{CalculatedFields[i].Actions}} >> >>
+                """));
+        }
+
+        var content = new StringBuilder();
+        AppendText(content, PortraitHeight - Margin, HeadingSize, "Order");
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        var fields = string.Join(' ', ids.Select(static id => string.Create(CultureInfo.InvariantCulture, $"{id} 0 R")));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R /Annots [{{fields}}] >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Catalog /Pages {{pages}} 0 R
+               /AcroForm << /Fields [{{fields}}] /CO [{{ids[TotalField]}} 0 R {{ids[TaxField]}} 0 R] /NeedAppearances true /DA (/Helv 12 Tf 0 g)
+                            /DR << /Font << /Helv {{font}} 0 R >> >> >> >>
+            """);
+        var info = Add(objects, $"<< /Title (Order) /Author ({Author}) >>");
         return Serialize(objects, catalog, info);
     }
 

@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using PdfViewerLite.Core.Forms;
+using PdfViewerLite.Core.Forms.Scripting;
 using PdfViewerLite.Core.Geometry;
 using ReactiveUI;
 
@@ -16,11 +17,20 @@ namespace PdfViewerLite.App.ViewModels;
 [DebuggerDisplay("Editing {Editing}")]
 public sealed class FormsViewModel : ReactiveObject
 {
+    /// <summary>The most passes of recalculation, so fields that depend on each other in a loop still settle.</summary>
+    private const int MaxCalculationPasses = 8;
+
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
 
     /// <summary>Fields read for hit testing, reused.</summary>
     private readonly List<FormField> _scratch = [];
+
+    /// <summary>The fields' scripts by name, read on first use.</summary>
+    private Dictionary<string, FieldScripts>? _scripts;
+
+    /// <summary>The fields with a calculation, in page order, read on first use.</summary>
+    private List<FieldScripts>? _calculated;
 
     /// <summary>Initializes a new instance of the <see cref="FormsViewModel"/> class.</summary>
     /// <param name="owner">The owning tab.</param>
@@ -89,12 +99,14 @@ public sealed class FormsViewModel : ReactiveObject
             case FormFieldKind.CheckBox:
             {
                 Refresh(field, Filler?.SetChecked(field.PageIndex, field.Index, !field.IsChecked) == true);
+                Recalculate();
                 return true;
             }
 
             case FormFieldKind.RadioButton:
             {
                 Refresh(field, Filler?.SetChecked(field.PageIndex, field.Index, true) == true);
+                Recalculate();
                 return true;
             }
 
@@ -112,6 +124,7 @@ public sealed class FormsViewModel : ReactiveObject
     {
         ArgumentNullException.ThrowIfNull(field);
         Refresh(field, Filler?.SelectOption(field.PageIndex, field.Index, option) == true);
+        Recalculate();
     }
 
     /// <summary>Writes the open editor's text into its field and closes the editor.</summary>
@@ -122,11 +135,23 @@ public sealed class FormsViewModel : ReactiveObject
             return;
         }
 
-        Editing = null;
-        if (!string.Equals(field.Value, EditText, StringComparison.Ordinal))
+        var scripts = ScriptsFor(field.Name);
+        if (scripts is not null && Problem(scripts, EditText) is { } problem)
         {
-            Refresh(field, Filler?.SetText(field.PageIndex, field.Index, EditText) == true);
+            // Keep the editor open so the value can be corrected; the message stays until dismissed.
+            _owner.Notice = problem;
+            return;
         }
+
+        Editing = null;
+        var text = scripts is null ? EditText : FormScriptEngine.Format(scripts.Format, EditText);
+        if (string.Equals(field.Value, text, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Refresh(field, Filler?.SetText(field.PageIndex, field.Index, text) == true);
+        Recalculate();
     }
 
     /// <summary>Closes the editor without changing the field.</summary>
@@ -138,6 +163,12 @@ public sealed class FormsViewModel : ReactiveObject
     {
         var current = Editing;
         Commit();
+        if (Editing is { } refused)
+        {
+            // The value was refused; stay on the field so it can be corrected.
+            return refused;
+        }
+
         if (current is null || Filler is not { } filler)
         {
             return null;
@@ -160,6 +191,127 @@ public sealed class FormsViewModel : ReactiveObject
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Recalculates the calculated fields from the others, as the form's calculate scripts ask, repeating until
+    /// nothing changes so a total of totals settles. Results are formatted as each field's format script asks.
+    /// </summary>
+    public void Recalculate()
+    {
+        if (Filler is not { } filler || LoadScripts() is not { Count: > 0 } calculated)
+        {
+            return;
+        }
+
+        for (var pass = 0; pass < MaxCalculationPasses; pass++)
+        {
+            var values = ReadValues(filler);
+            var changed = false;
+            foreach (var scripts in calculated)
+            {
+                if (!FormScriptEngine.TryCalculate(scripts.Calculate, name => values.GetValueOrDefault(name), out var result))
+                {
+                    continue;
+                }
+
+                var text = FormScriptEngine.Format(scripts.Format, FormNumbers.Plain(result));
+                if (string.Equals(values.GetValueOrDefault(scripts.Name), text, StringComparison.Ordinal) || !filler.SetText(scripts.PageIndex, scripts.Index, text))
+                {
+                    continue;
+                }
+
+                values[scripts.Name] = text;
+                changed = true;
+                _owner.OnPageEdited(scripts.PageIndex);
+            }
+
+            if (!changed)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Explains why a typed value is refused by its field's keystroke or validate script.</summary>
+    /// <param name="scripts">The field's scripts.</param>
+    /// <param name="text">The typed value.</param>
+    /// <returns>The explanation, or <see langword="null"/> when the value is accepted.</returns>
+    private static string? Problem(FieldScripts scripts, string text)
+    {
+        if (!FormScriptEngine.Accepts(scripts.Keystroke, text))
+        {
+            return scripts.Keystroke.Function switch
+            {
+                FormScriptFunction.Date => $"Type a date like {FormScriptEngine.Format(scripts.Keystroke, "2026-03-07")}.",
+                FormScriptFunction.Special => "Type the number with the right count of digits.",
+                _ => "Type a number.",
+            };
+        }
+
+        return FormScriptEngine.Validate(scripts.Validate, text, out var message) ? null : message;
+    }
+
+    /// <summary>Reads every field's value by name.</summary>
+    /// <param name="filler">The form.</param>
+    /// <returns>The values.</returns>
+    private Dictionary<string, string> ReadValues(IFormFiller filler)
+    {
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (var page = 0; page < _owner.PageCount; page++)
+        {
+            _scratch.Clear();
+            filler.GetFields(page, _scratch);
+            foreach (var field in _scratch)
+            {
+                _ = values.TryAdd(field.Name, field.Kind is FormFieldKind.CheckBox or FormFieldKind.RadioButton && !field.IsChecked ? string.Empty : field.Value);
+            }
+        }
+
+        return values;
+    }
+
+    /// <summary>Gets a field's scripts by name.</summary>
+    /// <param name="name">The field's name.</param>
+    /// <returns>The scripts, or <see langword="null"/> when it has none PdfViewerLite runs.</returns>
+    private FieldScripts? ScriptsFor(string name)
+    {
+        _ = LoadScripts();
+        return _scripts?.GetValueOrDefault(name);
+    }
+
+    /// <summary>Reads the form's scripts once, returning the calculated fields.</summary>
+    /// <returns>The calculated fields, or <see langword="null"/> when the document has no scripts.</returns>
+    private List<FieldScripts>? LoadScripts()
+    {
+        if (_scripts is not null)
+        {
+            return _calculated;
+        }
+
+        _scripts = [with(StringComparer.Ordinal)];
+        _calculated = [];
+        if (_owner.TryGetDocument() is not IFormScriptSource source)
+        {
+            return _calculated;
+        }
+
+        var all = new List<FieldScripts>();
+        for (var page = 0; page < _owner.PageCount; page++)
+        {
+            source.GetScripts(page, all);
+        }
+
+        foreach (var scripts in all)
+        {
+            _ = _scripts.TryAdd(scripts.Name, scripts);
+            if (scripts.Calculate.Function != FormScriptFunction.Unknown)
+            {
+                _calculated.Add(scripts);
+            }
+        }
+
+        return _calculated;
     }
 
     /// <summary>Redraws the page of a changed field.</summary>

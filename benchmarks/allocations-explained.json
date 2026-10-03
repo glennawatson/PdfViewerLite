@@ -265,5 +265,45 @@
     "type": "",
     "frame": "PdfViewerLite.Core.Signatures.Signing.PdfSigner.",
     "reason": "Signing or timestamping writes a new copy of the file with an incremental update, the CMS signature or token, and its hex form; once per signature."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormScript.",
+    "reason": "Field scripts are recognised once, when a form is first edited: the regular expressions' matches, the arguments and field names as strings, and the script record."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormExpression",
+    "reason": "Evaluating a calculation reads each field name as a string to look its value up; once per calculated field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormNumbers.",
+    "reason": "Formatting or reading a number builds the text, with its separators and currency, as new strings; once per field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormDates.",
+    "reason": "Formatting or reading a date converts the field's format into a pattern string; once per date field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Forms.Scripting.FormScriptEngine",
+    "reason": "Running a script works on new strings for the value it formats or checks, and a closure for a calculation's field lookups; once per field per edit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumForm.ReadFieldScripts(",
+    "reason": "Reading a form's scripts, once when it is first edited: each widget's name and action scripts as strings, and its scripts record."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumForm.ReadScripts(",
+    "reason": "Reading a form's scripts, once when it is first edited: the list of scripted fields grows."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumForm.ReadUtf16(",
+    "reason": "A form field's name, value or script is read from PDFium as a new string; when fields are listed after an edit, or scripts are read once."
   }
 ]

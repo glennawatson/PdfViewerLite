@@ -66,7 +66,7 @@ every platform on each release, but tests only run on Linux.
 |---|---|---|---|
 | Fill AcroForms | Yes | Text fields, check boxes, radio buttons, choice lists; Tab moves to the next field | Done |
 | Save filled forms | Yes | Yes | Done |
-| Form JavaScript (calculations, validation) | Yes | Not run | Later |
+| Form JavaScript (calculations, validation) | Yes | Acrobat's built-in form functions run as plain C#, never as JavaScript: number, percent, date and special formats, keystroke checks, range validation, and sums, averages, products, minimums, maximums and simplified field notation; other scripts are not run, so a form cannot run code on the computer | Done |
 | XFA forms | Static XFA only | Not supported | Later |
 | Submit forms over the web | Yes | | Out of scope |
 

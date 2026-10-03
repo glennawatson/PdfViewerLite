@@ -4,6 +4,7 @@
 
 using System.Runtime.InteropServices;
 using PdfViewerLite.Core.Forms;
+using PdfViewerLite.Core.Forms.Scripting;
 
 namespace PdfViewerLite.Pdfium;
 
@@ -42,6 +43,17 @@ public sealed partial class PdfiumDocument
         var start = output.Count;
         _form.Read(page, output);
         _fieldCache[pageIndex] = [.. CollectionsMarshal.AsSpan(output)[start..]];
+    }
+
+    /// <inheritdoc/>
+    public void GetScripts(int pageIndex, List<FieldScripts> output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+        using var scope = PdfiumLibrary.EnterScope();
+        if (!IsDisposed && _form.HasForm && GetPage(pageIndex) is { } page)
+        {
+            _form.ReadScripts(page, output);
+        }
     }
 
     /// <inheritdoc/>

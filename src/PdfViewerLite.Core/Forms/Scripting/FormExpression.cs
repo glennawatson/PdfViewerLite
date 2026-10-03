@@ -131,7 +131,27 @@ public static class FormExpression
         /// <returns>The field's value, or NaN when there is no name.</returns>
         private double Field()
         {
-            var name = new StringBuilder();
+            // Most names have no escapes and are read straight from the text.
+            var start = _position;
+            while (_position < text.Length && !IsOperator(text[_position]) && !char.IsWhiteSpace(text[_position]) && text[_position] != '\\')
+            {
+                _position++;
+            }
+
+            if (_position >= text.Length || text[_position] != '\\')
+            {
+                return _position == start ? double.NaN : field(text[start.._position]);
+            }
+
+            return field(EscapedName(start));
+        }
+
+        /// <summary>Reads the rest of a field name that holds escapes, dropping each backslash and keeping what it escapes.</summary>
+        /// <param name="start">Where the name started.</param>
+        /// <returns>The name.</returns>
+        private string EscapedName(int start)
+        {
+            var name = new StringBuilder().Append(text, start, _position - start);
             while (_position < text.Length && !IsOperator(text[_position]) && !char.IsWhiteSpace(text[_position]))
             {
                 if (text[_position] == '\\' && _position + 1 < text.Length)
@@ -143,7 +163,7 @@ public static class FormExpression
                 _position++;
             }
 
-            return name.Length == 0 ? double.NaN : field(name.ToString());
+            return name.ToString();
         }
 
         /// <summary>Reads a character when it is next.</summary>

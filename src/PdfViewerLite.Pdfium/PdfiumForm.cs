@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using PdfViewerLite.Core.Forms;
+using PdfViewerLite.Core.Forms.Scripting;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Pdfium.Native;
 
@@ -20,6 +21,18 @@ namespace PdfViewerLite.Pdfium;
 [DebuggerDisplay("Form: {HasForm}")]
 internal sealed unsafe class PdfiumForm : IDisposable
 {
+    /// <summary>PDFium's keystroke additional action.</summary>
+    private const int KeystrokeEvent = 12;
+
+    /// <summary>PDFium's format additional action.</summary>
+    private const int FormatEvent = 13;
+
+    /// <summary>PDFium's validate additional action.</summary>
+    private const int ValidateEvent = 14;
+
+    /// <summary>PDFium's calculate additional action.</summary>
+    private const int CalculateEvent = 15;
+
     /// <summary>PDFium's widget annotation subtype.</summary>
     private const int SubtypeWidget = 20;
 
@@ -136,6 +149,39 @@ internal sealed unsafe class PdfiumForm : IDisposable
         }
     }
 
+    /// <summary>Appends the scripts of the widgets on a page that carry any PdfViewerLite runs.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="output">The list receiving the scripts.</param>
+    internal void ReadScripts(PdfiumPage page, List<FieldScripts> output)
+    {
+        if (!HasForm)
+        {
+            return;
+        }
+
+        var count = NativeMethods.FPDFPage_GetAnnotCount(page.Handle);
+        for (var i = 0; i < count; i++)
+        {
+            var annotation = NativeMethods.FPDFPage_GetAnnot(page.Handle, i);
+            if (annotation == 0)
+            {
+                continue;
+            }
+
+            try
+            {
+                if (NativeMethods.FPDFAnnot_GetSubtype(annotation) == SubtypeWidget && ReadFieldScripts(page.Index, i, annotation) is { HasAny: true } scripts)
+                {
+                    output.Add(scripts);
+                }
+            }
+            finally
+            {
+                NativeMethods.FPDFPage_CloseAnnot(annotation);
+            }
+        }
+    }
+
     /// <summary>Replaces a text field's text.</summary>
     /// <param name="page">The page.</param>
     /// <param name="index">The widget index.</param>
@@ -238,6 +284,29 @@ internal sealed unsafe class PdfiumForm : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static CULong ReadOption((PdfiumFormHandle Form, nint Annotation, int Index) target, void* buffer, CULong length) =>
         NativeMethods.FPDFAnnot_GetOptionLabel(target.Form, target.Annotation, target.Index, buffer, length);
+
+    /// <summary>Reads an additional-action script.</summary>
+    /// <param name="target">The form, widget and event.</param>
+    /// <param name="buffer">The buffer.</param>
+    /// <param name="length">The buffer length in bytes.</param>
+    /// <returns>The needed length.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static CULong ReadScript((PdfiumFormHandle Form, nint Annotation, int Event) target, void* buffer, CULong length) =>
+        NativeMethods.FPDFAnnot_GetFormAdditionalActionJavaScript(target.Form, target.Annotation, target.Event, buffer, length);
+
+    /// <summary>Reads one widget's scripts.</summary>
+    /// <param name="pageIndex">The page.</param>
+    /// <param name="index">The widget index.</param>
+    /// <param name="annotation">The widget.</param>
+    /// <returns>The scripts.</returns>
+    private FieldScripts ReadFieldScripts(int pageIndex, int index, nint annotation) => new(
+        pageIndex,
+        index,
+        ReadUtf16((_handle, annotation), &ReadName),
+        FormScript.Parse(ReadUtf16((_handle, annotation, KeystrokeEvent), &ReadScript)),
+        FormScript.Parse(ReadUtf16((_handle, annotation, FormatEvent), &ReadScript)),
+        FormScript.Parse(ReadUtf16((_handle, annotation, ValidateEvent), &ReadScript)),
+        FormScript.Parse(ReadUtf16((_handle, annotation, CalculateEvent), &ReadScript)));
 
     /// <summary>Reads one field.</summary>
     /// <param name="page">The page.</param>

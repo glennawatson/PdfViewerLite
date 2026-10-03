@@ -124,6 +124,16 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial int FPDFAnnot_GetFormFieldFlags(PdfiumFormHandle form, nint annotation);
 
+    /// <summary>Native <c>FPDFAnnot_GetFormAdditionalActionJavaScript</c> entry point.</summary>
+    /// <param name="form">The form handle.</param>
+    /// <param name="annotation">The widget.</param>
+    /// <param name="formEvent">The event: 12 keystroke, 13 format, 14 validate, 15 calculate.</param>
+    /// <param name="buffer">The UTF-16LE output buffer.</param>
+    /// <param name="length">The buffer length in bytes.</param>
+    /// <returns>The needed length in bytes.</returns>
+    [LibraryImport(Library)]
+    internal static partial CULong FPDFAnnot_GetFormAdditionalActionJavaScript(PdfiumFormHandle form, nint annotation, int formEvent, void* buffer, CULong length);
+
     /// <summary>Native <c>FPDFAnnot_GetFormFieldName</c> entry point.</summary>
     /// <param name="form">The form handle.</param>
     /// <param name="annotation">The widget.</param>
