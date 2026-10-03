@@ -7,5 +7,6 @@
       <TextBlock x:Name="KindText" Classes="secondary" FontSize="11" />
     </StackPanel>
     <TextBlock x:Name="SummaryText" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+    <TextBlock x:Name="RepliesText" Classes="secondary" TextWrapping="Wrap" MaxLines="6" TextTrimming="CharacterEllipsis" Margin="12,0,0,0" />
   </StackPanel>
 </UserControl>

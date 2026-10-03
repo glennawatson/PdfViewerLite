@@ -71,8 +71,10 @@ public sealed partial class AnnotationItemView : UserControl, IViewFor<Annotatio
     /// <param name="item">The item.</param>
     private void Show(AnnotationItemViewModel? item)
     {
-        KindText.Text = item is null ? null : $"{item.KindName} · {item.PageCaption}";
+        KindText.Text = item?.Heading;
         SummaryText.Text = item?.Summary;
+        RepliesText.Text = item?.RepliesText;
+        RepliesText.IsVisible = item is { RepliesText.Length: > 0 };
         Swatch.Background = item is null ? null : new SolidColorBrush(Color.FromUInt32(OpaqueAlpha | item.Annotation.Color));
     }
 }

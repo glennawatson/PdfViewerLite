@@ -318,6 +318,8 @@ public sealed partial class PageCanvas
         [
             new MenuItem { Header = name, IsEnabled = false },
             Item(annotation.Contents.Length > 0 ? "_Edit Note…" : "Add _Note…", null, () => _ = annotations.EditNoteAsync(annotation)),
+            Item("_Reply…", null, () => _ = annotations.ReplyAsync(annotation)),
+            new MenuItem { Header = "_Status", ItemsSource = StatusItems(annotations, annotation) },
             colour,
             new Separator(),
             Item($"_Delete {name}", "Delete", () => annotations.Delete(annotation)),
@@ -343,6 +345,18 @@ public sealed partial class PageCanvas
             Item("_Annotate…", null, () => annotations.IsAnnotating = true, editable),
         ];
     }
+
+    /// <summary>Builds one item per review status.</summary>
+    /// <param name="annotations">The annotation state.</param>
+    /// <param name="annotation">The comment.</param>
+    /// <returns>The items.</returns>
+    private List<MenuItem> StatusItems(AnnotationsViewModel annotations, PageAnnotation annotation) =>
+    [
+        Item("_Accepted", null, () => annotations.SetStatus(annotation, ReviewState.Accepted)),
+        Item("_Rejected", null, () => annotations.SetStatus(annotation, ReviewState.Rejected)),
+        Item("_Cancelled", null, () => annotations.SetStatus(annotation, ReviewState.Cancelled)),
+        Item("C_ompleted", null, () => annotations.SetStatus(annotation, ReviewState.Completed)),
+    ];
 
     /// <summary>Builds one named colour item per annotation colour.</summary>
     /// <param name="apply">What choosing a colour does.</param>

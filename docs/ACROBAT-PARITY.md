@@ -78,7 +78,7 @@ every platform on each release, but tests only run on Linux.
 | Sticky notes, text boxes, freehand drawing | Yes | With colours, recolour, edit and delete | Done |
 | Comment list | Yes | Annotations sidebar | Done |
 | Shapes, stamps, arrows | Yes | Annotate ▸ Shape (rectangle, ellipse, arrow, line: drag to draw) and Stamp (Approved, Reviewed, Draft, Confidential, Final, Not Approved: click to place), in muted tones of the chosen colour; saved as standard PDF annotations | Done |
-| Replies and review status on comments | Yes | | Later |
+| Replies and review status on comments | Yes | Right-click a comment ▸ Reply… or Status (Accepted, Rejected, Cancelled, Completed); the sidebar shows each thread and the latest status; saved as standard /IRT replies and Review states, and replies from other readers are threaded the same way | Done |
 | Shared review in the cloud | Yes | | Out of scope |
 
 ## Signatures

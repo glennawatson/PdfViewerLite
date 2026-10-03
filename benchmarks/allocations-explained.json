@@ -200,5 +200,35 @@
     "type": "System.String[]",
     "frame": "PdfViewerLite.Speech.Melo.SpellingToSound.Predict(",
     "reason": "The caller's reused list of guessed phones grows once to the longest guess; the phone names themselves are shared strings and the network's state is reused."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Annotations.AnnotationReplyLinks.",
+    "reason": "Linking replies runs once per save of a document that gained replies: it parses the saved file, gives inline annotations on pages with replies objects of their own, rewrites each reply with its /IRT reference, and returns the file with the update appended as a new array."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.ReadReplies(",
+    "reason": "A comment's thread is read when the annotations list is refreshed: each reply's text, author and status are new strings in a new record, and the comment's name is read once to match replies saved before linking."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.ReadString(",
+    "reason": "Reading an annotation's text value (contents, author, name or status) returns it as a new string; done when the list is refreshed, not while drawing."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.RepliesTo(",
+    "reason": "Matching a reply to its comment reads the reply's pending comment name as a string; only replies added since the last save have one."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.CreateReply(",
+    "reason": "Replying writes the reply's name, the comment it answers and its modification date; the name is a new string per reply."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.NewName(",
+    "reason": "Each reply, and a comment the first time it is replied to, gets a unique name as a new string."
   }
 ]

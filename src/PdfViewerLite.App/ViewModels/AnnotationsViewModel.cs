@@ -30,6 +30,9 @@ public sealed class AnnotationsViewModel : ReactiveObject
     /// <summary>The size of a kept measurement's label.</summary>
     private const float MeasurementTextSize = 9;
 
+    /// <summary>The title, label and button of the reply prompt.</summary>
+    private const string ReplyTitle = "Reply";
+
     /// <summary>The line width of shapes in points.</summary>
     private const float ShapeWidth = 2;
 
@@ -436,6 +439,33 @@ public sealed class AnnotationsViewModel : ReactiveObject
         }
     }
 
+    /// <summary>Asks for a reply to a comment and adds it.</summary>
+    /// <param name="annotation">The comment.</param>
+    /// <returns>A task.</returns>
+    public async Task ReplyAsync(PageAnnotation? annotation)
+    {
+        if (annotation is null)
+        {
+            return;
+        }
+
+        var text = await PromptInteraction.Handle(new(ReplyTitle, ReplyTitle, string.Empty, ReplyTitle, true)).ToTask().ConfigureAwait(true);
+        if (!string.IsNullOrWhiteSpace(text) && Editor is { } editor)
+        {
+            _ = Added(annotation.PageIndex, editor.AddReply(annotation.PageIndex, annotation.Index, text, ReviewState.None));
+        }
+    }
+
+    /// <summary>Records a review status for a comment.</summary>
+    /// <param name="annotation">The comment.</param>
+    /// <param name="state">The status.</param>
+    /// <returns><see langword="true"/> when recorded.</returns>
+    public bool SetStatus(PageAnnotation annotation, ReviewState state)
+    {
+        ArgumentNullException.ThrowIfNull(annotation);
+        return Editor is { } editor && Added(annotation.PageIndex, editor.AddReply(annotation.PageIndex, annotation.Index, string.Empty, state));
+    }
+
     /// <summary>Rebuilds the sidebar list from every page; called when the annotations panel is shown.</summary>
     public void RefreshItems()
     {
@@ -451,9 +481,21 @@ public sealed class AnnotationsViewModel : ReactiveObject
             editor.GetAnnotations(page, _scratch);
             foreach (var annotation in _scratch)
             {
-                Items.Add(new(annotation, _owner.GetPageDisplay(page)));
+                Items.Add(CreateItem(editor, annotation, _owner.GetPageDisplay(page)));
             }
         }
+    }
+
+    /// <summary>Makes a sidebar item for an annotation, with its replies.</summary>
+    /// <param name="editor">The editor.</param>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="label">The page label.</param>
+    /// <returns>The item.</returns>
+    private static AnnotationItemViewModel CreateItem(IAnnotationEditor editor, PageAnnotation annotation, string label)
+    {
+        var replies = new List<AnnotationReply>();
+        editor.GetReplies(annotation.PageIndex, annotation.Index, replies);
+        return new(annotation, label, replies);
     }
 
     /// <summary>Turns a tool on, or back to selecting when it is turned off.</summary>
@@ -591,7 +633,7 @@ public sealed class AnnotationsViewModel : ReactiveObject
         var label = _owner.GetPageDisplay(page);
         foreach (var annotation in _scratch)
         {
-            Items.Insert(Math.Min(insertAt, Items.Count), new(annotation, label));
+            Items.Insert(Math.Min(insertAt, Items.Count), CreateItem(editor, annotation, label));
             insertAt++;
         }
     }
