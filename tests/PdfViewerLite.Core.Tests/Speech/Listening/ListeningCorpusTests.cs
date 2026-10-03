@@ -5,8 +5,10 @@
 using System.Diagnostics;
 using System.Globalization;
 using PdfViewerLite.Core.Speech;
+using PdfViewerLite.Core.Tests.Speech.Melo;
 using PdfViewerLite.Speech.English;
 using PdfViewerLite.Speech.Kokoro;
+using PdfViewerLite.Speech.Melo;
 
 namespace PdfViewerLite.Core.Tests.Speech.Listening;
 
@@ -17,8 +19,11 @@ namespace PdfViewerLite.Core.Tests.Speech.Listening;
 [NotInParallel(nameof(KokoroRealModelTests))]
 public sealed class ListeningCorpusTests
 {
-    /// <summary>The voice used for the long session.</summary>
+    /// <summary>The Kokoro voice used for the long session.</summary>
     private const string Voice = "af_heart";
+
+    /// <summary>The MeloTTS voice used for the long session: Australian, the default.</summary>
+    private const string MeloVoice = "EN-AU";
 
     /// <summary>The most words in a passage the voice may have to spell out letter by letter.</summary>
     private const int MaxGuessedWords = 2;
@@ -104,13 +109,34 @@ public sealed class ListeningCorpusTests
     {
         await KokoroModelFixture.EnsureAsync();
         using var engine = new KokoroEngine(KokoroModelFixture.Directory);
-        var session = await ReadAsync(engine, passage.Text);
-        var report = string.Join(Environment.NewLine, session.Sentences.Select(static s => $"{s.Measurement}  {s.Text}"));
+        await AssertReadsCleanly(engine, Voice, passage);
+    }
 
-        await Assert.That(session.Sentences.TrueForAll(static s => s.Measurement.IsFinite)).IsTrue();
-        await Assert.That(session.Sentences.Max(static s => s.Measurement.Peak)).IsLessThanOrEqualTo(MaxPeak).Because(report);
-        await Assert.That(session.Sentences.Max(static s => s.Measurement.LongestGap)).IsLessThanOrEqualTo(MaxGap).Because(report);
-        await Assert.That(session.Sentences.Max(static s => Math.Max(s.Measurement.LeadingSilence, s.Measurement.TrailingSilence))).IsLessThanOrEqualTo(MaxEdgeSilence).Because(report);
+    /// <summary>Every passage, read sentence by sentence by the MeloTTS voice, is clean.</summary>
+    /// <param name="passage">The passage.</param>
+    /// <returns>A task.</returns>
+    [Test]
+    [MethodDataSource(typeof(ListeningCorpus), nameof(ListeningCorpus.AllPassages))]
+    public async Task MeloReadsCleanly(ListeningPassage passage)
+    {
+        await MeloModelFixture.EnsureAsync();
+        using var engine = new MeloEngine(MeloModelFixture.Directory);
+        await AssertReadsCleanly(engine, MeloVoice, passage);
+    }
+
+    /// <summary>MeloTTS knows nearly every word of each passage, so it rarely has to guess.</summary>
+    /// <param name="passage">The passage.</param>
+    /// <returns>A task.</returns>
+    [Test]
+    [MethodDataSource(typeof(ListeningCorpus), nameof(ListeningCorpus.AllPassages))]
+    public async Task MeloKnowsTheWords(ListeningPassage passage)
+    {
+        await MeloModelFixture.EnsureAsync();
+        var frontEnd = MeloFrontEnd.Load(MeloModelFixture.Directory);
+
+        frontEnd.Prepare(MeloEngine.Normalize(passage.Text, true), new());
+
+        await Assert.That(frontEnd.GuessedWords).IsLessThanOrEqualTo(MaxGuessedWords);
     }
 
     /// <summary>
@@ -123,9 +149,45 @@ public sealed class ListeningCorpusTests
     {
         await KokoroModelFixture.EnsureAsync();
         using var engine = new KokoroEngine(KokoroModelFixture.Directory);
+        await AssertStaysEven(engine, Voice, "long-session.wav");
+    }
+
+    /// <summary>A long session read by the MeloTTS voice stays restful.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task MeloLongSessionStaysEven()
+    {
+        await MeloModelFixture.EnsureAsync();
+        using var engine = new MeloEngine(MeloModelFixture.Directory);
+        await AssertStaysEven(engine, MeloVoice, "long-session-melo.wav");
+    }
+
+    /// <summary>Checks a passage reads cleanly: no clipping, no stray gaps and no long silences around sentences.</summary>
+    /// <param name="engine">The voice.</param>
+    /// <param name="voice">The voice id.</param>
+    /// <param name="passage">The passage.</param>
+    /// <returns>A task.</returns>
+    private static async Task AssertReadsCleanly(ISpeechEngine engine, string voice, ListeningPassage passage)
+    {
+        var session = await ReadAsync(engine, voice, passage.Text);
+        var report = string.Join(Environment.NewLine, session.Sentences.Select(static s => $"{s.Measurement}  {s.Text}"));
+
+        await Assert.That(session.Sentences.TrueForAll(static s => s.Measurement.IsFinite)).IsTrue();
+        await Assert.That(session.Sentences.Max(static s => s.Measurement.Peak)).IsLessThanOrEqualTo(MaxPeak).Because(report);
+        await Assert.That(session.Sentences.Max(static s => s.Measurement.LongestGap)).IsLessThanOrEqualTo(MaxGap).Because(report);
+        await Assert.That(session.Sentences.Max(static s => Math.Max(s.Measurement.LeadingSilence, s.Measurement.TrailingSilence))).IsLessThanOrEqualTo(MaxEdgeSilence).Because(report);
+    }
+
+    /// <summary>Checks a long session stays even in loudness, pace and pauses, and keeps ahead of playback.</summary>
+    /// <param name="engine">The voice.</param>
+    /// <param name="voice">The voice id.</param>
+    /// <param name="fileName">The file the session is saved as, when saving is asked for.</param>
+    /// <returns>A task.</returns>
+    private static async Task AssertStaysEven(ISpeechEngine engine, string voice, string fileName)
+    {
         var passage = ListeningCorpus.Instance.Passages.Single(static p => p.Category == "long-session");
-        var session = await ReadAsync(engine, passage.Text);
-        Save(session);
+        var session = await ReadAsync(engine, voice, passage.Text);
+        Save(session, fileName);
         var levels = session.Sentences.Select(static s => s.Measurement.Level).ToList();
         var rates = session.Sentences.Select(static s => s.Measurement.Rate).ToList();
         var half = session.Sentences.Count / Halves;
@@ -144,9 +206,10 @@ public sealed class ListeningCorpusTests
 
     /// <summary>Reads a passage sentence by sentence, as Read Aloud does, timing each one.</summary>
     /// <param name="engine">The voice.</param>
+    /// <param name="voice">The voice id.</param>
     /// <param name="text">The passage.</param>
     /// <returns>The session.</returns>
-    private static async Task<ListeningSession> ReadAsync(KokoroEngine engine, string text)
+    private static async Task<ListeningSession> ReadAsync(ISpeechEngine engine, string voice, string text)
     {
         var sentences = new List<SpeechSentence>();
         SentenceSplitter.Split(text, sentences);
@@ -155,7 +218,7 @@ public sealed class ListeningCorpusTests
         {
             var words = SentenceSplitter.ToSpeech(text.AsSpan(sentence.Start, sentence.Length));
             var started = Stopwatch.GetTimestamp();
-            var audio = await engine.SynthesizeAsync(words, Voice, 1, CancellationToken.None);
+            var audio = await engine.SynthesizeAsync(words, voice, 1, CancellationToken.None);
             var work = Stopwatch.GetElapsedTime(started);
             var letters = words.Count(char.IsLetterOrDigit);
             spoken.Add(new(words, audio, SpeechMeasurement.Measure(audio, letters), work));
@@ -202,7 +265,8 @@ public sealed class ListeningCorpusTests
 
     /// <summary>Saves the session as a WAV file when a folder is named, so it can be listened to.</summary>
     /// <param name="session">The session.</param>
-    private static void Save(ListeningSession session)
+    /// <param name="fileName">The file's name.</param>
+    private static void Save(ListeningSession session, string fileName)
     {
         if (Environment.GetEnvironmentVariable(SaveVariable) is not { Length: > 0 } folder)
         {
@@ -211,6 +275,6 @@ public sealed class ListeningCorpusTests
 
         _ = Directory.CreateDirectory(folder);
         var samples = session.Sentences.SelectMany(static s => s.Audio.Samples).ToArray();
-        WaveFile.Write(Path.Combine(folder, "long-session.wav"), samples, session.Sentences[0].Audio.SampleRate);
+        WaveFile.Write(Path.Combine(folder, fileName), samples, session.Sentences[0].Audio.SampleRate);
     }
 }

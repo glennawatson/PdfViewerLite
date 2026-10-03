@@ -44,6 +44,12 @@ public sealed class MeloEngine : ISpeechEngine
     /// <summary>The most threads inference uses, leaving the rest of the computer responsive.</summary>
     private const int MaxThreads = 4;
 
+    /// <summary>The level below which a sample counts as silence.</summary>
+    private const float Quiet = 0.005F;
+
+    /// <summary>The silence kept after speech, in seconds.</summary>
+    private const double TrailingPause = 0.45;
+
     /// <summary>The slowest speed.</summary>
     private const float MinSpeed = 0.25F;
 
@@ -207,6 +213,25 @@ public sealed class MeloEngine : ISpeechEngine
         return space > start ? space - start : MaxPieceLength;
     }
 
+    /// <summary>
+    /// Finds where speech ends plus a natural pause. MeloTTS ends every reading with about 0.8 s of silence; Read Aloud
+    /// adds its own pause between sentences, so the tail is cut to <see cref="TrailingPause"/> to keep pauses even.
+    /// </summary>
+    /// <param name="samples">The samples.</param>
+    /// <param name="sampleRate">The sample rate.</param>
+    /// <returns>How many samples to keep.</returns>
+    private static int Trimmed(List<float> samples, int sampleRate)
+    {
+        var span = CollectionsMarshal.AsSpan(samples);
+        var last = span.Length - 1;
+        while (last >= 0 && Math.Abs(span[last]) < Quiet)
+        {
+            last--;
+        }
+
+        return Math.Min(span.Length, last + 1 + (int)(TrailingPause * sampleRate));
+    }
+
     /// <summary>Lines BERT's features up with the phones: each phone takes the feature of the token covering it.</summary>
     /// <param name="hidden">BERT's output, one row of 768 per token.</param>
     /// <param name="input">The model's input.</param>
@@ -263,7 +288,7 @@ public sealed class MeloEngine : ISpeechEngine
                 }
             }
 
-            return new([.. samples], symbols.SampleRate);
+            return new(CollectionsMarshal.AsSpan(samples)[..Trimmed(samples, symbols.SampleRate)].ToArray(), symbols.SampleRate);
         }
     }
 
