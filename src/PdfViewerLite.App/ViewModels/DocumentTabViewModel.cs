@@ -60,6 +60,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Watches the file for changes once loaded.</summary>
     private IDisposable? _fileWatch;
 
+    /// <summary>How the tab looked before presenting.</summary>
+    private PresentationState _beforePresenting;
+
     /// <summary>Initializes a new instance of the <see cref="DocumentTabViewModel"/> class.</summary>
     /// <param name="source">The document source.</param>
     /// <param name="services">The application services.</param>
@@ -99,6 +102,8 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
         SaveCommand = ReactiveCommand.Create(() => Save(FilePath));
         PrintCommand = ReactiveCommand.CreateFromTask(PrintAsync);
+        PresentCommand = ReactiveCommand.Create(() => SetPresenting(!IsPresenting));
+        StopPresentingCommand = ReactiveCommand.Create(() => SetPresenting(false));
         DismissNoticeCommand = ReactiveCommand.Create(() => { Notice = null; });
         SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync);
     }
@@ -257,6 +262,19 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
+
+    /// <summary>Gets a value indicating whether the document is being presented: full screen, one page at a time, nothing else on screen.</summary>
+    public bool IsPresenting
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Gets the command starting or ending presenting.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> PresentCommand { get; }
+
+    /// <summary>Gets the command ending presenting.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> StopPresentingCommand { get; }
 
     /// <summary>Gets or sets the page rotation.</summary>
     public PageRotation Rotation
@@ -712,6 +730,39 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         {
             Notice = $"Could not save: {ex.Message}";
             return false;
+        }
+    }
+
+    /// <summary>Starts or ends presenting, keeping the tab's own view to restore afterwards.</summary>
+    /// <param name="presenting">Whether to present.</param>
+    public void SetPresenting(bool presenting)
+    {
+        if (presenting == IsPresenting)
+        {
+            return;
+        }
+
+        if (presenting)
+        {
+            _beforePresenting = new(ZoomMode, Zoom, IsPageByPage, SidebarVisible);
+            SidebarVisible = false;
+            IsPageByPage = true;
+            ZoomMode = ZoomMode.FitPage;
+            IsPresenting = true;
+            return;
+        }
+
+        IsPresenting = false;
+        var before = _beforePresenting;
+        SidebarVisible = before.SidebarVisible;
+        IsPageByPage = before.PageByPage;
+        if (before.ZoomMode == ZoomMode.Free)
+        {
+            SetZoom(before.Zoom);
+        }
+        else
+        {
+            ZoomMode = before.ZoomMode;
         }
     }
 

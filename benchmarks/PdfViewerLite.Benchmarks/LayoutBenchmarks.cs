@@ -65,6 +65,17 @@ public class LayoutBenchmarks
     public DocumentLayout CreatePageByPageLayout() =>
         DocumentLayout.Create(_sizes, new(PageRotation.None, PageLayoutMode.Single, Scale, Spacing, Margin, Viewport) { PageByPage = true, ViewportHeight = ViewportHeight });
 
+    /// <summary>Starts presenting: fits a page to the screen, then lays out one page per screen.</summary>
+    /// <returns>The layout.</returns>
+    [Benchmark]
+    public DocumentLayout EnterPresentation()
+    {
+        var zoom = ZoomCalculator.GetFitZoom(_sizes, new(PageRotation.None, PageLayoutMode.Single, ZoomMode.FitPage, Viewport, ViewportHeight, Spacing, Margin));
+        return DocumentLayout.Create(
+            _sizes,
+            new(PageRotation.None, PageLayoutMode.Single, zoom * ZoomCalculator.PixelsPerPoint, Spacing, Margin, Viewport) { PageByPage = true, ViewportHeight = ViewportHeight });
+    }
+
     /// <summary>Finds the row a page sits in, as page by page scrolling does for every step.</summary>
     /// <returns>The row top.</returns>
     [Benchmark]

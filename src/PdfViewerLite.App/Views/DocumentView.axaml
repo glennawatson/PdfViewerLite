@@ -4,6 +4,8 @@
              x:Class="PdfViewerLite.App.Views.DocumentView">
   <!-- Layout only: every binding is made in code with ReactiveUI.Binding (DocumentView.axaml.cs). -->
   <DockPanel>
+    <!-- Everything above the pages; hidden while presenting. -->
+    <StackPanel x:Name="Chrome" DockPanel.Dock="Top">
     <!-- Document tool bar: the main actions carry text labels (rule 7.3); rarer ones live in More. -->
     <Border DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
@@ -46,6 +48,7 @@
                 <MenuItem x:Name="SingleLayoutItem" Header="_Single Page" />
                 <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
                 <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
+                <MenuItem x:Name="PresentItem" Header="P_resent" InputGesture="Shift+F5" ToolTip.Tip="Full screen, one page at a time; Esc to stop" />
                 <MenuItem x:Name="PageByPageItem" Header="Page _by Page" ToggleType="CheckBox" ToolTip.Tip="Show one page at a time instead of scrolling continuously" />
                 <Separator />
                 <MenuItem x:Name="SaveItem" Header="_Save" InputGesture="Ctrl+S" />
@@ -305,6 +308,8 @@
         </Button>
       </StackPanel>
     </Border>
+
+    </StackPanel>
 
     <Grid ColumnDefinitions="Auto,Auto,*">
       <!-- Sidebar. -->

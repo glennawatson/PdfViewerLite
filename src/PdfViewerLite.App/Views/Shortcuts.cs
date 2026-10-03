@@ -51,6 +51,7 @@ internal static class Shortcuts
         (new(Key.End, KeyModifiers.Control), static vm => vm.SelectedTab?.LastPageCommand),
         (new(Key.F9), static vm => vm.SelectedTab?.ToggleSidebarCommand),
         (new(Key.F5), static vm => vm.SelectedTab?.ReloadCommand),
+        (new(Key.F5, KeyModifiers.Shift), static vm => vm.SelectedTab?.PresentCommand),
     ];
 
     /// <summary>Runs the command of the shortcut a key press matches.</summary>

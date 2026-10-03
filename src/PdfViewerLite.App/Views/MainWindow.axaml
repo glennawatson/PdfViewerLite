@@ -8,7 +8,7 @@
   <!-- Layout only: bindings, commands and shortcuts are set up in code with ReactiveUI.Binding (MainWindow.axaml.cs). -->
   <DockPanel>
     <!-- Tab strip. -->
-    <Border DockPanel.Dock="Top" Classes="tabbar">
+    <Border x:Name="TabBar" DockPanel.Dock="Top" Classes="tabbar">
       <Grid ColumnDefinitions="*,Auto,Auto,Auto">
         <ListBox x:Name="TabStrip" Classes="tabstrip"
                  ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled">

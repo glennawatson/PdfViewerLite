@@ -143,6 +143,12 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsOn(bool? value) => value == true;
 
+    /// <summary>Gets the scroll bar visibility: hidden while presenting, so only the page shows.</summary>
+    /// <param name="presenting">Whether the tab is presenting.</param>
+    /// <returns>The visibility.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ScrollBarVisibility ScrollBars(bool presenting) => presenting ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Auto;
+
     /// <summary>Describes how many signatures a document has.</summary>
     /// <param name="count">The number of signatures.</param>
     /// <returns>The sentence.</returns>
@@ -176,6 +182,10 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetLayoutCommand, static v => v.CoverLayoutItem, Signal.Return("DualCover")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveCommand, static v => v.SaveItem));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PrintCommand, static v => v.PrintItem));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.PresentCommand, static v => v.PresentItem));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Chrome.IsVisible, static presenting => !presenting));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.VerticalScrollBarVisibility, ScrollBars));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.HorizontalScrollBarVisibility, ScrollBars));
         bindings.Add(this.Bind(ViewModel, static vm => vm.IsPageByPage, static v => v.PageByPageItem.IsChecked, static on => on, static on => on));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveAsCommand, static v => v.SaveAsItem));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReloadCommand, static v => v.ReloadItem));

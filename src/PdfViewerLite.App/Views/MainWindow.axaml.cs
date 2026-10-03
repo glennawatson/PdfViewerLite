@@ -49,6 +49,9 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
     /// <summary>Where the tab drag started.</summary>
     private Point _dragStart;
 
+    /// <summary>The window state before presenting started, restored when it ends.</summary>
+    private WindowState? _stateBeforePresenting;
+
     /// <summary>Whether the user agreed to close with unsaved edits.</summary>
     private bool _closeConfirmed;
 
@@ -143,6 +146,7 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
             this.BindInteraction(ViewModel, static vm => vm.ConfirmInteraction, ConfirmAsync),
             this.BindInteraction(ViewModel, static vm => vm.ShowPreferencesInteraction, ShowPreferencesAsync),
             this.WhenAnyObservable(static v => v.ViewModel!.TabFinderRequests).SubscribeSafe(_ => TabFinderButton.Flyout?.ShowAt(TabFinderButton), OnError),
+            this.WhenAnyValue(static v => v.ViewModel!.SelectedTab!.IsPresenting).SubscribeSafe(OnPresentingChanged, OnError),
         ];
     }
 
@@ -333,6 +337,23 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
         context.SetOutput(RxVoid.Default);
     }
 
+    /// <summary>Goes full screen with only the page showing while the selected tab presents, and back afterwards.</summary>
+    /// <param name="presenting">Whether the selected tab is presenting.</param>
+    private void OnPresentingChanged(bool presenting)
+    {
+        TabBar.IsVisible = !presenting;
+        if (presenting && WindowState != WindowState.FullScreen)
+        {
+            _stateBeforePresenting = WindowState;
+            WindowState = WindowState.FullScreen;
+        }
+        else if (!presenting && _stateBeforePresenting is { } previous)
+        {
+            WindowState = previous;
+            _stateBeforePresenting = null;
+        }
+    }
+
     /// <summary>Opens dropped files, for example from Dolphin, or a dropped web address.</summary>
     /// <param name="e">The event.</param>
     private void OnDrop(DragEventArgs e)
@@ -363,6 +384,13 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
 
         if (Shortcuts.TryRun(viewModel, e))
         {
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape && viewModel.SelectedTab is { IsPresenting: true } presenting)
+        {
+            presenting.SetPresenting(false);
             e.Handled = true;
             return;
         }

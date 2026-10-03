@@ -18,6 +18,7 @@ using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.TestAssets;
+using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Tests;
 
@@ -326,6 +327,48 @@ public sealed class RenderingTests
             await Assert.That(Math.Abs(CentreY(count, window) - line)).IsLessThan(AlignmentTolerance);
             await Assert.That(Math.Abs(InkCentreY(pixels, stride, previous, window) - line)).IsLessThan(AlignmentTolerance);
             await Assert.That(Math.Abs(InkCentreY(pixels, stride, next, window) - line)).IsLessThan(AlignmentTolerance);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies presenting hides everything but the page, steps pages with the arrow keys and Esc restores the view.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PresentsOnePageFullScreen()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("present.pdf", PageByPagePages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var tab = main.SelectedTab!;
+            var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
+            var chrome = Find<StackPanel>(view, "Chrome");
+            var tabBar = Find<Border>(window, "TabBar");
+            var canvas = window.GetVisualDescendants().OfType<PageCanvas>().Single();
+            var zoomBefore = tab.ZoomMode;
+
+            _ = await tab.PresentCommand.Execute().ToTask();
+            var presenting = await UiWait.UntilAsync(() => !chrome.IsVisible && !tabBar.IsVisible && window.WindowState == WindowState.FullScreen && tab.CurrentPageIndex == 0);
+            _ = canvas.Focus();
+            window.KeyPress(Avalonia.Input.Key.Right, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.ArrowRight, null);
+            var stepped = await UiWait.UntilAsync(() => tab.CurrentPageIndex == 1);
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "presenting.png");
+            window.KeyPress(Avalonia.Input.Key.Escape, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Escape, null);
+            var restored = await UiWait.UntilAsync(() => chrome.IsVisible && tabBar.IsVisible && window.WindowState != WindowState.FullScreen);
+
+            await Assert.That(presenting).IsTrue();
+            await Assert.That(stepped).IsTrue();
+            await Assert.That(restored).IsTrue();
+            await Assert.That(tab.IsPageByPage).IsFalse();
+            await Assert.That(tab.ZoomMode).IsEqualTo(zoomBefore);
+            await Assert.That(tab.SidebarVisible).IsTrue();
         }
         finally
         {

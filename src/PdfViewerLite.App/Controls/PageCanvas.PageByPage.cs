@@ -102,8 +102,8 @@ public sealed partial class PageCanvas
         {
             Key.Down => StepPageByPage(LineStep),
             Key.Up => StepPageByPage(-LineStep),
-            Key.PageDown => StepPageByPage(page),
-            Key.PageUp => StepPageByPage(-page),
+            Key.PageDown or Key.Right => StepPageByPage(page),
+            Key.PageUp or Key.Left => StepPageByPage(-page),
             Key.Space => StepPageByPage(shift ? -page : page),
             _ => false,
         };
