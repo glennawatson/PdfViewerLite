@@ -15,7 +15,9 @@ from melo import commons  # noqa: E402
 from melo.text import cleaned_text_to_sequence  # noqa: E402
 from melo.text.cleaner import clean_text  # noqa: E402
 from melo.text.english import _g2p  # noqa: E402
-from melo.text.symbols import symbols  # noqa: E402
+from huggingface_hub import hf_hub_download  # noqa: E402
+
+from melo import utils  # noqa: E402
 
 SENTENCES = [
     "the garden behind the library had been neglected for years.",
@@ -31,7 +33,9 @@ SENTENCES = [
 WORDS = ["activationist", "zyxglorp", "melotts", "pdfviewerlite", "kookaburra", "wollongong", "nbn", "x"]
 
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-symbol_to_id = {s: i for i, s in enumerate(symbols)}
+# The checkpoint's own symbol order, as MeloTTS's inference uses, not the source tree's.
+hps = utils.get_hparams_from_file(hf_hub_download("myshell-ai/MeloTTS-English", "config.json"))
+symbol_to_id = {s: i for i, s in enumerate(hps.symbols)}
 cases = []
 for sentence in SENTENCES:
     norm_text, phones, tones, word2ph = clean_text(sentence, "EN")

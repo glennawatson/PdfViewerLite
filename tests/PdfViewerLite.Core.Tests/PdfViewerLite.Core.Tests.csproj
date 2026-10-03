@@ -9,6 +9,7 @@
   <ItemGroup>
     <!-- A 356 byte model with Kokoro's inputs and output, made with the onnx Python package, to prove the ONNX path. -->
     <None Include="Speech\Fixtures\kokoro-stand-in.onnx" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Speech\Melo\melo-reference.json" Link="melo-reference.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\listening\corpus.json" Link="listening-corpus.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
