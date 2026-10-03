@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.App.Theming;
@@ -19,6 +20,7 @@ using PdfViewerLite.Core.Theming;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App;
 
@@ -103,6 +105,16 @@ public sealed class App : Application
             _lifetime.Add(host.OpenRequests.ObserveOn(RxSchedulers.MainThreadScheduler).SubscribeSafe(OpenForwarded, OnError));
         }
 
+        // Documents opened from the Finder (or another app) on macOS arrive as activation events.
+        if (TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime activatable)
+        {
+            _lifetime.Add(Signal.FromEvent<EventHandler<ActivatedEventArgs>, ActivatedEventArgs>(
+                    static handler => (_, e) => handler(e),
+                    handler => activatable.Activated += handler,
+                    handler => activatable.Activated -= handler)
+                .SubscribeSafe(OnActivated, OnError));
+        }
+
         if (!OperatingSystem.IsWindows())
         {
             // Shut down cleanly on SIGTERM (for example at logout) so the session is saved.
@@ -127,6 +139,27 @@ public sealed class App : Application
         {
             DesktopThemeApplier.ApplyFont(_window, theme);
         }
+    }
+
+    /// <summary>Opens documents the desktop asked the app to open, such as a PDF chosen in the Finder.</summary>
+    /// <param name="activation">The activation.</param>
+    private void OnActivated(ActivatedEventArgs activation)
+    {
+        if (activation is not FileActivatedEventArgs files)
+        {
+            return;
+        }
+
+        var paths = new List<string>(files.Files.Count);
+        foreach (var file in files.Files)
+        {
+            if (file.TryGetLocalPath() is { } path)
+            {
+                paths.Add(path);
+            }
+        }
+
+        OpenForwarded(new(paths, null));
     }
 
     /// <summary>Opens forwarded documents and raises the window.</summary>

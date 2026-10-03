@@ -11,6 +11,8 @@
     <Project Path="src/PdfViewerLite.Speech/PdfViewerLite.Speech.csproj" />
     <Project Path="src/PdfViewerLite.Platform.Cups/PdfViewerLite.Platform.Cups.csproj" />
     <Project Path="src/PdfViewerLite.Platform.Linux/PdfViewerLite.Platform.Linux.csproj" />
+    <Project Path="src/PdfViewerLite.Platform.MacOS/PdfViewerLite.Platform.MacOS.csproj" />
+    <Project Path="src/PdfViewerLite.Platform.Windows/PdfViewerLite.Platform.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PdfViewerLite.App.Tests/PdfViewerLite.App.Tests.csproj" />

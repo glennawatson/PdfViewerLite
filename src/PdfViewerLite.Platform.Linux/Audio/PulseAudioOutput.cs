@@ -36,6 +36,9 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
     /// <summary>The latency PulseAudio reports on error.</summary>
     private const ulong LatencyError = ulong.MaxValue;
 
+    /// <summary>How far ahead of playback audio is written.</summary>
+    private static readonly TimeSpan MaxAhead = TimeSpan.FromMilliseconds(300);
+
     /// <summary>The libpulse-simple file names.</summary>
     private static readonly string[] Candidates = ["libpulse-simple.so.0", "libpulse-simple.so"];
 
@@ -126,9 +129,12 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
             }
 
             var samples = audio.Samples;
+            var started = Stopwatch.GetTimestamp();
             for (var start = 0; start < samples.Length; start += Chunk)
             {
-                if (cancellationToken.IsCancellationRequested)
+                // Stay a little ahead of what has been heard, so a write never blocks for long and Stop is immediate.
+                var ahead = TimeSpan.FromSeconds((double)start / audio.SampleRate) - Stopwatch.GetElapsedTime(started) - MaxAhead;
+                if ((ahead > TimeSpan.Zero && cancellationToken.WaitHandle.WaitOne(ahead)) || cancellationToken.IsCancellationRequested)
                 {
                     _ = NativeMethods.PaSimpleFlush(stream, out _);
                     return;

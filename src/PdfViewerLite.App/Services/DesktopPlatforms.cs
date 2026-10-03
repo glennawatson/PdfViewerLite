@@ -3,7 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Pdfium;
 using PdfViewerLite.Platform.Linux;
+using PdfViewerLite.Platform.MacOS;
+using PdfViewerLite.Platform.Windows;
 
 namespace PdfViewerLite.App.Services;
 
@@ -11,7 +14,19 @@ namespace PdfViewerLite.App.Services;
 public static class DesktopPlatforms
 {
     /// <summary>Gets the integration for this platform.</summary>
-    /// <returns>KDE Plasma (and the freedesktop parts) on Linux and FreeBSD; otherwise none.</returns>
-    public static IDesktopPlatform Detect() =>
-        OperatingSystem.IsLinux() || OperatingSystem.IsFreeBSD() ? new KdePlatform() : new FallbackPlatform();
+    /// <returns>Windows, macOS, or KDE Plasma (and the freedesktop parts) on Linux and FreeBSD; otherwise none.</returns>
+    public static IDesktopPlatform Detect()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new WindowsPlatform(new PdfiumEngine());
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return new MacPlatform();
+        }
+
+        return OperatingSystem.IsLinux() || OperatingSystem.IsFreeBSD() ? new KdePlatform() : new FallbackPlatform();
+    }
 }
