@@ -46,6 +46,7 @@
                 <MenuItem x:Name="SingleLayoutItem" Header="_Single Page" />
                 <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
                 <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
+                <MenuItem x:Name="PageByPageItem" Header="Page _by Page" ToggleType="CheckBox" ToolTip.Tip="Show one page at a time instead of scrolling continuously" />
                 <Separator />
                 <MenuItem x:Name="SaveItem" Header="_Save" InputGesture="Ctrl+S" />
                 <MenuItem x:Name="SaveAsItem" Header="Save _As…" InputGesture="Ctrl+Shift+S" />

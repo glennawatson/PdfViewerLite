@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Geometry;
 
@@ -128,12 +129,35 @@ public sealed class DocumentLayout
                 x += w + options.Spacing;
             }
 
+            if (options.PageByPage)
+            {
+                // Slots are flush and at least a viewport tall, so nothing of a neighbouring row shows.
+                var slot = Math.Max(rowHeight + (Halves * options.Margin), options.ViewportHeight);
+                rowTops[row] = y - options.Margin;
+                rowBottoms[row] = rowTops[row] + slot;
+                ShiftRow(pages, first, count, rowTops[row] + ((slot - rowHeight) / Halves) - y);
+                y = rowBottoms[row] + options.Margin;
+                continue;
+            }
+
             rowTops[row] = y;
             rowBottoms[row] = y + rowHeight;
             y += rowHeight + options.Spacing;
         }
 
-        return new(pages, rowTops, rowBottoms, rowFirstPage, extentWidth, y - options.Spacing + options.Margin, options);
+        var extentHeight = options.PageByPage ? y - options.Margin : y - options.Spacing + options.Margin;
+        return new(pages, rowTops, rowBottoms, rowFirstPage, extentWidth, extentHeight, options);
+    }
+
+    /// <summary>Gets the vertical extent of the row holding a page: its slot in page by page layouts.</summary>
+    /// <param name="pageIndex">The page index.</param>
+    /// <param name="top">The top of the row.</param>
+    /// <param name="bottom">The bottom of the row.</param>
+    public void GetRowExtent(int pageIndex, out double top, out double bottom)
+    {
+        var row = UpperBound(_rowFirstPage, pageIndex) - 1;
+        top = _rowTops[row];
+        bottom = _rowBottoms[row];
     }
 
     /// <summary>Gets the bounds of a page.</summary>
@@ -156,8 +180,8 @@ public sealed class DocumentLayout
             return;
         }
 
-        // First row whose bottom is below the band top.
-        var firstRow = LowerBound(_rowBottoms, top);
+        // First row whose bottom is below the band top; a row that only touches the band shows nothing.
+        var firstRow = UpperBound(_rowBottoms, top);
         if (firstRow >= _rowTops.Length || _rowTops[firstRow] > bottom)
         {
             return;
@@ -261,6 +285,45 @@ public sealed class DocumentLayout
         }
 
         return width;
+    }
+
+    /// <summary>Moves a row of pages down.</summary>
+    /// <param name="pages">The page bounds, updated.</param>
+    /// <param name="first">The row's first page.</param>
+    /// <param name="count">The row's page count.</param>
+    /// <param name="shift">How far to move them.</param>
+    private static void ShiftRow(LayoutRect[] pages, int first, int count, double shift)
+    {
+        for (var i = first; i < first + count; i++)
+        {
+            pages[i] = pages[i] with { Y = pages[i].Y + shift };
+        }
+    }
+
+    /// <summary>Finds the first index whose value is greater than <paramref name="value"/>.</summary>
+    /// <typeparam name="T">The value type.</typeparam>
+    /// <param name="values">Sorted values.</param>
+    /// <param name="value">The value.</param>
+    /// <returns>The index, or the length when no value is greater.</returns>
+    private static int UpperBound<T>(T[] values, T value)
+        where T : IComparisonOperators<T, T, bool>
+    {
+        var lo = 0;
+        var hi = values.Length;
+        while (lo < hi)
+        {
+            var mid = lo + ((hi - lo) >> 1);
+            if (values[mid] <= value)
+            {
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+
+        return lo;
     }
 
     /// <summary>Finds the first index whose value is not less than <paramref name="value"/>.</summary>

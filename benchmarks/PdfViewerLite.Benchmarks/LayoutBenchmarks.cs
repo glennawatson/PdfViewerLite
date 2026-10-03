@@ -17,6 +17,12 @@ public class LayoutBenchmarks
     /// <summary>The viewport width.</summary>
     private const double Viewport = 1200;
 
+    /// <summary>The page in the middle of the document.</summary>
+    private const int MiddlePage = PageCount / 2;
+
+    /// <summary>The viewport height.</summary>
+    private const double ViewportHeight = 900;
+
     /// <summary>Every nth page is landscape.</summary>
     private const int LandscapeInterval = 10;
 
@@ -52,6 +58,21 @@ public class LayoutBenchmarks
     /// <returns>The layout.</returns>
     [Benchmark]
     public DocumentLayout CreateLayout() => Create();
+
+    /// <summary>Lays out every page one per viewport-sized slot, for page by page viewing.</summary>
+    /// <returns>The layout.</returns>
+    [Benchmark]
+    public DocumentLayout CreatePageByPageLayout() =>
+        DocumentLayout.Create(_sizes, new(PageRotation.None, PageLayoutMode.Single, Scale, Spacing, Margin, Viewport) { PageByPage = true, ViewportHeight = ViewportHeight });
+
+    /// <summary>Finds the row a page sits in, as page by page scrolling does for every step.</summary>
+    /// <returns>The row top.</returns>
+    [Benchmark]
+    public double FindRowExtent()
+    {
+        _layout.GetRowExtent(MiddlePage, out var top, out _);
+        return top;
+    }
 
     /// <summary>Finds the pages visible in a viewport halfway down the document.</summary>
     /// <returns>The first visible page.</returns>

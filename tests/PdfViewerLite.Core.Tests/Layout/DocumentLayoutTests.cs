@@ -31,6 +31,18 @@ public sealed class DocumentLayoutTests
     /// <summary>The number of rows five pages occupy in either dual mode.</summary>
     private const int DualRows = 3;
 
+    /// <summary>The viewport height for page by page tests.</summary>
+    private const double SlotHeight = 300;
+
+    /// <summary>The left page of the second dual spread.</summary>
+    private const int SpreadFirstPage = 2;
+
+    /// <summary>The right page of the second dual spread.</summary>
+    private const int SpreadSecondPage = 3;
+
+    /// <summary>A zoom making pages taller than the viewport.</summary>
+    private const double ZoomedScale = 2;
+
     /// <summary>Divisor for centring and halving.</summary>
     private const double Half = 2;
 
@@ -133,6 +145,40 @@ public sealed class DocumentLayoutTests
 
         await Assert.That(layout.GetPageBounds(0).Width).IsEqualTo(PageHeight);
         await Assert.That(layout.GetPageBounds(0).Height).IsEqualTo(PageWidth);
+    }
+
+    /// <summary>Verifies page by page slots fill the viewport, centre their page and show one row at a time.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PageByPageGivesEachRowAViewport()
+    {
+        var sizes = Enumerable.Repeat(new PageSize(PageWidth, PageHeight), Pages).ToArray();
+        var layout = DocumentLayout.Create(sizes, new(PageRotation.None, PageLayoutMode.Single, 1, Spacing, Margin, Viewport) { PageByPage = true, ViewportHeight = SlotHeight });
+
+        layout.GetRowExtent(1, out var top, out var bottom);
+        var page = layout.GetPageBounds(1);
+        layout.GetVisiblePages(top, top + SlotHeight - 1, out var first, out var last);
+
+        await Assert.That(top).IsEqualTo(SlotHeight);
+        await Assert.That(bottom).IsEqualTo(SlotHeight * Half);
+        await Assert.That(page.Y).IsEqualTo(top + ((SlotHeight - PageHeight) / Half));
+        await Assert.That(first).IsEqualTo(1);
+        await Assert.That(last).IsEqualTo(1);
+        await Assert.That(layout.ExtentHeight).IsEqualTo(SlotHeight * Pages);
+    }
+
+    /// <summary>Verifies a zoomed page taller than the viewport gets a slot of its own height plus margins.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PageByPageGrowsForTallPages()
+    {
+        var sizes = Enumerable.Repeat(new PageSize(PageWidth, PageHeight), Pages).ToArray();
+        var layout = DocumentLayout.Create(sizes, new(PageRotation.None, PageLayoutMode.Dual, ZoomedScale, Spacing, Margin, Viewport) { PageByPage = true, ViewportHeight = SlotHeight });
+
+        layout.GetRowExtent(SpreadSecondPage, out var top, out var bottom);
+
+        await Assert.That(bottom - top).IsEqualTo((PageHeight * ZoomedScale) + (Half * Margin));
+        await Assert.That(layout.GetPageBounds(SpreadFirstPage).Y).IsEqualTo(top + Margin);
     }
 
     /// <summary>Creates a layout of identical pages.</summary>

@@ -45,6 +45,12 @@ public sealed class RenderingTests
     /// <summary>The number of annotations the annotation test adds.</summary>
     private const int AnnotationCount = 2;
 
+    /// <summary>The page count of the page by page document.</summary>
+    private const int PageByPagePages = 4;
+
+    /// <summary>The page that the Page Down key reaches from the second page.</summary>
+    private const int SpreadPage = 2;
+
     /// <summary>Masks off the alpha channel.</summary>
     private const uint RgbMask = 0xFFFFFFU;
 
@@ -232,6 +238,44 @@ public sealed class RenderingTests
             await Assert.That(fields.Single(static f => f.Kind == FormFieldKind.Text).Value).IsEqualTo("Glenn Watson");
             await Assert.That(fields.Single(static f => f.Kind == FormFieldKind.CheckBox).IsChecked).IsTrue();
             await Assert.That(tab.HasUnsavedChanges).IsTrue();
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies page by page shows one whole page at a time and Page Down steps to the next whole page.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ShowsOnePageAtATime()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("pages.pdf", PageByPagePages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var tab = main.SelectedTab!;
+            var canvas = window.GetVisualDescendants().OfType<PageCanvas>().Single();
+            var scroller = canvas.FindAncestorOfType<ScrollViewer>()!;
+            tab.ZoomMode = Core.Layout.ZoomMode.FitPage;
+            tab.IsPageByPage = true;
+            _ = await UiWait.UntilAsync(() => scroller.Extent.Height >= scroller.Viewport.Height * PageByPagePages);
+            var viewport = scroller.Viewport.Height;
+
+            tab.GoToPage(1);
+            var onSecond = await UiWait.UntilAsync(() => Math.Abs(scroller.Offset.Y - viewport) < 1);
+            _ = canvas.Focus();
+            window.KeyPress(Avalonia.Input.Key.PageDown, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.PageDown, null);
+            var onThird = await UiWait.UntilAsync(() => tab.CurrentPageIndex == SpreadPage && Math.Abs(scroller.Offset.Y - (viewport * SpreadPage)) < 1);
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "page-by-page.png");
+
+            await Assert.That(scroller.Extent.Height).IsEqualTo(viewport * PageByPagePages);
+            await Assert.That(onSecond).IsTrue();
+            await Assert.That(onThird).IsTrue();
         }
         finally
         {

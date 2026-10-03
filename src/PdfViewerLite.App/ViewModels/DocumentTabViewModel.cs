@@ -250,6 +250,13 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
+    /// <summary>Gets or sets a value indicating whether pages are shown one at a time instead of scrolling continuously.</summary>
+    public bool IsPageByPage
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     /// <summary>Gets or sets the page rotation.</summary>
     public PageRotation Rotation
     {

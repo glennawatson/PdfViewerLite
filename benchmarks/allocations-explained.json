@@ -25,5 +25,10 @@
     "type": "RuntimeTypeCache",
     "frame": "PdfViewerLite.",
     "reason": "The first time a LibraryImport returns a given SafeHandle type, the generated marshaller creates it with new T(), which builds the runtime's per-type activator cache once for the life of the process."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Layout.DocumentLayout.Create(",
+    "reason": "The layout is the result: one immutable object with arrays sized exactly to the pages and rows. It is built only when the zoom, arrangement, rotation or viewport size changes, never while scrolling; lookups on it allocate nothing."
   }
 ]

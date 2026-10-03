@@ -285,6 +285,12 @@ public sealed partial class PageCanvas : Control
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
+        if ((e.KeyModifiers & KeyModifiers.Control) == 0 && StepPageByPage(-e.Delta.Y * LineStep))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if ((e.KeyModifiers & KeyModifiers.Control) == 0 || Tab is not { } tab)
         {
             base.OnPointerWheelChanged(e);
@@ -403,7 +409,7 @@ public sealed partial class PageCanvas : Control
             return;
         }
 
-        if (HandleAnnotationKey(e.Key))
+        if (HandleAnnotationKey(e.Key) || HandlePageByPageKey(e))
         {
             e.Handled = true;
             return;
@@ -687,7 +693,7 @@ public sealed partial class PageCanvas : Control
 
         _tabSubscriptions =
         [
-            tab.WhenAnyValue(static x => x.ZoomMode, static x => x.LayoutMode, static x => x.Rotation, static (_, _, _) => RxVoid.Default)
+            tab.WhenAnyValue(static x => x.ZoomMode, static x => x.LayoutMode, static x => x.Rotation, static x => x.IsPageByPage, static (_, _, _, _) => RxVoid.Default)
                 .Skip(1)
                 .SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
             tab.WhenAnyValue(static x => x.Zoom).Skip(1).Where(_ => tab.ZoomMode == ZoomMode.Free).SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
@@ -725,7 +731,9 @@ public sealed partial class PageCanvas : Control
             tab.ReportZoom(zoom);
         }
 
-        _layout = DocumentLayout.Create(_sizes, new(tab.Rotation, tab.LayoutMode, zoom * ZoomCalculator.PixelsPerPoint, PageSpacing, ContentMargin, viewport.Width));
+        _layout = DocumentLayout.Create(
+            _sizes,
+            new(tab.Rotation, tab.LayoutMode, zoom * ZoomCalculator.PixelsPerPoint, PageSpacing, ContentMargin, viewport.Width) { PageByPage = tab.IsPageByPage, ViewportHeight = viewport.Height });
         InvalidateMeasure();
         InvalidateVisual();
     }
@@ -776,8 +784,7 @@ public sealed partial class PageCanvas : Control
                 return;
             }
 
-            var bounds = _layout.GetPageBounds(position.PageIndex);
-            _scroller.Offset = new(_scroller.Offset.X, bounds.Y + (bounds.Height * position.OffsetFraction) - ContentMargin);
+            _scroller.Offset = new(_scroller.Offset.X, GetPageScrollTop(position.PageIndex, position.OffsetFraction));
         };
         SchedulePendingScroll();
     }
@@ -873,11 +880,11 @@ public sealed partial class PageCanvas : Control
             var x = area.Width > 0 && (area.X < _scroller.Offset.X || area.Right > _scroller.Offset.X + _scroller.Viewport.Width)
                 ? area.X - TargetPadding
                 : _scroller.Offset.X;
-            _scroller.Offset = new(x, area.Y - (_scroller.Viewport.Height * TargetViewportFraction));
+            _scroller.Offset = new(x, ClampToSlot(request.PageIndex, area.Y - (_scroller.Viewport.Height * TargetViewportFraction)));
         }
         else
         {
-            _scroller.Offset = new(_scroller.Offset.X, bounds.Y + (bounds.Height * request.OffsetFraction) - ContentMargin);
+            _scroller.Offset = new(_scroller.Offset.X, GetPageScrollTop(request.PageIndex, request.OffsetFraction));
         }
 
         ReportPosition();
