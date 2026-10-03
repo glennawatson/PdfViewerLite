@@ -19,6 +19,7 @@ depends:
   - libx11-6 | libX11
   - libice6 | libICE
   - libsm6 | libSM
+# Text recognition (More > Recognise Text) uses Tesseract when it is installed, so it is recommended per format.
 overrides:
   rpm:
     depends:
@@ -26,6 +27,13 @@ overrides:
       - libX11
       - libICE
       - libSM
+    recommends:
+      - tesseract
+      - tesseract-langpack-eng
+  deb:
+    recommends:
+      - libtesseract5
+      - tesseract-ocr-eng
 contents:
   - src: ${PUBLISH_DIR}/pdfviewerlite
     dst: /usr/lib/pdfviewerlite/pdfviewerlite

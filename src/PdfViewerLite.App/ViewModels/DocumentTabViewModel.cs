@@ -323,6 +323,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the digital signature state.</summary>
     public SignaturesViewModel Signatures => field ??= new(this);
 
+    /// <summary>Gets the tab's text recognition, created on first use.</summary>
+    public TextRecognitionViewModel TextRecognition => field ??= new(this, _services);
+
     /// <summary>Gets the form filling state.</summary>
     public FormsViewModel Forms => field ??= new(this);
 
@@ -448,7 +451,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     public string? Notice
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        internal set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     /// <summary>Gets the command dismissing <see cref="Notice"/>.</summary>

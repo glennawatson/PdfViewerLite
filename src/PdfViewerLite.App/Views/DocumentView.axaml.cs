@@ -238,6 +238,11 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Notice, static v => v.NoticeText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Notice, static v => v.NoticeBar.IsVisible, static notice => notice is not null));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissNoticeCommand, static v => v.DismissNoticeButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.TextRecognition.RecognizeCommand, static v => v.RecognizeTextItem));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.TextRecognition.StopCommand, static v => v.StopRecognitionButton));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.IsRunning, static v => v.RecognitionBar.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.ProgressText, static v => v.RecognitionText.Text));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.Progress, static v => v.RecognitionProgress.Value));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.HasPendingReload, static v => v.ReloadBar.IsVisible));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReloadCommand, static v => v.ReloadButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissReloadCommand, static v => v.DismissReloadButton));

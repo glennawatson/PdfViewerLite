@@ -50,6 +50,7 @@
                 <MenuItem x:Name="SaveItem" Header="_Save" InputGesture="Ctrl+S" />
                 <MenuItem x:Name="SaveAsItem" Header="Save _As…" InputGesture="Ctrl+Shift+S" />
                 <MenuItem x:Name="ReloadItem" Header="Re_load" InputGesture="F5" />
+                <MenuItem x:Name="RecognizeTextItem" Header="Recognise _Text" ToolTip.Tip="Make scanned pages searchable by recognising their text" />
                 <MenuItem x:Name="ShowInFolderItem" Header="Show in _Folder" />
                 <MenuItem x:Name="PropertiesItem" Header="_Properties" InputGesture="Alt+Enter" />
               </MenuFlyout>
@@ -246,6 +247,15 @@
           <Path Classes="icon nav" Data="{StaticResource IconSignature}" />
           <TextBlock x:Name="SignedText" VerticalAlignment="Center" />
         </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Steady progress while scanned pages are recognised; nothing moves except the bar, one step per page. -->
+    <Border x:Name="RecognitionBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="StopRecognitionButton" DockPanel.Dock="Right" Content="Stop" />
+        <ProgressBar x:Name="RecognitionProgress" DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
+        <TextBlock x:Name="RecognitionText" VerticalAlignment="Center" Margin="6,0" />
       </DockPanel>
     </Border>
 

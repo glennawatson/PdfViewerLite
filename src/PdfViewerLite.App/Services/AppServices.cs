@@ -3,12 +3,15 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Rendering;
 using PdfViewerLite.Core.Documents;
+using PdfViewerLite.Core.Ocr;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
+using PdfViewerLite.Ocr;
 using PdfViewerLite.Pdfium;
 using PdfViewerLite.Platform.Linux.DBus;
 using PdfViewerLite.Platform.Linux.Kde;
@@ -26,6 +29,9 @@ public sealed class AppServices : IDisposable
 
     /// <summary>The smallest permitted tile cache, in megabytes.</summary>
     private const int MinCacheMegabytes = 32;
+
+    /// <summary>The language used when none is configured.</summary>
+    private const string DefaultOcrLanguage = "eng";
 
     /// <summary>The resolved theme, re-published when the settings or the desktop palette change.</summary>
     private readonly BehaviorSignal<ResolvedTheme> _theme;
@@ -92,6 +98,11 @@ public sealed class AppServices : IDisposable
             ? new(new SettingsStore(), engine, new XbelRecentDocumentStore(), new DBusFileManagerLauncher(), new KdeThemeSource())
             : new(new SettingsStore(), engine, new NullRecentDocumentStore(), new NullFileManagerLauncher(), null);
     }
+
+    /// <summary>Creates a text recogniser for the configured languages; dispose it when done.</summary>
+    /// <returns>The recogniser, which reports whether Tesseract was found.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IOcrEngine CreateOcrEngine() => new TesseractEngine(string.IsNullOrWhiteSpace(Settings.OcrLanguage) ? DefaultOcrLanguage : Settings.OcrLanguage);
 
     /// <summary>Records a new desktop palette and re-resolves the theme. Call on the UI thread.</summary>
     /// <param name="palette">The palette, or <see langword="null"/> when the desktop has none.</param>
