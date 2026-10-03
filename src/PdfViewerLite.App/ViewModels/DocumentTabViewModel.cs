@@ -13,6 +13,7 @@ using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Layout;
 using PdfViewerLite.Core.Navigation;
 using PdfViewerLite.Core.Printing;
+using PdfViewerLite.Core.Reading;
 using PdfViewerLite.Core.Rendering;
 using PdfViewerLite.Core.Settings;
 using ReactiveUI;
@@ -63,6 +64,12 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>The Read Aloud state, once used.</summary>
     private ReadAloudViewModel? _readAloud;
+
+    /// <summary>The document's pages in reading order, once asked for.</summary>
+    private ReadingDocument? _reading;
+
+    /// <summary>The source version the reading order was worked out for.</summary>
+    private long _readingFor = -1;
 
     /// <summary>How the tab looked before presenting.</summary>
     private PresentationState _beforePresenting;
@@ -592,6 +599,28 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             return null;
         }
     }
+
+    /// <summary>Gets the document's pages in reading order, for reading aloud and Focus Mode.</summary>
+    /// <returns>The reading order, or <see langword="null"/> when the document cannot describe its layout.</returns>
+    public ReadingDocument? GetReadingDocument()
+    {
+        if (TryGetDocument() is not ITextLayoutSource)
+        {
+            return null;
+        }
+
+        if (_reading is null || _readingFor != Source.Id)
+        {
+            _reading = new(() => TryGetDocument() as ITextLayoutSource, Source.PageSizes);
+            _readingFor = Source.Id;
+        }
+
+        return _reading;
+    }
+
+    /// <summary>Forgets the worked out reading order after the page text changed, for example once text is recognised.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void InvalidateReading() => _reading?.Clear();
 
     /// <summary>Scrolls to a page.</summary>
     /// <param name="pageIndex">The zero based page.</param>

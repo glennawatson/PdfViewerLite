@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
+using PdfViewerLite.Core.Reading;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Speech;
 using ReactiveUI;
@@ -40,8 +41,11 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     /// <summary>The sentences of the page being read.</summary>
     private readonly List<SpeechSentence> _sentences = [];
 
-    /// <summary>The text of the page being read.</summary>
+    /// <summary>The text of the page being read, in reading order.</summary>
     private string _pageText = string.Empty;
+
+    /// <summary>The page character index of each character of <see cref="_pageText"/>; -1 for added spaces.</summary>
+    private int[] _map = [];
 
     /// <summary>The page whose sentences are loaded, or -1.</summary>
     private int _loadedPage = -1;
@@ -293,6 +297,52 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         }
 
         return nearest;
+    }
+
+    /// <summary>Gets a page's text in reading order, or as the engine gives it when the layout is unknown.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="reading">The reading order, if available.</param>
+    /// <param name="page">The page.</param>
+    /// <returns>The text and the page character index of each of its characters.</returns>
+    internal static (string Text, int[] Map) LoadText(IDocument document, ReadingDocument? reading, int page)
+    {
+        if (reading is not null)
+        {
+            var flattened = ReadingDocument.Flatten(reading.GetPage(page), out var map);
+            return (flattened, map);
+        }
+
+        var text = document.GetText(page, 0, document.GetCharacterCount(page));
+        var identity = new int[text.Length];
+        for (var i = 0; i < identity.Length; i++)
+        {
+            identity[i] = i;
+        }
+
+        return (text, identity);
+    }
+
+    /// <summary>Finds where a page character is in the reading text: the same character, or the nearest one read.</summary>
+    /// <param name="map">The reading text's page character indices.</param>
+    /// <param name="charIndex">The page character.</param>
+    /// <returns>The offset in the reading text.</returns>
+    internal static int ReadingOffset(int[] map, int charIndex)
+    {
+        var best = 0;
+        var bestDistance = int.MaxValue;
+        for (var i = 0; i < map.Length && bestDistance > 0; i++)
+        {
+            var distance = map[i] < 0 ? int.MaxValue : Math.Abs(map[i] - charIndex);
+            if (distance >= bestDistance)
+            {
+                continue;
+            }
+
+            best = i;
+            bestDistance = distance;
+        }
+
+        return best;
     }
 
     /// <summary>Finds the sentence holding a character.</summary>
@@ -602,11 +652,12 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
             }
 
             var page = SpokenPage;
-            _pageText = await Task.Run(() => document.GetText(page, 0, document.GetCharacterCount(page))).ConfigureAwait(true);
+            var reading = _owner.GetReadingDocument();
+            (_pageText, _map) = await Task.Run(() => LoadText(document, reading, page)).ConfigureAwait(true);
             _sentences.Clear();
             SentenceSplitter.Split(_pageText, _sentences);
             _loadedPage = page;
-            _sentence = _startChar == int.MaxValue ? Math.Max(0, _sentences.Count - 1) : SentenceAt(_sentences, _startChar);
+            _sentence = _startChar == int.MaxValue ? Math.Max(0, _sentences.Count - 1) : SentenceAt(_sentences, ReadingOffset(_map, _startChar));
             _startChar = 0;
             if (_sentences.Count > 0 && page != _owner.CurrentPageIndex)
             {
@@ -637,7 +688,13 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
 
         var sentence = _sentences[_sentence];
         var rects = new List<PageRect>();
-        document.GetTextBounds(SpokenPage, sentence.Start, sentence.Length, rects);
+        var runs = new List<(int Start, int Count)>();
+        ReadingDocument.GetRuns(_map, sentence.Start, sentence.Length, runs);
+        foreach (var (start, count) in runs)
+        {
+            document.GetTextBounds(SpokenPage, start, count, rects);
+        }
+
         SpokenBounds = rects;
     }
 

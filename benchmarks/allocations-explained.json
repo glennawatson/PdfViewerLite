@@ -95,5 +95,20 @@
     "type": "System.Single[]",
     "frame": "PdfViewerLite.Http.Speech.AzureSpeechEngine.ToSamples(",
     "reason": "The samples are the returned audio for one sentence, handed to the sound output; one array per sentence, sized exactly."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Reading.ReadingOrder",
+    "reason": "Reading order runs once per page, when the page is first read aloud or shown in Focus Mode, and the result is kept by ReadingDocument. It builds a line object per line of text, a block object per paragraph, the joined text of each block with the page character index of every character (the map that lets the spoken sentence be highlighted on the page), and the lists the XY-cut groups blocks into; all proportional to the page's text."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Reading.ReadingDocument.Flatten(",
+    "reason": "Flattening a page for Read Aloud returns its text and the matching character map, one string and one int array per page read, sized exactly."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetCharacters(",
+    "reason": "Reading a page's characters loads PDFium's text page the first time it is used; the list it fills is the caller's and is reused."
   }
 ]

@@ -321,6 +321,78 @@ public static class TestPdf
     }
 
     /// <summary>
+    /// Writes a two-column article: a running header and a page number on every page, a bold title across both columns
+    /// on the first page, columns whose lines are written across the page row by row (as some generators do) and a
+    /// small footnote. Reading order must give the title, the left column, the right column, then the footnote.
+    /// </summary>
+    /// <param name="pageCount">The page count.</param>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateArticle(int pageCount)
+    {
+        const int left = 72;
+        const int right = 320;
+        const int top = 640;
+        const int leading = 13;
+        const int marginSize = 9;
+        const int headerDrop = 40;
+        const int titleSize = 18;
+        const int titleRise = 60;
+        const int bodySize = 10;
+        const int footnoteSize = 7;
+        const int footnoteBaseline = 90;
+        const int footerBaseline = 30;
+        const int centre = 306;
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var regular = Add(objects, HelveticaFont);
+        var bold = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+        var pageIds = new int[pageCount];
+        for (var i = 0; i < pageCount; i++)
+        {
+            var content = new StringBuilder();
+            void Text(string font, int size, int x, int y, string text) =>
+                content.Append(CultureInfo.InvariantCulture, $"BT /{font} {size} Tf {x} {y} Td ({text}) Tj ET\n");
+            Text("F1", marginSize, left, PortraitHeight - headerDrop, "Journal of Calm Design");
+            if (i == 0)
+            {
+                Text("F2", titleSize, left, top + titleRise, "Reading Order in Practice");
+            }
+
+            string[] leftLines = ["The left column opens with", "a first paragraph that ends.", string.Empty, "A second left paragraph", "follows after a gap."];
+            string[] rightLines = ["The right column comes", "next and finishes here."];
+            for (var row = 0; row < leftLines.Length; row++)
+            {
+                var y = top - (row * leading);
+                if (leftLines[row].Length > 0)
+                {
+                    Text("F1", bodySize, left, y, leftLines[row]);
+                }
+
+                if (row < rightLines.Length)
+                {
+                    Text("F1", bodySize, right, y, rightLines[row]);
+                }
+            }
+
+            Text("F1", footnoteSize, left, footnoteBaseline, "1 A footnote about the source.");
+            Text("F1", marginSize, centre, footerBaseline, string.Create(CultureInfo.InvariantCulture, $"Page {i + 1}"));
+            var stream = content.ToString();
+            var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+            pageIds[i] = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+                << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+                   /Resources << /Font << /F1 {{regular}} 0 R /F2 {{bold}} 0 R >> >> /Contents {{contentId}} 0 R >>
+                """));
+        }
+
+        var kids = string.Join(' ', pageIds.Select(static id => string.Create(CultureInfo.InvariantCulture, $"{id} 0 R")));
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{kids}] /Count {pageCount} >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
+        var info = Add(objects, $"<< /Title (Article) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
     /// Creates a one page document with two layers: "Drawing", shown, holds a black box on the left; "Notes", hidden by
     /// default, holds a black box on the right.
     /// </summary>

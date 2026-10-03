@@ -111,6 +111,7 @@ public sealed class TextRecognitionViewModel : ReactiveObject
 
             var run = await RecognizePagesAsync(document, writer, engine, cancellation.Token).ConfigureAwait(true);
             _owner.Search.Refresh();
+            _owner.InvalidateReading();
             _owner.Notice = run.Closed
                 ? "Text recognition stopped because the document was closed."
                 : Describe(run.Recognized, run.AlreadyText, document.PageCount, cancellation.IsCancellationRequested);
