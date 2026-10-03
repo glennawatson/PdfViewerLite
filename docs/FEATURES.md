@@ -1,41 +1,52 @@
-# Features and parity with GNOME Papers 50
+# Features and parity with GNOME Papers 51
 
-This matrix compares PdfViewerLite with Papers, GNOME's document viewer as of GNOME 50, for PDF documents.
-"M1" means available now; M2 and M3 are the next milestones.
+This matrix compares PdfViewerLite with Papers ("Document Viewer"), GNOME's document viewer as of GNOME 51, for PDF
+documents. Every feature has a BenchmarkDotNet benchmark; allocations are checked from EventPipe traces by
+`scripts/audit-allocations.sh`, and every allocation the library makes in a measured workload is explained in
+`benchmarks/allocations-explained.json`.
 
-| Area | Papers 50 | PdfViewerLite | Status |
+| Area | Papers 51 | PdfViewerLite | Status |
 |---|---|---|---|
-| Multiple documents | One window per document | Tabs in one window, session restore, reorder, reopen closed tab | M1 |
-| Continuous scrolling | Yes | Yes | M1 |
-| Single / dual page, odd pages left | Yes | Single, dual, dual with cover page | M1 |
-| Non-continuous (page by page) mode | Yes | | M2 |
-| Fit width / fit page / free zoom | Yes | Yes, Ctrl+wheel zooms around the pointer | M1 |
-| Rotation | Yes | Yes | M1 |
-| Thumbnails sidebar | Yes | Yes, virtualised and rendered on demand | M1 |
-| Outline (bookmarks) | Yes | Yes | M1 |
-| Search with results list | Yes | Yes, incremental, match case, whole words | M1 |
-| Text selection and copy | Yes | Yes, across pages | M1 |
-| Links (internal and external) | Yes | Yes, including URLs written as plain text | M1 |
-| Back / forward history | Yes | Yes | M1 |
-| Page labels | Yes | Yes, in the page box and thumbnails | M1 |
-| Night mode / page colours | Yes (inverted) | Yes (page tones: paper and ink, per scheme) | M1 |
-| Document properties | Yes | Yes | M1 |
-| Password protected documents | Yes | Yes | M1 |
-| Reload on file change | Yes | Yes | M1 |
-| Recent documents | Start view | Start page plus shared `recently-used.xbel` (Dolphin Recent Files) | M1 |
-| Drag and drop | Yes | Yes, files and URLs | M1 |
-| Open remote (http/https) documents | Via GVfs | Downloaded with Refit | M1 |
-| Annotations: view | Yes | Rendered | M1 |
-| Annotations: create and edit (highlight, underline, strike-out, note, free text) | Yes | | M2 |
-| Annotations sidebar | Yes | | M2 |
-| Form filling | Yes | | M2 |
-| Attachments | Yes | | M2 |
-| Save / save a copy | Yes | | M2 |
-| Print | Yes | | M2 (XDG print portal) |
-| Presentation mode | Yes | | M2 |
-| Digital signatures (view and sign) | Yes | | M3 |
-| Caret navigation and accessibility | Yes | | M3 |
-| Layers (optional content) | Yes | | M3 |
+| Multiple documents | One window per document | Tabs in one window, session restore, reorder, reopen closed tabs | Done |
+| Many open documents | n/a | Tab finder (Ctrl+Shift+A), hover previews of tabs, at most 16 documents kept in memory | Done |
+| Continuous scrolling | Yes | Yes | Done |
+| Single / dual page, odd pages left | Yes | Single, dual, dual with cover page | Done |
+| Page by page (non-continuous) | Yes | Yes, More ▸ Page by Page | Done |
+| Fit width / fit page / free zoom | Yes | Yes, Ctrl+wheel zooms around the pointer | Done |
+| Rotation | Yes | Yes | Done |
+| Thumbnails sidebar | Yes | Yes, virtualised and rendered on demand | Done |
+| Outline (bookmarks) | Yes | Yes | Done |
+| Search with results list | Yes | Yes, incremental, match case, whole words | Done |
+| Text selection and copy | Yes | Yes, across pages | Done |
+| Links (internal and external) | Yes | Yes, including URLs written as plain text | Done |
+| Back / forward history | Yes | Yes | Done |
+| Page labels | Yes | Yes, in the page box and thumbnails | Done |
+| Night mode / page colours | Yes (inverted) | Page tones per colour scheme, keeping highlight colours true | Done |
+| Document properties | Yes | Yes | Done |
+| Password protected documents | Yes | Yes | Done |
+| Reload on file change | Yes | Automatic or a Reload bar, your choice | Done |
+| Recent documents | Start view | Start page plus the shared `recently-used.xbel` | Done |
+| Drag and drop | Yes | Files and URLs | Done |
+| Open remote (http/https) documents | Via GVfs | Downloaded with Refit | Done |
+| Annotations: highlight, underline, strike-out, squiggly | Yes | Yes, from selected text or the right-click menu | Done |
+| Annotations: notes, free text, ink | Yes | Yes, with colours, recolour, edit and delete | Done |
+| Annotations sidebar | Yes | Yes | Done |
+| Form filling | Yes | Text fields, check boxes, choice lists; Tab moves to the next field | Done |
+| Signatures | Draw or type, digital signatures listed and checked | Draw or type a signature, list and check digital signatures | Done |
+| Attachments | Yes | Sidebar panel, save to a place you choose | Done |
+| Save / save a copy | Yes | Yes; signed documents are saved incrementally | Done |
+| Print | Yes | XDG print portal (KDE's print dialog), with annotations and filled fields | Done |
+| Presentation mode | Yes | More ▸ Present (Shift+F5), Esc to stop | Done |
+| Text recognition (OCR) | No | More ▸ Recognise Text adds a searchable text layer with Tesseract | Done |
+| Caret navigation | Yes | | Planned |
+| Layers (optional content) | Yes | PDFium has no public API to switch layers | Blocked |
+| Signing with a certificate | Yes | Signatures are visual; certificate signing needs a PDF writer for incremental updates | Planned |
 | Other formats (DjVu, comics, TIFF) | Partly | Engine interface ready | Later |
-| Tear tabs off into new windows | n/a | | M3 |
-| Update check | n/a | Refit client ready | M3 |
+| Tear tabs off into new windows | n/a | | Later |
+
+## Desktop integration
+
+The app talks to the desktop only through `IDesktopPlatform` (`src/PdfViewerLite.Core/Platform`): theme, file
+manager, recent documents, printing and the single running window. `KdePlatform` implements it for KDE Plasma (the
+freedesktop parts work on other Linux desktops); `FallbackPlatform` is used where there is no implementation. A GNOME
+or Windows integration is a new `IDesktopPlatform`, chosen in `DesktopPlatforms.Detect`.

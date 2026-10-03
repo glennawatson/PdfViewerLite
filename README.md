@@ -13,17 +13,23 @@ the tabbed workflow of Adobe Reader, while looking at home on KDE.
 - **KDE integration**: KWin draws the window frame, the window content follows your colour scheme and font from
   `kdeglobals` (live), files opened from Dolphin open as tabs in the running window over D-Bus, opened files show in
   Dolphin's *Recent Files*, the open dialog is the KDE one (via the XDG portal), and *Show in Folder* opens Dolphin.
-- **Viewer features**: continuous single, dual and book (cover) layouts; fit width, fit page and free zoom
-  (Ctrl+wheel zooms around the pointer); rotation; thumbnails, outline and search results sidebar; find with match
-  case and whole words; text selection and copy; links; back/forward history; page labels; comfort page colours; document
-  properties; password protected documents; reload when the file changes on disk.
+- **Viewer features**: continuous, page by page, dual and book (cover) layouts; fit width, fit page and free zoom
+  (Ctrl+wheel zooms around the pointer); rotation; thumbnails, outline, annotations, attachments and search results
+  sidebars; find with match case and whole words; text selection and copy; links; back/forward history; page labels;
+  comfort page colours; document properties; password protected documents; reload when the file changes on disk;
+  presentation mode; printing through the desktop's print dialog.
+- **Annotate, fill and sign**: highlight, underline, strike out, notes, text boxes and drawing from context menus that
+  follow what you are doing; fill in forms; draw or type a signature; list and check digital signatures; save or save
+  a copy.
+- **Text recognition**: *Recognise Text* gives scanned pages a searchable, selectable text layer using Tesseract.
+- **Hundreds of tabs**: hover over a tab to see a preview of its page, and find any open tab by name (Ctrl+Shift+A).
 
 - **Comfort first**: calm by default and predictable, following [comfort design rules](docs/COMFORT.md) for ADHD
   and autism. You can choose Calm, High contrast, Dark or Light (or follow the desktop), soft page colours instead
   of glaring white, text labels on the tool bar, reduced motion, a steady text cursor, and confirmation before
   closing several tabs. Everything is in Preferences (Ctrl+,).
 
-See [docs/FEATURES.md](docs/FEATURES.md) for parity with GNOME Papers 50 and what is planned.
+See [docs/FEATURES.md](docs/FEATURES.md) for parity with GNOME Papers 51 and what is planned.
 
 ## Install
 
