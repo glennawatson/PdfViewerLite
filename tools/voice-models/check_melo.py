@@ -15,17 +15,31 @@ folder = sys.argv[2]
 
 from transformers import AutoModel, AutoTokenizer  # noqa: E402
 
+from huggingface_hub import hf_hub_download  # noqa: E402
+
 from melo import utils  # noqa: E402
-from melo.api import TTS  # noqa: E402
+from melo.models import SynthesizerTrn  # noqa: E402
 
 TEXT = "The garden behind the library had been neglected for years, and the fountain had long since stopped."
 MAX_SAMPLE_DIFFERENCE = 1e-3
 MIN_BERT_COSINE = 0.97
 
-tts = TTS(language="EN", device="cpu")
-bert, ja_bert, phones, tones, languages = utils.get_text_for_tts_infer(TEXT, "EN", tts.hps, "cpu", tts.symbol_to_id)
+hps = utils.get_hparams_from_file(hf_hub_download("myshell-ai/MeloTTS-English", "config.json"))
+model = SynthesizerTrn(
+    len(hps.symbols),
+    hps.data.filter_length // 2 + 1,
+    hps.train.segment_size // hps.data.hop_length,
+    n_speakers=hps.data.n_speakers,
+    num_tones=hps.num_tones,
+    num_languages=hps.num_languages,
+    **hps.model,
+)
+model.load_state_dict(torch.load(hf_hub_download("myshell-ai/MeloTTS-English", "checkpoint.pth"), map_location="cpu")["model"], strict=True)
+model.eval()
+symbol_to_id = {s: i for i, s in enumerate(hps.symbols)}
+bert, ja_bert, phones, tones, languages = utils.get_text_for_tts_infer(TEXT, "EN", hps, "cpu", symbol_to_id)
 with torch.no_grad():
-    expected = tts.model.infer(
+    expected = model.infer(
         phones[None], torch.tensor([len(phones)]), torch.tensor([3]), tones[None], languages[None], bert[None], ja_bert[None],
         noise_scale=0, noise_scale_w=0, sdp_ratio=0, length_scale=1,
     )[0][0, 0].numpy()

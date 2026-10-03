@@ -21,8 +21,25 @@ env:
   MISAKI: https://raw.githubusercontent.com/hexgrad/misaki/fba1236595f2d2bf21d414ba6e57d25256afada3/misaki/data
 
 jobs:
+  check:
+    name: Check whether the release is published
+    runs-on: ubuntu-24.04
+    outputs:
+      published: ${{ steps.release.outputs.published }}
+    steps:
+      # A published release is never changed: the app pins each file's SHA-256, so new files need a new tag.
+      - id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
     name: Export and publish
+    needs: check
+    if: needs.check.outputs.published != 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -49,8 +66,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Voice files ($RELEASE_TAG)" \
-              --notes "On-device voices for Read Aloud: MeloTTS-English (MIT) with bert-base-uncased (Apache-2.0), and a mirror of Kokoro-82M (Apache-2.0) with the misaki dictionaries (Apache-2.0). Built by the Voice models workflow; checked by SHA-256 from voices.json."
-          fi
-          gh release upload "$RELEASE_TAG" release/* --clobber
+          gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --title "Voice files ($RELEASE_TAG)" \
+            --notes "On-device voices for Read Aloud: MeloTTS-English (MIT) with bert-base-uncased (Apache-2.0), and a mirror of Kokoro-82M (Apache-2.0) with the misaki dictionaries (Apache-2.0). Built by the Voice models workflow; voices.json lists every file's SHA-256."
