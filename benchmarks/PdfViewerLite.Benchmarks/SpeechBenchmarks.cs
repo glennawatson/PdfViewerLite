@@ -82,6 +82,11 @@ public class SpeechBenchmarks
     [Benchmark]
     public string PrepareSentence() => SentenceSplitter.ToSpeech("The next line con-\r\ntinues here; does it end?");
 
+    /// <summary>Turns written English with money, dates, times, units and abbreviations into the words said.</summary>
+    /// <returns>The spoken text.</returns>
+    [Benchmark]
+    public string Normalize() => TextNormalizer.Normalize("Dr. Smith paid $1,200.50 on 2024-03-12 at 10:30 for 12 km of road, e.g. the 3rd section [4].", false);
+
     /// <summary>Turns a sentence into phonemes.</summary>
     /// <returns>The phonemes.</returns>
     [Benchmark]

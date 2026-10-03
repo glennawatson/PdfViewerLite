@@ -105,7 +105,8 @@ public sealed class KokoroEngine : ISpeechEngine
     {
         lock (_gate)
         {
-            return GetPhonemizer(KokoroModel.IsBritish(voiceId)).Phonemize(text);
+            var british = KokoroModel.IsBritish(voiceId);
+            return GetPhonemizer(british).Phonemize(TextNormalizer.Normalize(text, british));
         }
     }
 
@@ -144,7 +145,8 @@ public sealed class KokoroEngine : ISpeechEngine
     {
         lock (_gate)
         {
-            var phonemes = GetPhonemizer(KokoroModel.IsBritish(voiceId)).Phonemize(text);
+            var british = KokoroModel.IsBritish(voiceId);
+            var phonemes = GetPhonemizer(british).Phonemize(TextNormalizer.Normalize(text, british));
             KokoroVocabulary.Tokenize(phonemes, _tokens);
             if (_tokens.Count == 0)
             {

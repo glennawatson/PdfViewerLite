@@ -3,6 +3,16 @@
   // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
   {
     "type": "",
+    "frame": "PdfViewerLite.Speech.English.TextNormalizer+",
+    "reason": "The replacements of the sentence normalizer read their match groups and build the spoken words, once per sentence before it is phonemized; see TextNormalizer."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.English.TextNormalizer.",
+    "reason": "Normalizing a sentence for the voice rewrites it with generated regular expressions, each replacement making a new string, once per sentence before it is phonemized. Synthesizing the sentence takes hundreds of milliseconds, so this is negligible."
+  },
+  {
+    "type": "",
     "frame": "PdfViewerLite.Pdfium.PdfiumDocument+StructureWalker.",
     "reason": "Reading a tagged page's structure tree makes one TaggedBlock (with its character index array) per element, which is the result, and remembers which marked content it has used. It runs once per page when Focus Mode or Read Aloud first reads it; ReadingDocument caches the page."
   },

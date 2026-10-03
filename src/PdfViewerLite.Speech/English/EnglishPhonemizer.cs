@@ -85,6 +85,15 @@ internal sealed class EnglishPhonemizer
         _british = british;
     }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether words the lexicon does not know, and that are spelled out letter by
+    /// letter instead, are added to <see cref="GuessedWords"/>, for the listening tests' pronunciation coverage.
+    /// </summary>
+    internal bool RecordsGuesses { get; set; }
+
+    /// <summary>Gets the words spelled out letter by letter while <see cref="RecordsGuesses"/> was on.</summary>
+    internal List<string> GuessedWords { get; } = [];
+
     /// <summary>Gets the unstressed vowel of endings like -es and -ed: ɪ in British English, ᵻ in American.</summary>
     private char UnstressedI => _british ? 'ɪ' : 'ᵻ';
 
@@ -337,7 +346,17 @@ internal sealed class EnglishPhonemizer
     private string Unlisted(string word)
     {
         var lower = word.ToLowerInvariant();
-        return Lookup(lower) ?? Stemmed(lower) ?? Compound(lower) ?? Spell(word) ?? string.Empty;
+        if ((Lookup(lower) ?? Stemmed(lower) ?? Compound(lower)) is { } known)
+        {
+            return known;
+        }
+
+        if (RecordsGuesses)
+        {
+            GuessedWords.Add(word);
+        }
+
+        return Spell(word) ?? string.Empty;
     }
 
     /// <summary>Looks a word up as it is.</summary>

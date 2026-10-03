@@ -104,6 +104,34 @@ internal static class NumberWords
         return builder.ToString();
     }
 
+    /// <summary>Says a whole number as an ordinal: first, twelfth, twenty first, one hundredth.</summary>
+    /// <param name="value">The number.</param>
+    /// <returns>The words.</returns>
+    internal static string Ordinal(long value)
+    {
+        var cardinal = Cardinal(value);
+        var last = cardinal.LastIndexOf(' ') + 1;
+        var word = cardinal[last..];
+        var ordinal = word switch
+        {
+            "one" => "first",
+            "two" => "second",
+            "three" => "third",
+            "five" => "fifth",
+            "eight" => "eighth",
+            "nine" => "ninth",
+            "twelve" => "twelfth",
+            _ when word.EndsWith('y') => $"{word[..^1]}ieth",
+            _ => $"{word}th",
+        };
+        return cardinal[..last] + ordinal;
+    }
+
+    /// <summary>Says a year the way people say years: 1999 as nineteen ninety-nine and 2005 as two thousand five.</summary>
+    /// <param name="year">The year.</param>
+    /// <returns>The words.</returns>
+    internal static string SayYear(int year) => year is >= FirstPairedYear and <= LastPairedYear ? Year(year) : Cardinal(year);
+
     /// <summary>Reads the whole part of a number, skipping thousands commas.</summary>
     /// <param name="whole">The digits and commas.</param>
     /// <param name="value">The number.</param>
