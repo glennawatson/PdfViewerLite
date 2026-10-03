@@ -27,8 +27,10 @@ looking at home on each desktop, and it was built for KDE Plasma first.
   spacing, paragraph spacing, text width and page colour. Two-column layouts, headings, lists, captions and footnotes
   come out in a sensible order, page numbers and running headers are left out, and switching back to the pages keeps
   your place.
-- **Read Aloud**: a natural sounding neural voice (Kokoro-82M) that runs on your computer, so nothing you read is sent
-  anywhere. It is downloaded once (about 180 MB) the first time, with your go-ahead. It reads in the same order as
+- **Read Aloud**: natural sounding neural voices that run on your computer, so nothing you read is sent anywhere.
+  MeloTTS is the default, with Australian, British, American and Indian English voices and BERT for natural phrasing;
+  Kokoro-82M can be chosen instead. The voice is downloaded once (about 270 MB) from this project's GitHub release,
+  with your go-ahead, and checked before use. It reads in the same order as
   Focus Mode; the sentence being read is softly marked and followed, with optional word highlighting and a focus band
   that dims the rest. Pause, skip a sentence, change voice or speed without losing your place, right-click *Read
   Aloud from Here* (Ctrl+Shift+Y), and pick up where you stopped next time. Azure AI Speech can be used instead with
@@ -87,7 +89,7 @@ set `PDFVIEWERLITE_SCREENSHOTS=<dir>` to save the rendered frames.
 | D-Bus | [Tmds.DBus.Protocol](https://github.com/tmds/Tmds.DBus) | MIT |
 | HTTP | [Refit](https://github.com/reactiveui/refit) with generated clients and source-generated JSON | MIT |
 | Text recognition | Tesseract through source-generated `LibraryImport` bindings, loaded when installed | Apache-2.0 |
-| Read Aloud | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (downloaded on first use) on [ONNX Runtime](https://onnxruntime.ai), pronunciations from [misaki](https://github.com/hexgrad/misaki); sound through PulseAudio/PipeWire, WASAPI or Core Audio | Apache-2.0 / MIT / Apache-2.0 / LGPL (loaded at run time) |
+| Read Aloud | [MeloTTS-English](https://github.com/myshell-ai/MeloTTS) with [bert-base-uncased](https://github.com/google-research/bert) and the [g2p_en](https://github.com/Kyubyong/g2p) spelling-to-sound network, or [Kokoro-82M](https://github.com/hexgrad/kokoro) with [misaki](https://github.com/hexgrad/misaki) pronunciations, all downloaded on first use from this repository's `voices-1` release and run on [ONNX Runtime](https://onnxruntime.ai) with a C# front end; sound through PulseAudio/PipeWire, WASAPI or Core Audio | MIT / Apache-2.0 / Apache-2.0 / Apache-2.0 / Apache-2.0 / MIT / LGPL (loaded at run time) |
 | Tests and benchmarks | TUnit, Avalonia.Headless, BenchmarkDotNet | MIT / Apache-2.0 |
 
 Every shipped assembly is trimmable and Native AOT compatible; `dotnet publish` produces a single native binary with

@@ -20,60 +20,13 @@ Acrobat Reader. See `docs/ACROBAT-PARITY.md`.
     threads.
   - Tools are in `tools/voice-models/`. Python is CI only and never ships.
 
-## In progress: MeloTTS as the default on-device voice
+## Done: MeloTTS as the default on-device voice
 
-The user's requirements:
-
-- On device, with an Australian voice.
-- Keep Kokoro, and let the user choose the engine.
-- MeloTTS is the default.
-- No Python.
-- Models hosted on GitHub, not Hugging Face.
-- BERT on.
-- English only.
-
-Written in this commit (`src/PdfViewerLite.Speech` builds; nothing is tested yet):
-
-- `VoiceRelease.cs`: release URLs and pinned SHA-256 values copied from `voices.json`.
-- `SpeechModelFile` now carries `Sha256`, and `SpeechModelDownloader` checks it.
-- `KokoroModel` now downloads from the release.
-- `Melo/`:
-  - `WordPieceTokenizer`: BERT uncased.
-  - `MeloSymbols`: symbols and the ARPAbet-to-id/tone mapping.
-  - `MeloLexicon`
-  - `SpellingToSound`: g2p_en GRU.
-  - `MeloFrontEnd`: grouping, word2ph, blanks, tone start 7, language 2.
-  - `MeloInput`
-  - `MeloModel`: voices EN-AU (first), EN-BR, EN-US, EN_INDIA.
-  - `MeloEngine`: BERT, then feature alignment, then the synthesizer at 44.1 kHz.
-- `tests/PdfViewerLite.Core.Tests/Speech/Melo/melo-reference.json`: Python front-end reference output from
-  `tools/voice-models/reference_melo.py`.
-
-## Next steps, in order
-
-1. Tests:
-   - `MeloModelFixture`, a copy of `KokoroModelFixture` using `PDFVIEWERLITE_MELO_DIR`, default
-     `~/.cache/pdfviewerlite/melo` (files already downloaded there in the dev box), and `PDFVIEWERLITE_MELO_DOWNLOAD`.
-   - `MeloFrontEndTests`: compare `MeloFrontEnd.Load(dir).Prepare(case.text)` against the reference ids, tones,
-     languages, wordToPhones and tokenIds, and check `SpellingToSound` predictions. Copy the JSON to output in the
-     csproj and add source-generated JSON.
-   - `MeloRealModelTests`, modelled on `KokoroRealModelTests` but without the repeatability check, because Melo adds
-     noise: speech-like output, real-time factor below 1, every voice, long text, nothing to say.
-   - Run the listening corpus on Melo.
-2. App:
-   - Add a `SpeechEngineChoice` value for Melo and make it the default. Use explicit enum values and keep the existing
-     numbers stable.
-   - `SpeechSetup.CreateEngineFor` and its voice files should be per engine.
-   - Preferences gets three engine options: MeloTTS (default), Kokoro, Azure.
-   - Voice list defaults to EN-AU.
-   - Update the CI cache for `~/.cache/pdfviewerlite/melo`.
-3. Benchmarks:
-   - Melo front end Prepare and engine Synthesize.
-   - Explain allocations in `benchmarks/allocations-explained.json`.
-   - `scripts/audit-allocations.sh`.
-4. Docs: `docs/LISTENING.md` (MeloTTS default, Kokoro optional), README voice row and licences (MeloTTS MIT,
-   bert-base-uncased Apache-2.0, g2p_en Apache-2.0), and `ACROBAT-PARITY.md`.
-5. Full `dotnet build PdfViewerLite.slnx`, `dotnet test`, and an AOT publish check.
+- The C# front end matches the Python original: `MeloFrontEndTests`, 32 checks.
+- Real-model tests and the listening corpus pass on MeloTTS.
+- Preferences offers MeloTTS (the default, Australian voice first), Kokoro and Azure.
+- Benchmarks are in `MeloBenchmarks`, and their allocations are explained.
+- Docs updated: `LISTENING.md`, the README and `ACROBAT-PARITY.md`.
 
 ## Remaining goal items after voices
 

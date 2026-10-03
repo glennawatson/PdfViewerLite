@@ -24,7 +24,7 @@ every platform on each release, but tests only run on Linux.
 | Navigate, search, Focus Mode | Tested (headless UI tests) | Shared code, built | Shared code, built |
 | Annotate, fill, sign, save | Tested | Shared code, built | Shared code, built |
 | Print | Tested (CUPS) | Built (print dialog, GDI printing in bands) | Built (CUPS, or Preview's print dialog) |
-| Read Aloud | Tested with the real Kokoro model through PulseAudio/PipeWire | Built (WASAPI) | Built (Core Audio AudioQueue) |
+| Read Aloud | Tested with the real MeloTTS and Kokoro models through PulseAudio/PipeWire | Built (WASAPI) | Built (Core Audio AudioQueue) |
 | Screen reader | Tested (AT-SPI tree walked in CI) | UI Automation from Avalonia, not tested | NSAccessibility from Avalonia, not tested |
 | Packages | AppImage, deb, rpm, AUR | Inno Setup installer, portable zip | Signed `.app` in a `.dmg` |
 
@@ -116,7 +116,7 @@ every platform on each release, but tests only run on Linux.
 
 | Feature | Acrobat Reader | PdfViewerLite | Status |
 |---|---|---|---|
-| Read the document aloud | Read Out Loud with system voices | Kokoro-82M neural voice on this computer, downloaded once (about 180 MB) with consent; nothing is sent anywhere | Done |
+| Read the document aloud | Read Out Loud with system voices | MeloTTS neural voices on this computer (Australian by default, also British, American and Indian English), or Kokoro-82M; downloaded once from this project's GitHub release with consent and checked by SHA-256; nothing is sent anywhere | Done |
 | Reading order | Its own reading order | The reading order above, so columns and footnotes are read sensibly | Done |
 | Highlighting | No | Sentence marked and followed; optional word highlighting and a focus band that dims the rest | Done |
 | Controls | Play, pause, stop | Play, pause, previous/next sentence (immediate); voice and speed changes resume from the current sentence | Done |

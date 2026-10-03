@@ -4,6 +4,7 @@
 
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace PdfViewerLite.Speech.Melo;
@@ -225,8 +226,16 @@ internal sealed class SpellingToSound
     /// <returns>The dot product.</returns>
     private static float Dot(ReadOnlySpan<float> left, ReadOnlySpan<float> right)
     {
-        var sum = 0F;
-        for (var i = 0; i < left.Length; i++)
+        var lanes = Vector<float>.Count;
+        var sums = Vector<float>.Zero;
+        var i = 0;
+        for (; i + lanes <= left.Length; i += lanes)
+        {
+            sums += new Vector<float>(left[i..]) * new Vector<float>(right[i..]);
+        }
+
+        var sum = Vector.Sum(sums);
+        for (; i < left.Length; i++)
         {
             sum += left[i] * right[i];
         }

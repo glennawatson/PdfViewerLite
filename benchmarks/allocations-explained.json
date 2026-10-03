@@ -190,5 +190,15 @@
     "type": "System.Byte[]",
     "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetCharacters(",
     "reason": "Reading a page's characters loads PDFium's text page the first time it is used; the list it fills is the caller's and is reused."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.Melo.WordPieceTokenizer.Clean(",
+    "reason": "MeloTTS's front end runs once per sentence read aloud, while the previous sentence plays. BERT's cleaning lower-cases and decomposes the sentence into new strings, and the reused cleaning buffer grows once to the longest sentence seen; the piece ids, phones and model input lists are reused between sentences."
+  },
+  {
+    "type": "System.String[]",
+    "frame": "PdfViewerLite.Speech.Melo.SpellingToSound.Predict(",
+    "reason": "The caller's reused list of guessed phones grows once to the longest guess; the phone names themselves are shared strings and the network's state is reused."
   }
 ]
