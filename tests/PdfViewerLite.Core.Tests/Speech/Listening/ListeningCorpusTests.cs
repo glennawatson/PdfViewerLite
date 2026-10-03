@@ -186,6 +186,7 @@ public sealed class ListeningCorpusTests
     private static async Task AssertStaysEven(ISpeechEngine engine, string voice, string fileName)
     {
         var passage = ListeningCorpus.Instance.Passages.Single(static p => p.Category == "long-session");
+        using var gate = await RealTimeGate.EnterAsync();
         var session = await ReadAsync(engine, voice, passage.Text);
         Save(session, fileName);
         var levels = session.Sentences.Select(static s => s.Measurement.Level).ToList();

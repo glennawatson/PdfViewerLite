@@ -89,7 +89,8 @@ public sealed class MeloRealModelTests
         using var engine = new MeloEngine(MeloModelFixture.Directory);
         _ = await engine.SynthesizeAsync("Warm up.", Heart, 1, CancellationToken.None);
 
-        // The best of a few readings: the engine's speed, not a moment when other tests share the processor.
+        // The best of a few readings, one timed voice at a time: the engine's speed, not a moment of contention.
+        using var gate = await RealTimeGate.EnterAsync();
         var best = double.MaxValue;
         for (var attempt = 0; attempt < TimingAttempts; attempt++)
         {
