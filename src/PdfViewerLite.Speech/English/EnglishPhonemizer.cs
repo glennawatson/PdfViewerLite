@@ -13,6 +13,7 @@ namespace PdfViewerLite.Speech.English;
 /// Turns English text into the phonemes Kokoro reads, following misaki (Apache-2.0): words come from its pronunciation
 /// lexicon, with its rules for -s, -ed and -ing endings and for "the", "a" and "to" before vowels; numbers are said as
 /// words; compound words are split into known halves; acronyms and unknown short words are spelled out.
+/// Reuses its buffers between sentences, so it is not thread safe; <see cref="Kokoro.KokoroEngine"/> holds a lock.
 /// </summary>
 [DebuggerDisplay("{_lexicon.Count} words, British={_british}")]
 internal sealed class EnglishPhonemizer
@@ -56,15 +57,21 @@ internal sealed class EnglishPhonemizer
     /// <summary>Sounds after which -ed is said as t.</summary>
     private static readonly SearchValues<char> VoicelessPast = SearchValues.Create("pkfθʃsʧ");
 
-    /// <summary>Punctuation the voice uses for pauses and tone.</summary>
-    private static readonly SearchValues<char> Pauses = SearchValues.Create(";:,.!?—…\"()“”");
-
     /// <summary>Symbols said as words.</summary>
     private static readonly FrozenDictionary<char, string> Symbols =
         new Dictionary<char, string> { ['%'] = "percent", ['&'] = "and", ['+'] = "plus", ['@'] = "at", ['='] = "equals" }.ToFrozenDictionary();
 
+    /// <summary>Punctuation the voice uses for pauses and tone, as strings so tokens share them.</summary>
+    private static readonly FrozenDictionary<char, string> PauseMarks = BuildPauseMarks();
+
     /// <summary>The pronunciations.</summary>
     private readonly PronunciationLexicon _lexicon;
+
+    /// <summary>The tokens of the text being read, reused between sentences.</summary>
+    private readonly List<Token> _tokens = [];
+
+    /// <summary>The phonemes being built, reused between sentences.</summary>
+    private readonly StringBuilder _output = new();
 
     /// <summary>Whether to use British endings.</summary>
     private readonly bool _british;
@@ -87,8 +94,11 @@ internal sealed class EnglishPhonemizer
     internal string Phonemize(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        var tokens = Tokenize(text);
-        var output = new StringBuilder(text.Length * PhonemesPerLetter);
+        var tokens = _tokens;
+        tokens.Clear();
+        Tokenize(text, tokens);
+        var output = _output.Clear();
+        _ = output.EnsureCapacity(text.Length * PhonemesPerLetter);
         for (var i = 0; i < tokens.Count; i++)
         {
             var token = tokens[i];
@@ -112,7 +122,12 @@ internal sealed class EnglishPhonemizer
             _ = output.Append(phonemes);
         }
 
-        return output.ToString().Trim();
+        while (output.Length > 0 && output[^1] == ' ')
+        {
+            output.Length--;
+        }
+
+        return output.ToString();
     }
 
     /// <summary>Gets the phonemes of one word.</summary>
@@ -172,10 +187,9 @@ internal sealed class EnglishPhonemizer
 
     /// <summary>Splits text into words and pause marks, saying numbers and symbols as words.</summary>
     /// <param name="text">The text.</param>
-    /// <returns>The tokens.</returns>
-    private static List<Token> Tokenize(string text)
+    /// <param name="tokens">Receives the tokens.</param>
+    private static void Tokenize(string text, List<Token> tokens)
     {
-        var tokens = new List<Token>();
         var i = 0;
         while (i < text.Length)
         {
@@ -197,8 +211,6 @@ internal sealed class EnglishPhonemizer
                 AddMark(tokens, text, ref i);
             }
         }
-
-        return tokens;
     }
 
     /// <summary>Adds a pause mark or a symbol's word, skipping anything else.</summary>
@@ -240,12 +252,20 @@ internal sealed class EnglishPhonemizer
             return "—";
         }
 
-        if (c is '\'' or '‘' or '’')
+        return c is '\'' or '‘' or '’' ? "\"" : PauseMarks.GetValueOrDefault(c);
+    }
+
+    /// <summary>Builds the pause marks as strings.</summary>
+    /// <returns>The marks.</returns>
+    private static FrozenDictionary<char, string> BuildPauseMarks()
+    {
+        var marks = new Dictionary<char, string>();
+        foreach (var c in ";:,.!?—…\"()“”")
         {
-            return "\"";
+            marks[c] = c.ToString();
         }
 
-        return Pauses.Contains(c) ? c.ToString() : null;
+        return marks.ToFrozenDictionary();
     }
 
     /// <summary>Determines whether a hyphen stands alone as a dash.</summary>

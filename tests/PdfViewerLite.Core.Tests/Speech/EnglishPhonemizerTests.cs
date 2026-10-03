@@ -10,8 +10,8 @@ namespace PdfViewerLite.Core.Tests.Speech;
 /// <summary>Tests for <see cref="EnglishPhonemizer"/>, against an extract of the misaki lexicon.</summary>
 public sealed class EnglishPhonemizerTests
 {
-    /// <summary>The phonemizer.</summary>
-    private static readonly EnglishPhonemizer Phonemizer = new(PronunciationLexicon.Load(Lexicon.ToArray()), false);
+    /// <summary>Gets a new phonemizer; each test has its own, as a phonemizer reuses its buffers and is not thread safe.</summary>
+    private static EnglishPhonemizer Phonemizer => new(PronunciationLexicon.Load(Lexicon.ToArray()), false);
 
     /// <summary>Gets an extract of misaki's us_gold.json (Apache-2.0).</summary>
     private static ReadOnlySpan<byte> Lexicon => """

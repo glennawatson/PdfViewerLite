@@ -70,5 +70,30 @@
     "type": "",
     "frame": "PdfViewerLite.Pdfium.Native.NativeBufferHandle",
     "reason": "The SafeHandle owning the native memory that holds the layer view's copy, one per switch."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.English.EnglishPhonemizer.",
+    "reason": "Phonemizing runs once per sentence read aloud, while the previous sentence plays. Each word is cut out as a string to look it up in the pronunciation dictionary (and lower-cased when it is not listed as written), and the phonemes are the returned string. The token list and output builder are reused between sentences; a trace can still show the reused builder growing its chunks."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Speech.English.NumberWords.",
+    "reason": "Numbers in a sentence are said as words, for example 1984 as 'nineteen eighty four'; the words are a new string per number, made only for sentences that contain digits."
+  },
+  {
+    "type": "System.",
+    "frame": "PdfViewerLite.Core.Speech.SentenceSplitter.ToSpeech(",
+    "reason": "Preparing a sentence for the voice returns it as a new string with line breaks joined; one per sentence read aloud, built in a StringBuilder sized to the sentence."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Http.Speech.AzureSpeechEngine.BuildSsml(",
+    "reason": "The SSML document sent to Azure for one sentence is the result; one string per sentence, with the text escaped."
+  },
+  {
+    "type": "System.Single[]",
+    "frame": "PdfViewerLite.Http.Speech.AzureSpeechEngine.ToSamples(",
+    "reason": "The samples are the returned audio for one sentence, handed to the sound output; one array per sentence, sized exactly."
   }
 ]
