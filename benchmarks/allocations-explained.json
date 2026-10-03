@@ -1,0 +1,9 @@
+[
+  // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
+  // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetText(",
+    "reason": "The extracted text is the result; one string per call, sized exactly."
+  }
+]
