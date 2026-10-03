@@ -427,7 +427,7 @@ public sealed class RenderingTests
     [Test]
     public async Task ShowsPrintPreview()
     {
-        using var test = new TestServices();
+        using var test = new TestServices(new PrintingPlatform(new RecordingPrinter()));
         using var main = new MainViewModel(test.Services);
         main.Open([test.CreateDocument("preview.pdf", PageByPagePages)]);
         using var preview = new PrintPreviewViewModel(main.SelectedTab!, test.Services);
@@ -435,7 +435,8 @@ public sealed class RenderingTests
         window.Show();
         try
         {
-            var ready = await UiWait.UntilAsync(() => preview.IsValid && window.GetVisualDescendants().OfType<Image>().Any(static image => image.Source is not null));
+            var ready = await UiWait.UntilAsync(() => preview.IsValid && preview.Destination == PrintDestination.Printer
+                && window.GetVisualDescendants().OfType<Image>().Any(static image => image.Source is not null));
             using var frame = window.CaptureRenderedFrame();
             Save(frame, "print-preview.png");
 

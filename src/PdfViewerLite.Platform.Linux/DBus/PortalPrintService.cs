@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using PdfViewerLite.Core.Platform;
 using Tmds.DBus.Protocol;
 
 namespace PdfViewerLite.Platform.Linux.DBus;
@@ -13,7 +12,7 @@ namespace PdfViewerLite.Platform.Linux.DBus;
 /// dialog (KDE's on Plasma) and prints the PDF it is handed. Works inside and outside sandboxes.
 /// </summary>
 [DebuggerDisplay("Print portal")]
-public sealed class PortalPrintService : IPrintService
+public sealed class PortalPrintService
 {
     /// <summary>The portal service name.</summary>
     private const string PortalName = "org.freedesktop.portal.Desktop";
@@ -30,7 +29,7 @@ public sealed class PortalPrintService : IPrintService
     /// <summary>The signature of <see cref="PrintMethod"/>: parent window, title, file descriptor, options.</summary>
     private const string PrintSignature = "ssha{sv}";
 
-    /// <inheritdoc/>
+    /// <summary>Gets a value indicating whether a session bus, and so the portal, can be reached.</summary>
     public bool IsAvailable => !string.IsNullOrEmpty(DBusAddress.Session);
 
     /// <summary>Writes the portal's Print call.</summary>
@@ -48,7 +47,11 @@ public sealed class PortalPrintService : IPrintService
         writer.WriteDictionary(new Dictionary<string, VariantValue>(StringComparer.Ordinal));
     }
 
-    /// <inheritdoc/>
+    /// <summary>Hands a PDF to the portal, which shows the desktop's print dialog.</summary>
+    /// <param name="filePath">The PDF.</param>
+    /// <param name="title">The job title.</param>
+    /// <param name="cancellationToken">Cancels waiting for the portal.</param>
+    /// <returns><see langword="true"/> when the portal accepted the file.</returns>
     public async Task<bool> PrintAsync(string filePath, string title, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);

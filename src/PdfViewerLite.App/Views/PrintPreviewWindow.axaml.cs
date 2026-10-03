@@ -31,6 +31,7 @@ public sealed partial class PrintPreviewWindow : Window, IViewFor<PrintPreviewVi
     {
         InitializeComponent();
         SheetList.ItemTemplate = new FuncDataTemplate<PrintPreviewPage>(static (_, _) => new PrintPreviewPageView());
+        DestinationBox.ItemTemplate = new FuncDataTemplate<PrintTarget>(static (target, _) => new TextBlock { Text = target?.Label });
         foreach (var choice in SheetGrid.Choices)
         {
             _ = PagesPerSheetBox.Items.Add(choice.ToString(CultureInfo.CurrentCulture));
@@ -60,16 +61,23 @@ public sealed partial class PrintPreviewWindow : Window, IViewFor<PrintPreviewVi
             this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Print {name}"),
             this.OneWayBind(ViewModel, static vm => vm.Summary, static v => v.SummaryText.Text),
             this.OneWayBind(ViewModel, static vm => vm.Sheets, static v => v.SheetList.ItemsSource),
-            this.Bind(ViewModel, static vm => vm.Destination, static v => v.DestinationBox.SelectedIndex, static d => (int)d, static i => (PrintDestination)Math.Max(0, i)),
+            this.OneWayBind(ViewModel, static vm => vm.Targets, static v => v.DestinationBox.ItemsSource),
+            this.Bind(ViewModel, static vm => vm.SelectedTarget, static v => v.DestinationBox.SelectedItem, static target => target, static item => item as PrintTarget),
+            this.Bind(ViewModel, static vm => vm.Copies, static v => v.CopiesBox.Value, static copies => (decimal?)copies, static value => (int)(value ?? 1)),
+            this.Bind(ViewModel, static vm => vm.Colour, static v => v.ColourBox.SelectedIndex, static colour => colour ? 0 : 1, static index => index != 1),
+            this.Bind(ViewModel, static vm => vm.TwoSided, static v => v.TwoSidedBox.IsChecked, static on => on, static on => on == true),
+            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.CopiesRow.IsVisible, static d => d == PrintDestination.Printer),
+            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.ColourRow.IsVisible, static d => d == PrintDestination.Printer),
+            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.SidesRow.IsVisible, static d => d == PrintDestination.Printer),
             this.Bind(ViewModel, static vm => vm.PageChoice, static v => v.PagesBox.SelectedIndex, static c => (int)c, static i => (PrintPageChoice)Math.Max(0, i)),
             this.Bind(ViewModel, static vm => vm.CustomPages, static v => v.CustomPagesBox.Text, static text => text, static text => text ?? string.Empty),
             this.OneWayBind(ViewModel, static vm => vm.PageChoice, static v => v.CustomPagesRow.IsVisible, static c => c == PrintPageChoice.Custom),
             this.Bind(ViewModel, static vm => vm.PagesPerSheetIndex, static v => v.PagesPerSheetBox.SelectedIndex, static i => i, static i => Math.Max(0, i)),
-            this.OneWayBind(ViewModel, static vm => vm.PagesPerSheetIndex, static v => v.PaperRow.IsVisible, static i => i > 0),
+            this.OneWayBind(ViewModel, static vm => vm.ShowsPaper, static v => v.PaperRow.IsVisible),
             this.Bind(ViewModel, static vm => vm.Paper, static v => v.PaperBox.SelectedIndex, static p => (int)p, static i => (PaperSize)Math.Max(0, i)),
             this.Bind(ViewModel, static vm => vm.IncludeAnnotations, static v => v.AnnotationsBox.IsChecked, static on => on, static on => on == true),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrinterHint.IsVisible, static d => d == PrintDestination.Printer),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrintButton.Content, static d => d == PrintDestination.Printer ? "Print…" : "Save…"),
+            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrinterHint.IsVisible, static d => d == PrintDestination.SystemDialog),
+            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrintButton.Content, ButtonText),
             this.BindCommand(ViewModel, static vm => vm.ConfirmCommand, static v => v.PrintButton),
             this.BindCommand(ViewModel, static vm => vm.SystemDialogCommand, static v => v.SystemDialogButton),
             this.WhenAnyObservable(static v => v.ViewModel!.Confirmed).SubscribeSafe(_ => Close(true), OnError),
@@ -98,6 +106,16 @@ public sealed partial class PrintPreviewWindow : Window, IViewFor<PrintPreviewVi
         _bindings?.Dispose();
         _bindings = null;
     }
+
+    /// <summary>Gets the main button's text for a destination: Print sends at once, the others open a dialog next.</summary>
+    /// <param name="destination">The destination.</param>
+    /// <returns>The text.</returns>
+    private static string ButtonText(PrintDestination destination) => destination switch
+    {
+        PrintDestination.Printer => "Print",
+        PrintDestination.SaveAsPdf => "Save…",
+        _ => "Print…",
+    };
 
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>

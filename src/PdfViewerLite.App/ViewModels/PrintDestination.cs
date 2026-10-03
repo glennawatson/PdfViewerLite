@@ -7,9 +7,12 @@ namespace PdfViewerLite.App.ViewModels;
 /// <summary>Where a print goes.</summary>
 public enum PrintDestination
 {
-    /// <summary>A printer, chosen in the desktop's print dialog.</summary>
+    /// <summary>Straight to a printer's queue with the settings chosen in the preview.</summary>
     Printer = 0,
 
     /// <summary>A PDF file, chosen in a save dialog.</summary>
     SaveAsPdf = 1,
+
+    /// <summary>The desktop's own print dialog, for settings the preview does not offer.</summary>
+    SystemDialog = 2,
 }

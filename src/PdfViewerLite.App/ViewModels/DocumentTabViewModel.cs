@@ -877,8 +877,8 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>
-    /// Shows the print preview, then hands the file it built to the desktop's print dialog or saves it as a PDF, saying
-    /// so in the notice when that cannot be done.
+    /// Shows the print preview, then sends the file it built straight to the chosen printer, saves it as a PDF or opens
+    /// the desktop's print dialog, saying what happened in the notice.
     /// </summary>
     /// <returns>A task.</returns>
     private async Task PrintAsync()
@@ -889,42 +889,36 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             return;
         }
 
-        if (preview.UseSystemDialog)
+        var destination = preview.Destination;
+        var label = preview.SelectedTarget?.Label ?? string.Empty;
+        var job = preview.JobOptions;
+        var file = preview.TakePrintFile();
+        if (destination == PrintDestination.SystemDialog)
         {
-            _ = preview.TakePrintFile() is { } unused && TryDelete(unused);
+            _ = file is not null && TryDelete(file);
             await PrintWithSystemDialogAsync().ConfigureAwait(true);
             return;
         }
 
-        if (preview.TakePrintFile() is not { } file)
+        if (file is null)
         {
             return;
         }
 
         try
         {
-            if (preview.Destination == PrintDestination.SaveAsPdf)
+            if (destination == PrintDestination.SaveAsPdf)
             {
                 await SavePrintAsPdfAsync(file).ConfigureAwait(true);
                 return;
             }
 
-            var printer = _services.Platform.Printer;
-            if (!printer.IsAvailable)
-            {
-                Notice = "Printing is not available on this desktop. Choose Save as PDF instead.";
-                return;
-            }
-
-            if (!await printer.PrintAsync(file, FileName, CancellationToken.None).ConfigureAwait(true))
-            {
-                Notice = "The print dialog could not be opened.";
-            }
+            var outcome = await _services.Platform.Printer.SubmitAsync(file, FileName, job, CancellationToken.None).ConfigureAwait(true);
+            Notice = outcome.Sent ? $"Sent to {label}." : $"Could not print: {outcome.Detail}";
         }
         finally
         {
-            // The desktop holds its own handle to the file, so the name can go now.
-            File.Delete(file);
+            _ = TryDelete(file);
         }
     }
 

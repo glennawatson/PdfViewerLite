@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Globalization;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Documents;
+using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Printing;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -23,6 +24,15 @@ namespace PdfViewerLite.App.ViewModels;
 [DebuggerDisplay("{Summary}")]
 public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
 {
+    /// <summary>The most copies offered.</summary>
+    private const int MaxCopies = 999;
+
+    /// <summary>The Save as PDF destination.</summary>
+    private static readonly PrintTarget SaveAsPdfTarget = new(PrintDestination.SaveAsPdf, string.Empty, "Save as PDF");
+
+    /// <summary>The system print dialog destination.</summary>
+    private static readonly PrintTarget SystemDialogTarget = new(PrintDestination.SystemDialog, string.Empty, "System print dialog");
+
     /// <summary>The tab being printed.</summary>
     private readonly DocumentTabViewModel _tab;
 
@@ -55,9 +65,11 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
         ConfirmCommand = ReactiveCommand.Create(() => _confirmed.OnNext(RxVoid.Default), ready);
         SystemDialogCommand = ReactiveCommand.Create(() =>
         {
-            UseSystemDialog = true;
+            SelectedTarget = SystemDialogTarget;
             _confirmed.OnNext(RxVoid.Default);
         });
+        SelectedTarget = SystemDialogTarget;
+        _ = LoadPrintersAsync();
         _subscriptions =
         [
             this.WhenAnyValue(
@@ -74,8 +86,43 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the document's file name, for the window title.</summary>
     public string FileName => _tab.FileName;
 
-    /// <summary>Gets or sets where the print goes.</summary>
-    public PrintDestination Destination
+    /// <summary>Gets the destinations: the printers (the default first), Save as PDF and the system dialog.</summary>
+    public ObservableCollection<PrintTarget> Targets { get; } = [SaveAsPdfTarget, SystemDialogTarget];
+
+    /// <summary>Gets or sets the chosen destination.</summary>
+    public PrintTarget? SelectedTarget
+    {
+        get;
+        set
+        {
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(Destination));
+            this.RaisePropertyChanged(nameof(ShowsPaper));
+        }
+    }
+
+    /// <summary>Gets where the print goes.</summary>
+    public PrintDestination Destination => SelectedTarget?.Kind ?? PrintDestination.SaveAsPdf;
+
+    /// <summary>Gets the job settings for the chosen printer.</summary>
+    public PrintJobOptions JobOptions => new(SelectedTarget?.Name ?? string.Empty, Copies, Colour, TwoSided, Paper);
+
+    /// <summary>Gets or sets the number of copies sent to a printer.</summary>
+    public int Copies
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, Math.Clamp(value, 1, MaxCopies));
+    } = 1;
+
+    /// <summary>Gets or sets a value indicating whether a printer prints in colour rather than black and white.</summary>
+    public bool Colour
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = true;
+
+    /// <summary>Gets or sets a value indicating whether a printer prints on both sides of the paper.</summary>
+    public bool TwoSided
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
@@ -99,8 +146,15 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     public int PagesPerSheetIndex
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(ShowsPaper));
+        }
     }
+
+    /// <summary>Gets a value indicating whether the paper size matters: for a printer, or several pages per sheet.</summary>
+    public bool ShowsPaper => PagesPerSheetIndex > 0 || Destination == PrintDestination.Printer;
 
     /// <summary>Gets the choices for pages per sheet.</summary>
     public IReadOnlyList<int> PagesPerSheetChoices => SheetGrid.Choices;
@@ -151,9 +205,6 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the command skipping these settings and printing the whole document from the desktop's own dialog.</summary>
     public ReactiveCommand<RxVoid, RxVoid> SystemDialogCommand { get; }
-
-    /// <summary>Gets a value indicating whether the user chose the desktop's own print dialog instead of these settings.</summary>
-    public bool UseSystemDialog { get; private set; }
 
     /// <summary>Gets the confirmations, which close the window.</summary>
     public IObservable<RxVoid> Confirmed => _confirmed;
@@ -231,6 +282,27 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
         }
         catch (UnauthorizedAccessException)
         {
+        }
+    }
+
+    /// <summary>Lists the printers off the UI thread and chooses the default one, when there are any.</summary>
+    /// <returns>A task.</returns>
+    private async Task LoadPrintersAsync()
+    {
+        var printer = _services.Platform.Printer;
+        var printers = await Task.Run(printer.GetPrinters).ConfigureAwait(true);
+        for (var i = 0; i < printers.Count; i++)
+        {
+            Targets.Insert(i, new(PrintDestination.Printer, printers[i].Name, printers[i].DisplayName));
+        }
+
+        if (printers.Count > 0 && SelectedTarget == SystemDialogTarget)
+        {
+            SelectedTarget = Targets[0];
+        }
+        else if (printers.Count == 0 && !printer.IsAvailable)
+        {
+            SelectedTarget = SaveAsPdfTarget;
         }
     }
 

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Linux desktop integration (D-Bus single instance, KDE colours, recent files, file manager) for PdfViewerLite.</Description>
+    <Description>Linux desktop integration (D-Bus single instance, KDE colours, recent files, file manager, CUPS and portal printing) for PdfViewerLite.</Description>
   </PropertyGroup>
 
   <ItemGroup>

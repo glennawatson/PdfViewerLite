@@ -16,4 +16,13 @@ internal sealed class NullPrintService : IPrintService
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Task<bool> PrintAsync(string filePath, string title, CancellationToken cancellationToken) => Task.FromResult(false);
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IReadOnlyList<PrinterInfo> GetPrinters() => [];
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Task<PrintOutcome> SubmitAsync(string filePath, string title, PrintJobOptions options, CancellationToken cancellationToken) =>
+        Task.FromResult(new PrintOutcome(false, "Printing is not available on this desktop."));
 }

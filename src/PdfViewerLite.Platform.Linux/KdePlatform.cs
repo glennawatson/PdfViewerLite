@@ -32,7 +32,7 @@ public sealed class KdePlatform : IDesktopPlatform
     public IRecentDocumentStore RecentDocuments { get; } = new XbelRecentDocumentStore();
 
     /// <inheritdoc/>
-    public IPrintService Printer { get; } = new PortalPrintService();
+    public IPrintService Printer { get; } = new LinuxPrintService();
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

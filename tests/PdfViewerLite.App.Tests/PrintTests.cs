@@ -2,12 +2,9 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using PdfViewerLite.App.Services;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Geometry;
-using PdfViewerLite.Core.Platform;
-using PdfViewerLite.Pdfium;
 using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Tests;
@@ -15,6 +12,9 @@ namespace PdfViewerLite.App.Tests;
 /// <summary>Tests for printing through the desktop's print service.</summary>
 public sealed class PrintTests
 {
+    /// <summary>The copies asked for.</summary>
+    private const int Copies = 3;
+
     /// <summary>The pages in the range test document.</summary>
     private const int RangePages = 6;
 
@@ -51,7 +51,9 @@ public sealed class PrintTests
         await Assert.That(printer.Title).IsEqualTo("print.pdf");
         await Assert.That(printer.AnnotationCount).IsEqualTo(1);
         await Assert.That(File.Exists(printer.Path)).IsFalse();
-        await Assert.That(tab.Notice).IsNull();
+        await Assert.That(printer.UsedDialog).IsFalse();
+        await Assert.That(printer.Options.Printer).IsEqualTo(RecordingPrinter.PrinterQueue);
+        await Assert.That(tab.Notice).IsEqualTo($"Sent to {RecordingPrinter.PrinterName}.");
     }
 
     /// <summary>Verifies a desktop without printing says so plainly.</summary>
@@ -63,7 +65,11 @@ public sealed class PrintTests
         using var main = new MainViewModel(test.Services);
         main.Open([test.CreateDocument("noprint.pdf", 1)]);
         var tab = main.SelectedTab!;
-        using var handler = tab.PrintPreviewInteraction.RegisterHandler(ConfirmWhenReadyAsync);
+        using var handler = tab.PrintPreviewInteraction.RegisterHandler(static context =>
+        {
+            _ = context.Input.SystemDialogCommand.Execute().Subscribe();
+            context.SetOutput(true);
+        });
 
         _ = await tab.PrintCommand.Execute().ToTask();
 
@@ -87,6 +93,9 @@ public sealed class PrintTests
             preview.PageChoice = PrintPageChoice.Custom;
             preview.CustomPages = "1-3, 5";
             preview.PagesPerSheetIndex = TwoPerSheet;
+            preview.Copies = Copies;
+            preview.TwoSided = true;
+            preview.Colour = false;
             _ = await WaitAsync(() => preview.IsValid && !preview.IsBuilding && preview.Summary == "2 sheets");
             sheets = preview.Sheets.Count;
             context.SetOutput(true);
@@ -96,6 +105,9 @@ public sealed class PrintTests
 
         await Assert.That(sheets).IsEqualTo(ExpectedSheets);
         await Assert.That(printer.PageCount).IsEqualTo(ExpectedSheets);
+        await Assert.That(printer.Options.Copies).IsEqualTo(Copies);
+        await Assert.That(printer.Options.TwoSided).IsTrue();
+        await Assert.That(printer.Options.Colour).IsFalse();
     }
 
     /// <summary>Confirms the preview once its sheets are ready.</summary>
@@ -119,69 +131,5 @@ public sealed class PrintTests
         }
 
         return condition();
-    }
-
-    /// <summary>A print service that opens the file it is given and counts its annotations.</summary>
-    private sealed class RecordingPrinter : IPrintService
-    {
-        /// <summary>Gets the file handed over.</summary>
-        public string? Path { get; private set; }
-
-        /// <summary>Gets the job title.</summary>
-        public string? Title { get; private set; }
-
-        /// <summary>Gets the page count of the handed over file.</summary>
-        public int PageCount { get; private set; }
-
-        /// <summary>Gets the annotations found on the first page of the handed over file.</summary>
-        public int AnnotationCount { get; private set; }
-
-        /// <inheritdoc/>
-        public bool IsAvailable => true;
-
-        /// <inheritdoc/>
-        public Task<bool> PrintAsync(string filePath, string title, CancellationToken cancellationToken)
-        {
-            Path = filePath;
-            Title = title;
-            using var document = new PdfiumEngine().Open(filePath, null);
-            PageCount = document.PageCount;
-            List<PageAnnotation> annotations = [];
-            ((IAnnotationEditor)document).GetAnnotations(0, annotations);
-            AnnotationCount = annotations.Count;
-            return Task.FromResult(true);
-        }
-    }
-
-    /// <summary>A desktop with nothing but a print service.</summary>
-    /// <param name="printer">The print service.</param>
-    private sealed class PrintingPlatform(IPrintService printer) : IDesktopPlatform
-    {
-        /// <summary>The integration printing is added to.</summary>
-        private readonly FallbackPlatform _fallback = new();
-
-        /// <inheritdoc/>
-        public string Name => "Test";
-
-        /// <inheritdoc/>
-        public IDesktopThemeSource? ThemeSource => null;
-
-        /// <inheritdoc/>
-        public IFileManagerLauncher FileManager => _fallback.FileManager;
-
-        /// <inheritdoc/>
-        public IRecentDocumentStore RecentDocuments => _fallback.RecentDocuments;
-
-        /// <inheritdoc/>
-        public IPrintService Printer => printer;
-
-        /// <inheritdoc/>
-        public string? GetLaunchActivationToken() => null;
-
-        /// <inheritdoc/>
-        public Task<bool> TryForwardAsync(OpenRequest request) => Task.FromResult(false);
-
-        /// <inheritdoc/>
-        public Task<ISingleInstance?> TryClaimSingleInstanceAsync() => Task.FromResult<ISingleInstance?>(null);
     }
 }
