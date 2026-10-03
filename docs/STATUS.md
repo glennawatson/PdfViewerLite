@@ -39,7 +39,7 @@ Acrobat Reader. See `docs/ACROBAT-PARITY.md`.
 
 ## What is left
 
-- Run the full test suite with the real-world corpus downloaded, check the AOT publish, and refresh the screenshots.
+- Verified on Linux: the full suite with the real-world corpus downloaded passes (1,409 passed, 0 failed, 6 skipped), and the Native AOT publish has no warnings. The screenshots still need refreshing.
 - Lower priority:
   - XFA forms;
   - tearing tabs off into windows;
