@@ -6,6 +6,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Rendering;
@@ -15,7 +16,7 @@ namespace PdfViewerLite.Pdfium;
 
 /// <summary>A PDF document backed by PDFium. Every member is serialised through the process wide PDFium lock.</summary>
 [DebuggerDisplay("{FilePath} ({PageCount} pages)")]
-public sealed class PdfiumDocument : IDocument
+public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor
 {
     /// <summary>The number of parsed pages kept loaded.</summary>
     private const int PageCacheSize = 8;
@@ -47,6 +48,9 @@ public sealed class PdfiumDocument : IDocument
     /// <summary>The page sizes.</summary>
     private readonly PageSize[] _pageSizes;
 
+    /// <summary>The fonts used for text written on pages.</summary>
+    private readonly PdfiumFonts _fonts;
+
     /// <summary>1 once the document has been disposed.</summary>
     private int _disposed;
 
@@ -56,6 +60,7 @@ public sealed class PdfiumDocument : IDocument
     internal PdfiumDocument(PdfiumDocumentHandle handle, string filePath)
     {
         _handle = handle;
+        _fonts = new(handle);
         FilePath = filePath;
         var count = Math.Max(0, NativeMethods.FPDF_GetPageCount(handle));
         _pageSizes = new PageSize[count];
@@ -297,6 +302,8 @@ public sealed class PdfiumDocument : IDocument
         }
 
         _pages.Clear();
+        _annotationCache.Clear();
+        _fonts.Dispose();
         _handle.Dispose();
     }
 

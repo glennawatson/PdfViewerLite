@@ -1,0 +1,271 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System.Runtime.InteropServices;
+
+namespace PdfViewerLite.Pdfium.Native;
+
+/// <summary>PDFium entry points for editing annotations and page content, and for saving.</summary>
+internal static unsafe partial class NativeMethods
+{
+    /// <summary>Native <c>FPDFPage_GetAnnotCount</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <returns>The number of annotations.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPage_GetAnnotCount(PdfiumPageHandle page);
+
+    /// <summary>Native <c>FPDFPage_GetAnnot</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="index">The annotation index.</param>
+    /// <returns>The annotation, which must be closed with <see cref="FPDFPage_CloseAnnot"/>.</returns>
+    [LibraryImport(Library)]
+    internal static partial nint FPDFPage_GetAnnot(PdfiumPageHandle page, int index);
+
+    /// <summary>Native <c>FPDFPage_CreateAnnot</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="subtype">The annotation subtype.</param>
+    /// <returns>The annotation, which must be closed with <see cref="FPDFPage_CloseAnnot"/>.</returns>
+    [LibraryImport(Library)]
+    internal static partial nint FPDFPage_CreateAnnot(PdfiumPageHandle page, int subtype);
+
+    /// <summary>Native <c>FPDFPage_CloseAnnot</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    [LibraryImport(Library)]
+    internal static partial void FPDFPage_CloseAnnot(nint annotation);
+
+    /// <summary>Native <c>FPDFPage_GetAnnotIndex</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="annotation">The annotation.</param>
+    /// <returns>The index, or -1.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPage_GetAnnotIndex(PdfiumPageHandle page, nint annotation);
+
+    /// <summary>Native <c>FPDFPage_RemoveAnnot</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="index">The annotation index.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPage_RemoveAnnot(PdfiumPageHandle page, int index);
+
+    /// <summary>Native <c>FPDFAnnot_GetSubtype</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <returns>The subtype.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_GetSubtype(nint annotation);
+
+    /// <summary>Native <c>FPDFAnnot_GetRect</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="rect">The rectangle in PDF user space.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_GetRect(nint annotation, out FsRectF rect);
+
+    /// <summary>Native <c>FPDFAnnot_SetRect</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="rect">The rectangle in PDF user space.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_SetRect(nint annotation, in FsRectF rect);
+
+    /// <summary>Native <c>FPDFAnnot_GetColor</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="type">0 for the colour, 1 for the interior colour.</param>
+    /// <param name="red">The red channel.</param>
+    /// <param name="green">The green channel.</param>
+    /// <param name="blue">The blue channel.</param>
+    /// <param name="alpha">The opacity.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_GetColor(nint annotation, int type, out uint red, out uint green, out uint blue, out uint alpha);
+
+    /// <summary>Native <c>FPDFAnnot_SetColor</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="type">0 for the colour, 1 for the interior colour.</param>
+    /// <param name="red">The red channel.</param>
+    /// <param name="green">The green channel.</param>
+    /// <param name="blue">The blue channel.</param>
+    /// <param name="alpha">The opacity.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_SetColor(nint annotation, int type, uint red, uint green, uint blue, uint alpha);
+
+    /// <summary>Native <c>FPDFAnnot_AppendAttachmentPoints</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="quad">The quadrilateral.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_AppendAttachmentPoints(nint annotation, in FsQuadPointsF quad);
+
+    /// <summary>Native <c>FPDFAnnot_AddInkStroke</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="points">The points.</param>
+    /// <param name="count">The number of points.</param>
+    /// <returns>The stroke index, or -1.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_AddInkStroke(nint annotation, FsPointF* points, nuint count);
+
+    /// <summary>Native <c>FPDFAnnot_SetBorder</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="horizontalRadius">The horizontal corner radius.</param>
+    /// <param name="verticalRadius">The vertical corner radius.</param>
+    /// <param name="width">The border (stroke) width.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_SetBorder(nint annotation, float horizontalRadius, float verticalRadius, float width);
+
+    /// <summary>Native <c>FPDFAnnot_SetFlags</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="flags">The annotation flags.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_SetFlags(nint annotation, int flags);
+
+    /// <summary>Native <c>FPDFAnnot_SetStringValue</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="key">The ASCII dictionary key.</param>
+    /// <param name="value">The null terminated UTF-16LE value.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_SetStringValue(nint annotation, byte* key, char* value);
+
+    /// <summary>Native <c>FPDFAnnot_GetStringValue</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="key">The ASCII dictionary key.</param>
+    /// <param name="buffer">The UTF-16LE output buffer.</param>
+    /// <param name="length">The buffer length in bytes.</param>
+    /// <returns>The required length in bytes including the terminator.</returns>
+    [LibraryImport(Library)]
+    internal static partial CULong FPDFAnnot_GetStringValue(nint annotation, byte* key, void* buffer, CULong length);
+
+    /// <summary>Native <c>FPDFAnnot_SetAP</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="mode">The appearance mode; 0 is normal.</param>
+    /// <param name="value">The appearance stream, or null to clear every appearance so PDFium regenerates it.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_SetAP(nint annotation, int mode, char* value);
+
+    /// <summary>Native <c>FPDFAnnot_AppendObject</c> entry point.</summary>
+    /// <param name="annotation">The annotation (ink or stamp).</param>
+    /// <param name="pageObject">The page object, now owned by the annotation.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_AppendObject(nint annotation, nint pageObject);
+
+    /// <summary>Native <c>FPDFText_LoadStandardFont</c> entry point.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="font">The ASCII name of one of the 14 standard fonts.</param>
+    /// <returns>The font, which must be closed with <see cref="FPDFFont_Close"/>.</returns>
+    [LibraryImport(Library)]
+    internal static partial PdfiumFontHandle FPDFText_LoadStandardFont(PdfiumDocumentHandle document, byte* font);
+
+    /// <summary>Native <c>FPDFFont_Close</c> entry point.</summary>
+    /// <param name="font">The font.</param>
+    [LibraryImport(Library)]
+    internal static partial void FPDFFont_Close(nint font);
+
+    /// <summary>Native <c>FPDFPageObj_CreateTextObj</c> entry point.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="font">The font.</param>
+    /// <param name="fontSize">The font size in points.</param>
+    /// <returns>The text object.</returns>
+    [LibraryImport(Library)]
+    internal static partial nint FPDFPageObj_CreateTextObj(PdfiumDocumentHandle document, PdfiumFontHandle font, float fontSize);
+
+    /// <summary>Native <c>FPDFText_SetText</c> entry point.</summary>
+    /// <param name="textObject">The text object.</param>
+    /// <param name="text">The null terminated UTF-16LE text.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFText_SetText(nint textObject, char* text);
+
+    /// <summary>Native <c>FPDFTextObj_SetTextRenderMode</c> entry point.</summary>
+    /// <param name="textObject">The text object.</param>
+    /// <param name="mode">The render mode; 3 is invisible.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFTextObj_SetTextRenderMode(nint textObject, int mode);
+
+    /// <summary>Native <c>FPDFPageObj_Transform</c> entry point.</summary>
+    /// <param name="pageObject">The page object.</param>
+    /// <param name="a">Matrix a.</param>
+    /// <param name="b">Matrix b.</param>
+    /// <param name="c">Matrix c.</param>
+    /// <param name="d">Matrix d.</param>
+    /// <param name="e">Matrix e (x translation).</param>
+    /// <param name="f">Matrix f (y translation).</param>
+    [LibraryImport(Library)]
+    internal static partial void FPDFPageObj_Transform(nint pageObject, double a, double b, double c, double d, double e, double f);
+
+    /// <summary>Native <c>FPDFPageObj_SetFillColor</c> entry point.</summary>
+    /// <param name="pageObject">The page object.</param>
+    /// <param name="red">The red channel.</param>
+    /// <param name="green">The green channel.</param>
+    /// <param name="blue">The blue channel.</param>
+    /// <param name="alpha">The opacity.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPageObj_SetFillColor(nint pageObject, uint red, uint green, uint blue, uint alpha);
+
+    /// <summary>Native <c>FPDFPageObj_GetBounds</c> entry point.</summary>
+    /// <param name="pageObject">The page object.</param>
+    /// <param name="left">The left edge.</param>
+    /// <param name="bottom">The bottom edge.</param>
+    /// <param name="right">The right edge.</param>
+    /// <param name="top">The top edge.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPageObj_GetBounds(nint pageObject, out float left, out float bottom, out float right, out float top);
+
+    /// <summary>Native <c>FPDFPage_InsertObject</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="pageObject">The page object, now owned by the page.</param>
+    [LibraryImport(Library)]
+    internal static partial void FPDFPage_InsertObject(PdfiumPageHandle page, nint pageObject);
+
+    /// <summary>Native <c>FPDFPage_GenerateContent</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPage_GenerateContent(PdfiumPageHandle page);
+
+    /// <summary>Native <c>FPDFPageObj_Destroy</c> entry point.</summary>
+    /// <param name="pageObject">A page object not owned by a page or annotation.</param>
+    [LibraryImport(Library)]
+    internal static partial void FPDFPageObj_Destroy(nint pageObject);
+
+    /// <summary>Native <c>FPDF_SaveAsCopy</c> entry point.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="fileWrite">The writer.</param>
+    /// <param name="flags"><c>FPDF_INCREMENTAL</c> or <c>FPDF_NO_INCREMENTAL</c>.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDF_SaveAsCopy(PdfiumDocumentHandle document, FileWrite* fileWrite, int flags);
+
+    /// <summary>Native <c>FPDF_GetSignatureCount</c> entry point.</summary>
+    /// <param name="document">The document.</param>
+    /// <returns>The number of signatures, or -1.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDF_GetSignatureCount(PdfiumDocumentHandle document);
+
+    /// <summary>Native <c>FPDFAnnot_GetObjectCount</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <returns>The number of page objects in the annotation's appearance.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_GetObjectCount(nint annotation);
+
+    /// <summary>Native <c>FPDFAnnot_GetObject</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="index">The object index.</param>
+    /// <returns>The page object, owned by the annotation.</returns>
+    [LibraryImport(Library)]
+    internal static partial nint FPDFAnnot_GetObject(nint annotation, int index);
+
+    /// <summary>Native <c>FPDFAnnot_UpdateObject</c> entry point.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="pageObject">A changed page object in the annotation.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_UpdateObject(nint annotation, nint pageObject);
+}

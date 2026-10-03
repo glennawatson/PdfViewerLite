@@ -145,4 +145,33 @@ public sealed class MainViewModelTests
         await Assert.That(main.SelectedTab!.ErrorMessage).IsNotNull();
         await Assert.That(main.SelectedTab.IsLoaded).IsFalse();
     }
+
+    /// <summary>Verifies a thousand tabs open lazily, any of them can show a hover preview, and the tab finder narrows them.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task HandlesThousandTabs()
+    {
+        const int tabCount = 1000;
+        const int hovered = 742;
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        var paths = new string[tabCount];
+        for (var i = 0; i < tabCount; i++)
+        {
+            paths[i] = test.CreateDocument(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"doc-{i}.pdf"), 1);
+        }
+
+        main.Open(paths);
+        var tab = main.Tabs[hovered];
+        tab.PreparePreview();
+        main.TabQuery = "doc-742";
+        main.RefreshFoundTabs();
+
+        await Assert.That(main.Tabs.Count).IsEqualTo(tabCount);
+        await Assert.That(test.Services.Pool.OpenCount).IsLessThanOrEqualTo(test.Services.Pool.Capacity);
+        await Assert.That(tab.PreviewCaption).IsEqualTo("Page 1 of 1");
+        await Assert.That(tab.PreviewHeight).IsGreaterThan(0);
+        await Assert.That(main.FoundTabs.Count).IsEqualTo(1);
+        await Assert.That(main.FoundTabs[0]).IsEqualTo(tab);
+    }
 }
