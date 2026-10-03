@@ -23,6 +23,12 @@ public class PrintBenchmarks
     /// <summary>Two pages per sheet on A4, without annotations.</summary>
     private static readonly SheetLayout TwoPerSheet = new(2, PaperSize.A4, false);
 
+    /// <summary>A booklet on A4, without annotations.</summary>
+    private static readonly SheetLayout BookletLayout = new SheetLayout(1, PaperSize.A4, false) with { Imposition = PrintImposition.Booklet };
+
+    /// <summary>A 2 × 2 poster on A4, without annotations.</summary>
+    private static readonly SheetLayout PosterLayout = new SheetLayout(1, PaperSize.A4, false) with { Imposition = PrintImposition.Poster, PosterTiles = 2 };
+
     /// <summary>The page exported.</summary>
     private static readonly int[] FirstPage = [0];
 
@@ -80,6 +86,26 @@ public class PrintBenchmarks
         _copy.Position = 0;
         _copy.SetLength(0);
         return _exporter.ExportPages(FirstPage, TwoPerSheet, _copy);
+    }
+
+    /// <summary>Writes the form's page as a booklet, padded with blank pages.</summary>
+    /// <returns>Whether it was written.</returns>
+    [Benchmark]
+    public bool ExportBooklet()
+    {
+        _copy.Position = 0;
+        _copy.SetLength(0);
+        return _exporter.ExportPages(FirstPage, BookletLayout, _copy);
+    }
+
+    /// <summary>Writes the form's page as a 2 × 2 poster.</summary>
+    /// <returns>Whether it was written.</returns>
+    [Benchmark]
+    public bool ExportPoster()
+    {
+        _copy.Position = 0;
+        _copy.SetLength(0);
+        return _exporter.ExportPages(FirstPage, PosterLayout, _copy);
     }
 
     /// <summary>Writes the copy handed to the print dialog.</summary>

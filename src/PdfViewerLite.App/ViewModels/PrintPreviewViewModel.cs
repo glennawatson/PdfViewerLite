@@ -24,6 +24,15 @@ namespace PdfViewerLite.App.ViewModels;
 [DebuggerDisplay("{Summary}")]
 public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
 {
+    /// <summary>The booklet's place in <see cref="LayoutChoices"/>.</summary>
+    private const int BookletLayout = 1;
+
+    /// <summary>The first poster's place in <see cref="LayoutChoices"/>.</summary>
+    private const int FirstPosterLayout = 2;
+
+    /// <summary>The sheets across the smallest poster.</summary>
+    private const int MinPosterTiles = 2;
+
     /// <summary>The most copies offered.</summary>
     private const int MaxCopies = 999;
 
@@ -76,12 +85,23 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
                     static vm => vm.PageChoice,
                     static vm => vm.CustomPages,
                     static vm => vm.PagesPerSheetIndex,
+                    static vm => vm.LayoutIndex,
                     static vm => vm.Paper,
                     static vm => vm.IncludeAnnotations,
-                    static (_, _, _, _, _) => RxVoid.Default)
+                    static (_, _, _, _, _, _) => RxVoid.Default)
                 .SubscribeSafe(OnSettingsChanged, static error => Trace.TraceError(error.ToString())),
         ];
     }
+
+    /// <summary>Gets the layout choices: pages in order, a booklet, or posters of 2, 3 or 4 sheets across.</summary>
+    public static IReadOnlyList<string> LayoutChoices { get; } =
+    [
+        "Pages in order",
+        "Booklet (fold in half)",
+        "Poster, 2 × 2 sheets a page",
+        "Poster, 3 × 3 sheets a page",
+        "Poster, 4 × 4 sheets a page",
+    ];
 
     /// <summary>Gets the document's file name, for the window title.</summary>
     public string FileName => _tab.FileName;
@@ -153,8 +173,19 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
         }
     }
 
-    /// <summary>Gets a value indicating whether the paper size matters: for a printer, or several pages per sheet.</summary>
-    public bool ShowsPaper => PagesPerSheetIndex > 0 || Destination == PrintDestination.Printer;
+    /// <summary>Gets or sets the index into <see cref="LayoutChoices"/>.</summary>
+    public int LayoutIndex
+    {
+        get;
+        set
+        {
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(ShowsPaper));
+        }
+    }
+
+    /// <summary>Gets a value indicating whether the paper size matters: for a printer, several pages per sheet, a booklet or a poster.</summary>
+    public bool ShowsPaper => PagesPerSheetIndex > 0 || LayoutIndex > 0 || Destination == PrintDestination.Printer;
 
     /// <summary>Gets the choices for pages per sheet.</summary>
     public IReadOnlyList<int> PagesPerSheetChoices => SheetGrid.Choices;
@@ -213,6 +244,19 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <param name="sheets">The sheets.</param>
     /// <returns>The description.</returns>
     public static string DescribeSheets(int sheets) => sheets == 1 ? "1 sheet" : string.Create(CultureInfo.CurrentCulture, $"{sheets} sheets");
+
+    /// <summary>Gets the layout the settings describe.</summary>
+    /// <returns>The layout.</returns>
+    public SheetLayout CurrentLayout()
+    {
+        var perSheet = SheetGrid.Choices[Math.Clamp(PagesPerSheetIndex, 0, SheetGrid.Choices.Count - 1)];
+        return LayoutIndex switch
+        {
+            BookletLayout => new SheetLayout(1, Paper, IncludeAnnotations) { Imposition = PrintImposition.Booklet },
+            >= FirstPosterLayout => new SheetLayout(1, Paper, IncludeAnnotations) { Imposition = PrintImposition.Poster, PosterTiles = LayoutIndex - FirstPosterLayout + MinPosterTiles },
+            _ => new SheetLayout(perSheet, Paper, IncludeAnnotations),
+        };
+    }
 
     /// <inheritdoc/>
     public void Dispose()
@@ -355,7 +399,7 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
 
         IsBuilding = true;
         var pages = _chosen.ToArray();
-        var layout = new SheetLayout(SheetGrid.Choices[Math.Clamp(PagesPerSheetIndex, 0, SheetGrid.Choices.Count - 1)], Paper, IncludeAnnotations);
+        var layout = CurrentLayout();
         var path = await Task.Run(() => Build(exporter, pages, layout)).ConfigureAwait(true);
         if (version != _version)
         {

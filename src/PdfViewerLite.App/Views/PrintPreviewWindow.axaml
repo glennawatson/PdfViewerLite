@@ -50,6 +50,10 @@
             <CheckBox x:Name="TwoSidedBox" Grid.Column="1" Content="Print on both sides" />
           </Grid>
           <Grid ColumnDefinitions="136,*">
+            <TextBlock Text="Layout" VerticalAlignment="Center" />
+            <ComboBox x:Name="LayoutBox" AutomationProperties.Name="Layout" Grid.Column="1" HorizontalAlignment="Stretch" />
+          </Grid>
+          <Grid x:Name="PagesPerSheetRow" ColumnDefinitions="136,*">
             <TextBlock Text="Pages per sheet" VerticalAlignment="Center" />
             <ComboBox x:Name="PagesPerSheetBox" AutomationProperties.Name="Pages per sheet" Grid.Column="1" HorizontalAlignment="Stretch" />
           </Grid>

@@ -13,6 +13,15 @@ namespace PdfViewerLite.Core.Printing;
 [DebuggerDisplay("{PagesPerSheet} per sheet on {Paper}")]
 public readonly record struct SheetLayout(int PagesPerSheet, PaperSize Paper, bool IncludeAnnotations)
 {
+    /// <summary>The sheets across (and down) a poster page when none is chosen.</summary>
+    private const int DefaultPosterTiles = 2;
+
     /// <summary>Gets one page per sheet with annotations.</summary>
     public static SheetLayout Default => new(1, PaperSize.A4, true);
+
+    /// <summary>Gets how pages are arranged: in order, as a booklet, or as posters.</summary>
+    public PrintImposition Imposition { get; init; }
+
+    /// <summary>Gets how many sheets across, and down, each poster page takes: 2 makes four sheets a page.</summary>
+    public int PosterTiles { get; init; } = DefaultPosterTiles;
 }

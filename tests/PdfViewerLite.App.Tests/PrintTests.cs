@@ -5,6 +5,7 @@
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Geometry;
+using PdfViewerLite.Core.Printing;
 using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Tests;
@@ -20,6 +21,18 @@ public sealed class PrintTests
 
     /// <summary>The index of two pages per sheet in the choices.</summary>
     private const int TwoPerSheet = 1;
+
+    /// <summary>The booklet's place in the layout list.</summary>
+    private const int BookletLayout = 1;
+
+    /// <summary>The 2 × 2 poster's place in the layout list.</summary>
+    private const int PosterLayout = 2;
+
+    /// <summary>The sheets each page of a 2 × 2 poster takes.</summary>
+    private const int PosterSheetsPerPage = 4;
+
+    /// <summary>The printed sides of each booklet sheet.</summary>
+    private const int BookletSides = 2;
 
     /// <summary>Four pages at two per sheet.</summary>
     private const int ExpectedSheets = 2;
@@ -108,6 +121,37 @@ public sealed class PrintTests
         await Assert.That(printer.Options.Copies).IsEqualTo(Copies);
         await Assert.That(printer.Options.TwoSided).IsTrue();
         await Assert.That(printer.Options.Colour).IsFalse();
+    }
+
+    /// <summary>A booklet and a poster are previewed with the sheets they need, and the booklet is what prints.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PreviewsBookletsAndPosters()
+    {
+        var printer = new RecordingPrinter();
+        using var test = new TestServices(new PrintingPlatform(printer));
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("booklet.pdf", RangePages)]);
+        var tab = main.SelectedTab!;
+        var posterSheets = 0;
+        var bookletSheets = 0;
+        using var handler = tab.PrintPreviewInteraction.RegisterHandler(async context =>
+        {
+            var preview = context.Input;
+            preview.LayoutIndex = PosterLayout;
+            _ = await WaitAsync(() => preview.IsValid && !preview.IsBuilding && preview.Sheets.Count == RangePages * PosterSheetsPerPage);
+            posterSheets = preview.Sheets.Count;
+            preview.LayoutIndex = BookletLayout;
+            _ = await WaitAsync(() => preview.IsValid && !preview.IsBuilding && preview.Sheets.Count < RangePages);
+            bookletSheets = preview.Sheets.Count;
+            context.SetOutput(true);
+        });
+
+        _ = await tab.PrintCommand.Execute().ToTask();
+
+        await Assert.That(posterSheets).IsEqualTo(RangePages * PosterSheetsPerPage);
+        await Assert.That(bookletSheets).IsEqualTo(Booklet.SheetCount(RangePages) * BookletSides);
+        await Assert.That(printer.PageCount).IsEqualTo(bookletSheets);
     }
 
     /// <summary>Confirms the preview once its sheets are ready.</summary>

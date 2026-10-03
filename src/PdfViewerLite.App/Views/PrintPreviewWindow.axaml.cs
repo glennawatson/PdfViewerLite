@@ -36,6 +36,11 @@ public sealed partial class PrintPreviewWindow : Window, IViewFor<PrintPreviewVi
         {
             _ = PagesPerSheetBox.Items.Add(choice.ToString(CultureInfo.CurrentCulture));
         }
+
+        foreach (var choice in PrintPreviewViewModel.LayoutChoices)
+        {
+            _ = LayoutBox.Items.Add(choice);
+        }
     }
 
     /// <inheritdoc/>
@@ -72,6 +77,8 @@ public sealed partial class PrintPreviewWindow : Window, IViewFor<PrintPreviewVi
             this.Bind(ViewModel, static vm => vm.PageChoice, static v => v.PagesBox.SelectedIndex, static c => (int)c, static i => (PrintPageChoice)Math.Max(0, i)),
             this.Bind(ViewModel, static vm => vm.CustomPages, static v => v.CustomPagesBox.Text, static text => text, static text => text ?? string.Empty),
             this.OneWayBind(ViewModel, static vm => vm.PageChoice, static v => v.CustomPagesRow.IsVisible, static c => c == PrintPageChoice.Custom),
+            this.Bind(ViewModel, static vm => vm.LayoutIndex, static v => v.LayoutBox.SelectedIndex, static i => i, static i => Math.Max(0, i)),
+            this.OneWayBind(ViewModel, static vm => vm.LayoutIndex, static v => v.PagesPerSheetRow.IsVisible, static i => i == 0),
             this.Bind(ViewModel, static vm => vm.PagesPerSheetIndex, static v => v.PagesPerSheetBox.SelectedIndex, static i => i, static i => Math.Max(0, i)),
             this.OneWayBind(ViewModel, static vm => vm.ShowsPaper, static v => v.PaperRow.IsVisible),
             this.Bind(ViewModel, static vm => vm.Paper, static v => v.PaperBox.SelectedIndex, static p => (int)p, static i => (PaperSize)Math.Max(0, i)),

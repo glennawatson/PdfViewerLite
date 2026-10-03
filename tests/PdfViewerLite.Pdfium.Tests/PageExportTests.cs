@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using PdfViewerLite.Core.Annotations;
+using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Printing;
 using PdfViewerLite.TestAssets;
@@ -12,6 +13,12 @@ namespace PdfViewerLite.Pdfium.Tests;
 /// <summary>Tests for exporting chosen pages through <see cref="IPageExporter"/>.</summary>
 public sealed class PageExportTests
 {
+    /// <summary>The printed sides of a booklet of three pages: one sheet, both sides.</summary>
+    private const int BookletSheetSides = 2;
+
+    /// <summary>The sheets across a poster page.</summary>
+    private const int PosterTilesAcross = 2;
+
     /// <summary>The pages in the source document.</summary>
     private const int Pages = 4;
 
@@ -95,6 +102,37 @@ public sealed class PageExportTests
         }
     }
 
+    /// <summary>A booklet puts two pages side by side on sideways sheets, both sides, padded to a multiple of four.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PrintsABooklet()
+    {
+        var copy = await ExportAsync([0, 1, ThirdPage], SheetLayout.Default with { Imposition = PrintImposition.Booklet });
+        using (copy)
+        {
+            var size = copy.GetPageSizes()[0];
+
+            await Assert.That(copy.PageCount).IsEqualTo(BookletSheetSides);
+            await Assert.That(size.Width > size.Height).IsTrue();
+        }
+    }
+
+    /// <summary>A poster spreads each page over tiles-squared sheets, each filled with part of the page.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PrintsAPoster()
+    {
+        var copy = await ExportAsync([0], SheetLayout.Default with { Imposition = PrintImposition.Poster, PosterTiles = PosterTilesAcross });
+        using (copy)
+        {
+            var size = copy.GetPageSizes()[0];
+
+            await Assert.That(copy.PageCount).IsEqualTo(PosterTilesAcross * PosterTilesAcross);
+            await Assert.That(size.Height > size.Width).IsTrue();
+            await Assert.That(HasInk(copy, 0)).IsTrue();
+        }
+    }
+
     /// <summary>Verifies pages outside the document are refused.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -112,5 +150,45 @@ public sealed class PageExportTests
         {
             File.Delete(source);
         }
+    }
+
+    /// <summary>Exports pages of a generated document and opens the result.</summary>
+    /// <param name="pages">The pages.</param>
+    /// <param name="layout">The layout.</param>
+    /// <returns>The exported document.</returns>
+    private static async Task<IDocument> ExportAsync(int[] pages, SheetLayout layout)
+    {
+        var source = TestPdf.WriteTempFile(Pages);
+        var exported = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-impose-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            using (var document = new PdfiumEngine().Open(source, null))
+            {
+                await using var stream = File.Create(exported);
+                _ = ((IPageExporter)document).ExportPages(pages, layout, stream);
+            }
+
+            return new PdfiumEngine().Open(exported, null);
+        }
+        finally
+        {
+            File.Delete(source);
+        }
+    }
+
+    /// <summary>Determines whether a page renders anything but white.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="page">The page.</param>
+    /// <returns><see langword="true"/> when something is drawn.</returns>
+    private static bool HasInk(IDocument document, int page)
+    {
+        const int bytesPerPixel = 4;
+        const byte white = 0xFF;
+        var size = document.GetPageSizes()[page];
+        var width = (int)size.Width;
+        var height = (int)size.Height;
+        var pixels = new byte[width * height * bytesPerPixel];
+        _ = document.Render(new(page, 1, PageRotation.None, 0, 0, RenderFlags.None), new(pixels, width, height, width * bytesPerPixel));
+        return pixels.AsSpan().ContainsAnyExcept(white);
     }
 }

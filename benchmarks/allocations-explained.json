@@ -230,5 +230,20 @@
     "type": "",
     "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.NewName(",
     "reason": "Each reply, and a comment the first time it is replied to, gets a unique name as a new string."
+  },
+  {
+    "type": "System.Collections.Generic.List",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ExportPages(",
+    "reason": "Printing a booklet lists the pages in booklet order, once per print preview or print; the booklet step is inlined into the export."
+  },
+  {
+    "type": "System.Int32[]",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ExportPages(",
+    "reason": "The booklet page order's backing array, sized to the sheets, once per print preview or print."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ImportBooklet(",
+    "reason": "The booklet page order, sized to the sheets, once per print preview or print."
   }
 ]

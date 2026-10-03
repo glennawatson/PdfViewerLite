@@ -291,6 +291,43 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial int FPDF_ImportPagesByIndex(PdfiumDocumentHandle destination, PdfiumDocumentHandle source, int* pageIndices, CULong length, int insertAt);
 
+    /// <summary>Native <c>FPDFPage_New</c> entry point.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="pageIndex">Where the page goes.</param>
+    /// <param name="width">The width in points.</param>
+    /// <param name="height">The height in points.</param>
+    /// <returns>The new, blank page.</returns>
+    [LibraryImport(Library)]
+    internal static partial PdfiumPageHandle FPDFPage_New(PdfiumDocumentHandle document, int pageIndex, double width, double height);
+
+    /// <summary>Native <c>FPDFPage_GetMediaBox</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="left">The left edge.</param>
+    /// <param name="bottom">The bottom edge.</param>
+    /// <param name="right">The right edge.</param>
+    /// <param name="top">The top edge.</param>
+    /// <returns>Non-zero when the page has a media box.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPage_GetMediaBox(PdfiumPageHandle page, out float left, out float bottom, out float right, out float top);
+
+    /// <summary>Native <c>FPDFPage_SetMediaBox</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="left">The left edge.</param>
+    /// <param name="bottom">The bottom edge.</param>
+    /// <param name="right">The right edge.</param>
+    /// <param name="top">The top edge.</param>
+    [LibraryImport(Library)]
+    internal static partial void FPDFPage_SetMediaBox(PdfiumPageHandle page, float left, float bottom, float right, float top);
+
+    /// <summary>Native <c>FPDFPage_SetCropBox</c> entry point.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="left">The left edge.</param>
+    /// <param name="bottom">The bottom edge.</param>
+    /// <param name="right">The right edge.</param>
+    /// <param name="top">The top edge.</param>
+    [LibraryImport(Library)]
+    internal static partial void FPDFPage_SetCropBox(PdfiumPageHandle page, float left, float bottom, float right, float top);
+
     /// <summary>Native <c>FPDF_ImportNPagesToOne</c> entry point.</summary>
     /// <param name="source">The document whose pages are laid out.</param>
     /// <param name="sheetWidth">The sheet width in points.</param>

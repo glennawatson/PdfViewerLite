@@ -98,7 +98,7 @@ every platform on each release, but tests only run on Linux.
 | Print with preview | Yes | Preview with printer, copies, colour, two-sided, paper, page range, pages per sheet and annotations | Done |
 | Native print dialog | Yes | XDG portal on Linux, the Windows print dialog, Preview's dialog on macOS | Done |
 | Print to PDF | Through the system | Save as PDF in the preview | Done |
-| Booklet and poster printing | Yes | | Later |
+| Booklet and poster printing | Yes | Print preview ▸ Layout: Booklet (two pages side by side, ordered to fold in half, padded with blanks) or Poster (each page across 2 × 2, 3 × 3 or 4 × 4 sheets with a small overlap) | Done |
 
 ## Accessibility
 
