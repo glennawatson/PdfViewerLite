@@ -13,7 +13,7 @@
     </StackPanel>
   </ToolTip.Tip>
   <DockPanel Background="Transparent">
-    <Button x:Name="CloseButton" DockPanel.Dock="Right" Classes="tabclose" ToolTip.Tip="Close (Ctrl+W)">
+    <Button AutomationProperties.Name="Close tab" x:Name="CloseButton" DockPanel.Dock="Right" Classes="tabclose" ToolTip.Tip="Close (Ctrl+W)">
       <Path Classes="icon remove" Data="{StaticResource IconClose}" />
     </Button>
     <!-- A steady dot marks unsaved annotations or form entries; it never blinks. -->

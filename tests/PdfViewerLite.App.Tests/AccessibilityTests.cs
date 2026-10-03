@@ -21,6 +21,9 @@ public sealed class AccessibilityTests
     /// <summary>The most tab stops followed before giving up.</summary>
     private const int MaxTabStops = 400;
 
+    /// <summary>The prefix of a fallback name made from a control's type.</summary>
+    private const string AvaloniaNamespace = "Avalonia.";
+
     /// <summary>The window width.</summary>
     private const double WindowWidth = 1280;
 
@@ -152,7 +155,9 @@ public sealed class AccessibilityTests
             }
 
             var name = ControlAutomationPeer.CreatePeerForElement(control).GetName();
-            if (string.IsNullOrWhiteSpace(name))
+
+            // A peer with nothing better falls back to its content's type name, which a screen reader reads out as is.
+            if (string.IsNullOrWhiteSpace(name) || name.StartsWith(AvaloniaNamespace, StringComparison.Ordinal))
             {
                 unnamed.Add(control.Name ?? control.GetType().Name);
             }

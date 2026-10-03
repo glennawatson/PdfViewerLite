@@ -19,7 +19,7 @@
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
         </ListBox>
-        <Button x:Name="TabFinderButton" Grid.Column="1" Classes="tool" ToolTip.Tip="Find an open tab (Ctrl+Shift+A)">
+        <Button AutomationProperties.Name="Find an open tab" x:Name="TabFinderButton" Grid.Column="1" Classes="tool" ToolTip.Tip="Find an open tab (Ctrl+Shift+A)">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
             <TextBlock x:Name="TabCountText" Classes="label" />
@@ -33,13 +33,13 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <Button x:Name="OpenButton" Grid.Column="2" Classes="tool" ToolTip.Tip="Ctrl+O">
+        <Button AutomationProperties.Name="Open" x:Name="OpenButton" Grid.Column="2" Classes="tool" ToolTip.Tip="Ctrl+O">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon add" Data="{StaticResource IconAdd}" />
             <TextBlock Classes="label" Text="Open" />
           </StackPanel>
         </Button>
-        <Button Grid.Column="3" Classes="tool" ToolTip.Tip="Preferences, page colour, closed tabs" Margin="0,0,4,0">
+        <Button AutomationProperties.Name="Menu" Grid.Column="3" Classes="tool" ToolTip.Tip="Preferences, page colour, closed tabs" Margin="0,0,4,0">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon" Data="{StaticResource IconMenu}" />
             <TextBlock Classes="label" Text="Menu" />

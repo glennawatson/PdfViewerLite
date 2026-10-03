@@ -48,7 +48,17 @@ public sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            Start(desktop);
+            if (OperatingSystem.IsLinux())
+            {
+                // Avalonia's AT-SPI bridge waits 100 ms for the UI thread to go idle and, if it times out, finishes
+                // starting on a pool thread where it cannot read the main window, which then never reaches screen
+                // readers. Starting below its ContextIdle wait lets that wait finish first, on the UI thread.
+                Dispatcher.UIThread.Post(static state => ((App)state!).StartAndShow(), this, DispatcherPriority.ApplicationIdle);
+            }
+            else
+            {
+                Start(desktop);
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -75,6 +85,18 @@ public sealed class App : Application
         }
 
         Dispatcher.UIThread.Post(static state => ((PaletteUpdate)state!).Apply(), new PaletteUpdate(services, palette));
+    }
+
+    /// <summary>Starts once the lifetime is already running, so the main window is shown here.</summary>
+    private void StartAndShow()
+    {
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            return;
+        }
+
+        Start(desktop);
+        _window?.Show();
     }
 
     /// <summary>Creates the services and the main window.</summary>

@@ -92,7 +92,7 @@ jobs:
         with:
           go-version: stable
       - name: Install native toolchain
-        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev desktop-file-utils
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev desktop-file-utils xvfb dbus at-spi2-core python3-gi
       - name: Version
         id: version
         run: |
@@ -103,6 +103,8 @@ jobs:
           fi
       - name: Publish (Native AOT)
         run: scripts/publish-linux.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: Screen reader check (AT-SPI)
+        run: scripts/check-screen-reader.sh artifacts/${{ matrix.rid }}/pdfviewerlite
       - name: Validate desktop entry
         run: desktop-file-validate packaging/linux/net.glennwatson.PdfViewerLite.desktop
       - name: AppImage

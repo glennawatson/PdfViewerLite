@@ -51,7 +51,7 @@
           <Button x:Name="LargerButton" Classes="tool" ToolTip.Tip="Larger text" AutomationProperties.Name="Larger text">
             <TextBlock Classes="label" Text="A+" />
           </Button>
-          <Button x:Name="TextSettingsButton" Classes="tool" ToolTip.Tip="Text size, spacing, width, colour and typeface">
+          <Button AutomationProperties.Name="Text Settings" x:Name="TextSettingsButton" Classes="tool" ToolTip.Tip="Text size, spacing, width, colour and typeface">
             <TextBlock Classes="label" Text="Text Settings" />
             <Button.Flyout>
               <Flyout Placement="BottomEdgeAlignedLeft">

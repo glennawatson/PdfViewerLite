@@ -11,44 +11,44 @@
     <Border DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button x:Name="SaveButton" Classes="tool" ToolTip.Tip="Save annotations and form entries (Ctrl+S)">
+          <Button AutomationProperties.Name="Save" x:Name="SaveButton" Classes="tool" ToolTip.Tip="Save annotations and form entries (Ctrl+S)">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon add" Data="{StaticResource IconSave}" />
               <TextBlock Classes="label" Text="Save" />
             </StackPanel>
           </Button>
-          <ToggleButton x:Name="AnnotateToggle" Classes="tool" ToolTip.Tip="Highlight, draw, add notes and text">
+          <ToggleButton AutomationProperties.Name="Annotate" x:Name="AnnotateToggle" Classes="tool" ToolTip.Tip="Highlight, draw, add notes and text">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconHighlight}" />
               <TextBlock Classes="label" Text="Annotate" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="FillSignToggle" Classes="tool" ToolTip.Tip="Fill in forms and sign">
+          <ToggleButton AutomationProperties.Name="Fill &amp; Sign" x:Name="FillSignToggle" Classes="tool" ToolTip.Tip="Fill in forms and sign">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconFillSign}" />
               <TextBlock Classes="label" Text="Fill &amp; Sign" />
             </StackPanel>
           </ToggleButton>
           <Rectangle Classes="separator" />
-          <ToggleButton x:Name="FindToggle" Classes="tool" ToolTip.Tip="Ctrl+F">
+          <ToggleButton AutomationProperties.Name="Find" x:Name="FindToggle" Classes="tool" ToolTip.Tip="Ctrl+F">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
               <TextBlock Classes="label" Text="Find" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="FocusToggle" Classes="tool" ToolTip.Tip="Focus Mode: the text alone in one calm column (Ctrl+4)">
+          <ToggleButton AutomationProperties.Name="Focus" x:Name="FocusToggle" Classes="tool" ToolTip.Tip="Focus Mode: the text alone in one calm column (Ctrl+4)">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconFocus}" />
               <TextBlock Classes="label" Text="Focus" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="ReadAloudToggle" Classes="tool" ToolTip.Tip="Read the document aloud from this page (Ctrl+Shift+Y)">
+          <ToggleButton AutomationProperties.Name="Read Aloud" x:Name="ReadAloudToggle" Classes="tool" ToolTip.Tip="Read the document aloud from this page (Ctrl+Shift+Y)">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconSpeaker}" />
               <TextBlock Classes="label" Text="Read Aloud" />
             </StackPanel>
           </ToggleButton>
-          <Button Classes="tool" ToolTip.Tip="Rotate, page layout, save, reload, properties">
+          <Button AutomationProperties.Name="More" Classes="tool" ToolTip.Tip="Rotate, page layout, save, reload, properties">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon" Data="{StaticResource IconMenu}" />
               <TextBlock Classes="label" Text="More" />
@@ -79,20 +79,20 @@
 
         <!-- Wraps rather than clips when the window is narrow, so no control is ever hidden. -->
         <WrapPanel Orientation="Horizontal">
-          <ToggleButton x:Name="SidebarToggle" Classes="tool" ToolTip.Tip="F9">
+          <ToggleButton AutomationProperties.Name="Sidebar" x:Name="SidebarToggle" Classes="tool" ToolTip.Tip="F9">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconSidebar}" />
               <TextBlock Classes="label" Text="Sidebar" />
             </StackPanel>
           </ToggleButton>
           <Rectangle Classes="separator" />
-          <Button x:Name="BackButton" Classes="tool" ToolTip.Tip="Alt+Left">
+          <Button AutomationProperties.Name="Back" x:Name="BackButton" Classes="tool" ToolTip.Tip="Alt+Left">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconBack}" />
               <TextBlock Classes="label" Text="Back" />
             </StackPanel>
           </Button>
-          <Button x:Name="ForwardButton" Classes="tool" ToolTip.Tip="Alt+Right">
+          <Button AutomationProperties.Name="Forward" x:Name="ForwardButton" Classes="tool" ToolTip.Tip="Alt+Right">
             <StackPanel Orientation="Horizontal">
               <TextBlock Classes="label leading" Text="Forward" />
               <Path Classes="icon nav" Data="{StaticResource IconForward}" />
@@ -101,10 +101,10 @@
           <Rectangle Classes="separator" />
           <!-- One group on one centre line: the arrows together, then the page box and the page count. -->
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <Button x:Name="PreviousPageButton" Classes="tool" ToolTip.Tip="Previous page (Page Up)">
+            <Button AutomationProperties.Name="Previous page" x:Name="PreviousPageButton" Classes="tool" ToolTip.Tip="Previous page (Page Up)">
               <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
             </Button>
-            <Button x:Name="NextPageButton" Classes="tool" ToolTip.Tip="Next page (Page Down)">
+            <Button AutomationProperties.Name="Next page" x:Name="NextPageButton" Classes="tool" ToolTip.Tip="Next page (Page Down)">
               <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
             </Button>
             <TextBox x:Name="PageBox" AutomationProperties.Name="Page number" Width="56" Height="30" MinHeight="30" Margin="4,0,0,0" Padding="6,0" VerticalAlignment="Center"
@@ -112,7 +112,7 @@
             <TextBlock x:Name="PageCountText" Classes="secondary" VerticalAlignment="Center" Margin="6,0" />
           </StackPanel>
           <Rectangle Classes="separator" />
-          <Button x:Name="ZoomOutButton" Classes="tool" ToolTip.Tip="Zoom out (Ctrl+-)">
+          <Button AutomationProperties.Name="Zoom out" x:Name="ZoomOutButton" Classes="tool" ToolTip.Tip="Zoom out (Ctrl+-)">
             <Path Classes="icon nav" Data="{StaticResource IconZoomOut}" />
           </Button>
           <Button x:Name="ZoomButton" Classes="tool" MinWidth="64" ToolTip.Tip="Zoom: fit width, fit page or a fixed size">
@@ -131,7 +131,7 @@
               </MenuFlyout>
             </Button.Flyout>
           </Button>
-          <Button x:Name="ZoomInButton" Classes="tool" ToolTip.Tip="Zoom in (Ctrl++)">
+          <Button AutomationProperties.Name="Zoom in" x:Name="ZoomInButton" Classes="tool" ToolTip.Tip="Zoom in (Ctrl++)">
             <Path Classes="icon nav" Data="{StaticResource IconZoomIn}" />
           </Button>
         </WrapPanel>
@@ -142,13 +142,13 @@
     <Border x:Name="AnnotateBar" DockPanel.Dock="Top" Classes="toolbar subbar">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <Button x:Name="UndoButton" Classes="tool" ToolTip.Tip="Remove the last annotation added (Ctrl+Z)">
+          <Button AutomationProperties.Name="Undo" x:Name="UndoButton" Classes="tool" ToolTip.Tip="Remove the last annotation added (Ctrl+Z)">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconUndo}" />
               <TextBlock Classes="label" Text="Undo" />
             </StackPanel>
           </Button>
-          <Button x:Name="AnnotateDoneButton" Classes="tool" ToolTip.Tip="Put the annotation tools away">
+          <Button AutomationProperties.Name="Done" x:Name="AnnotateDoneButton" Classes="tool" ToolTip.Tip="Put the annotation tools away">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconDone}" />
               <TextBlock Classes="label" Text="Done" />
@@ -156,43 +156,43 @@
           </Button>
         </StackPanel>
         <WrapPanel Orientation="Horizontal">
-          <ToggleButton x:Name="SelectTool" Classes="tool" ToolTip.Tip="Select text and pick annotations">
+          <ToggleButton AutomationProperties.Name="Select" x:Name="SelectTool" Classes="tool" ToolTip.Tip="Select text and pick annotations">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconCursor}" />
               <TextBlock Classes="label" Text="Select" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="HighlightTool" Classes="tool" ToolTip.Tip="Select text to highlight it">
+          <ToggleButton AutomationProperties.Name="Highlight" x:Name="HighlightTool" Classes="tool" ToolTip.Tip="Select text to highlight it">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconHighlight}" />
               <TextBlock Classes="label" Text="Highlight" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="UnderlineTool" Classes="tool" ToolTip.Tip="Select text to underline it">
+          <ToggleButton AutomationProperties.Name="Underline" x:Name="UnderlineTool" Classes="tool" ToolTip.Tip="Select text to underline it">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconUnderline}" />
               <TextBlock Classes="label" Text="Underline" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="StrikeOutTool" Classes="tool" ToolTip.Tip="Select text to strike it out">
+          <ToggleButton AutomationProperties.Name="Strike" x:Name="StrikeOutTool" Classes="tool" ToolTip.Tip="Select text to strike it out">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconStrike}" />
               <TextBlock Classes="label" Text="Strike" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="DrawTool" Classes="tool" ToolTip.Tip="Drag on the page to draw">
+          <ToggleButton AutomationProperties.Name="Draw" x:Name="DrawTool" Classes="tool" ToolTip.Tip="Drag on the page to draw">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconDraw}" />
               <TextBlock Classes="label" Text="Draw" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="NoteTool" Classes="tool" ToolTip.Tip="Click on the page to add a sticky note">
+          <ToggleButton AutomationProperties.Name="Note" x:Name="NoteTool" Classes="tool" ToolTip.Tip="Click on the page to add a sticky note">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon add" Data="{StaticResource IconNote}" />
               <TextBlock Classes="label" Text="Note" />
             </StackPanel>
           </ToggleButton>
-          <ToggleButton x:Name="TextTool" Classes="tool" ToolTip.Tip="Click on the page to write text">
+          <ToggleButton AutomationProperties.Name="Text" x:Name="TextTool" Classes="tool" ToolTip.Tip="Click on the page to write text">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon add" Data="{StaticResource IconText}" />
               <TextBlock Classes="label" Text="Text" />
@@ -200,7 +200,7 @@
           </ToggleButton>
           <Rectangle Classes="separator" />
           <!-- One colour button, always showing the colour's name, so colour is never the only cue. -->
-          <Button x:Name="ColourButton" Classes="tool" ToolTip.Tip="Colour for new highlights, lines and notes, and for the picked annotation">
+          <Button AutomationProperties.Name="Annotation colour" x:Name="ColourButton" Classes="tool" ToolTip.Tip="Colour for new highlights, lines and notes, and for the picked annotation">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <Border x:Name="ColourSwatch" Classes="swatch" />
               <TextBlock x:Name="ColourText" VerticalAlignment="Center" />
@@ -237,26 +237,26 @@
     <!-- Fill & Sign tools: form fields are filled by clicking them; signatures are drawn or typed, then placed. -->
     <Border x:Name="FillSignBar" DockPanel.Dock="Top" Classes="toolbar subbar">
       <DockPanel>
-        <Button x:Name="FillSignDoneButton" DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Put the Fill &amp; Sign tools away">
+        <Button AutomationProperties.Name="Done" x:Name="FillSignDoneButton" DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Put the Fill &amp; Sign tools away">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon nav" Data="{StaticResource IconDone}" />
             <TextBlock Classes="label" Text="Done" />
           </StackPanel>
         </Button>
         <StackPanel Orientation="Horizontal">
-          <Button x:Name="DrawSignatureButton" Classes="tool" ToolTip.Tip="Then drag on the page to sign">
+          <Button AutomationProperties.Name="Draw Signature" x:Name="DrawSignatureButton" Classes="tool" ToolTip.Tip="Then drag on the page to sign">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconDraw}" />
               <TextBlock Classes="label" Text="Draw Signature" />
             </StackPanel>
           </Button>
-          <Button x:Name="TypeSignatureButton" Classes="tool" ToolTip.Tip="Type your name, then click on the page to sign">
+          <Button AutomationProperties.Name="Type Signature" x:Name="TypeSignatureButton" Classes="tool" ToolTip.Tip="Type your name, then click on the page to sign">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconSignature}" />
               <TextBlock Classes="label" Text="Type Signature" />
             </StackPanel>
           </Button>
-          <Button x:Name="CertificateSignButton" Classes="tool" ToolTip.Tip="Sign a copy with your digital certificate (.p12 or .pfx)">
+          <Button AutomationProperties.Name="Sign with Certificate…" x:Name="CertificateSignButton" Classes="tool" ToolTip.Tip="Sign a copy with your digital certificate (.p12 or .pfx)">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon edit" Data="{StaticResource IconCertificate}" />
               <TextBlock Classes="label" Text="Sign with Certificate…" />
@@ -292,27 +292,27 @@
       <DockPanel>
         <Button x:Name="CloseReadAloudButton" DockPanel.Dock="Right" Content="Close" ToolTip.Tip="Stop reading (Ctrl+Shift+Y)" />
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2">
-          <Button x:Name="PreviousSentenceButton" Classes="tool" ToolTip.Tip="Previous sentence">
+          <Button AutomationProperties.Name="Previous sentence" x:Name="PreviousSentenceButton" Classes="tool" ToolTip.Tip="Previous sentence">
             <Path Classes="icon nav" Data="{StaticResource IconPreviousSentence}" />
           </Button>
-          <Button x:Name="PlayButton" Classes="tool" ToolTip.Tip="Carry on reading">
+          <Button AutomationProperties.Name="Play" x:Name="PlayButton" Classes="tool" ToolTip.Tip="Carry on reading">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconPlay}" />
               <TextBlock Classes="label" Text="Play" />
             </StackPanel>
           </Button>
-          <Button x:Name="PauseButton" Classes="tool" ToolTip.Tip="Pause, keeping your place">
+          <Button AutomationProperties.Name="Pause" x:Name="PauseButton" Classes="tool" ToolTip.Tip="Pause, keeping your place">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconPause}" />
               <TextBlock Classes="label" Text="Pause" />
             </StackPanel>
           </Button>
-          <Button x:Name="NextSentenceButton" Classes="tool" ToolTip.Tip="Next sentence">
+          <Button AutomationProperties.Name="Next sentence" x:Name="NextSentenceButton" Classes="tool" ToolTip.Tip="Next sentence">
             <Path Classes="icon nav" Data="{StaticResource IconNextSentence}" />
           </Button>
           <ComboBox x:Name="VoiceBox" AutomationProperties.Name="Voice" Width="250" VerticalAlignment="Center" Margin="8,0,2,0" ToolTip.Tip="Voice" />
           <ComboBox x:Name="SpeedBox" AutomationProperties.Name="Speed" Width="150" VerticalAlignment="Center" ToolTip.Tip="Speed" />
-          <Button x:Name="ReadAloudOptionsButton" Classes="tool" ToolTip.Tip="How what is read aloud is marked">
+          <Button AutomationProperties.Name="Options" x:Name="ReadAloudOptionsButton" Classes="tool" ToolTip.Tip="How what is read aloud is marked">
             <TextBlock Classes="label" Text="Options" />
             <Button.Flyout>
               <Flyout Placement="BottomEdgeAlignedLeft">
@@ -353,20 +353,20 @@
     <Border x:Name="FindBar" DockPanel.Dock="Top" Classes="toolbar">
       <StackPanel Orientation="Horizontal" Spacing="2">
         <TextBox x:Name="SearchBox" AutomationProperties.Name="Find in document" Width="280" MinHeight="28" Padding="8,3" VerticalAlignment="Center" PlaceholderText="Find in document" />
-        <ToggleButton x:Name="MatchCaseToggle" Classes="tool" ToolTip.Tip="Match case">
+        <ToggleButton AutomationProperties.Name="Match case" x:Name="MatchCaseToggle" Classes="tool" ToolTip.Tip="Match case">
           <Path Classes="icon" Data="{StaticResource IconCase}" />
         </ToggleButton>
-        <ToggleButton x:Name="WholeWordToggle" Classes="tool" ToolTip.Tip="Whole words">
+        <ToggleButton AutomationProperties.Name="Whole words" x:Name="WholeWordToggle" Classes="tool" ToolTip.Tip="Whole words">
           <Path Classes="icon" Data="{StaticResource IconWholeWord}" />
         </ToggleButton>
-        <Button x:Name="PreviousResultButton" Classes="tool" ToolTip.Tip="Previous result (Shift+F3)">
+        <Button AutomationProperties.Name="Previous result" x:Name="PreviousResultButton" Classes="tool" ToolTip.Tip="Previous result (Shift+F3)">
           <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
         </Button>
-        <Button x:Name="NextResultButton" Classes="tool" ToolTip.Tip="Next result (F3)">
+        <Button AutomationProperties.Name="Next result" x:Name="NextResultButton" Classes="tool" ToolTip.Tip="Next result (F3)">
           <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
         </Button>
         <TextBlock x:Name="SearchStatusText" Classes="secondary" VerticalAlignment="Center" Margin="8,0" />
-        <Button x:Name="CloseFindButton" Classes="tool" ToolTip.Tip="Close (Esc)">
+        <Button AutomationProperties.Name="Close find" x:Name="CloseFindButton" Classes="tool" ToolTip.Tip="Close (Esc)">
           <Path Classes="icon remove" Data="{StaticResource IconClose}" />
         </Button>
       </StackPanel>
@@ -379,24 +379,24 @@
       <Border x:Name="Sidebar" Grid.Column="0" Width="220" Classes="sidebar">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center" Margin="4">
-            <ToggleButton x:Name="ThumbnailsToggle" Classes="tool" ToolTip.Tip="Thumbnails">
+            <ToggleButton AutomationProperties.Name="Thumbnails" x:Name="ThumbnailsToggle" Classes="tool" ToolTip.Tip="Thumbnails">
               <Path Classes="icon nav" Data="{StaticResource IconThumbnails}" />
             </ToggleButton>
-            <ToggleButton x:Name="OutlineToggle" Classes="tool" ToolTip.Tip="Outline">
+            <ToggleButton AutomationProperties.Name="Outline" x:Name="OutlineToggle" Classes="tool" ToolTip.Tip="Outline">
               <Path Classes="icon nav" Data="{StaticResource IconOutline}" />
             </ToggleButton>
-            <ToggleButton x:Name="SearchResultsToggle" Classes="tool" ToolTip.Tip="Search results">
+            <ToggleButton AutomationProperties.Name="Search results" x:Name="SearchResultsToggle" Classes="tool" ToolTip.Tip="Search results">
               <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
             </ToggleButton>
-            <ToggleButton x:Name="AnnotationsToggle" Classes="tool" ToolTip.Tip="Annotations">
+            <ToggleButton AutomationProperties.Name="Annotations" x:Name="AnnotationsToggle" Classes="tool" ToolTip.Tip="Annotations">
               <Path Classes="icon nav" Data="{StaticResource IconAnnotations}" />
             </ToggleButton>
             <!-- Only shown when the document has embedded files. -->
-            <ToggleButton x:Name="AttachmentsToggle" Classes="tool" ToolTip.Tip="Attachments">
+            <ToggleButton AutomationProperties.Name="Attachments" x:Name="AttachmentsToggle" Classes="tool" ToolTip.Tip="Attachments">
               <Path Classes="icon nav" Data="{StaticResource IconAttachment}" />
             </ToggleButton>
             <!-- Only shown when the document has layers. -->
-            <ToggleButton x:Name="LayersToggle" Classes="tool" ToolTip.Tip="Layers">
+            <ToggleButton AutomationProperties.Name="Layers" x:Name="LayersToggle" Classes="tool" ToolTip.Tip="Layers">
               <Path Classes="icon nav" Data="{StaticResource IconLayers}" />
             </ToggleButton>
           </StackPanel>
