@@ -282,6 +282,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             this.RaisePropertyChanged(nameof(IsOutlineMode));
             this.RaisePropertyChanged(nameof(IsSearchMode));
             this.RaisePropertyChanged(nameof(IsAnnotationsMode));
+            this.RaisePropertyChanged(nameof(IsAttachmentsMode));
             if (value == SidebarMode.Annotations)
             {
                 Annotations.RefreshItems();
@@ -316,6 +317,16 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         get => SidebarMode == SidebarMode.Annotations;
         set => SetSidebarMode(value, SidebarMode.Annotations);
     }
+
+    /// <summary>Gets or sets a value indicating whether the attachments panel is shown.</summary>
+    public bool IsAttachmentsMode
+    {
+        get => SidebarMode == SidebarMode.Attachments;
+        set => SetSidebarMode(value, SidebarMode.Attachments);
+    }
+
+    /// <summary>Gets the files embedded in the document.</summary>
+    public AttachmentsViewModel Attachments => field ??= new(this);
 
     /// <summary>Gets the annotation state.</summary>
     public AnnotationsViewModel Annotations => field ??= new(this);
@@ -736,6 +747,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         PageEntry = GetPageDisplay(CurrentPageIndex);
         _services.RecentDocuments.Add(FilePath);
         Signatures.Refresh();
+        Attachments.Refresh();
         WatchFile();
         _documentChanges.OnNext(RxVoid.Default);
     }

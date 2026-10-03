@@ -17,6 +17,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
+using PdfViewerLite.Core.Attachments;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.Signals;
@@ -50,6 +51,7 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         OutlineTree.ItemTemplate = new FuncTreeDataTemplate<OutlineItemViewModel>(static (_, _) => new OutlineItemView(), static item => item.Children);
         SearchResultList.ItemTemplate = new FuncDataTemplate<SearchResultItemViewModel>(static (_, _) => new SearchResultView());
         AnnotationList.ItemTemplate = new FuncDataTemplate<AnnotationItemViewModel>(static (_, _) => new AnnotationItemView());
+        AttachmentList.ItemTemplate = new FuncDataTemplate<DocumentAttachment>(static (_, _) => new AttachmentItemView());
         SingleLayoutItem.CommandParameter = "Single";
         DualLayoutItem.CommandParameter = "Dual";
         CoverLayoutItem.CommandParameter = "DualCover";
@@ -288,6 +290,13 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsAnnotationsMode, static v => v.AnnotationsPanel.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.Items, static v => v.AnnotationList.ItemsSource));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.Items.Count, static v => v.NoAnnotationsText.IsVisible, static count => count == 0));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Attachments.HasAttachments, static v => v.AttachmentsToggle.IsVisible));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.IsAttachmentsMode, static v => v.AttachmentsToggle.IsChecked, static on => on, IsOn));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsAttachmentsMode, static v => v.AttachmentsPanel.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Attachments.Items, static v => v.AttachmentList.ItemsSource));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.Attachments.Selected, static v => v.AttachmentList.SelectedItem, static item => item, static item => item as DocumentAttachment));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Attachments.SaveCommand, static v => v.SaveAttachmentButton));
+        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Attachments.SaveInteraction, SaveAttachmentAsync));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsSearchMode, static v => v.SearchResultList.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Search.Results, static v => v.SearchResultList.ItemsSource));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Search.SelectedResult, static v => v.SearchResultList.SelectedItem, static item => item, static item => item as SearchResultItemViewModel));
@@ -416,6 +425,21 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         }
 
         var file = await storage.SaveFilePickerAsync(new() { Title = "Save a Copy", SuggestedFileName = context.Input, DefaultExtension = "pdf" });
+        context.SetOutput(file?.TryGetLocalPath());
+    }
+
+    /// <summary>Asks where to save an embedded file, through the desktop's save dialog.</summary>
+    /// <param name="context">The interaction context, holding the suggested file name.</param>
+    /// <returns>A task.</returns>
+    private async Task SaveAttachmentAsync(IInteractionContext<string, string?> context)
+    {
+        if (TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage)
+        {
+            context.SetOutput(null);
+            return;
+        }
+
+        var file = await storage.SaveFilePickerAsync(new() { Title = "Save Attachment", SuggestedFileName = context.Input });
         context.SetOutput(file?.TryGetLocalPath());
     }
 

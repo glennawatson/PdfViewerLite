@@ -18,4 +18,7 @@ public enum SidebarMode
 
     /// <summary>The document's annotations.</summary>
     Annotations = 3,
+
+    /// <summary>Files embedded in the document.</summary>
+    Attachments = 4,
 }

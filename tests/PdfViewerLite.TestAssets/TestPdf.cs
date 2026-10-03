@@ -33,6 +33,15 @@ public static class TestPdf
     /// <summary>The document author.</summary>
     public static readonly string Author = "Glenn Watson";
 
+    /// <summary>The file name of the embedded file in <see cref="CreateWithAttachment"/>.</summary>
+    public static readonly string AttachmentName = "notes.txt";
+
+    /// <summary>The contents of the embedded file in <see cref="CreateWithAttachment"/>.</summary>
+    public static readonly string AttachmentText = "Meeting notes: bring the signed form.";
+
+    /// <summary>The standard Helvetica font dictionary.</summary>
+    private const string HelveticaFont = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+
     /// <summary>The page that is landscape.</summary>
     private const int LandscapePage = 2;
 
@@ -69,7 +78,7 @@ public static class TestPdf
         var objects = new List<string>();
         var catalog = Reserve(objects);
         var pages = Reserve(objects);
-        var font = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+        var font = Add(objects, HelveticaFont);
         var outlines = Reserve(objects);
         var pageIds = new int[pageCount];
         for (var i = 0; i < pageCount; i++)
@@ -108,7 +117,7 @@ public static class TestPdf
         var catalog = Reserve(objects);
         var pages = Reserve(objects);
         var page = Reserve(objects);
-        var font = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+        var font = Add(objects, HelveticaFont);
         const string tick = "q 0 g BT /ZaDb 12 Tf 2 3 Td (4) Tj ET Q";
         var zapf = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /ZapfDingbats >>");
         var on = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
@@ -187,6 +196,36 @@ public static class TestPdf
         objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
         objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
         var info = Add(objects, $"<< /Title (Scan) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>Creates a one page document with one embedded text file, <see cref="AttachmentName"/>.</summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateWithAttachment()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var file = Add(objects, string.Create(CultureInfo.InvariantCulture, $"""
+            << /Type /EmbeddedFile /Subtype /text#2Fplain /Length {AttachmentText.Length} /Params << /Size {AttachmentText.Length} >> >>
+            stream
+            {AttachmentText}
+            endstream
+            """));
+        var spec = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Type /Filespec /F ({AttachmentName}) /UF ({AttachmentName}) /EF << /F {file} 0 R >> >>"));
+        var font = Add(objects, HelveticaFont);
+        var content = new StringBuilder();
+        AppendText(content, PortraitHeight - Margin, HeadingSize, "Attachments");
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R /Names << /EmbeddedFiles << /Names [({AttachmentName}) {spec} 0 R] >> >> >>");
+        var info = Add(objects, $"<< /Title (Attachments) /Author ({Author}) >>");
         return Serialize(objects, catalog, info);
     }
 
