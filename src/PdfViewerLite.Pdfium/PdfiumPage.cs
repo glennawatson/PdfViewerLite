@@ -199,6 +199,14 @@ internal sealed class PdfiumPage : IDisposable
     internal void ToPdf(PagePoint point, out double x, out double y) =>
         _ = NativeMethods.FPDF_DeviceToPage(Handle, 0, 0, _deviceWidth, _deviceHeight, 0, (int)MathF.Round(point.X * DeviceScale), (int)MathF.Round(point.Y * DeviceScale), out x, out y);
 
+    /// <summary>Forgets the text page and links after the page's text changed, so they are read again.</summary>
+    internal void ResetText()
+    {
+        _textPage?.Dispose();
+        _textPage = null;
+        _links = null;
+    }
+
     /// <summary>Gets the links on the page, loading them on first use.</summary>
     /// <returns>The links.</returns>
     internal PageLink[] GetLinks()

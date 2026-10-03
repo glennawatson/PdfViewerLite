@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Globalization;
+using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -145,6 +146,47 @@ public static class TestPdf
                             /DR << /Font << /Helv {{font}} 0 R /ZaDb {{zapf}} 0 R >> >> >> >>
             """);
         var info = Add(objects, $"<< /Title (Form) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page, portrait, image-only PDF, like a scan: the page shows an 8 bit greyscale image filling it
+    /// and has no text.
+    /// </summary>
+    /// <param name="grey">The image, one byte per pixel.</param>
+    /// <param name="width">The image width in pixels.</param>
+    /// <param name="height">The image height in pixels.</param>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateScan(ReadOnlySpan<byte> grey, int width, int height)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(grey.Length, width * height);
+        using var compressed = new MemoryStream();
+        using (var zlib = new ZLibStream(compressed, CompressionLevel.Optimal, true))
+        {
+            zlib.Write(grey[..(width * height)]);
+        }
+
+        var hex = $"{Convert.ToHexString(compressed.GetBuffer(), 0, (int)compressed.Length)}>";
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var image = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /XObject /Subtype /Image /Width {{width}} /Height {{height}} /ColorSpace /DeviceGray /BitsPerComponent 8
+               /Filter [/ASCIIHexDecode /FlateDecode] /Length {{hex.Length}} >>
+            stream
+            {{hex}}
+            endstream
+            """));
+        var stream = string.Create(CultureInfo.InvariantCulture, $"q {PortraitWidth} 0 0 {PortraitHeight} 0 0 cm /Im1 Do Q\n");
+        var content = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {stream.Length} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /XObject << /Im1 {{image}} 0 R >> >> /Contents {{content}} 0 R >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
+        var info = Add(objects, $"<< /Title (Scan) /Author ({Author}) >>");
         return Serialize(objects, catalog, info);
     }
 

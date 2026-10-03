@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\src\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Ocr\PdfViewerLite.Ocr.csproj" />
     <ProjectReference Include="..\PdfViewerLite.TestAssets\PdfViewerLite.TestAssets.csproj" />
   </ItemGroup>
 </Project>

@@ -25,6 +25,8 @@ jobs:
           # The .NET 11 SDK from global.json builds everything; the .NET 10 runtime runs the net10.0 targets.
           dotnet-version: 10.0.x
           global-json-file: global.json
+      - name: Install Tesseract for the OCR tests
+        run: sudo apt-get update && sudo apt-get install -y libtesseract5 tesseract-ocr-eng
       - name: Build
         run: dotnet build PdfViewerLite.slnx -c Release
       - name: Test
