@@ -26,6 +26,9 @@ public class TileRenderBenchmarks
     /// <summary>The tile pixels.</summary>
     private readonly byte[] _pixels = new byte[TileGrid.TileSize * TileGrid.TileSize * BytesPerPixel];
 
+    /// <summary>A rendered tile of page 1, the input of <see cref="ApplyTone"/>.</summary>
+    private readonly byte[] _rendered = new byte[TileGrid.TileSize * TileGrid.TileSize * BytesPerPixel];
+
     /// <summary>The Calm night tone.</summary>
     private readonly PageTone _tone = new(0x2A2826U, 0xD2CDC5U);
 
@@ -45,6 +48,8 @@ public class TileRenderBenchmarks
         _path = TestPdf.WriteTempFile(DocumentPages);
         _document = new PdfiumEngine().Open(_path, null);
         _firstPage = _document.GetPageSizes()[0];
+        var tileSize = TileGrid.TileSize;
+        _ = _document.Render(new(0, Scale, PageRotation.None, 0, 0, RenderFlags.Annotations), new(_rendered, tileSize, tileSize, tileSize * BytesPerPixel));
     }
 
     /// <summary>Closes the document.</summary>
@@ -94,7 +99,11 @@ public class TileRenderBenchmarks
         return rendered;
     }
 
-    /// <summary>Applies the Calm night page tone to an already rendered tile.</summary>
+    /// <summary>Applies the Calm night page tone to a rendered page tile (text on white), restored from a copy first.</summary>
     [Benchmark]
-    public void ApplyTone() => _tone.Apply(_pixels);
+    public void ApplyTone()
+    {
+        _rendered.CopyTo(_pixels, 0);
+        _tone.Apply(_pixels);
+    }
 }

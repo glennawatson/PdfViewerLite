@@ -11,6 +11,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -28,6 +29,9 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
 {
     /// <summary>Defines the <see cref="ViewModel"/> property.</summary>
     public static readonly StyledProperty<DocumentTabViewModel?> ViewModelProperty = AvaloniaProperty.Register<DocumentView, DocumentTabViewModel?>(nameof(ViewModel));
+
+    /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
+    private const uint OpaqueAlpha = 0xFF000000U;
 
     /// <summary>The bindings made while attached.</summary>
     private MultipleDisposable? _bindings;
@@ -182,10 +186,12 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsDrawTool, static v => v.DrawTool.IsChecked, static on => on, IsOn));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsNoteTool, static v => v.NoteTool.IsChecked, static on => on, IsOn));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsTextTool, static v => v.TextTool.IsChecked, static on => on, IsOn));
-        bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsYellow, static v => v.YellowChoice.IsChecked, static on => on, IsOn));
-        bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsGreen, static v => v.GreenChoice.IsChecked, static on => on, IsOn));
-        bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsBlue, static v => v.BlueChoice.IsChecked, static on => on, IsOn));
-        bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsRed, static v => v.RedChoice.IsChecked, static on => on, IsOn));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.ColorName, static v => v.ColourText.Text));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.Color, static v => v.ColourSwatch.Background, static color => new SolidColorBrush(Color.FromUInt32(OpaqueAlpha | color))));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.YellowItem, Signal.Return("Yellow")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.GreenItem, Signal.Return("Green")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.BlueItem, Signal.Return("Blue")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.RedItem, Signal.Return("Red")));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FillAndSign.IsActive, static v => v.FillSignBar.IsVisible));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DoneCommand, static v => v.FillSignDoneButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DrawSignatureCommand, static v => v.DrawSignatureButton));

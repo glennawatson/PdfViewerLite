@@ -12,8 +12,11 @@ using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.Theming;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
+using PdfViewerLite.Core.Annotations;
+using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Theming;
+using PdfViewerLite.TestAssets;
 
 namespace PdfViewerLite.App.Tests;
 
@@ -35,8 +38,14 @@ public sealed class RenderingTests
     /// <summary>The number of cached tiles that shows rendering is well under way.</summary>
     private const int ExpectedTiles = 6;
 
+    /// <summary>The number of annotations the annotation test adds.</summary>
+    private const int AnnotationCount = 2;
+
     /// <summary>Masks off the alpha channel.</summary>
     private const uint RgbMask = 0xFFFFFFU;
+
+    /// <summary>Where the annotation test puts its note.</summary>
+    private static readonly PagePoint NoteAt = new(420, 150);
 
     /// <summary>Verifies pages and thumbnails render, then saves a screenshot when PDFVIEWERLITE_SCREENSHOTS is set.</summary>
     /// <returns>A task.</returns>
@@ -141,6 +150,41 @@ public sealed class RenderingTests
         {
             window.Close();
             DesktopThemeApplier.Apply(application, ThemeResolver.Resolve(new(), null));
+        }
+    }
+
+    /// <summary>Verifies the annotation tools show, and a highlight and note appear on the page and in the sidebar.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ShowsAnnotations()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("annotated.pdf", Pages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var tab = main.SelectedTab!;
+            using var prompt = tab.Annotations.PromptInteraction.RegisterHandler(static context => context.SetOutput("Check this figure"));
+            var lines = new List<PageRect>();
+            tab.TryGetDocument()!.GetTextBounds(0, 0, TestPdf.Sentence.Length, lines);
+            tab.Annotations.IsAnnotating = true;
+            tab.Annotations.Tool = AnnotationTool.Highlight;
+            tab.SidebarMode = SidebarMode.Annotations;
+            _ = tab.Annotations.MarkText(AnnotationKind.Highlight, new Dictionary<int, List<PageRect>> { [0] = lines }, AnnotationColors.Sand);
+            await tab.Annotations.AddNoteAsync(0, NoteAt);
+            _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > ExpectedTiles && test.Services.RenderHub.Scheduler.QueueLength == 0);
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "annotate.png");
+
+            var bar = window.GetVisualDescendants().OfType<Border>().Single(static b => b.Name == "AnnotateBar");
+            await Assert.That(bar.IsVisible).IsTrue();
+            await Assert.That(tab.Annotations.Items.Count).IsEqualTo(AnnotationCount);
+        }
+        finally
+        {
+            window.Close();
         }
     }
 

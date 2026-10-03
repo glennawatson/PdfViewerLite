@@ -141,64 +141,8 @@ public sealed class AnnotationsViewModel : ReactiveObject
         {
             _ = this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(ColorName));
-            this.RaisePropertyChanged(nameof(IsYellow));
-            this.RaisePropertyChanged(nameof(IsGreen));
-            this.RaisePropertyChanged(nameof(IsBlue));
-            this.RaisePropertyChanged(nameof(IsRed));
         }
     } = AnnotationColors.Sand;
-
-    /// <summary>Gets or sets a value indicating whether yellow is the current colour.</summary>
-    public bool IsYellow
-    {
-        get => string.Equals(ColorName, "Yellow", StringComparison.Ordinal);
-        set
-        {
-            if (value)
-            {
-                SetColorByName("Yellow");
-            }
-        }
-    }
-
-    /// <summary>Gets or sets a value indicating whether green is the current colour.</summary>
-    public bool IsGreen
-    {
-        get => string.Equals(ColorName, "Green", StringComparison.Ordinal);
-        set
-        {
-            if (value)
-            {
-                SetColorByName("Green");
-            }
-        }
-    }
-
-    /// <summary>Gets or sets a value indicating whether blue is the current colour.</summary>
-    public bool IsBlue
-    {
-        get => string.Equals(ColorName, "Blue", StringComparison.Ordinal);
-        set
-        {
-            if (value)
-            {
-                SetColorByName("Blue");
-            }
-        }
-    }
-
-    /// <summary>Gets or sets a value indicating whether red is the current colour.</summary>
-    public bool IsRed
-    {
-        get => string.Equals(ColorName, "Red", StringComparison.Ordinal);
-        set
-        {
-            if (value)
-            {
-                SetColorByName("Red");
-            }
-        }
-    }
 
     /// <summary>Gets the name of the colour, shown beside its swatch.</summary>
     public string ColorName => AnnotationNames.GetColor(Color);

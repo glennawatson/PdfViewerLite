@@ -51,6 +51,9 @@ public sealed class PageTone : IEquatable<PageTone>
     /// <summary>The mask of the colour bits.</summary>
     private const uint ColorMask = 0xFFFFFFU;
 
+    /// <summary>Opaque alpha in a little-endian BGRA pixel read as a 32 bit value; 0xRRGGBB already lies in BGR order.</summary>
+    private const uint OpaqueAlpha = 0xFF000000U;
+
     /// <summary>The FNV prime used to derive identifiers.</summary>
     private const uint IdPrime = 16_777_619U;
 
@@ -60,8 +63,41 @@ public sealed class PageTone : IEquatable<PageTone>
     /// <summary>The shift used by the divide-by-255 approximation.</summary>
     private const int DivideShift = 8;
 
+    /// <summary>The bit offset of a pixel's second 16 bit lane in its 64 bit lane.</summary>
+    private const int FirstLane = 16;
+
+    /// <summary>The bit offset of a pixel's third 16 bit lane.</summary>
+    private const int SecondLane = 32;
+
+    /// <summary>The bit offset of a pixel's fourth 16 bit lane.</summary>
+    private const int ThirdLane = 48;
+
+    /// <summary>The Rec. 601 weight of blue in brightness, out of 256.</summary>
+    private const ushort BlueWeight = 29;
+
+    /// <summary>The Rec. 601 weight of green in brightness, out of 256.</summary>
+    private const ushort GreenWeight = 150;
+
+    /// <summary>The Rec. 601 weight of red in brightness, out of 256.</summary>
+    private const ushort RedWeight = 77;
+
+    /// <summary>The brightness weights of two pixels' B, G, R, A lanes.</summary>
+    private static readonly Vector128<ushort> TwoPixelWeights = Vector128.Create<ushort>([BlueWeight, GreenWeight, RedWeight, 0, BlueWeight, GreenWeight, RedWeight, 0]);
+
+    /// <summary>The brightness weights of four pixels' B, G, R, A lanes.</summary>
+    private static readonly Vector256<ushort> LumaWeights = Vector256.Create(TwoPixelWeights, TwoPixelWeights);
+
+    /// <summary>Masks the low 16 bit lane of each 64 bit pixel.</summary>
+    private static readonly Vector256<ulong> LowLane = Vector256.Create((ulong)ushort.MaxValue);
+
+    /// <summary>Selects the alpha lanes, which are kept as they are.</summary>
+    private static readonly Vector256<ushort> AlphaLanes = Vector256.Create(0, 0, 0, ushort.MaxValue, 0, 0, 0, ushort.MaxValue, 0, 0, 0, ushort.MaxValue, 0, 0, 0, ushort.MaxValue);
+
     /// <summary>The blue, green and red lookup tables, in that order, used for the scalar tail.</summary>
     private readonly byte[] _table;
+
+    /// <summary>Eight opaque paper pixels, written for eight white ones.</summary>
+    private readonly Vector256<byte> _paperBlock;
 
     /// <summary>The ink weight of each BGRA lane, repeated (alpha 0 so alpha is kept).</summary>
     private readonly Vector256<ushort> _inkLanes;
@@ -82,6 +118,7 @@ public sealed class PageTone : IEquatable<PageTone>
         Fill(0, Paper & ChannelMax, Ink & ChannelMax);
         Fill(GreenTable, (Paper >> GreenShift) & ChannelMax, (Ink >> GreenShift) & ChannelMax);
         Fill(RedTable, (Paper >> RedShift) & ChannelMax, (Ink >> RedShift) & ChannelMax);
+        _paperBlock = Vector256.Create(OpaqueAlpha | Paper).AsByte();
         _inkLanes = Lanes(Ink, 0);
         _paperLanes = Lanes(Paper, ChannelMax);
     }
@@ -141,11 +178,23 @@ public sealed class PageTone : IEquatable<PageTone>
         ReadOnlySpan<byte> red = _table.AsSpan(RedTable, ChannelValues);
         for (; i + BytesPerPixel <= pixels.Length; i += BytesPerPixel)
         {
-            pixels[i] = blue[pixels[i]];
-            pixels[i + GreenByte] = green[pixels[i + GreenByte]];
-            pixels[i + RedByte] = red[pixels[i + RedByte]];
+            var b = pixels[i];
+            var g = pixels[i + GreenByte];
+            var r = pixels[i + RedByte];
+            var luma = ((b * BlueWeight) + (g * GreenWeight) + (r * RedWeight)) >> DivideShift;
+            pixels[i] = Shift(blue[luma], b, luma);
+            pixels[i + GreenByte] = Shift(green[luma], g, luma);
+            pixels[i + RedByte] = Shift(red[luma], r, luma);
         }
     }
+
+    /// <summary>Adds a channel's offset from the pixel's brightness back onto the toned brightness, so hue survives.</summary>
+    /// <param name="toned">The toned brightness for this channel.</param>
+    /// <param name="value">The channel value.</param>
+    /// <param name="luma">The pixel's brightness.</param>
+    /// <returns>The toned channel.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static byte Shift(byte toned, byte value, int luma) => (byte)Math.Clamp(toned + value - luma, 0, ChannelMax);
 
     /// <summary>Builds lane weights repeating B, G, R, A for one colour.</summary>
     /// <param name="rgb">The colour as 0xRRGGBB.</param>
@@ -160,8 +209,9 @@ public sealed class PageTone : IEquatable<PageTone>
     }
 
     /// <summary>
-    /// Blends each channel as <c>(ink * (255 - v) + paper * v) / 255</c>, rounded, sixteen bytes at a time. Both
-    /// products are non-negative and sum to at most 255 * 255, so 16 bit lanes cannot overflow.
+    /// Tones eight pixels at a time. Each pixel's brightness <c>L</c> is mapped along the ink to paper ramp as
+    /// <c>(ink * (255 - L) + paper * L) / 255</c>, rounded, and each channel's offset from <c>L</c> is added back so
+    /// colours keep their hue: a yellow highlight stays yellow on dark paper. Every intermediate fits 16 bit lanes.
     /// </summary>
     /// <param name="pixels">The pixels.</param>
     /// <returns>The number of bytes processed; the rest is left for the scalar loop.</returns>
@@ -171,9 +221,18 @@ public sealed class PageTone : IEquatable<PageTone>
         if (Vector256.IsHardwareAccelerated)
         {
             ref var start = ref MemoryMarshal.GetReference(pixels);
+            var white = Vector256<byte>.AllBitsSet;
             for (; processed + Vector256<byte>.Count <= pixels.Length; processed += Vector256<byte>.Count)
             {
                 var source = Vector256.LoadUnsafe(ref start, (nuint)processed);
+
+                // Most of a page is blank paper; eight white pixels become eight paper pixels without any arithmetic.
+                if (source == white)
+                {
+                    _paperBlock.StoreUnsafe(ref start, (nuint)processed);
+                    continue;
+                }
+
                 var (lower, upper) = Vector256.Widen(source);
                 Vector256.Narrow(Blend(lower), Blend(upper)).StoreUnsafe(ref start, (nuint)processed);
             }
@@ -182,15 +241,24 @@ public sealed class PageTone : IEquatable<PageTone>
         return processed;
     }
 
-    /// <summary>Blends sixteen 16 bit channel values.</summary>
+    /// <summary>Tones four pixels held as sixteen 16 bit B, G, R, A lanes.</summary>
     /// <param name="value">The channel values.</param>
-    /// <returns>The blended values.</returns>
+    /// <returns>The toned values.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Vector256<ushort> Blend(Vector256<ushort> value)
     {
+        // Brightness: a pixel's four weighted 16 bit lanes fill one 64 bit lane, so shifts sum them into the low 16 bits
+        // (carries only move upwards) and spread the result back to all four lanes, with no shuffles.
+        var weighted = (value * LumaWeights).AsUInt64();
+        var total = (weighted + (weighted >>> FirstLane) + (weighted >>> SecondLane) + (weighted >>> ThirdLane)) & LowLane;
+        var low = total >>> DivideShift;
+        var luma = (low | (low << FirstLane) | (low << SecondLane) | (low << ThirdLane)).AsUInt16();
+
         var max = Vector256.Create((ushort)ChannelMax);
-        var sum = (_inkLanes * (max - value)) + (_paperLanes * value) + Vector256.Create(DivideBias);
-        return (sum + (sum >>> DivideShift)) >>> DivideShift;
+        var sum = (_inkLanes * (max - luma)) + (_paperLanes * luma) + Vector256.Create(DivideBias);
+        var toned = (sum + (sum >>> DivideShift)) >>> DivideShift;
+        var shifted = Vector256.Min(Vector256.Max(toned.AsInt16() + value.AsInt16() - luma.AsInt16(), Vector256<short>.Zero), max.AsInt16()).AsUInt16();
+        return Vector256.ConditionalSelect(AlphaLanes, value, shifted);
     }
 
     /// <summary>Fills one channel's table with a linear ramp from ink (0) to paper (255).</summary>

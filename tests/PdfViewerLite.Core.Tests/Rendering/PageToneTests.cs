@@ -97,4 +97,49 @@ public sealed class PageToneTests
 
         await Assert.That(pixels.AsSpan().SequenceEqual(expected)).IsTrue();
     }
+
+    /// <summary>Verifies colours keep their hue on dark paper: a yellow highlight keeps red above green above blue.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task KeepsHue()
+    {
+        const byte blue = 0x96;
+        const byte green = 0xDC;
+        const byte red = 0xF0;
+        const byte alpha = 0xFF;
+        const int redByte = 2;
+        byte[] pixel = [blue, green, red, alpha];
+
+        new PageTone(CalmPaper, CalmInk).Apply(pixel);
+
+        const int greenByte = 1;
+        await Assert.That(pixel[redByte]).IsGreaterThan(pixel[greenByte]);
+        await Assert.That(pixel[greenByte]).IsGreaterThan(pixel[0]);
+    }
+
+    /// <summary>Verifies the vectorised path matches the per-pixel path on coloured pixels too.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task VectorMatchesScalarOnColour()
+    {
+        const int pixelBytes = 4;
+        const int length = 4096 + 12;
+        const int stride = 37;
+        var tone = new PageTone(CalmPaper, CalmInk);
+        var pixels = new byte[length];
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = (byte)(i * stride);
+        }
+
+        var expected = (byte[])pixels.Clone();
+        for (var i = 0; i + pixelBytes <= expected.Length; i += pixelBytes)
+        {
+            tone.Apply(expected.AsSpan(i, pixelBytes));
+        }
+
+        tone.Apply(pixels);
+
+        await Assert.That(pixels.AsSpan().SequenceEqual(expected)).IsTrue();
+    }
 }

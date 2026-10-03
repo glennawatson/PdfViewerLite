@@ -132,7 +132,7 @@
             </StackPanel>
           </Button>
         </StackPanel>
-        <StackPanel Orientation="Horizontal">
+        <WrapPanel Orientation="Horizontal">
           <ToggleButton x:Name="SelectTool" Classes="tool" ToolTip.Tip="Select text and pick annotations">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconCursor}" />
@@ -176,32 +176,38 @@
             </StackPanel>
           </ToggleButton>
           <Rectangle Classes="separator" />
-          <!-- Colours always carry their name, so colour is never the only cue. -->
-          <RadioButton x:Name="YellowChoice" Classes="swatch" GroupName="AnnotationColour">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <Border Classes="swatch" Background="#F0DC96" />
-              <TextBlock Text="Yellow" VerticalAlignment="Center" />
+          <!-- One colour button, always showing the colour's name, so colour is never the only cue. -->
+          <Button x:Name="ColourButton" Classes="tool" ToolTip.Tip="Colour for new highlights, lines and notes, and for the picked annotation">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border x:Name="ColourSwatch" Classes="swatch" />
+              <TextBlock x:Name="ColourText" VerticalAlignment="Center" />
             </StackPanel>
-          </RadioButton>
-          <RadioButton x:Name="GreenChoice" Classes="swatch" GroupName="AnnotationColour">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <Border Classes="swatch" Background="#BCDCB0" />
-              <TextBlock Text="Green" VerticalAlignment="Center" />
-            </StackPanel>
-          </RadioButton>
-          <RadioButton x:Name="BlueChoice" Classes="swatch" GroupName="AnnotationColour">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <Border Classes="swatch" Background="#B4CCDC" />
-              <TextBlock Text="Blue" VerticalAlignment="Center" />
-            </StackPanel>
-          </RadioButton>
-          <RadioButton x:Name="RedChoice" Classes="swatch" GroupName="AnnotationColour">
-            <StackPanel Orientation="Horizontal" Spacing="5">
-              <Border Classes="swatch" Background="#E8BCB4" />
-              <TextBlock Text="Red" VerticalAlignment="Center" />
-            </StackPanel>
-          </RadioButton>
-        </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="YellowItem" Header="_Yellow">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#F0DC96" />
+                  </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem x:Name="GreenItem" Header="_Green">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#BCDCB0" />
+                  </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem x:Name="BlueItem" Header="_Blue">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#B4CCDC" />
+                  </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem x:Name="RedItem" Header="_Red">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#E8BCB4" />
+                  </MenuItem.Icon>
+                </MenuItem>
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </WrapPanel>
       </DockPanel>
     </Border>
 
