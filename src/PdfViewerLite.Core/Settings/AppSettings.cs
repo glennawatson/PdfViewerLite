@@ -60,6 +60,34 @@ public sealed class AppSettings
     /// <summary>Gets or sets the person's Azure Speech region, for example <c>uksouth</c>.</summary>
     public string AzureSpeechRegion { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets how much of the text being read aloud is marked.</summary>
+    public ReadAloudHighlight ReadAloudHighlight { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether text away from what is being read is dimmed.</summary>
+    public bool FocusBand { get; set; }
+
+    /// <summary>Gets or sets Focus Mode's text size in points.</summary>
+    public double FocusFontSize { get; set; } = 17;
+
+    /// <summary>Gets or sets Focus Mode's line spacing, as a multiple of the text size.</summary>
+    public double FocusLineSpacing { get; set; } = 1.6;
+
+    /// <summary>Gets or sets Focus Mode's space between paragraphs, as a multiple of the text size.</summary>
+    public double FocusParagraphSpacing { get; set; } = 1;
+
+    /// <summary>Gets or sets Focus Mode's text column width, in characters.</summary>
+    public int FocusTextWidth { get; set; } = 66;
+
+    /// <summary>Gets or sets Focus Mode's page colour.</summary>
+    public FocusPageColour FocusPageColour { get; set; }
+
+    /// <summary>Gets or sets Focus Mode's typeface.</summary>
+    public FocusFont FocusFont { get; set; }
+
+    /// <summary>Gets where reading aloud last stopped in each document, by file path.</summary>
+    [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+    public Dictionary<string, ReadingPosition> ReadingPositions { get; } = [];
+
     /// <summary>Gets or sets a value indicating whether the sidebar is shown.</summary>
     public bool ShowSidebar { get; set; } = true;
 

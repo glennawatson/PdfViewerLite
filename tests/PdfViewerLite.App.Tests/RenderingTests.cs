@@ -27,6 +27,18 @@ namespace PdfViewerLite.App.Tests;
 /// <summary>Renders the real window headlessly and checks the pixels.</summary>
 public sealed class RenderingTests
 {
+    /// <summary>The name of the Focus toggle.</summary>
+    private const string FocusToggleName = "FocusToggle";
+
+    /// <summary>The pages of the article used for Focus Mode.</summary>
+    private const int ArticlePages = 3;
+
+    /// <summary>The Focus Mode text size set in the test.</summary>
+    private const double FocusTextSize = 20;
+
+    /// <summary>The index of the soft paper page colour.</summary>
+    private const int SoftPaperColour = 1;
+
     /// <summary>The name of the Read Aloud bar.</summary>
     private const string ReadAloudBarName = "ReadAloudBar";
 
@@ -383,6 +395,59 @@ public sealed class RenderingTests
             Find<Button>(view, "CloseReadAloudButton").Command!.Execute(null);
             await Assert.That(await UiWait.UntilAsync(() => !Find<Border>(view, ReadAloudBarName).IsVisible)).IsTrue();
             await Assert.That(Find<ToggleButton>(view, "ReadAloudToggle").IsChecked == true).IsFalse();
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies Focus Mode shows the text alone in reading order, follows the text settings and keeps the place.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ShowsFocusMode()
+    {
+        var speech = new FakeSpeech(true, true);
+        using var test = new TestServices(new FallbackPlatform(), speech);
+        var path = Path.Combine(test.Directory, "article.pdf");
+        await File.WriteAllBytesAsync(path, TestPdf.CreateArticle(ArticlePages));
+        using var main = new MainViewModel(test.Services);
+        main.Open([path]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var tab = main.SelectedTab!;
+            var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
+            _ = await UiWait.UntilAsync(() => Find<ToggleButton>(view, FocusToggleName) is not null);
+            Find<ToggleButton>(view, FocusToggleName).IsChecked = true;
+
+            var focus = Find<FocusView>(view, "FocusPane");
+            await Assert.That(await UiWait.UntilAsync(() => focus.PageViews().Count > 0 && focus.PageViews()[0].BlockViews().Count > 0)).IsTrue();
+            var texts = focus.PageViews()[0].BlockViews().Select(static b => b.ViewModel!.Text).ToArray();
+            await Assert.That(texts[0]).IsEqualTo("Reading Order in Practice");
+            await Assert.That(texts[1]).StartsWith("The left column opens");
+            await Assert.That(texts[^1]).StartsWith("1 A footnote");
+            await Assert.That(Find<ScrollViewer>(view, "Scroller").IsVisible).IsFalse();
+
+            tab.FocusMode.FontSize = FocusTextSize;
+            tab.FocusMode.PageColour = SoftPaperColour;
+            tab.ReadAloud.IsOpen = true;
+            await Assert.That(await UiWait.UntilAsync(() => focus.PageViews()[0].BlockViews().Exists(static b => !b.ViewModel!.Spoken.IsEmpty))).IsTrue();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            using (var frame = window.CaptureRenderedFrame()!)
+            {
+                Save(frame, "focus-mode.png");
+            }
+
+            await Assert.That(focus.PageViews()[0].BlockViews()[0].BodyText.FontSize).IsGreaterThan(FocusTextSize);
+            tab.ReadAloud.IsOpen = false;
+            focus.ViewModel!.ReportTop(1, 0);
+            Find<ToggleButton>(view, FocusToggleName).IsChecked = false;
+
+            await Assert.That(await UiWait.UntilAsync(() => tab.CurrentPageIndex == 1)).IsTrue();
+            await Assert.That(Find<ScrollViewer>(view, "Scroller").IsVisible).IsTrue();
         }
         finally
         {

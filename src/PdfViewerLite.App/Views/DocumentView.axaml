@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:PdfViewerLite.App.Controls"
+             xmlns:views="using:PdfViewerLite.App.Views"
              x:Class="PdfViewerLite.App.Views.DocumentView">
   <!-- Layout only: every binding is made in code with ReactiveUI.Binding (DocumentView.axaml.cs). -->
   <DockPanel>
@@ -33,6 +34,12 @@
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
               <TextBlock Classes="label" Text="Find" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton x:Name="FocusToggle" Classes="tool" ToolTip.Tip="Focus Mode: the text alone in one calm column (Ctrl+4)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconFocus}" />
+              <TextBlock Classes="label" Text="Focus" />
             </StackPanel>
           </ToggleButton>
           <ToggleButton x:Name="ReadAloudToggle" Classes="tool" ToolTip.Tip="Read the document aloud from this page (Ctrl+Shift+Y)">
@@ -409,6 +416,7 @@
 
       <!-- Pages. -->
       <Panel Grid.Column="2">
+        <views:FocusView x:Name="FocusPane" IsVisible="False" />
         <ScrollViewer x:Name="Scroller" Background="{DynamicResource AppCanvasBackground}"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
           <Panel HorizontalAlignment="Left" VerticalAlignment="Top">

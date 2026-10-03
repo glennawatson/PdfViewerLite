@@ -274,6 +274,10 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
     /// <param name="bindings">The bindings.</param>
     private void BindReadAloud(MultipleDisposable bindings)
     {
+        bindings.Add(this.Bind(ViewModel, static vm => vm.FocusMode.IsOn, static v => v.FocusToggle.IsChecked, static on => on, IsOn));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FocusMode, static v => v.FocusPane.ViewModel));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FocusMode.IsOn, static v => v.FocusPane.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FocusMode.IsOn, static v => v.Scroller.IsVisible, static on => !on));
         bindings.Add(this.Bind(ViewModel, static vm => vm.ReadAloud.IsOpen, static v => v.ReadAloudToggle.IsChecked, static on => on, IsOn));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.IsOpen, static v => v.ReadAloudBar.IsVisible));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadAloud.CloseCommand, static v => v.CloseReadAloudButton));

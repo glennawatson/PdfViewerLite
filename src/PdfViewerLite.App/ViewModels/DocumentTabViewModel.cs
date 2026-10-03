@@ -65,6 +65,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>The Read Aloud state, once used.</summary>
     private ReadAloudViewModel? _readAloud;
 
+    /// <summary>Focus Mode, once used.</summary>
+    private FocusModeViewModel? _focusMode;
+
     /// <summary>The document's pages in reading order, once asked for.</summary>
     private ReadingDocument? _reading;
 
@@ -396,6 +399,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the tab's text recognition, created on first use.</summary>
     public TextRecognitionViewModel TextRecognition => field ??= new(this, _services);
+
+    /// <summary>Gets Focus Mode, created when first used.</summary>
+    public FocusModeViewModel FocusMode => _focusMode ??= new(this, _services);
 
     /// <summary>Gets the Read Aloud state, created when first used.</summary>
     public ReadAloudViewModel ReadAloud => _readAloud ??= new(this, _services);
@@ -845,6 +851,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        _focusMode?.Dispose();
         _readAloud?.Dispose();
         _fileWatch?.Dispose();
         Search.Dispose();

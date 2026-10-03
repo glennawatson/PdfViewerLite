@@ -12,6 +12,7 @@ using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Speech;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -26,8 +27,14 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     /// <summary>Bytes in a megabyte.</summary>
     private const double BytesPerMegabyte = 1024 * 1024;
 
+    /// <summary>The most documents whose reading position is remembered.</summary>
+    private const int MaxRememberedPositions = 200;
+
     /// <summary>The index of normal speed in <see cref="SpeedValues"/>.</summary>
     private const int NormalSpeedIndex = 2;
+
+    /// <summary>How often the word mark moves.</summary>
+    private static readonly TimeSpan WordInterval = TimeSpan.FromMilliseconds(90);
 
     /// <summary>The speeds offered.</summary>
     private static readonly double[] SpeedValues = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
@@ -37,6 +44,9 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
 
     /// <summary>The application services.</summary>
     private readonly AppServices _services;
+
+    /// <summary>Signals each change to what is being read.</summary>
+    private readonly Signal<RxVoid> _marks = new();
 
     /// <summary>The sentences of the page being read.</summary>
     private readonly List<SpeechSentence> _sentences = [];
@@ -209,8 +219,59 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     public int SpokenPage
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            _marks.OnNext(RxVoid.Default);
+        }
     } = -1;
+
+    /// <summary>Gets a notification each time the page, sentence or word being read changes.</summary>
+    public IObservable<RxVoid> MarksChanged => _marks;
+
+    /// <summary>Gets the sentence being read, as a range of the page's reading text, for Focus Mode.</summary>
+    public TextRange SpokenRange
+    {
+        get;
+        private set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            _marks.OnNext(RxVoid.Default);
+        }
+    } = TextRange.None;
+
+    /// <summary>Gets the word being read, roughly, when word highlighting is on.</summary>
+    public TextRange SpokenWord
+    {
+        get;
+        private set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            _marks.OnNext(RxVoid.Default);
+        }
+    } = TextRange.None;
+
+    /// <summary>Gets the rectangles of the word being read, in page space.</summary>
+    public IReadOnlyList<PageRect> SpokenWordBounds
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
 
     /// <summary>Gets the rectangles of the sentence being read, in page space.</summary>
     public IReadOnlyList<PageRect> SpokenBounds
@@ -263,6 +324,7 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         CancelWork();
         IsPlaying = false;
         PlayPauseText = "Play";
+        _services.SaveSettings();
         if (IsOpen && !NeedsVoice)
         {
             StatusText = "Paused";
@@ -275,6 +337,7 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         _work?.Cancel();
         _work?.Dispose();
         _work = null;
+        _marks.Dispose();
     }
 
     /// <summary>Describes a size in megabytes.</summary>
@@ -345,6 +408,35 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         return best;
     }
 
+    /// <summary>Finds the word a share of the way through a sentence.</summary>
+    /// <param name="text">The page's reading text.</param>
+    /// <param name="sentence">The sentence.</param>
+    /// <param name="fraction">How far through it, from 0 to 1.</param>
+    /// <returns>The word.</returns>
+    internal static TextRange WordAt(string text, SpeechSentence sentence, double fraction)
+    {
+        var end = Math.Min(text.Length, sentence.Start + sentence.Length);
+        var at = Math.Clamp(sentence.Start + (int)(fraction * sentence.Length), sentence.Start, Math.Max(sentence.Start, end - 1));
+        while (at < end && char.IsWhiteSpace(text[at]))
+        {
+            at++;
+        }
+
+        var start = at;
+        while (start > sentence.Start && !char.IsWhiteSpace(text[start - 1]))
+        {
+            start--;
+        }
+
+        var stop = at;
+        while (stop < end && !char.IsWhiteSpace(text[stop]))
+        {
+            stop++;
+        }
+
+        return stop > start ? new(start, stop - start) : TextRange.None;
+    }
+
     /// <summary>Finds the sentence holding a character.</summary>
     /// <param name="sentences">The sentences.</param>
     /// <param name="charIndex">The character.</param>
@@ -379,12 +471,47 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     private static void ObservePrepared(Task<SpeechAudio>? prepared) =>
         prepared?.ContinueWith(static task => _ = task.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
+    /// <summary>Forgets documents that have gone; if that is not enough, starts the list afresh.</summary>
+    /// <param name="positions">The remembered positions.</param>
+    private static void Prune(Dictionary<string, ReadingPosition> positions)
+    {
+        var gone = new List<string>();
+        foreach (var path in positions.Keys)
+        {
+            if (!File.Exists(path))
+            {
+                gone.Add(path);
+            }
+        }
+
+        foreach (var path in gone)
+        {
+            _ = positions.Remove(path);
+        }
+
+        if (positions.Count >= MaxRememberedPositions)
+        {
+            positions.Clear();
+        }
+    }
+
     /// <summary>Starts reading from the requested place, or the top of the current page.</summary>
     private void Begin()
     {
         CancelWork();
         RefreshVoices();
         SpokenPage = _startPage >= 0 ? _startPage : Math.Max(0, _owner.CurrentPageIndex);
+        if (_startPage < 0)
+        {
+            _startChar = 0;
+        }
+
+        if (_startPage < 0 && _services.Settings.ReadingPositions.TryGetValue(_owner.FilePath, out var resume) && resume.Page == SpokenPage)
+        {
+            // Carry on where reading stopped last time, when that is the page in view.
+            _startChar = resume.Character;
+        }
+
         _startPage = -1;
         _loadedPage = -1;
         _sentence = 0;
@@ -445,9 +572,11 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         IsPlaying = false;
         PlayPauseText = "Play";
         SpokenBounds = [];
+        SpokenRange = TextRange.None;
         SpokenPage = -1;
         _loadedPage = -1;
         StatusText = string.Empty;
+        _services.SaveSettings();
     }
 
     /// <summary>Closes the bar.</summary>
@@ -611,7 +740,7 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
                 prepared = _sentence + 1 < _sentences.Count ? engine.SynthesizeAsync(SentenceText(_sentence + 1), voice, speed, token) : null;
                 token.ThrowIfCancellationRequested();
                 Highlight();
-                await _services.Audio.PlayAsync(clip, token).ConfigureAwait(true);
+                await PlayTrackingWordsAsync(clip, token).ConfigureAwait(true);
                 token.ThrowIfCancellationRequested();
                 _sentence++;
             }
@@ -620,6 +749,83 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         {
             ObservePrepared(prepared);
         }
+    }
+
+    /// <summary>Plays a sentence, moving the word mark along with it when word highlighting is on.</summary>
+    /// <param name="clip">The sentence's audio.</param>
+    /// <param name="token">Stops playing.</param>
+    /// <returns>A task.</returns>
+    /// <remarks>The voice gives no word timings, so the mark moves in proportion to the characters spoken.</remarks>
+    private async Task PlayTrackingWordsAsync(SpeechAudio clip, CancellationToken token)
+    {
+        var playing = _services.Audio.PlayAsync(clip, token);
+        if (_services.Settings.ReadAloudHighlight == ReadAloudHighlight.SentenceAndWord && clip.Duration > TimeSpan.Zero && _sentence < _sentences.Count)
+        {
+            var sentence = _sentences[_sentence];
+            var started = Stopwatch.GetTimestamp();
+            while (!playing.IsCompleted && !token.IsCancellationRequested)
+            {
+                MarkWord(sentence, Math.Clamp(Stopwatch.GetElapsedTime(started) / clip.Duration, 0, 1));
+                _ = await Task.WhenAny(playing, Task.Delay(WordInterval, CancellationToken.None)).ConfigureAwait(true);
+            }
+        }
+
+        try
+        {
+            await playing.ConfigureAwait(true);
+        }
+        finally
+        {
+            SpokenWord = TextRange.None;
+            SpokenWordBounds = [];
+        }
+    }
+
+    /// <summary>Marks the word a share of the way through a sentence.</summary>
+    /// <param name="sentence">The sentence.</param>
+    /// <param name="fraction">How far through it, from 0 to 1.</param>
+    private void MarkWord(SpeechSentence sentence, double fraction)
+    {
+        var word = WordAt(_pageText, sentence, fraction);
+        if (word == SpokenWord || _owner.TryGetDocument() is not { } document)
+        {
+            return;
+        }
+
+        SpokenWord = word;
+        var rects = new List<PageRect>();
+        var runs = new List<(int Start, int Count)>();
+        ReadingDocument.GetRuns(_map, word.Start, word.Length, runs);
+        foreach (var (start, count) in runs)
+        {
+            document.GetTextBounds(SpokenPage, start, count, rects);
+        }
+
+        SpokenWordBounds = rects;
+    }
+
+    /// <summary>Remembers where reading got to in this document, so it carries on there next time.</summary>
+    private void RememberPosition()
+    {
+        if (_sentence >= _sentences.Count || _map.Length == 0)
+        {
+            return;
+        }
+
+        var start = _sentences[_sentence].Start;
+        var character = 0;
+        for (var i = start; i < _map.Length && character == 0; i++)
+        {
+            character = Math.Max(0, _map[i]);
+        }
+
+        var positions = _services.Settings.ReadingPositions;
+        if (positions.Count >= MaxRememberedPositions && !positions.ContainsKey(_owner.FilePath))
+        {
+            Prune(positions);
+        }
+
+        positions[_owner.FilePath] = new(SpokenPage, character);
     }
 
     /// <summary>Shows whether reading is under way.</summary>
@@ -683,10 +889,13 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         if (_owner.TryGetDocument() is not { } document || _sentence >= _sentences.Count)
         {
             SpokenBounds = [];
+            SpokenRange = TextRange.None;
             return;
         }
 
         var sentence = _sentences[_sentence];
+        SpokenRange = new(sentence.Start, sentence.Length);
+        RememberPosition();
         var rects = new List<PageRect>();
         var runs = new List<(int Start, int Count)>();
         ReadingDocument.GetRuns(_map, sentence.Start, sentence.Length, runs);
