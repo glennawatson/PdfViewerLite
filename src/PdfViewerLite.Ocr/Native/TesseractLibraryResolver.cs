@@ -36,10 +36,14 @@ internal static class TesseractLibraryResolver
     {
         if (OperatingSystem.IsWindows())
         {
-            return ["tesseract53.dll", "tesseract50.dll", "libtesseract-5.dll"];
+            // The UB Mannheim installer, the usual Windows build, puts libtesseract-5.dll in its program folder.
+            return ["libtesseract-5.dll", "tesseract53.dll", "tesseract50.dll", @"C:\Program Files\Tesseract-OCR\libtesseract-5.dll"];
         }
 
-        return OperatingSystem.IsMacOS() ? ["libtesseract.5.dylib", "libtesseract.dylib"] : ["libtesseract.so.5", "libtesseract.so"];
+        // Homebrew installs outside the default library path: /opt/homebrew on Apple silicon, /usr/local on Intel.
+        return OperatingSystem.IsMacOS()
+            ? ["libtesseract.5.dylib", "libtesseract.dylib", "/opt/homebrew/lib/libtesseract.5.dylib", "/usr/local/lib/libtesseract.5.dylib"]
+            : ["libtesseract.so.5", "libtesseract.so"];
     }
 
     /// <summary>Resolves the Tesseract library.</summary>

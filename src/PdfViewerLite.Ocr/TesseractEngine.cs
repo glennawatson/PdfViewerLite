@@ -42,6 +42,7 @@ public sealed unsafe class TesseractEngine : IOcrEngine
         "/usr/share/tesseract-ocr/4.00/tessdata",
         "/usr/local/share/tessdata",
         "/opt/homebrew/share/tessdata",
+        @"C:\Program Files\Tesseract-OCR\tessdata",
     ];
 
     /// <summary>Serialises use of the engine.</summary>

@@ -25,8 +25,10 @@ jobs:
           # The .NET 11 SDK from global.json builds everything; the .NET 10 runtime runs the net10.0 targets.
           dotnet-version: 10.0.x
           global-json-file: global.json
-      - name: Install Tesseract for the OCR tests
-        run: sudo apt-get update && sudo apt-get install -y libtesseract5 tesseract-ocr-eng
+      - name: Install Tesseract and a sound server for the OCR and playback tests
+        run: sudo apt-get update && sudo apt-get install -y libtesseract5 tesseract-ocr-eng pulseaudio
+      - name: Start a silent sound server
+        run: pulseaudio --daemonize=true --exit-idle-time=-1 -n --load="module-null-sink sink_name=silent" --load="module-native-protocol-unix"
       - name: Build
         run: dotnet build PdfViewerLite.slnx -c Release
       - name: Test
@@ -37,6 +39,23 @@ jobs:
           name: test-results
           path: '**/TestResults/**'
           if-no-files-found: ignore
+
+  build-desktops:
+    name: Build on ${{ matrix.os }}
+    # Tests run on Linux; Windows and macOS build everything, including their platform integrations.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - name: Build
+        run: dotnet build PdfViewerLite.slnx -c Release
 
   package:
     name: Package ${{ matrix.rid }}
@@ -105,10 +124,88 @@ jobs:
             artifacts/*.rpm
             artifacts/*.tar.gz
 
+  package-windows:
+    name: Package ${{ matrix.rid }}
+    needs: [build, build-desktops]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            arch: x64
+          - rid: win-arm64
+            arch: arm64
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish (Native AOT)
+        run: scripts/publish.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: Installer
+        run: |
+          choco install innosetup --no-progress -y
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" -DAppVersion=${{ steps.version.outputs.value }} -DArch=${{ matrix.arch }} \
+            -DSourceDir="$(cygpath -w "$PWD/artifacts/${{ matrix.rid }}")" -DOutputDir="$(cygpath -w "$PWD/artifacts")" packaging/windows/PdfViewerLite.iss
+      - name: Portable zip
+        run: 7z a "artifacts/pdfviewerlite-${{ steps.version.outputs.value }}-${{ matrix.rid }}.zip" "./artifacts/${{ matrix.rid }}/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.rid }}
+          path: |
+            artifacts/*-setup.exe
+            artifacts/*.zip
+
+  package-macos:
+    name: Package ${{ matrix.rid }}
+    needs: [build, build-desktops]
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [osx-arm64, osx-x64]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish (Native AOT)
+        run: scripts/publish.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: App bundle and disk image
+        run: packaging/macos/build-app.sh artifacts/${{ matrix.rid }} ${{ steps.version.outputs.value }} ${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.rid }}
+          path: |
+            artifacts/*.dmg
+            artifacts/*.app.zip
+
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: package
+    needs: [package, package-windows, package-macos]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
