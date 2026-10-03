@@ -39,7 +39,7 @@
   {
     "type": "",
     "frame": "PdfViewerLite.Core.Signatures.Signing.",
-    "reason": "Signing writes a new file: the original bytes plus an incremental update built as text, the cross-reference data it reads (inflated object and cross-reference streams), and a CMS signature from System.Security.Cryptography over the signed bytes, which SignedCms needs as one array. It runs once, when the user signs."
+    "reason": "Signing writes a new file: the original bytes plus an incremental update built as text, the cross-reference data it reads (inflated object and cross-reference streams), and a CMS signature from System.Security.Cryptography over the signed bytes, which SignedCms needs as one array. A damaged file also gets its cross-reference entries rebuilt by scanning (PdfRepair) and a full cross-reference stream. It runs once, when the user signs."
   },
   {
     "type": "",

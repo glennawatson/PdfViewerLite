@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Text;
 using PdfViewerLite.Core.Geometry;
 
@@ -255,6 +256,7 @@ public static class ReadingOrder
         var lines = new List<TextLine>();
         TextLine? current = null;
         var pendingSpace = false;
+        var rightToLeftPage = IsMostlyRightToLeft(characters);
         for (var i = 0; i < characters.Count; i++)
         {
             var character = characters[i];
@@ -264,15 +266,15 @@ public static class ReadingOrder
                 continue;
             }
 
-            if (current is null || StartsNewLine(current, character))
+            if (current is null || StartsNewLine(current, character, RunRight(characters, i, current)))
             {
-                current = new(i, character);
+                current = new(i, character, rightToLeftPage);
                 lines.Add(current);
                 pendingSpace = false;
                 continue;
             }
 
-            current.Append(i, character, pendingSpace || character.Bounds.Left - current.Bounds.Right > character.FontSize * SpaceGapShare);
+            current.Append(i, character, pendingSpace || Gap(current.Last, character.Bounds) > character.FontSize * SpaceGapShare);
             pendingSpace = false;
         }
 
@@ -282,17 +284,91 @@ public static class ReadingOrder
     /// <summary>Determines whether a character starts a new line: below the line, back to its left, or past a column gap.</summary>
     /// <param name="line">The current line.</param>
     /// <param name="character">The character.</param>
+    /// <param name="runRight">The right edge of the word the character starts, for a left-to-right word in right-to-left text.</param>
     /// <returns><see langword="true"/> for a new line.</returns>
-    private static bool StartsNewLine(TextLine line, in PageCharacter character)
+    private static bool StartsNewLine(TextLine line, in PageCharacter character, float runRight)
     {
         var bounds = character.Bounds;
         var overlap = Math.Min(bounds.Bottom, line.Bounds.Bottom) - Math.Max(bounds.Top, line.Bounds.Top);
         var sameLine = overlap > Math.Min(bounds.Height, line.Bounds.Height) * SameLineOverlap;
         var size = Math.Max(character.FontSize, 1);
+        if (line.IsRightToLeft)
+        {
+            // Right-to-left text runs leftwards; embedded left-to-right words stay inside the line's extent.
+            var forwards = bounds.Left > line.Bounds.Right + size;
+            var gapLeft = line.Bounds.Left - runRight > size * ColumnGapSizes;
+            return !sameLine || forwards || gapLeft;
+        }
+
         var backwards = bounds.Left < line.Bounds.Right - size;
         var columnGap = bounds.Left - line.Bounds.Right > size * ColumnGapSizes;
         return !sameLine || backwards || columnGap;
     }
+
+    /// <summary>
+    /// Finds the right edge of the left-to-right word starting at a character inside a right-to-left line: such a word
+    /// is laid out leftwards as a whole, so its first letter sits a word's width from the text before it.
+    /// </summary>
+    /// <param name="characters">The characters.</param>
+    /// <param name="start">The character.</param>
+    /// <param name="line">The current line.</param>
+    /// <returns>The word's right edge, or the character's own when it is not such a word.</returns>
+    private static float RunRight(IReadOnlyList<PageCharacter> characters, int start, TextLine? line)
+    {
+        var right = characters[start].Bounds.Right;
+        if (line is not { IsRightToLeft: true })
+        {
+            return right;
+        }
+
+        for (var i = start; i < characters.Count; i++)
+        {
+            var c = characters[i];
+            if (c.Generated || char.IsWhiteSpace(c.Value) || IsRightToLeft(c.Value))
+            {
+                break;
+            }
+
+            right = Math.Max(right, c.Bounds.Right);
+        }
+
+        return right;
+    }
+
+    /// <summary>Determines whether most of a page's letters are from right-to-left scripts.</summary>
+    /// <param name="characters">The characters.</param>
+    /// <returns><see langword="true"/> for a mostly right-to-left page.</returns>
+    private static bool IsMostlyRightToLeft(IReadOnlyList<PageCharacter> characters)
+    {
+        var rightToLeft = 0;
+        var letters = 0;
+        for (var i = 0; i < characters.Count; i++)
+        {
+            var c = characters[i].Value;
+            if (!char.IsLetter(c))
+            {
+                continue;
+            }
+
+            letters++;
+            rightToLeft += IsRightToLeft(c) ? 1 : 0;
+        }
+
+        return rightToLeft > letters - rightToLeft;
+    }
+
+    /// <summary>Measures the horizontal gap between two neighbouring characters, whichever way the text runs.</summary>
+    /// <param name="previous">The previous character's box.</param>
+    /// <param name="next">The next character's box.</param>
+    /// <returns>The gap, or a negative number when they overlap.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float Gap(in PageRect previous, in PageRect next) => Math.Max(next.Left - previous.Right, previous.Left - next.Right);
+
+    /// <summary>Determines whether a character belongs to a right-to-left script: Hebrew, Arabic, Syriac or Thaana.</summary>
+    /// <param name="c">The character.</param>
+    /// <returns><see langword="true"/> for a right-to-left letter.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsRightToLeft(char c) => c is (>= '\u0590' and <= '\u08FF') or (>= '\uFB1D' and <= '\uFDFF') or (>= '\uFE70' and <= '\uFEFF');
 
     /// <summary>Gets the body text size: the font size most characters on the page use.</summary>
     /// <param name="lines">The lines.</param>
@@ -556,6 +632,9 @@ public static class ReadingOrder
     /// <summary>A line being built: its characters with their page indices and its box.</summary>
     private sealed class TextLine
     {
+        /// <summary>The Arabic letter lam.</summary>
+        private const char ArabicLam = '\u0644';
+
         /// <summary>The soft hyphen some documents use at line breaks.</summary>
         private const char SoftHyphen = '­';
 
@@ -577,14 +656,22 @@ public static class ReadingOrder
         /// <summary>Initializes a new instance of the <see cref="TextLine"/> class with its first character.</summary>
         /// <param name="index">The character's page index.</param>
         /// <param name="character">The character.</param>
-        internal TextLine(int index, in PageCharacter character)
+        /// <param name="rightToLeftPage">Whether the page is mostly right-to-left text.</param>
+        internal TextLine(int index, in PageCharacter character, bool rightToLeftPage)
         {
             Bounds = character.Bounds;
+            IsRightToLeft = rightToLeftPage || ReadingOrder.IsRightToLeft(character.Value);
             Append(index, character, false);
         }
 
         /// <summary>Gets the line's box.</summary>
         internal PageRect Bounds { get; private set; }
+
+        /// <summary>Gets the last character's box.</summary>
+        internal PageRect Last { get; private set; }
+
+        /// <summary>Gets a value indicating whether the line's first letter is from a right-to-left script.</summary>
+        internal bool IsRightToLeft { get; }
 
         /// <summary>Gets the visible characters.</summary>
         internal int Length { get; private set; }
@@ -617,13 +704,36 @@ public static class ReadingOrder
             }
 
             _finished = null;
-            _ = _text.Append(character.Value == SoftHyphen ? '-' : character.Value);
-            _indices.Add(index);
+            if (IsReversedLigature(character))
+            {
+                // A lam-alef ligature mapped to Unicode as alef then lam: put the lam first, as it is read.
+                _ = _text.Insert(_text.Length - 1, ArabicLam);
+                _indices.Insert(_indices.Count - 1, index);
+            }
+            else
+            {
+                _ = _text.Append(character.Value == SoftHyphen ? '-' : character.Value);
+                _indices.Add(index);
+            }
+
             Bounds = Bounds.Union(character.Bounds);
+            Last = character.Bounds;
             _sizeTotal += character.FontSize;
             _bold += character.Bold ? 1 : 0;
             Length++;
         }
+
+        /// <summary>Determines whether a character is one of the Arabic alef forms a lam-alef ligature joins.</summary>
+        /// <param name="c">The character.</param>
+        /// <returns><see langword="true"/> for alef, alef with madda, or alef with hamza above or below.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsAlef(char c) => c is '\u0622' or '\u0623' or '\u0625' or '\u0627';
+
+        /// <summary>Determines whether a lam completes a lam-alef ligature that was mapped as alef then lam.</summary>
+        /// <param name="character">The new character.</param>
+        /// <returns><see langword="true"/> when the lam belongs before the alef just added.</returns>
+        private bool IsReversedLigature(in PageCharacter character) =>
+            IsRightToLeft && character.Value == ArabicLam && _text.Length > 0 && IsAlef(_text[^1]) && character.Bounds == Last;
     }
 
     /// <summary>A block being built from lines.</summary>

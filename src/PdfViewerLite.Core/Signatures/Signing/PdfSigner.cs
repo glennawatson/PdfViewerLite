@@ -85,7 +85,15 @@ public static class PdfSigner
     {
         var trailer = structure.Trailer;
         var root = ReadReference(trailer, "Root"u8);
-        _ = PdfSyntax.ReadLong(trailer, PdfSyntax.FindKey(trailer, 0, "Size"u8), out var size);
+        _ = PdfSyntax.ReadLong(trailer, PdfSyntax.FindKey(trailer, 0, "Size"u8), out var declared);
+
+        // A damaged file's /Size can be too small; new objects must not reuse a number already in the file.
+        var size = Math.Max(declared, 1);
+        foreach (var number in structure.Entries.Keys)
+        {
+            size = Math.Max(size, number + 1L);
+        }
+
         var catalog = PdfReader.GetObject(structure, root);
         var page = FindPage(structure, catalog, request.PageIndex);
         var signature = (int)size;

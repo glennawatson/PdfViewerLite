@@ -48,36 +48,42 @@ internal static class PdfReader
     /// <summary>Reads a file's structure.</summary>
     /// <param name="file">The file.</param>
     /// <returns>The structure.</returns>
-    /// <exception cref="InvalidDataException">The file's cross-reference information is damaged.</exception>
+    /// <exception cref="InvalidDataException">The file is too damaged to read.</exception>
     internal static PdfStructure Read(byte[] file)
     {
         ArgumentNullException.ThrowIfNull(file);
-        var marker = file.AsSpan().LastIndexOf("startxref"u8);
-        if (marker < 0 || PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, marker + "startxref"u8.Length), out var start) < 0)
+        try
         {
-            throw new InvalidDataException("The file has no cross-reference information.");
-        }
-
-        var entries = new Dictionary<int, XrefEntry>();
-        byte[]? trailer = null;
-        var pending = new Stack<long>();
-        var visited = new HashSet<long>();
-        pending.Push(start);
-        while (pending.Count > 0 && visited.Count < MaxSections)
-        {
-            var offset = pending.Pop();
-            if (!visited.Add(offset) || offset < 0 || offset >= file.Length)
+            var structure = ReadCrossReferences(file);
+            if (PdfRepair.IsConsistent(structure))
             {
-                continue;
+                return structure;
             }
-
-            var dictionary = ReadSection(file, (int)offset, entries);
-            trailer ??= dictionary;
-            PushReference(file, dictionary, "Prev"u8, pending);
-            PushReference(file, dictionary, "XRefStm"u8, pending);
+        }
+        catch (InvalidDataException)
+        {
+            // Rebuilt below.
         }
 
-        return trailer is null ? throw new InvalidDataException("The file's cross-reference information is damaged.") : new(file, entries, trailer, start);
+        return PdfRepair.Rebuild(file);
+    }
+
+    /// <summary>Gets the decoded bytes of an object stream.</summary>
+    /// <param name="structure">The file structure.</param>
+    /// <param name="number">The object stream's number.</param>
+    /// <returns>The decoded bytes.</returns>
+    internal static byte[] GetObjectStream(PdfStructure structure, int number)
+    {
+        ArgumentNullException.ThrowIfNull(structure);
+        if (structure.ObjectStreams.TryGetValue(number, out var cached))
+        {
+            return cached;
+        }
+
+        var dictionary = SkipObjectHeader(structure.File, (int)structure.Entries[number].Location);
+        var decoded = DecodeStream(structure.File, dictionary, structure);
+        structure.ObjectStreams[number] = decoded;
+        return decoded;
     }
 
     /// <summary>Gets an object's value, such as its dictionary or array.</summary>
@@ -129,6 +135,40 @@ internal static class PdfReader
         PdfSyntax.TryReadReference(data.Span, index, out var number)
             ? GetObject(structure, number)
             : data.Slice(index, PdfSyntax.ValueEnd(data.Span, index) - index);
+
+    /// <summary>Reads the structure from the file's cross-reference sections.</summary>
+    /// <param name="file">The file.</param>
+    /// <returns>The structure.</returns>
+    /// <exception cref="InvalidDataException">The file's cross-reference information is damaged.</exception>
+    private static PdfStructure ReadCrossReferences(byte[] file)
+    {
+        var marker = file.AsSpan().LastIndexOf("startxref"u8);
+        if (marker < 0 || PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, marker + "startxref"u8.Length), out var start) < 0)
+        {
+            throw new InvalidDataException("The file has no cross-reference information.");
+        }
+
+        var entries = new Dictionary<int, XrefEntry>();
+        byte[]? trailer = null;
+        var pending = new Stack<long>();
+        var visited = new HashSet<long>();
+        pending.Push(start);
+        while (pending.Count > 0 && visited.Count < MaxSections)
+        {
+            var offset = pending.Pop();
+            if (!visited.Add(offset) || offset < 0 || offset >= file.Length)
+            {
+                continue;
+            }
+
+            var dictionary = ReadSection(file, (int)offset, entries);
+            trailer ??= dictionary;
+            PushReference(file, dictionary, "Prev"u8, pending);
+            PushReference(file, dictionary, "XRefStm"u8, pending);
+        }
+
+        return trailer is null ? throw new InvalidDataException("The file's cross-reference information is damaged.") : new(file, entries, trailer, start);
+    }
 
     /// <summary>Queues the section a trailer key points at.</summary>
     /// <param name="file">The file.</param>
@@ -274,23 +314,6 @@ internal static class PdfReader
         return value;
     }
 
-    /// <summary>Decodes and caches an object stream.</summary>
-    /// <param name="structure">The file structure.</param>
-    /// <param name="number">The object stream's number.</param>
-    /// <returns>The decoded bytes.</returns>
-    private static byte[] GetObjectStream(PdfStructure structure, int number)
-    {
-        if (structure.ObjectStreams.TryGetValue(number, out var cached))
-        {
-            return cached;
-        }
-
-        var dictionary = SkipObjectHeader(structure.File, (int)structure.Entries[number].Location);
-        var decoded = DecodeStream(structure.File, dictionary, structure);
-        structure.ObjectStreams[number] = decoded;
-        return decoded;
-    }
-
     /// <summary>Skips an object's <c>N G obj</c> header.</summary>
     /// <param name="file">The file.</param>
     /// <param name="offset">The object's offset.</param>
@@ -301,7 +324,7 @@ internal static class PdfReader
         var index = PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, offset), out _);
         index = index < 0 ? -1 : PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, index), out _);
         index = index < 0 ? -1 : PdfSyntax.SkipSpace(file, index);
-        if (index < 0 || !file.AsSpan(index).StartsWith("obj"u8))
+        if (index < 0 || index >= file.Length || !file.AsSpan(index).StartsWith("obj"u8))
         {
             throw new InvalidDataException($"No object at offset {offset}.");
         }

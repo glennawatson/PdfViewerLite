@@ -16,6 +16,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PdfViewerLite.App.Tests/PdfViewerLite.App.Tests.csproj" />
+    <Project Path="tests/PdfViewerLite.Compatibility.Tests/PdfViewerLite.Compatibility.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.Core.Tests/PdfViewerLite.Core.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.Pdfium.Tests/PdfViewerLite.Pdfium.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.TestAssets/PdfViewerLite.TestAssets.csproj" />

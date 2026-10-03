@@ -16,4 +16,7 @@ internal sealed record PdfStructure(byte[] File, Dictionary<int, XrefEntry> Entr
 {
     /// <summary>Gets the decoded object streams read so far, by object number.</summary>
     internal Dictionary<int, byte[]> ObjectStreams { get; } = [];
+
+    /// <summary>Gets a value indicating whether the cross-reference information was rebuilt by scanning a damaged file.</summary>
+    internal bool Repaired { get; init; }
 }

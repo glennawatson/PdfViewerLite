@@ -29,17 +29,20 @@ internal static class PdfEditing
         return Encoding.Latin1.GetString(dictionary[..keyStart]) + Encoding.Latin1.GetString(dictionary[valueEnd..]);
     }
 
-    /// <summary>Adds an entry just before a dictionary's closing <c>&gt;&gt;</c>.</summary>
+    /// <summary>
+    /// Adds an entry just before a dictionary's closing <c>&gt;&gt;</c>, on a line of its own so a comment ending
+    /// the dictionary's last line cannot swallow it.
+    /// </summary>
     /// <param name="dictionary">The dictionary text.</param>
     /// <param name="entry">The entry, for example <c>/SigFlags 3</c>.</param>
     /// <returns>The dictionary with the entry.</returns>
     internal static string AddEntry(string dictionary, string entry)
     {
         var close = dictionary.TrimEnd().Length - CloserLength;
-        return $"{dictionary[..close].TrimEnd()} {entry} >>";
+        return $"{dictionary[..close].TrimEnd()}\n{entry}\n>>";
     }
 
-    /// <summary>Appends an item to an array's contents.</summary>
+    /// <summary>Appends an item to an array's contents, on a line of its own so a trailing comment cannot swallow it.</summary>
     /// <param name="array">The array, or empty for a new one.</param>
     /// <param name="item">The item.</param>
     /// <returns>The array text.</returns>
@@ -51,7 +54,7 @@ internal static class PdfEditing
         }
 
         var text = Encoding.Latin1.GetString(array).TrimEnd();
-        return $"{text[..^1].TrimEnd()} {item}]";
+        return $"{text[..^1].TrimEnd()}\n{item}]";
     }
 
     /// <summary>Writes text as a PDF hex string in UTF-16BE with a byte order mark, safe for any characters.</summary>

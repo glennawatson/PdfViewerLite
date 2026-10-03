@@ -11,4 +11,11 @@ namespace PdfViewerLite.Core.Signatures.Signing;
 /// <param name="Location">The byte offset or the object stream's number.</param>
 /// <param name="Index">The object's index in its object stream.</param>
 [DebuggerDisplay("{Type}: {Location}/{Index}")]
-internal readonly record struct XrefEntry(int Type, long Location, int Index);
+internal readonly record struct XrefEntry(int Type, long Location, int Index)
+{
+    /// <summary>The type of an object stored at a byte offset.</summary>
+    internal const int InUse = 1;
+
+    /// <summary>The type of an object packed into an object stream.</summary>
+    internal const int Compressed = 2;
+}

@@ -14,7 +14,7 @@ public sealed partial class PdfiumDocument : IPageExporter
     private const int WidgetSubtype = 20;
 
     /// <inheritdoc/>
-    public unsafe bool ExportPages(ReadOnlySpan<int> pages, in SheetLayout layout, Stream destination)
+    public bool ExportPages(ReadOnlySpan<int> pages, in SheetLayout layout, Stream destination)
     {
         ArgumentNullException.ThrowIfNull(destination);
         using var scope = PdfiumLibrary.EnterScope();
@@ -37,17 +37,15 @@ public sealed partial class PdfiumDocument : IPageExporter
             return false;
         }
 
-        fixed (int* indices = pages)
+        var imported = ImportPages(copy, pages);
+        if (imported == 0)
         {
-            if (NativeMethods.FPDF_ImportPagesByIndex(copy, _handle, indices, new((uint)pages.Length), 0) == 0)
-            {
-                return false;
-            }
+            return false;
         }
 
         if (!layout.IncludeAnnotations)
         {
-            RemoveMarkup(copy, pages.Length);
+            RemoveMarkup(copy, imported);
         }
 
         if (layout.PagesPerSheet <= 1)
@@ -88,6 +86,33 @@ public sealed partial class PdfiumDocument : IPageExporter
                     _ = NativeMethods.FPDFPage_RemoveAnnot(page, i);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Copies pages into a new document. When the batch fails, as it does when a damaged file has pages PDFium cannot
+    /// load, the pages are copied one at a time and the broken ones left out, so the rest still print.
+    /// Callers hold the PDFium lock.
+    /// </summary>
+    /// <param name="copy">The new document.</param>
+    /// <param name="pages">The pages, zero-based.</param>
+    /// <returns>The number of pages copied.</returns>
+    private unsafe int ImportPages(PdfiumDocumentHandle copy, ReadOnlySpan<int> pages)
+    {
+        fixed (int* indices = pages)
+        {
+            if (NativeMethods.FPDF_ImportPagesByIndex(copy, _handle, indices, new((uint)pages.Length), 0) != 0)
+            {
+                return pages.Length;
+            }
+
+            var imported = 0;
+            for (var i = 0; i < pages.Length; i++)
+            {
+                imported += NativeMethods.FPDF_ImportPagesByIndex(copy, _handle, indices + i, new(1U), imported) != 0 ? 1 : 0;
+            }
+
+            return imported;
         }
     }
 }

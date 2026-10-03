@@ -27,6 +27,14 @@ internal static partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial int FPDFText_GetCharBox(PdfiumTextPageHandle textPage, int index, out double left, out double right, out double bottom, out double top);
 
+    /// <summary>Native <c>FPDFText_GetLooseCharBox</c> entry point: the box from the font's ascent to its descent.</summary>
+    /// <param name="textPage">The text page.</param>
+    /// <param name="index">The character.</param>
+    /// <param name="rect">Receives the box in page space.</param>
+    /// <returns>Nonzero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFText_GetLooseCharBox(PdfiumTextPageHandle textPage, int index, out FsRectF rect);
+
     /// <summary>Native <c>FPDFText_GetFontSize</c> entry point.</summary>
     /// <param name="textPage">The text page.</param>
     /// <param name="index">The character.</param>

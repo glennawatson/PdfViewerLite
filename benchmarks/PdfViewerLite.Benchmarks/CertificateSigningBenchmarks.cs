@@ -24,6 +24,9 @@ public class CertificateSigningBenchmarks
     /// <summary>A document with an object stream and a cross-reference stream.</summary>
     private byte[] _compressed = [];
 
+    /// <summary>A document whose cross-reference offsets are all wrong, so signing must rebuild them.</summary>
+    private byte[] _damaged = [];
+
     /// <summary>The signing request.</summary>
     private SigningRequest _request;
 
@@ -34,6 +37,10 @@ public class CertificateSigningBenchmarks
         _certificate = TestSignedPdf.CreateCertificate(TimeProvider.System);
         _classic = TestPdf.Create(Pages);
         _compressed = TestPdf.CreateCompressed();
+
+        // A comment after the header moves every object, so each offset in the cross-reference table is wrong.
+        var header = Array.IndexOf(_classic, (byte)'\n') + 1;
+        _damaged = [.. _classic.AsSpan(0, header), .. "% shifted by a damaged copy\n"u8, .. _classic.AsSpan(header)];
         _request = new(0, "Approved", "Brisbane", TimeProvider.System.GetUtcNow());
     }
 
@@ -45,6 +52,11 @@ public class CertificateSigningBenchmarks
     /// <returns>The signed length.</returns>
     [Benchmark]
     public int SignClassic() => PdfSigner.Sign(_classic, _certificate, _request).Length;
+
+    /// <summary>Signs a damaged document, rebuilding its cross-reference information first.</summary>
+    /// <returns>The signed length.</returns>
+    [Benchmark]
+    public int SignDamaged() => PdfSigner.Sign(_damaged, _certificate, _request).Length;
 
     /// <summary>Signs a document whose structure is compressed into streams.</summary>
     /// <returns>The signed length.</returns>

@@ -72,7 +72,12 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, IForm
         _pageSizes = new PageSize[count];
         for (var i = 0; i < count; i++)
         {
-            _pageSizes[i] = NativeMethods.FPDF_GetPageSizeByIndexF(handle, i, out var size) != 0 ? new(size.Width, size.Height) : default;
+            // A page PDFium cannot measure (a broken page tree) takes the previous page's size, so the layout stays
+            // whole and the page shows blank rather than breaking every page after it.
+            var fallback = i > 0 ? _pageSizes[i - 1] : PageSize.Letter;
+            _pageSizes[i] = NativeMethods.FPDF_GetPageSizeByIndexF(handle, i, out var size) != 0 && size.Width > 0 && size.Height > 0
+                ? new(size.Width, size.Height)
+                : fallback;
         }
     }
 

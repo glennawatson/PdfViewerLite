@@ -12,6 +12,15 @@ namespace PdfViewerLite.Core.Geometry;
 [DebuggerDisplay("{Width} x {Height}")]
 public readonly record struct PageSize(float Width, float Height)
 {
+    /// <summary>The width of US Letter paper in points.</summary>
+    private const float LetterWidth = 612;
+
+    /// <summary>The height of US Letter paper in points.</summary>
+    private const float LetterHeight = 792;
+
+    /// <summary>Gets US Letter, the size used when a page's own size cannot be read.</summary>
+    public static PageSize Letter => new(LetterWidth, LetterHeight);
+
     /// <summary>Gets the size after applying a rotation.</summary>
     /// <param name="rotation">The rotation to apply.</param>
     /// <returns>The rotated size.</returns>

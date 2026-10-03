@@ -34,12 +34,19 @@ jobs:
         with:
           path: ~/.cache/pdfviewerlite/kokoro
           key: kokoro-${{ hashFiles('src/PdfViewerLite.Speech/Kokoro/KokoroModel.cs') }}
+      - name: Cache the real-world PDF corpus
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pdfviewerlite/corpus
+          key: corpus-${{ hashFiles('tests/corpus/corpus.json') }}
       - name: Build
         run: dotnet build PdfViewerLite.slnx -c Release
       - name: Test
         env:
           # The Read Aloud integration tests run the real Kokoro model, downloaded by the app's own downloader.
           PDFVIEWERLITE_KOKORO_DOWNLOAD: '1'
+          # The compatibility tests run every operation on real PDFs listed in tests/corpus/corpus.json.
+          PDFVIEWERLITE_CORPUS_DOWNLOAD: '1'
         run: dotnet test --solution PdfViewerLite.slnx -c Release --coverage --coverage-output-format cobertura
       - uses: actions/upload-artifact@v4
         if: always()

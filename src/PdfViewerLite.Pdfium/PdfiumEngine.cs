@@ -77,7 +77,15 @@ public sealed class PdfiumEngine : IDocumentEngine
             throw CreateOpenException(error, fullPath);
         }
 
-        return new(handle, fullPath);
+        var document = new PdfiumDocument(handle, fullPath);
+        if (document.PageCount == 0)
+        {
+            // PDFium can rebuild a damaged file into one with no pages; there is nothing to show, so say so.
+            document.Dispose();
+            throw CreateOpenException((int)PdfiumError.Format, fullPath);
+        }
+
+        return document;
     }
 
     /// <summary>Maps a PDFium error code to an exception.</summary>
