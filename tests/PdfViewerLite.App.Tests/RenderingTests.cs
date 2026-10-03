@@ -51,6 +51,18 @@ public sealed class RenderingTests
     /// <summary>The page that the Page Down key reaches from the second page.</summary>
     private const int SpreadPage = 2;
 
+    /// <summary>The name of the page count text.</summary>
+    private const string PageCountName = "PageCountText";
+
+    /// <summary>How far apart, in pixels, centres may be and still read as one line.</summary>
+    private const double AlignmentTolerance = 1;
+
+    /// <summary>The bytes in a captured pixel.</summary>
+    private const int BytesPerFramePixel = 4;
+
+    /// <summary>How different from the background a pixel must be to count as drawn.</summary>
+    private const int InkThreshold = 60;
+
     /// <summary>Masks off the alpha channel.</summary>
     private const uint RgbMask = 0xFFFFFFU;
 
@@ -79,7 +91,7 @@ public sealed class RenderingTests
 
             // The code-behind bindings fill the tool bar.
             var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
-            var pageCount = view.GetVisualDescendants().OfType<TextBlock>().Single(static t => t.Name == "PageCountText");
+            var pageCount = view.GetVisualDescendants().OfType<TextBlock>().Single(static t => t.Name == PageCountName);
             var zoom = view.GetVisualDescendants().OfType<Button>().Single(static b => b.Name == "ZoomButton");
             await Assert.That(pageCount.Text).IsEqualTo($"of {Pages}");
             await Assert.That(zoom.Content as string).EndsWith("%");
@@ -281,6 +293,107 @@ public sealed class RenderingTests
         {
             window.Close();
         }
+    }
+
+    /// <summary>
+    /// Verifies the page arrows, the page box and the page count share one centre line, and that both arrows' drawn
+    /// strokes are centred on it too, measured from the rendered pixels.
+    /// </summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task AlignsPageNavigation()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("align.pdf", Pages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
+            _ = await UiWait.UntilAsync(() => view.GetVisualDescendants().OfType<TextBlock>().Single(static t => t.Name == PageCountName).Bounds.Width > 0);
+            var previous = Find<Button>(view, "PreviousPageButton");
+            var next = Find<Button>(view, "NextPageButton");
+            var box = Find<TextBox>(view, "PageBox");
+            var count = Find<TextBlock>(view, PageCountName);
+            using var frame = window.CaptureRenderedFrame()!;
+            Save(frame, "page-navigation.png");
+            var pixels = ReadPixels(frame, out var stride);
+            var line = CentreY(previous, window);
+
+            await Assert.That(Math.Abs(CentreY(next, window) - line)).IsLessThan(AlignmentTolerance);
+            await Assert.That(Math.Abs(CentreY(box, window) - line)).IsLessThan(AlignmentTolerance);
+            await Assert.That(Math.Abs(CentreY(count, window) - line)).IsLessThan(AlignmentTolerance);
+            await Assert.That(Math.Abs(InkCentreY(pixels, stride, previous, window) - line)).IsLessThan(AlignmentTolerance);
+            await Assert.That(Math.Abs(InkCentreY(pixels, stride, next, window) - line)).IsLessThan(AlignmentTolerance);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Finds a named control.</summary>
+    /// <typeparam name="T">The control type.</typeparam>
+    /// <param name="root">Where to look.</param>
+    /// <param name="name">The name.</param>
+    /// <returns>The control.</returns>
+    private static T Find<T>(Visual root, string name)
+        where T : Control => root.GetVisualDescendants().OfType<T>().Single(control => control.Name == name);
+
+    /// <summary>Gets a control's vertical centre in window coordinates.</summary>
+    /// <param name="control">The control.</param>
+    /// <param name="window">The window.</param>
+    /// <returns>The centre.</returns>
+    private static double CentreY(Control control, Visual window) =>
+        control.TranslatePoint(new(0, control.Bounds.Height * Half), window)!.Value.Y;
+
+    /// <summary>Copies a frame's BGRA pixels.</summary>
+    /// <param name="frame">The frame.</param>
+    /// <param name="stride">The bytes per row.</param>
+    /// <returns>The pixels.</returns>
+    private static byte[] ReadPixels(WriteableBitmap frame, out int stride)
+    {
+        using var locked = frame.Lock();
+        stride = locked.RowBytes;
+        var pixels = new byte[stride * locked.Size.Height];
+        System.Runtime.InteropServices.Marshal.Copy(locked.Address, pixels, 0, pixels.Length);
+        return pixels;
+    }
+
+    /// <summary>Finds the vertical centre of what is drawn inside a control, against its top-left background.</summary>
+    /// <param name="pixels">The frame pixels.</param>
+    /// <param name="stride">The bytes per row.</param>
+    /// <param name="control">The control.</param>
+    /// <param name="window">The window.</param>
+    /// <returns>The centre of the drawn rows.</returns>
+    private static double InkCentreY(byte[] pixels, int stride, Control control, Visual window)
+    {
+        var origin = control.TranslatePoint(default, window)!.Value;
+        var left = (int)origin.X;
+        var top = (int)origin.Y;
+        var width = (int)control.Bounds.Width;
+        var height = (int)control.Bounds.Height;
+        var background = pixels.AsSpan((top * stride) + (left * BytesPerFramePixel), BytesPerFramePixel).ToArray();
+        var first = -1;
+        var last = -1;
+        for (var y = top; y < top + height; y++)
+        {
+            for (var x = left; x < left + width; x++)
+            {
+                var pixel = pixels.AsSpan((y * stride) + (x * BytesPerFramePixel), BytesPerFramePixel);
+                if (Math.Abs(pixel[0] - background[0]) + Math.Abs(pixel[1] - background[1]) + Math.Abs(pixel[2] - background[2]) <= InkThreshold)
+                {
+                    continue;
+                }
+
+                first = first < 0 ? y : first;
+                last = y;
+                break;
+            }
+        }
+
+        return (first + last + 1) * (double)Half;
     }
 
     /// <summary>Saves a frame when screenshots are requested.</summary>

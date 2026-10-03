@@ -81,15 +81,18 @@
             </StackPanel>
           </Button>
           <Rectangle Classes="separator" />
-          <Button x:Name="PreviousPageButton" Classes="tool" ToolTip.Tip="Previous page (Page Up)">
-            <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
-          </Button>
-          <TextBox x:Name="PageBox" Width="56" MinHeight="28" Padding="6,3" VerticalAlignment="Center" HorizontalContentAlignment="Center"
-                   ToolTip.Tip="Go to page (Ctrl+L)" />
-          <TextBlock x:Name="PageCountText" Classes="secondary" VerticalAlignment="Center" Margin="6,0" />
-          <Button x:Name="NextPageButton" Classes="tool" ToolTip.Tip="Next page (Page Down)">
-            <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
-          </Button>
+          <!-- One group on one centre line: the arrows together, then the page box and the page count. -->
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <Button x:Name="PreviousPageButton" Classes="tool" ToolTip.Tip="Previous page (Page Up)">
+              <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
+            </Button>
+            <Button x:Name="NextPageButton" Classes="tool" ToolTip.Tip="Next page (Page Down)">
+              <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
+            </Button>
+            <TextBox x:Name="PageBox" Width="56" Height="30" MinHeight="30" Margin="4,0,0,0" Padding="6,0" VerticalAlignment="Center"
+                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" ToolTip.Tip="Go to page (Ctrl+L)" />
+            <TextBlock x:Name="PageCountText" Classes="secondary" VerticalAlignment="Center" Margin="6,0" />
+          </StackPanel>
           <Rectangle Classes="separator" />
           <Button x:Name="ZoomOutButton" Classes="tool" ToolTip.Tip="Zoom out (Ctrl+-)">
             <Path Classes="icon nav" Data="{StaticResource IconZoomOut}" />

@@ -1,10 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <!-- Icon glyphs: stroked paths sized like 16px Breeze action icons. -->
+  <!--
+    Icon glyphs: stroked paths drawn in a shared 24 unit frame (each geometry starts with "M0,0 M24,24"), so every
+    icon keeps its designed position and sits on the button's centre line; 20px frames give 16px Breeze-sized glyphs.
+  -->
   <Style Selector="Path.icon">
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
     <Setter Property="Stretch" Value="Uniform" />
     <Setter Property="StrokeThickness" Value="1.6" />
     <Setter Property="StrokeLineCap" Value="Round" />
@@ -154,8 +157,8 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
   <Style Selector="Button.tabclose Path.icon">
-    <Setter Property="Width" Value="10" />
-    <Setter Property="Height" Value="10" />
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
     <Setter Property="StrokeThickness" Value="1.8" />
   </Style>
 
