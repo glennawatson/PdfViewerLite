@@ -40,5 +40,35 @@
     "type": "",
     "frame": "PdfViewerLite.Core.Signatures.Signing.",
     "reason": "Signing writes a new file: the original bytes plus an incremental update built as text, the cross-reference data it reads (inflated object and cross-reference streams), and a CMS signature from System.Security.Cryptography over the signed bytes, which SignedCms needs as one array. It runs once, when the user signs."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Documents.PdfLayers.",
+    "reason": "Reading layers parses the file's structure and returns new layer records; switching a layer writes a new copy of the file (the original bytes plus a small update with the new default visibility). Both run when the layers panel opens or a box is ticked, never while scrolling."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.RebuildLayerView",
+    "reason": "Switching a layer rebuilds the in-memory copy pages are drawn from: the file's bytes, the layers left hidden and the copy itself. Once per tick of a layer box; drawing from the copy allocates nothing."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.CurrentBytes",
+    "reason": "Switching a layer reads the document's current bytes (from the file, or with unsaved edits written in) to build the copy pages are drawn from. Once per tick of a layer box."
+  },
+  {
+    "type": "PdfViewerLite.Core.Documents.DocumentLayer",
+    "frame": "PdfViewerLite.",
+    "reason": "A layer's visibility is an immutable record, replaced when its box is ticked."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumLayerView.",
+    "reason": "The layer view's page cache and the SafeHandles owning its native copy and pages, created when a layer is switched; reused for every page drawn afterwards."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.Native.NativeBufferHandle",
+    "reason": "The SafeHandle owning the native memory that holds the layer view's copy, one per switch."
   }
 ]

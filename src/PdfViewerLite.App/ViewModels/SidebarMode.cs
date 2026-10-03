@@ -21,4 +21,7 @@ public enum SidebarMode
 
     /// <summary>Files embedded in the document.</summary>
     Attachments = 4,
+
+    /// <summary>The document's layers.</summary>
+    Layers = 5,
 }

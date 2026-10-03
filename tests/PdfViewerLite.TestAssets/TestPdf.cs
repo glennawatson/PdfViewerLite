@@ -40,6 +40,24 @@ public static class TestPdf
     /// <summary>The contents of the embedded file in <see cref="CreateWithAttachment"/>.</summary>
     public static readonly string AttachmentText = "Meeting notes: bring the signed form.";
 
+    /// <summary>The name of the visible layer in <see cref="CreateWithLayers"/>.</summary>
+    public static readonly string DrawingLayer = "Drawing";
+
+    /// <summary>The name of the hidden layer in <see cref="CreateWithLayers"/>.</summary>
+    public static readonly string NotesLayer = "Notes";
+
+    /// <summary>The left edge of the visible layer's box, in points.</summary>
+    public static readonly int LayerBoxLeft = 72;
+
+    /// <summary>The left edge of the hidden layer's box, in points.</summary>
+    public static readonly int LayerBoxRight = 340;
+
+    /// <summary>The bottom of both boxes, in PDF points from the bottom.</summary>
+    public static readonly int LayerBoxBottom = 600;
+
+    /// <summary>The size of both boxes, in points.</summary>
+    public static readonly int LayerBoxSize = 100;
+
     /// <summary>The standard Helvetica font dictionary.</summary>
     private const string HelveticaFont = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
 
@@ -300,6 +318,36 @@ public static class TestPdf
         output.Write(xref);
         Write(string.Create(CultureInfo.InvariantCulture, $"\nendstream\nendobj\nstartxref\n{xrefOffset}\n%%EOF\n"));
         return output.ToArray();
+    }
+
+    /// <summary>
+    /// Creates a one page document with two layers: "Drawing", shown, holds a black box on the left; "Notes", hidden by
+    /// default, holds a black box on the right.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateWithLayers()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var drawing = Add(objects, $"<< /Type /OCG /Name ({DrawingLayer}) >>");
+        var notes = Add(objects, $"<< /Type /OCG /Name ({NotesLayer}) >>");
+        var left = string.Create(CultureInfo.InvariantCulture, $"/OC /L1 BDC 0 0 0 rg {LayerBoxLeft} {LayerBoxBottom} {LayerBoxSize} {LayerBoxSize} re f EMC\n");
+        var right = string.Create(CultureInfo.InvariantCulture, $"/OC /L2 BDC 0 0 0 rg {LayerBoxRight} {LayerBoxBottom} {LayerBoxSize} {LayerBoxSize} re f EMC\n");
+        var stream = left + right;
+        var content = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {stream.Length} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Properties << /L1 {{drawing}} 0 R /L2 {{notes}} 0 R >> >> /Contents {{content}} 0 R >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Catalog /Pages {{pages}} 0 R
+               /OCProperties << /OCGs [{{drawing}} 0 R {{notes}} 0 R] /D << /Order [{{drawing}} 0 R {{notes}} 0 R] /OFF [{{notes}} 0 R] >> >> >>
+            """);
+        var info = Add(objects, $"<< /Title (Layers) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
     }
 
     /// <summary>Writes a PDF to a new temporary file.</summary>

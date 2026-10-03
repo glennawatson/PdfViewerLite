@@ -339,6 +339,10 @@
             <ToggleButton x:Name="AttachmentsToggle" Classes="tool" ToolTip.Tip="Attachments">
               <Path Classes="icon nav" Data="{StaticResource IconAttachment}" />
             </ToggleButton>
+            <!-- Only shown when the document has layers. -->
+            <ToggleButton x:Name="LayersToggle" Classes="tool" ToolTip.Tip="Layers">
+              <Path Classes="icon nav" Data="{StaticResource IconLayers}" />
+            </ToggleButton>
           </StackPanel>
           <Panel>
             <ListBox x:Name="ThumbnailList" Classes="thumbnails" Background="Transparent" />
@@ -352,6 +356,10 @@
                          Text="No annotations yet. Choose Annotate, or right-click selected text." />
             </Panel>
             <ListBox x:Name="SearchResultList" Background="Transparent" />
+            <DockPanel x:Name="LayersPanel">
+              <TextBlock DockPanel.Dock="Top" Classes="secondary" Margin="12,4,12,8" TextWrapping="Wrap" Text="Tick a layer to show it. Only the view changes, not the file." />
+              <ListBox x:Name="LayerList" Background="Transparent" />
+            </DockPanel>
             <DockPanel x:Name="AttachmentsPanel">
               <Button x:Name="SaveAttachmentButton" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" Margin="8" Content="Save Attachment…" />
               <ListBox x:Name="AttachmentList" Background="Transparent" />

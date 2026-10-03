@@ -165,8 +165,16 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, IForm
             {
                 _ = NativeMethods.FPDFBitmap_FillRect(bitmap, 0, 0, target.Width, target.Height, new(White));
                 var flags = ToNativeFlags(info.Flags);
-                NativeMethods.FPDF_RenderPageBitmap(bitmap, page.Handle, -info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, flags);
-                _form.Draw(bitmap, page.Handle, new(-info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, flags));
+                if (CurrentLayerView()?.GetPage(info.PageIndex) is { } layerPage)
+                {
+                    // Layers differ from the document's setting: draw the copy showing the chosen layers.
+                    NativeMethods.FPDF_RenderPageBitmap(bitmap, layerPage, -info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, flags);
+                }
+                else
+                {
+                    NativeMethods.FPDF_RenderPageBitmap(bitmap, page.Handle, -info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, flags);
+                    _form.Draw(bitmap, page.Handle, new(-info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, flags));
+                }
             }
             finally
             {
@@ -314,6 +322,8 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, IForm
         _fieldCache.Clear();
         _form.Dispose();
         _fonts.Dispose();
+        _layerView?.Dispose();
+        _layerView = null;
         _handle.Dispose();
     }
 

@@ -4,6 +4,7 @@
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -69,6 +70,9 @@ public sealed class RenderingTests
 
     /// <summary>The length of the "Page 1" heading, before the next line starts.</summary>
     private const int HeadingLength = 6;
+
+    /// <summary>The layers in the layered test document.</summary>
+    private const int LayerCount = 2;
 
     /// <summary>Masks off the alpha channel.</summary>
     private const uint RgbMask = 0xFFFFFFU;
@@ -443,6 +447,42 @@ public sealed class RenderingTests
             await Assert.That(ready).IsTrue();
             await Assert.That(preview.Sheets.Count).IsEqualTo(PageByPagePages);
             await Assert.That(preview.Summary).IsEqualTo("4 sheets");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies the layers panel lists a layered document's layers and ticking one shows it.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ShowsAndHidesLayers()
+    {
+        using var test = new TestServices();
+        var path = Path.Combine(test.Directory, "layers.pdf");
+        await File.WriteAllBytesAsync(path, TestPdf.CreateWithLayers());
+        using var main = new MainViewModel(test.Services);
+        main.Open([path]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var tab = main.SelectedTab!;
+            var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
+            var toggle = Find<ToggleButton>(view, "LayersToggle");
+            var layers = tab.Layers;
+            var listed = await UiWait.UntilAsync(() => layers.HasLayers && toggle.IsVisible);
+            tab.IsLayersMode = true;
+            layers.Items[1].IsVisible = true;
+            _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > 0 && test.Services.RenderHub.Scheduler.QueueLength == 0);
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "layers.png");
+            var source = (Core.Documents.ILayerSource)tab.TryGetDocument()!;
+
+            await Assert.That(listed).IsTrue();
+            await Assert.That(layers.Items.Count).IsEqualTo(LayerCount);
+            await Assert.That(source.GetLayers()[1].IsVisible).IsTrue();
         }
         finally
         {

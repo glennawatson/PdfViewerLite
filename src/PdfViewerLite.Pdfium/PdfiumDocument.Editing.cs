@@ -189,6 +189,7 @@ public sealed partial class PdfiumDocument
         {
             _ = _annotationCache.Remove(pageIndex);
             _ = Interlocked.Increment(ref _unsavedChanges);
+            InvalidateLayerView();
         }
 
         return changed;

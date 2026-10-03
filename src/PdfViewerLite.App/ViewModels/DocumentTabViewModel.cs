@@ -322,6 +322,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             this.RaisePropertyChanged(nameof(IsSearchMode));
             this.RaisePropertyChanged(nameof(IsAnnotationsMode));
             this.RaisePropertyChanged(nameof(IsAttachmentsMode));
+            this.RaisePropertyChanged(nameof(IsLayersMode));
             if (value == SidebarMode.Annotations)
             {
                 Annotations.RefreshItems();
@@ -363,6 +364,16 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         get => SidebarMode == SidebarMode.Attachments;
         set => SetSidebarMode(value, SidebarMode.Attachments);
     }
+
+    /// <summary>Gets or sets a value indicating whether the layers panel is shown.</summary>
+    public bool IsLayersMode
+    {
+        get => SidebarMode == SidebarMode.Layers;
+        set => SetSidebarMode(value, SidebarMode.Layers);
+    }
+
+    /// <summary>Gets the document's layers.</summary>
+    public LayersViewModel Layers => field ??= new(this);
 
     /// <summary>Gets the files embedded in the document.</summary>
     public AttachmentsViewModel Attachments => field ??= new(this);
@@ -698,6 +709,13 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         this.RaisePropertyChanged(nameof(PreviewPageIndex));
     }
 
+    /// <summary>Drops every tile after layers were shown or hidden, so all pages redraw.</summary>
+    public void OnLayersChanged()
+    {
+        RenderHub.Cache.RemoveDocument(Source.Id);
+        _pageEdits.OnNext(-1);
+    }
+
     /// <summary>Drops an edited page's tiles so it redraws, and tells views about it.</summary>
     /// <param name="pageIndex">The page.</param>
     public void OnPageEdited(int pageIndex)
@@ -849,6 +867,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         _services.RecentDocuments.Add(FilePath);
         Signatures.Refresh();
         Attachments.Refresh();
+        Layers.Refresh();
         WatchFile();
         _documentChanges.OnNext(RxVoid.Default);
     }

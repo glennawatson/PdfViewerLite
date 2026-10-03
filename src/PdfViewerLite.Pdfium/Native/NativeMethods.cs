@@ -32,6 +32,14 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial PdfiumDocumentHandle FPDF_LoadDocument(string filePath, string? password);
 
+    /// <summary>Native <c>FPDF_LoadMemDocument64</c> entry point.</summary>
+    /// <param name="data">The PDF bytes, which must stay alive while the document is open.</param>
+    /// <param name="size">The byte count.</param>
+    /// <param name="password">The password.</param>
+    /// <returns>The document handle.</returns>
+    [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial PdfiumDocumentHandle FPDF_LoadMemDocument64(NativeBufferHandle data, nuint size, string? password);
+
     /// <summary>Native <c>FPDF_CloseDocument</c> entry point.</summary>
     /// <param name="document">The document.</param>
     [LibraryImport(Library)]
