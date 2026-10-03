@@ -10,27 +10,27 @@
                Text="Changes apply straight away and are kept for next time." />
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Colour scheme" />
-      <ComboBox x:Name="SchemeBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Colour scheme" x:Name="SchemeBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Page colour" />
-      <ComboBox x:Name="PageToneBox" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Page colour" x:Name="PageToneBox" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Tool bar" />
-      <ComboBox x:Name="ToolbarBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Tool bar" x:Name="ToolbarBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="When a file changes on disk" />
-      <ComboBox x:Name="FileChangeBox" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="When a file changes on disk" x:Name="FileChangeBox" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Motion" />
-      <ComboBox x:Name="MotionBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Motion" x:Name="MotionBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Text cursor" />
-      <ComboBox x:Name="CaretBox" Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Text cursor" x:Name="CaretBox" Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Interface text size" />
-      <ComboBox x:Name="FontSizeBox" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Interface text size" x:Name="FontSizeBox" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch" />
     </Grid>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Read Aloud voice" />
-      <ComboBox x:Name="SpeechEngineBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Read Aloud voice" x:Name="SpeechEngineBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock x:Name="AzureKeyLabel" Grid.Row="1" VerticalAlignment="Center" Text="Azure Speech key" />
-      <TextBox x:Name="AzureKeyBox" Grid.Row="1" Grid.Column="1" PasswordChar="•" PlaceholderText="Key 1 or Key 2 from your Speech resource" />
+      <TextBox AutomationProperties.Name="Azure Speech key" x:Name="AzureKeyBox" Grid.Row="1" Grid.Column="1" PasswordChar="•" PlaceholderText="Key 1 or Key 2 from your Speech resource" />
       <TextBlock x:Name="AzureRegionLabel" Grid.Row="2" VerticalAlignment="Center" Text="Azure region" />
-      <TextBox x:Name="AzureRegionBox" Grid.Row="2" Grid.Column="1" PlaceholderText="For example uksouth or eastus" />
+      <TextBox AutomationProperties.Name="Azure region" x:Name="AzureRegionBox" Grid.Row="2" Grid.Column="1" PlaceholderText="For example uksouth or eastus" />
       <TextBlock x:Name="SpeechNote" Grid.Row="3" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" />
     </Grid>
     <Button x:Name="CloseButton" HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" />

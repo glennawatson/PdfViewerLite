@@ -107,7 +107,7 @@
             <Button x:Name="NextPageButton" Classes="tool" ToolTip.Tip="Next page (Page Down)">
               <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
             </Button>
-            <TextBox x:Name="PageBox" Width="56" Height="30" MinHeight="30" Margin="4,0,0,0" Padding="6,0" VerticalAlignment="Center"
+            <TextBox x:Name="PageBox" AutomationProperties.Name="Page number" Width="56" Height="30" MinHeight="30" Margin="4,0,0,0" Padding="6,0" VerticalAlignment="Center"
                      VerticalContentAlignment="Center" HorizontalContentAlignment="Center" ToolTip.Tip="Go to page (Ctrl+L)" />
             <TextBlock x:Name="PageCountText" Classes="secondary" VerticalAlignment="Center" Margin="6,0" />
           </StackPanel>
@@ -310,8 +310,8 @@
           <Button x:Name="NextSentenceButton" Classes="tool" ToolTip.Tip="Next sentence">
             <Path Classes="icon nav" Data="{StaticResource IconNextSentence}" />
           </Button>
-          <ComboBox x:Name="VoiceBox" Width="250" VerticalAlignment="Center" Margin="8,0,2,0" ToolTip.Tip="Voice" />
-          <ComboBox x:Name="SpeedBox" Width="150" VerticalAlignment="Center" ToolTip.Tip="Speed" />
+          <ComboBox x:Name="VoiceBox" AutomationProperties.Name="Voice" Width="250" VerticalAlignment="Center" Margin="8,0,2,0" ToolTip.Tip="Voice" />
+          <ComboBox x:Name="SpeedBox" AutomationProperties.Name="Speed" Width="150" VerticalAlignment="Center" ToolTip.Tip="Speed" />
           <Button x:Name="ReadAloudOptionsButton" Classes="tool" ToolTip.Tip="How what is read aloud is marked">
             <TextBlock Classes="label" Text="Options" />
             <Button.Flyout>
@@ -352,7 +352,7 @@
     <!-- Find bar. -->
     <Border x:Name="FindBar" DockPanel.Dock="Top" Classes="toolbar">
       <StackPanel Orientation="Horizontal" Spacing="2">
-        <TextBox x:Name="SearchBox" Width="280" MinHeight="28" Padding="8,3" VerticalAlignment="Center" PlaceholderText="Find in document" />
+        <TextBox x:Name="SearchBox" AutomationProperties.Name="Find in document" Width="280" MinHeight="28" Padding="8,3" VerticalAlignment="Center" PlaceholderText="Find in document" />
         <ToggleButton x:Name="MatchCaseToggle" Classes="tool" ToolTip.Tip="Match case">
           <Path Classes="icon" Data="{StaticResource IconCase}" />
         </ToggleButton>
@@ -435,7 +435,7 @@
                                  SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" DimBrush="{DynamicResource AppDimBrush}" />
             <!-- The text field editor sits exactly over the field being filled in. -->
             <Canvas x:Name="FieldOverlay">
-              <TextBox x:Name="FieldEditor" Classes="field" IsVisible="False" />
+              <TextBox x:Name="FieldEditor" AutomationProperties.Name="Form field" Classes="field" IsVisible="False" />
             </Canvas>
           </Panel>
         </ScrollViewer>
@@ -451,7 +451,7 @@
         <Border x:Name="PasswordPanel" Background="{DynamicResource AppCanvasBackground}">
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Width="320">
             <TextBlock FontSize="16" HorizontalAlignment="Center" Text="This document is password protected" />
-            <TextBox x:Name="PasswordBox" PasswordChar="●" PlaceholderText="Password" />
+            <TextBox x:Name="PasswordBox" AutomationProperties.Name="Password" PasswordChar="●" PlaceholderText="Password" />
             <Button x:Name="UnlockButton" HorizontalAlignment="Right" Content="Unlock" />
           </StackPanel>
         </Border>

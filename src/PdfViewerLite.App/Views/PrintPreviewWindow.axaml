@@ -22,26 +22,26 @@
         <StackPanel Spacing="14">
           <Grid ColumnDefinitions="136,*">
             <TextBlock Text="Destination" VerticalAlignment="Center" />
-            <ComboBox x:Name="DestinationBox" Grid.Column="1" HorizontalAlignment="Stretch" />
+            <ComboBox x:Name="DestinationBox" AutomationProperties.Name="Destination" Grid.Column="1" HorizontalAlignment="Stretch" />
           </Grid>
           <Grid ColumnDefinitions="136,*">
             <TextBlock Text="Pages" VerticalAlignment="Center" />
-            <ComboBox x:Name="PagesBox" Grid.Column="1" HorizontalAlignment="Stretch">
+            <ComboBox x:Name="PagesBox" AutomationProperties.Name="Pages" Grid.Column="1" HorizontalAlignment="Stretch">
               <ComboBoxItem Content="All" />
               <ComboBoxItem Content="Current page" />
               <ComboBoxItem Content="Custom" />
             </ComboBox>
           </Grid>
           <Grid x:Name="CustomPagesRow" ColumnDefinitions="136,*">
-            <TextBox x:Name="CustomPagesBox" Grid.Column="1" PlaceholderText="For example 1-3, 7" />
+            <TextBox x:Name="CustomPagesBox" AutomationProperties.Name="Page range" Grid.Column="1" PlaceholderText="For example 1-3, 7" />
           </Grid>
           <Grid x:Name="CopiesRow" ColumnDefinitions="136,*">
             <TextBlock Text="Copies" VerticalAlignment="Center" />
-            <NumericUpDown x:Name="CopiesBox" Grid.Column="1" Minimum="1" Maximum="999" Increment="1" FormatString="0" HorizontalAlignment="Stretch" />
+            <NumericUpDown x:Name="CopiesBox" AutomationProperties.Name="Copies" Grid.Column="1" Minimum="1" Maximum="999" Increment="1" FormatString="0" HorizontalAlignment="Stretch" />
           </Grid>
           <Grid x:Name="ColourRow" ColumnDefinitions="136,*">
             <TextBlock Text="Colour" VerticalAlignment="Center" />
-            <ComboBox x:Name="ColourBox" Grid.Column="1" HorizontalAlignment="Stretch">
+            <ComboBox x:Name="ColourBox" AutomationProperties.Name="Colour" Grid.Column="1" HorizontalAlignment="Stretch">
               <ComboBoxItem Content="Colour" />
               <ComboBoxItem Content="Black and white" />
             </ComboBox>
@@ -51,11 +51,11 @@
           </Grid>
           <Grid ColumnDefinitions="136,*">
             <TextBlock Text="Pages per sheet" VerticalAlignment="Center" />
-            <ComboBox x:Name="PagesPerSheetBox" Grid.Column="1" HorizontalAlignment="Stretch" />
+            <ComboBox x:Name="PagesPerSheetBox" AutomationProperties.Name="Pages per sheet" Grid.Column="1" HorizontalAlignment="Stretch" />
           </Grid>
           <Grid x:Name="PaperRow" ColumnDefinitions="136,*">
             <TextBlock Text="Paper size" VerticalAlignment="Center" />
-            <ComboBox x:Name="PaperBox" Grid.Column="1" HorizontalAlignment="Stretch">
+            <ComboBox x:Name="PaperBox" AutomationProperties.Name="Paper size" Grid.Column="1" HorizontalAlignment="Stretch">
               <ComboBoxItem Content="A4" />
               <ComboBoxItem Content="Letter" />
             </ComboBox>

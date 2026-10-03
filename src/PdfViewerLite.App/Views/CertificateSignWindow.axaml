@@ -13,7 +13,7 @@
     </Grid>
     <Grid ColumnDefinitions="110,*">
       <TextBlock Text="Password" VerticalAlignment="Center" />
-      <TextBox x:Name="PasswordBox" Grid.Column="1" PasswordChar="●" />
+      <TextBox x:Name="PasswordBox" Grid.Column="1" PasswordChar="●" AutomationProperties.Name="Certificate password" />
     </Grid>
     <Grid ColumnDefinitions="110,*">
       <TextBlock Text="Reason" VerticalAlignment="Center" />

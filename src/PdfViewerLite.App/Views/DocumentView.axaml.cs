@@ -427,6 +427,7 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         FieldEditor.Width = rect.Width;
         FieldEditor.Height = rect.Height;
         FieldEditor.AcceptsReturn = field.IsMultiline;
+        Avalonia.Automation.AutomationProperties.SetName(FieldEditor, string.IsNullOrWhiteSpace(field.Name) ? "Form field" : field.Name);
         FieldEditor.FontSize = Math.Max(MinFieldFontSize, rect.Height * FieldFontShare);
         FieldEditor.IsVisible = true;
         Dispatcher.UIThread.Post(FocusAndSelect, FieldEditor, DispatcherPriority.Loaded);
