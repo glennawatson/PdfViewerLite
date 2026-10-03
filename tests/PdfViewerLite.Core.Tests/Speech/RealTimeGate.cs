@@ -5,7 +5,7 @@
 namespace PdfViewerLite.Core.Tests.Speech;
 
 /// <summary>
-/// Lets one timed voice test run at a time across test processes: the suite runs this project once per target
+/// Lets one real-voice test run at a time across test processes: the suite runs this project once per target
 /// framework at the same time, and two voices synthesizing together on the same processor would make each look slower
 /// than real time when neither is. A file opened for exclusive use is the lock, so it works on every platform.
 /// </summary>
@@ -15,7 +15,7 @@ internal static class RealTimeGate
     private static readonly TimeSpan Retry = TimeSpan.FromMilliseconds(200);
 
     /// <summary>The longest wait for the lock before timing anyway.</summary>
-    private static readonly TimeSpan MaxWait = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan MaxWait = TimeSpan.FromMinutes(30);
 
     /// <summary>Gets the lock file.</summary>
     private static string LockPath { get; } = Path.Combine(Path.GetTempPath(), "pdfviewerlite-realtime-voice.lock");

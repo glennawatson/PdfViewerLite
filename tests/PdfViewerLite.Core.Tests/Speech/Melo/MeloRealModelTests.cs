@@ -14,7 +14,7 @@ namespace PdfViewerLite.Core.Tests.Speech.Melo;
 /// must work. MeloTTS varies each reading slightly, as people do, so readings are not compared sample for sample.
 /// </summary>
 [NotInParallel(nameof(KokoroRealModelTests))]
-public sealed class MeloRealModelTests
+public sealed class MeloRealModelTests : IDisposable
 {
     /// <summary>MeloTTS's sample rate.</summary>
     private const int Hertz = 44_100;
@@ -64,6 +64,17 @@ public sealed class MeloRealModelTests
     /// <summary>The Australian voice.</summary>
     private const string Heart = "EN-AU";
 
+    /// <summary>The hold on the voices, so no other test process synthesizes while this test does.</summary>
+    private IDisposable? _voices;
+
+    /// <summary>Waits until no other test process is synthesizing, then holds the voices for this test.</summary>
+    /// <returns>A task.</returns>
+    [Before(Test)]
+    public async Task HoldVoicesAsync() => _voices = await RealTimeGate.EnterAsync();
+
+    /// <inheritdoc/>
+    public void Dispose() => _voices?.Dispose();
+
     /// <summary>A sentence sounds like speech: long enough for its words, audible and not clipped or broken.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -89,8 +100,7 @@ public sealed class MeloRealModelTests
         using var engine = new MeloEngine(MeloModelFixture.Directory);
         _ = await engine.SynthesizeAsync("Warm up.", Heart, 1, CancellationToken.None);
 
-        // The best of a few readings, one timed voice at a time: the engine's speed, not a moment of contention.
-        using var gate = await RealTimeGate.EnterAsync();
+        // The best of a few readings: the engine's speed, not a moment of contention.
         var best = double.MaxValue;
         for (var attempt = 0; attempt < TimingAttempts; attempt++)
         {

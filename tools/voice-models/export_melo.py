@@ -120,7 +120,9 @@ def export_bert():
 
     from onnxruntime.quantization import QuantType, quantize_dynamic
 
-    quantize_dynamic(path, os.path.join(out, "bert-en.onnx"), weight_type=QuantType.QInt8, per_channel=True)
+    # Unsigned weights: ONNX Runtime multiplies unsigned activations by signed weights with an instruction that saturates
+    # on x64 processors without VNNI, which distorted BERT's features there and with them MeloTTS's timing.
+    quantize_dynamic(path, os.path.join(out, "bert-en.onnx"), weight_type=QuantType.QUInt8, per_channel=True)
     os.remove(path)
     tokenizer.save_vocabulary(out)
     os.replace(os.path.join(out, "vocab.txt"), os.path.join(out, "bert-en-vocab.txt"))

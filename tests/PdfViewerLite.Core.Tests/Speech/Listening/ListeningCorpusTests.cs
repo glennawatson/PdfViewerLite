@@ -17,7 +17,7 @@ namespace PdfViewerLite.Core.Tests.Speech.Listening;
 /// voice knows the words of real passages, and a long session stays even in loudness, pace and pauses.
 /// </summary>
 [NotInParallel(nameof(KokoroRealModelTests))]
-public sealed class ListeningCorpusTests
+public sealed class ListeningCorpusTests : IDisposable
 {
     /// <summary>The Kokoro voice used for the long session.</summary>
     private const string Voice = "af_heart";
@@ -60,6 +60,17 @@ public sealed class ListeningCorpusTests
 
     /// <summary>The variable naming a folder to save the session's audio in, for listening by ear.</summary>
     private const string SaveVariable = "PDFVIEWERLITE_LISTENING_DIR";
+
+    /// <summary>The hold on the voices, so no other test process synthesizes while this test does.</summary>
+    private IDisposable? _voices;
+
+    /// <summary>Waits until no other test process is synthesizing, then holds the voices for this test.</summary>
+    /// <returns>A task.</returns>
+    [Before(Test)]
+    public async Task HoldVoicesAsync() => _voices = await RealTimeGate.EnterAsync();
+
+    /// <inheritdoc/>
+    public void Dispose() => _voices?.Dispose();
 
     /// <summary>Written English is turned into the words a reader would say.</summary>
     /// <param name="item">The case.</param>
@@ -186,7 +197,6 @@ public sealed class ListeningCorpusTests
     private static async Task AssertStaysEven(ISpeechEngine engine, string voice, string fileName)
     {
         var passage = ListeningCorpus.Instance.Passages.Single(static p => p.Category == "long-session");
-        using var gate = await RealTimeGate.EnterAsync();
         var session = await ReadAsync(engine, voice, passage.Text);
         Save(session, fileName);
         var levels = session.Sentences.Select(static s => s.Measurement.Level).ToList();
