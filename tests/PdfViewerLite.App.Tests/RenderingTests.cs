@@ -2,13 +2,18 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
+using PdfViewerLite.App.Theming;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
+using PdfViewerLite.Core.Settings;
+using PdfViewerLite.Core.Theming;
 
 namespace PdfViewerLite.App.Tests;
 
@@ -29,6 +34,9 @@ public sealed class RenderingTests
 
     /// <summary>The number of cached tiles that shows rendering is well under way.</summary>
     private const int ExpectedTiles = 6;
+
+    /// <summary>Masks off the alpha channel.</summary>
+    private const uint RgbMask = 0xFFFFFFU;
 
     /// <summary>Verifies pages and thumbnails render, then saves a screenshot when PDFVIEWERLITE_SCREENSHOTS is set.</summary>
     /// <returns>A task.</returns>
@@ -57,12 +65,13 @@ public sealed class RenderingTests
             await Assert.That(scrolled).IsTrue();
             await Assert.That(scroller.Offset.Y).IsGreaterThan(0);
 
-            tab.NightMode = true;
+            test.Services.Settings.ColorScheme = ColorSchemeChoice.Calm;
+            test.Services.ApplySettings();
             tab.Search.Open();
             tab.Search.Query = "quick brown";
             _ = await UiWait.UntilAsync(() => tab.Search.Results.Count > 0 && test.Services.RenderHub.Scheduler.QueueLength == 0);
-            using var night = window.CaptureRenderedFrame();
-            Save(night, "night-search.png");
+            using var calm = window.CaptureRenderedFrame();
+            Save(calm, "calm-search.png");
         }
         finally
         {
@@ -89,6 +98,41 @@ public sealed class RenderingTests
         finally
         {
             window.Close();
+        }
+    }
+
+    /// <summary>Verifies each built-in colour scheme themes the chrome and the pages, saving a screenshot of each.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task AppliesEachScheme()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("schemes.pdf", Pages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        var application = Application.Current!;
+        try
+        {
+            ColorSchemeChoice[] choices = [ColorSchemeChoice.Calm, ColorSchemeChoice.HighContrast, ColorSchemeChoice.Dark, ColorSchemeChoice.Light];
+            foreach (var choice in choices)
+            {
+                test.Services.Settings.ColorScheme = choice;
+                test.Services.ApplySettings();
+                DesktopThemeApplier.Apply(application, test.Services.CurrentTheme);
+                _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > ExpectedTiles && test.Services.RenderHub.Scheduler.QueueLength == 0);
+                using var frame = window.CaptureRenderedFrame();
+                Save(frame, $"scheme-{choice}.png");
+
+                var foreground = (ISolidColorBrush)application.Resources["AppForeground"]!;
+                await Assert.That(foreground.Color.ToUInt32() & RgbMask).IsEqualTo(test.Services.CurrentTheme.Scheme.Text);
+                await Assert.That(main.SelectedTab!.PageTone).IsEqualTo(test.Services.CurrentTheme.PageTone);
+            }
+        }
+        finally
+        {
+            window.Close();
+            DesktopThemeApplier.Apply(application, ThemeResolver.Resolve(new(), null));
         }
     }
 

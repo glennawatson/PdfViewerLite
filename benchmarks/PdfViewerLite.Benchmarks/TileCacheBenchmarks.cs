@@ -57,7 +57,7 @@ public class TileCacheBenchmarks
     /// <summary>Creates a key.</summary>
     /// <param name="index">The tile index.</param>
     /// <returns>The key.</returns>
-    private static TileKey Key(int index) => new(1, index / TilesPerPage, ScaleKey, PageRotation.None, false, (short)(index % Columns), (short)(index % TilesPerPage / Columns));
+    private static TileKey Key(int index) => new(1, index / TilesPerPage, ScaleKey, PageRotation.None, 0, (short)(index % Columns), (short)(index % TilesPerPage / Columns));
 
     /// <summary>A surface with no pixels.</summary>
     private sealed class NullSurface : IRenderSurface

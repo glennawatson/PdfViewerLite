@@ -15,6 +15,7 @@ using PdfViewerLite.App.Theming;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
 using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Platform.Linux.DBus;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -33,7 +34,13 @@ public sealed class App : Application
     private MainWindow? _window;
 
     /// <inheritdoc/>
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+
+        // The Calm fallback until the services resolve the user's choice, so even a bare lifetime is fully themed.
+        DesktopThemeApplier.Apply(this, ThemeResolver.Resolve(new(), null));
+    }
 
     /// <inheritdoc/>
     public override void OnFrameworkInitializationCompleted()
@@ -55,6 +62,20 @@ public sealed class App : Application
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
+    /// <summary>Hands a desktop palette to the services on the UI thread.</summary>
+    /// <param name="services">The services.</param>
+    /// <param name="palette">The palette.</param>
+    private static void OnPalette(AppServices services, DesktopPalette? palette)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            services.SetDesktopPalette(palette);
+            return;
+        }
+
+        Dispatcher.UIThread.Post(static state => ((PaletteUpdate)state!).Apply(), new PaletteUpdate(services, palette));
+    }
+
     /// <summary>Creates the services and the main window.</summary>
     /// <param name="desktop">The desktop lifetime.</param>
     private void Start(IClassicDesktopStyleApplicationLifetime desktop)
@@ -71,10 +92,11 @@ public sealed class App : Application
         _lifetime.Add(services);
         _lifetime.Add(viewModel);
 
-        // The palette's current value arrives synchronously on subscription, so the first frame is already themed.
+        // Both current values arrive synchronously on subscription, so the first frame is already themed.
+        _lifetime.Add(services.Theme.SubscribeSafe(ApplyTheme, OnError));
         if (services.ThemeSource is { } themeSource)
         {
-            _lifetime.Add(themeSource.Palette.SubscribeSafe(OnPalette, OnError));
+            _lifetime.Add(themeSource.Palette.SubscribeSafe(palette => OnPalette(services, palette), OnError));
         }
 
         if (Program.InstanceHost is { } host)
@@ -97,27 +119,14 @@ public sealed class App : Application
         desktop.MainWindow = window;
     }
 
-    /// <summary>Applies a palette on the UI thread.</summary>
-    /// <param name="palette">The palette.</param>
-    private void OnPalette(DesktopPalette? palette)
+    /// <summary>Applies a theme to the resources and window font.</summary>
+    /// <param name="theme">The theme.</param>
+    private void ApplyTheme(ResolvedTheme theme)
     {
-        if (!Dispatcher.UIThread.CheckAccess())
-        {
-            Dispatcher.UIThread.Post(static state => ((App)Current!).ApplyPalette((DesktopPalette?)state), palette);
-            return;
-        }
-
-        ApplyPalette(palette);
-    }
-
-    /// <summary>Applies a palette to the resources and window font.</summary>
-    /// <param name="palette">The palette.</param>
-    private void ApplyPalette(DesktopPalette? palette)
-    {
-        DesktopThemeApplier.Apply(this, palette);
+        DesktopThemeApplier.Apply(this, theme);
         if (_window is not null)
         {
-            DesktopThemeApplier.ApplyFont(_window, palette);
+            DesktopThemeApplier.ApplyFont(_window, theme);
         }
     }
 
@@ -132,5 +141,15 @@ public sealed class App : Application
 
         viewModel.Open(request.Uris);
         _window.BringToFront();
+    }
+
+    /// <summary>A desktop palette on its way to the UI thread.</summary>
+    /// <param name="Services">The services.</param>
+    /// <param name="Palette">The palette.</param>
+    private sealed record PaletteUpdate(AppServices Services, DesktopPalette? Palette)
+    {
+        /// <summary>Hands the palette to the services.</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Apply() => Services.SetDesktopPalette(Palette);
     }
 }

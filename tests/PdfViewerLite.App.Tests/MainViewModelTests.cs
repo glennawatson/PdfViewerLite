@@ -76,8 +76,21 @@ public sealed class MainViewModelTests
         await Assert.That(main.Tabs.Count).IsEqualTo(TwoTabs);
         await Assert.That(main.SelectedTab!.FilePath).IsEqualTo(second);
 
+        var asked = 0;
+        using var confirm = main.ConfirmInteraction.RegisterHandler(context =>
+        {
+            asked++;
+            context.SetOutput(asked > 1);
+        });
+
+        _ = await main.CloseAllTabsCommand.Execute().ToTask();
+        await Assert.That(main.Tabs.Count).IsEqualTo(TwoTabs);
+
         _ = await main.CloseAllTabsCommand.Execute().ToTask();
         await Assert.That(main.HasTabs).IsFalse();
+
+        _ = await main.ReopenClosedTabCommand.Execute().ToTask();
+        await Assert.That(main.Tabs.Count).IsEqualTo(TwoTabs);
     }
 
     /// <summary>Verifies the session is saved and restored with the selected tab.</summary>

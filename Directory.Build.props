@@ -1,6 +1,8 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- Libraries and tests build for .NET 10 (LTS) and .NET 11; the AOT app ships on .NET 10. -->
+    <LibraryTargetFrameworks>net10.0;net11.0</LibraryTargetFrameworks>
+    <TargetFrameworks>$(LibraryTargetFrameworks)</TargetFrameworks>
     <VersionPrefix>0.1.0</VersionPrefix>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DebugType>embedded</DebugType>
@@ -25,6 +27,11 @@
 
     <IsTestProject Condition="'$(IsTestProject)' == ''">$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectName)', '(^|\.)Tests$'))</IsTestProject>
     <IsBenchmarkProject Condition="'$(IsBenchmarkProject)' == ''">$(MSBuildProjectName.EndsWith('Benchmarks'))</IsBenchmarkProject>
+  </PropertyGroup>
+
+  <!-- .NET 11 compiles async methods to runtime async state machines. -->
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
+    <Features>$(Features);runtime-async=on</Features>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">

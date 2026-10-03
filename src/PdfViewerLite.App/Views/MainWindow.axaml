@@ -14,7 +14,8 @@
     <KeyBinding Gesture="Ctrl+PageDown" Command="{Binding NextTabCommand}" />
     <KeyBinding Gesture="Ctrl+PageUp" Command="{Binding PreviousTabCommand}" />
     <KeyBinding Gesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
-    <KeyBinding Gesture="Ctrl+I" Command="{Binding ToggleNightModeCommand}" />
+    <KeyBinding Gesture="Ctrl+I" Command="{Binding TogglePageToneCommand}" />
+    <KeyBinding Gesture="Ctrl+OemComma" Command="{Binding PreferencesCommand}" />
     <KeyBinding Gesture="Alt+Enter" Command="{Binding PropertiesCommand}" />
     <KeyBinding Gesture="Ctrl+F" Command="{Binding SelectedTab.FindCommand}" />
     <KeyBinding Gesture="F3" Command="{Binding SelectedTab.Search.NextCommand}" />
@@ -63,24 +64,31 @@
                 </DockPanel.ContextMenu>
                 <Button DockPanel.Dock="Right" Classes="tabclose" ToolTip.Tip="Close (Ctrl+W)"
                         Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CloseTabCommand}" CommandParameter="{Binding}">
-                  <Path Classes="icon" Data="{StaticResource IconClose}" />
+                  <Path Classes="icon remove" Data="{StaticResource IconClose}" />
                 </Button>
                 <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
               </DockPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-        <Button Grid.Column="1" Classes="tool" ToolTip.Tip="Open (Ctrl+O)" Command="{Binding OpenCommand}">
-          <Path Classes="icon" Data="{StaticResource IconAdd}" />
+        <Button Grid.Column="1" Classes="tool" ToolTip.Tip="Ctrl+O" Command="{Binding OpenCommand}">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon add" Data="{StaticResource IconAdd}" />
+            <TextBlock Classes="label" Text="Open" />
+          </StackPanel>
         </Button>
-        <Button Grid.Column="2" Classes="tool" ToolTip.Tip="Menu" Margin="0,0,4,0">
-          <Path Classes="icon" Data="{StaticResource IconMenu}" />
+        <Button Grid.Column="2" Classes="tool" ToolTip.Tip="Preferences, page colour, closed tabs" Margin="0,0,4,0">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon" Data="{StaticResource IconMenu}" />
+            <TextBlock Classes="label" Text="Menu" />
+          </StackPanel>
           <Button.Flyout>
             <MenuFlyout Placement="BottomEdgeAlignedRight">
               <MenuItem Header="_Open…" InputGesture="Ctrl+O" Command="{Binding OpenCommand}" />
-              <MenuItem Header="_Reopen Closed Tab" InputGesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
+              <MenuItem Header="_Reopen Closed Tabs" InputGesture="Ctrl+Shift+T" Command="{Binding ReopenClosedTabCommand}" />
               <Separator />
-              <MenuItem Header="_Night Mode" InputGesture="Ctrl+I" Command="{Binding ToggleNightModeCommand}" />
+              <MenuItem Header="_Comfort Page Colour" InputGesture="Ctrl+I" ToggleType="CheckBox" IsChecked="{Binding PageToneEnabled, Mode=OneWay}" Command="{Binding TogglePageToneCommand}" />
+              <MenuItem Header="_Preferences…" InputGesture="Ctrl+OemComma" Command="{Binding PreferencesCommand}" />
               <Separator />
               <MenuItem Header="Close _All Tabs" Command="{Binding CloseAllTabsCommand}" />
             </MenuFlyout>
@@ -91,7 +99,10 @@
 
     <Border DockPanel.Dock="Bottom" Classes="toolbar" BorderThickness="0,1,0,0"
             IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
-      <TextBlock Margin="6,2" Text="{Binding StatusMessage}" />
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Dismiss" Command="{Binding DismissStatusCommand}" />
+        <TextBlock Margin="6,2" VerticalAlignment="Center" Text="{Binding StatusMessage}" />
+      </DockPanel>
     </Border>
 
     <Panel>

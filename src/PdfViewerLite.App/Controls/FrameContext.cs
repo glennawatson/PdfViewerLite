@@ -20,9 +20,6 @@ namespace PdfViewerLite.App.Controls;
 /// <param name="Generation">The render generation for requests made this frame.</param>
 internal readonly record struct FrameContext(DocumentTabViewModel Tab, IDocument Document, RenderHub Hub, Rect Viewport, double RenderScaling, int Generation)
 {
-    /// <summary>Gets the render flags for the tab.</summary>
-    internal RenderFlags Flags => RenderFlags.Annotations | (Tab.NightMode ? RenderFlags.Invert : RenderFlags.None);
-
     /// <summary>Queues a render request for the tab's canvas.</summary>
     /// <param name="key">The tile key.</param>
     /// <param name="info">What to render.</param>
@@ -31,5 +28,5 @@ internal readonly record struct FrameContext(DocumentTabViewModel Tab, IDocument
     /// <param name="priority">The priority.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void Request(in TileKey key, in PageRenderInfo info, int width, int height, RenderPriority priority) =>
-        Hub.Scheduler.Request(new(key, Document, info, width, height, priority, Tab.CanvasClient, Generation));
+        Hub.Scheduler.Request(new(key, Document, info, width, height, priority, Tab.CanvasClient, Generation, Tab.PageTone));
 }

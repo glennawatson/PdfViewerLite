@@ -107,7 +107,7 @@ public sealed class DocumentTabViewModelTests
         await Assert.That(found).IsTrue();
         await Assert.That(tab.Search.CurrentIndex).IsEqualTo(0);
         await Assert.That(tab.Search.Status).IsEqualTo($"1 of {Pages}");
-        await Assert.That(tab.SidebarMode).IsEqualTo(SidebarMode.Search);
+        await Assert.That(tab.SidebarMode).IsEqualTo(SidebarMode.Thumbnails);
         _ = await tab.Search.NextCommand.Execute().ToTask();
         await Assert.That(tab.Search.CurrentIndex).IsEqualTo(1);
         _ = await tab.Search.PreviousCommand.Execute().ToTask();
@@ -116,5 +116,24 @@ public sealed class DocumentTabViewModelTests
 
         tab.Search.Close();
         await Assert.That(tab.Search.Results.Count).IsEqualTo(0);
+    }
+
+    /// <summary>Verifies opening and closing find leaves the sidebar on the panel the user chose.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task FindKeepsSidebarPanel()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument(DocumentName, Pages)]);
+        var tab = main.SelectedTab!;
+        tab.SidebarMode = SidebarMode.Outline;
+
+        tab.Search.Open();
+        var whileOpen = tab.SidebarMode;
+        tab.Search.Close();
+
+        await Assert.That(whileOpen).IsEqualTo(SidebarMode.Outline);
+        await Assert.That(tab.SidebarMode).IsEqualTo(SidebarMode.Outline);
     }
 }

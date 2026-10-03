@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/artifacts/$RID"
 
 rm -rf "$OUT"
-dotnet publish "$ROOT/src/PdfViewerLite.App/PdfViewerLite.App.csproj" -c Release -r "$RID" -o "$OUT" "${@:2}"
+dotnet publish "$ROOT/src/PdfViewerLite.App/PdfViewerLite.App.csproj" -c Release -f net10.0 -r "$RID" -o "$OUT" "${@:2}"
 
 # Debug symbols are kept next to the artifacts, not shipped.
 mkdir -p "$ROOT/artifacts/symbols/$RID"

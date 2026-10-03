@@ -65,14 +65,14 @@ public sealed class PageThumbnail : Control
         var tab = Tab;
         var page = PageIndex;
         _hasImage = false;
-        context.FillRectangle(tab?.NightMode == true ? Brushes.Black : Brushes.White, rect);
+        context.FillRectangle(PaperBrush.Get(tab?.PageTone ?? PageTone.None), rect);
         context.DrawRectangle(BorderPen, rect);
         if (tab is null || page < 0 || page >= tab.Source.PageCount)
         {
             return;
         }
 
-        var key = TileKey.Preview(tab.Source.Id, page, PageRotation.None, tab.NightMode);
+        var key = TileKey.Preview(tab.Source.Id, page, PageRotation.None, tab.PageTone.Id);
         if (tab.RenderHub.Cache.TryGet(key, out var surface))
         {
             using (context.PushRenderOptions(new() { BitmapInterpolationMode = BitmapInterpolationMode.HighQuality }))
@@ -93,9 +93,8 @@ public sealed class PageThumbnail : Control
         var size = tab.Source.PageSizes[page];
         var scale = TileGrid.GetPreviewScale(size, PageRotation.None);
         TileGrid.GetPagePixelSize(size, PageRotation.None, scale, out var width, out var height);
-        var flags = RenderFlags.Annotations | (tab.NightMode ? RenderFlags.Invert : RenderFlags.None);
-        var info = new PageRenderInfo(page, scale, PageRotation.None, 0, 0, flags);
-        _ = tab.RenderHub.Scheduler.Request(new(key, document, info, width, height, RenderPriority.Thumbnail, tab.ThumbnailClient, tab.ThumbnailClient.Generation));
+        var info = new PageRenderInfo(page, scale, PageRotation.None, 0, 0, RenderFlags.Annotations);
+        _ = tab.RenderHub.Scheduler.Request(new(key, document, info, width, height, RenderPriority.Thumbnail, tab.ThumbnailClient, tab.ThumbnailClient.Generation, tab.PageTone));
     }
 
     /// <inheritdoc/>
@@ -128,7 +127,7 @@ public sealed class PageThumbnail : Control
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
-    /// <summary>Subscribes to tile arrivals and night mode changes, replacing any previous subscriptions.</summary>
+    /// <summary>Subscribes to tile arrivals and page tone changes, replacing any previous subscriptions.</summary>
     /// <param name="tab">The tab, or <see langword="null"/> to unsubscribe.</param>
     private void Subscribe(DocumentTabViewModel? tab)
     {
@@ -142,7 +141,7 @@ public sealed class PageThumbnail : Control
         _subscriptions =
         [
             tab.RenderHub.TilesArrived.Where(_ => !_hasImage).SubscribeSafe(_ => InvalidateVisual(), OnError),
-            tab.WhenAnyValue(static x => x.NightMode).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.WhenAnyValue(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
     }
 }

@@ -84,7 +84,7 @@ public sealed class RenderSchedulerTests
         const int stalePages = 3;
 
         // Occupy the render thread so the following requests queue up.
-        _ = scheduler.Request(Request(new(BlockerDocument, 0, 1, PageRotation.None, false, 0, 0), blocker, blockerClient, RenderPriority.Visible));
+        _ = scheduler.Request(Request(new(BlockerDocument, 0, 1, PageRotation.None, 0, 0, 0), blocker, blockerClient, RenderPriority.Visible));
         _ = blocker.Started.Wait(Timeout);
         for (var page = 0; page < stalePages; page++)
         {
@@ -123,7 +123,7 @@ public sealed class RenderSchedulerTests
         var blocker = new FakeDocument("blocker.pdf", FakeEngine.A4) { Gate = gate };
         var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
         var client = new RenderClient();
-        var blockerKey = new TileKey(BlockerDocument, 0, 1, PageRotation.None, false, 0, 0);
+        var blockerKey = new TileKey(BlockerDocument, 0, 1, PageRotation.None, 0, 0, 0);
         const int expectedTiles = 3;
 
         _ = scheduler.Request(Request(blockerKey, blocker, client, RenderPriority.Visible));
@@ -147,32 +147,33 @@ public sealed class RenderSchedulerTests
         await Assert.That(order[1]).IsEqualTo(Key(1));
     }
 
-    /// <summary>Verifies the invert flag inverts rendered pixels.</summary>
+    /// <summary>Verifies the request's page tone recolours rendered pixels.</summary>
     /// <returns>A task.</returns>
     [Test]
-    public async Task InvertsWhenRequested()
+    public async Task AppliesPageTone()
     {
+        const uint paper = 0x2A2826U;
+        const uint ink = 0xD2CDC5U;
+        const byte inkBlue = 0xC5;
         using var completed = new SemaphoreSlim(0);
         using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
         using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
-        var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
-        var request = Request(Key(1), document, new(), RenderPriority.Visible);
-        request = request with { Info = request.Info with { PageIndex = 1, Flags = RenderFlags.Invert } };
+        var document = new FakeDocument(DocumentName, FakeEngine.A4);
+        var request = Request(Key(0), document, new(), RenderPriority.Visible) with { Tone = new(paper, ink) };
 
         _ = scheduler.Request(request);
         _ = await completed.WaitAsync(Timeout);
         _ = scheduler.TryTakeCompleted(out var tile);
 
-        var pixels = ((FakeSurface)tile.Surface).Pixels;
-        await Assert.That(pixels[0]).IsEqualTo((byte)0xFE);
-        await Assert.That(pixels[3]).IsEqualTo((byte)1);
+        // The fake renders page 0 as all-zero bytes (black), which the tone maps to the ink colour.
+        await Assert.That(((FakeSurface)tile.Surface).Pixels[0]).IsEqualTo(inkBlue);
         tile.Surface.Dispose();
     }
 
     /// <summary>Creates a key for a page.</summary>
     /// <param name="page">The page.</param>
     /// <returns>The key.</returns>
-    private static TileKey Key(int page) => new(1, page, 1, PageRotation.None, false, 0, 0);
+    private static TileKey Key(int page) => new(1, page, 1, PageRotation.None, 0, 0, 0);
 
     /// <summary>Creates a request.</summary>
     /// <param name="key">The key.</param>
@@ -181,5 +182,5 @@ public sealed class RenderSchedulerTests
     /// <param name="priority">The priority.</param>
     /// <returns>The request.</returns>
     private static RenderRequest Request(in TileKey key, IDocument document, RenderClient client, RenderPriority priority) =>
-        new(key, document, new(key.PageIndex, 1, PageRotation.None, 0, 0, RenderFlags.None), Edge, Edge, priority, client, client.Generation);
+        new(key, document, new(key.PageIndex, 1, PageRotation.None, 0, 0, RenderFlags.None), Edge, Edge, priority, client, client.Generation, PageTone.None);
 }

@@ -181,11 +181,7 @@ public sealed class RenderScheduler : IDisposable
             return false;
         }
 
-        if ((request.Info.Flags & RenderFlags.Invert) != 0)
-        {
-            PixelOperations.InvertColors(target);
-        }
-
+        request.Tone.Apply(target);
         return true;
     }
 

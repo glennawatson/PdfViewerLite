@@ -18,7 +18,7 @@ This matrix compares PdfViewerLite with Papers, GNOME's document viewer as of GN
 | Links (internal and external) | Yes | Yes, including URLs written as plain text | M1 |
 | Back / forward history | Yes | Yes | M1 |
 | Page labels | Yes | Yes, in the page box and thumbnails | M1 |
-| Night mode (inverted colours) | Yes | Yes | M1 |
+| Night mode / page colours | Yes (inverted) | Yes (page tones: paper and ink, per scheme) | M1 |
 | Document properties | Yes | Yes | M1 |
 | Password protected documents | Yes | Yes | M1 |
 | Reload on file change | Yes | Yes | M1 |

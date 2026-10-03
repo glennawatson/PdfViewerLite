@@ -17,9 +17,6 @@ public enum RenderFlags
     /// <summary>Render in grayscale.</summary>
     Grayscale = 1 << 1,
 
-    /// <summary>Invert colours after rendering (night mode).</summary>
-    Invert = 1 << 2,
-
     /// <summary>Optimise for printing.</summary>
     Printing = 1 << 3,
 }

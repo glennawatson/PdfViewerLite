@@ -82,7 +82,13 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        _registrations = [viewModel.OpenFileInteraction.RegisterHandler(OpenFilesAsync), viewModel.ShowPropertiesInteraction.RegisterHandler(ShowPropertiesAsync)];
+        _registrations =
+        [
+            viewModel.OpenFileInteraction.RegisterHandler(OpenFilesAsync),
+            viewModel.ShowPropertiesInteraction.RegisterHandler(ShowPropertiesAsync),
+            viewModel.ConfirmInteraction.RegisterHandler(ConfirmAsync),
+            viewModel.ShowPreferencesInteraction.RegisterHandler(ShowPreferencesAsync),
+        ];
     }
 
     /// <inheritdoc/>
@@ -140,6 +146,24 @@ public sealed partial class MainWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new() { Title = "Open Document", AllowMultiple = true, FileTypeFilter = [PdfFileType, FilePickerFileTypes.All] });
         context.SetOutput(ToPaths(files));
+    }
+
+    /// <summary>Asks the user to confirm a destructive action.</summary>
+    /// <param name="context">The interaction context.</param>
+    /// <returns>A task.</returns>
+    private async Task ConfirmAsync(IInteractionContext<ConfirmRequest, bool> context)
+    {
+        var dialog = new ConfirmWindow { DataContext = context.Input };
+        context.SetOutput(await dialog.ShowDialog<bool>(this));
+    }
+
+    /// <summary>Shows the preferences.</summary>
+    /// <param name="context">The interaction context.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowPreferencesAsync(IInteractionContext<PreferencesViewModel, RxVoid> context)
+    {
+        await new PreferencesWindow { DataContext = context.Input }.ShowDialog(this);
+        context.SetOutput(RxVoid.Default);
     }
 
     /// <summary>Shows the properties dialog.</summary>

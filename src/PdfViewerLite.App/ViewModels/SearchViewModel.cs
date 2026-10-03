@@ -138,12 +138,9 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public List<SearchHit>? GetHits(int pageIndex) => _hitsByPage.GetValueOrDefault(pageIndex);
 
-    /// <summary>Opens the search bar.</summary>
-    public void Open()
-    {
-        IsOpen = true;
-        _owner.SidebarMode = SidebarMode.Search;
-    }
+    /// <summary>Opens the search bar. The sidebar stays on whichever panel the user chose.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Open() => IsOpen = true;
 
     /// <summary>Closes the search bar and clears highlights.</summary>
     public void Close()
@@ -152,10 +149,6 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
         Query = string.Empty;
         Cancel();
         Clear();
-        if (_owner.SidebarMode == SidebarMode.Search)
-        {
-            _owner.SidebarMode = SidebarMode.Thumbnails;
-        }
     }
 
     /// <summary>Moves to the next hit.</summary>

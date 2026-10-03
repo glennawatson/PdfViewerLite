@@ -98,5 +98,5 @@ public sealed class TileCacheTests
     /// <param name="document">The document identifier.</param>
     /// <param name="column">The column.</param>
     /// <returns>The key.</returns>
-    private static TileKey Key(int document, int column) => new(document, 0, 1, PageRotation.None, false, (short)column, 0);
+    private static TileKey Key(int document, int column) => new(document, 0, 1, PageRotation.None, 0, (short)column, 0);
 }

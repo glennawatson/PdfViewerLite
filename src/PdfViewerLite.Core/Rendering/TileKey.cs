@@ -12,11 +12,11 @@ namespace PdfViewerLite.Core.Rendering;
 /// <param name="PageIndex">The zero based page index.</param>
 /// <param name="ScaleKey">The quantised render scale, see <see cref="TileGrid.ToScaleKey"/>.</param>
 /// <param name="Rotation">The page rotation.</param>
-/// <param name="Inverted">Whether colours are inverted.</param>
+/// <param name="ToneId">The <see cref="PageTone.Id"/> applied to the pixels.</param>
 /// <param name="Column">The tile column.</param>
 /// <param name="Row">The tile row.</param>
 [DebuggerDisplay("Doc {DocumentId} p{PageIndex} s{ScaleKey} ({Column},{Row})")]
-public readonly record struct TileKey(int DocumentId, int PageIndex, int ScaleKey, PageRotation Rotation, bool Inverted, short Column, short Row)
+public readonly record struct TileKey(int DocumentId, int PageIndex, int ScaleKey, PageRotation Rotation, int ToneId, short Column, short Row)
 {
     /// <summary>Gets a value indicating whether the key identifies a whole-page preview image.</summary>
     public bool IsPreview => Column < 0;
@@ -25,8 +25,8 @@ public readonly record struct TileKey(int DocumentId, int PageIndex, int ScaleKe
     /// <param name="documentId">The document identifier.</param>
     /// <param name="pageIndex">The page index.</param>
     /// <param name="rotation">The rotation.</param>
-    /// <param name="inverted">Whether colours are inverted.</param>
+    /// <param name="toneId">The page tone identifier.</param>
     /// <returns>The key.</returns>
-    public static TileKey Preview(int documentId, int pageIndex, PageRotation rotation, bool inverted) =>
-        new(documentId, pageIndex, 0, rotation, inverted, -1, -1);
+    public static TileKey Preview(int documentId, int pageIndex, PageRotation rotation, int toneId) =>
+        new(documentId, pageIndex, 0, rotation, toneId, -1, -1);
 }

@@ -27,6 +27,9 @@ public class TileRenderBenchmarks
     /// <summary>The tile pixels.</summary>
     private readonly byte[] _pixels = new byte[TileGrid.TileSize * TileGrid.TileSize * BytesPerPixel];
 
+    /// <summary>The Calm night tone.</summary>
+    private readonly PageTone _tone = new(0x2A2826U, 0xD2CDC5U);
+
     /// <summary>The temporary file.</summary>
     private string _path = string.Empty;
 
@@ -59,15 +62,19 @@ public class TileRenderBenchmarks
         return _document.Render(info, new(_pixels, tileSize, tileSize, tileSize * BytesPerPixel));
     }
 
-    /// <summary>Renders a tile and inverts it for night mode.</summary>
+    /// <summary>Renders a tile and applies the Calm night page tone.</summary>
     /// <returns>Whether the tile rendered.</returns>
     [Benchmark]
-    public bool RenderTileInverted()
+    public bool RenderTileWithTone()
     {
         var tileSize = TileGrid.TileSize;
         var target = new RenderTarget(_pixels, tileSize, tileSize, tileSize * BytesPerPixel);
         var rendered = _document.Render(new(0, Scale, PageRotation.None, 0, 0, RenderFlags.Annotations), target);
-        PixelOperations.InvertColors(target);
+        _tone.Apply(target);
         return rendered;
     }
+
+    /// <summary>Applies the Calm night page tone to an already rendered tile.</summary>
+    [Benchmark]
+    public void ApplyTone() => _tone.Apply(_pixels);
 }

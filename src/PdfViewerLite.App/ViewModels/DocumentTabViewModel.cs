@@ -12,6 +12,7 @@ using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Layout;
 using PdfViewerLite.Core.Navigation;
 using PdfViewerLite.Core.Rendering;
+using PdfViewerLite.Core.Settings;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Signals;
@@ -60,7 +61,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         ZoomMode = services.Settings.DefaultZoomMode;
         LayoutMode = services.Settings.DefaultLayoutMode;
         SidebarVisible = services.Settings.ShowSidebar;
-        NightMode = services.Settings.NightMode;
+        PageTone = services.CurrentTheme.PageTone;
 
         ZoomInCommand = ReactiveCommand.Create(() => SetZoom(ZoomCalculator.ZoomIn(Zoom)));
         ZoomOutCommand = ReactiveCommand.Create(() => SetZoom(ZoomCalculator.ZoomOut(Zoom)));
@@ -82,6 +83,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         FindCommand = ReactiveCommand.Create(() => Search.Open());
         SubmitPasswordCommand = ReactiveCommand.Create(SubmitPassword);
         ReloadCommand = ReactiveCommand.Create(Reload);
+        DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
     }
 
     /// <summary>Gets the requests for the canvas to scroll.</summary>
@@ -216,12 +218,12 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    /// <summary>Gets or sets a value indicating whether pages are drawn with inverted colours.</summary>
-    public bool NightMode
+    /// <summary>Gets or sets the paper and ink colours pages are drawn with.</summary>
+    public PageTone PageTone
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    } = PageTone.None;
 
     /// <summary>Gets or sets a value indicating whether the sidebar is shown.</summary>
     public bool SidebarVisible
@@ -369,6 +371,16 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the reload command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ReloadCommand { get; }
 
+    /// <summary>Gets the command dismissing the "file changed" bar without reloading.</summary>
+    public ReactiveCommand<RxVoid, bool> DismissReloadCommand { get; }
+
+    /// <summary>Gets a value indicating whether the file changed on disk and the user chose to be asked before reloading.</summary>
+    public bool HasPendingReload
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
     /// <summary>Opens the document if needed and loads its structure. Safe to call repeatedly.</summary>
     public void EnsureLoaded()
     {
@@ -490,6 +502,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Reloads the document from disk, keeping the current page.</summary>
     public void Reload()
     {
+        HasPendingReload = false;
         var page = CurrentPageIndex;
         RenderHub.Cache.RemoveDocument(Source.Id);
         Source.Reload();
@@ -553,7 +566,19 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     private void WatchFile() =>
         _fileWatch ??= FileChanges.Watch(FilePath)
             .ObserveOn(RxSchedulers.MainThreadScheduler)
-            .SubscribeSafe(_ => Reload(), static ex => Trace.TraceError(ex.ToString()));
+            .SubscribeSafe(_ => OnFileChanged(), static ex => Trace.TraceError(ex.ToString()));
+
+    /// <summary>Reloads a changed file, or offers to, depending on the user's choice.</summary>
+    private void OnFileChanged()
+    {
+        if (_services.Settings.FileChangeAction == FileChangeAction.AskToReload)
+        {
+            HasPendingReload = true;
+            return;
+        }
+
+        Reload();
+    }
 
     /// <summary>Goes back in history.</summary>
     private void GoBack()

@@ -12,6 +12,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Media.Immutable;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Rendering;
@@ -38,6 +39,15 @@ public sealed class PageCanvas : Control
     /// <summary>Defines the <see cref="Tab"/> property.</summary>
     public static readonly StyledProperty<DocumentTabViewModel?> TabProperty = AvaloniaProperty.Register<PageCanvas, DocumentTabViewModel?>(nameof(Tab));
 
+    /// <summary>Defines the <see cref="HitBrush"/> property.</summary>
+    public static readonly StyledProperty<IBrush?> HitBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(HitBrush));
+
+    /// <summary>Defines the <see cref="CurrentHitOutline"/> property.</summary>
+    public static readonly StyledProperty<IBrush?> CurrentHitOutlineProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(CurrentHitOutline));
+
+    /// <summary>Defines the <see cref="SelectionBrush"/> property.</summary>
+    public static readonly StyledProperty<IBrush?> SelectionBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(SelectionBrush));
+
     /// <summary>The gap between pages.</summary>
     private const double PageSpacing = 12;
 
@@ -59,6 +69,9 @@ public sealed class PageCanvas : Control
     /// <summary>Where in the viewport a navigation target is placed, as a fraction of its height from the top.</summary>
     private const double TargetViewportFraction = 0.3;
 
+    /// <summary>The width of the outline marking the current search hit, so it differs by shape as well as colour.</summary>
+    private const double CurrentHitOutlineWidth = 2;
+
     /// <summary>The page shadow offset.</summary>
     private const double ShadowOffset = 2;
 
@@ -70,15 +83,6 @@ public sealed class PageCanvas : Control
 
     /// <summary>The page shadow brush.</summary>
     private static readonly IBrush ShadowBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0));
-
-    /// <summary>The search highlight brush.</summary>
-    private static readonly IBrush SearchBrush = new SolidColorBrush(Color.FromArgb(0x66, 0xFF, 0xD0, 0x00));
-
-    /// <summary>The current search hit brush.</summary>
-    private static readonly IBrush CurrentSearchBrush = new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0x80, 0x00));
-
-    /// <summary>The selection brush.</summary>
-    private static readonly IBrush SelectionBrush = new SolidColorBrush(Color.FromArgb(0x5A, 0x3D, 0xAE, 0xE9));
 
     /// <summary>The hand cursor for links.</summary>
     private static readonly Cursor HandCursor = new(StandardCursorType.Hand);
@@ -128,10 +132,13 @@ public sealed class PageCanvas : Control
     /// <summary>The selection focus (page, character).</summary>
     private (int Page, int Char) _selectionFocus = (-1, -1);
 
+    /// <summary>The pen outlining the current search hit, rebuilt when <see cref="CurrentHitOutline"/> changes.</summary>
+    private IPen? _currentHitPen;
+
     /// <summary>Initializes static members of the <see cref="PageCanvas"/> class.</summary>
     static PageCanvas()
     {
-        AffectsRender<PageCanvas>(TabProperty);
+        AffectsRender<PageCanvas>(TabProperty, HitBrushProperty, CurrentHitOutlineProperty, SelectionBrushProperty);
         FocusableProperty.OverrideDefaultValue<PageCanvas>(true);
     }
 
@@ -140,6 +147,27 @@ public sealed class PageCanvas : Control
     {
         get => GetValue(TabProperty);
         set => SetValue(TabProperty, value);
+    }
+
+    /// <summary>Gets or sets the fill of search hits.</summary>
+    public IBrush? HitBrush
+    {
+        get => GetValue(HitBrushProperty);
+        set => SetValue(HitBrushProperty, value);
+    }
+
+    /// <summary>Gets or sets the outline of the current search hit.</summary>
+    public IBrush? CurrentHitOutline
+    {
+        get => GetValue(CurrentHitOutlineProperty);
+        set => SetValue(CurrentHitOutlineProperty, value);
+    }
+
+    /// <summary>Gets or sets the fill of selected text.</summary>
+    public IBrush? SelectionBrush
+    {
+        get => GetValue(SelectionBrushProperty);
+        set => SetValue(SelectionBrushProperty, value);
     }
 
     /// <summary>Gets the selected text.</summary>
@@ -245,6 +273,10 @@ public sealed class PageCanvas : Control
         if (change.Property == TabProperty && _scroller is not null)
         {
             Wire(Tab);
+        }
+        else if (change.Property == CurrentHitOutlineProperty)
+        {
+            _currentHitPen = CurrentHitOutline is { } outline ? new ImmutablePen(outline.ToImmutable(), CurrentHitOutlineWidth) : null;
         }
     }
 
@@ -370,7 +402,7 @@ public sealed class PageCanvas : Control
     private static void DrawPreview(DrawingContext context, in FrameContext frame, int page, in Rect rect, bool visible)
     {
         var tab = frame.Tab;
-        var key = TileKey.Preview(tab.Source.Id, page, tab.Rotation, tab.NightMode);
+        var key = TileKey.Preview(tab.Source.Id, page, tab.Rotation, tab.PageTone.Id);
         if (frame.Hub.Cache.TryGet(key, out var surface))
         {
             if (visible)
@@ -384,7 +416,7 @@ public sealed class PageCanvas : Control
         var size = tab.Source.PageSizes[page];
         var scale = TileGrid.GetPreviewScale(size, tab.Rotation);
         TileGrid.GetPagePixelSize(size, tab.Rotation, scale, out var width, out var height);
-        frame.Request(key, new(page, scale, tab.Rotation, 0, 0, frame.Flags), width, height, visible ? RenderPriority.VisiblePreview : RenderPriority.Prefetch);
+        frame.Request(key, new(page, scale, tab.Rotation, 0, 0, RenderFlags.Annotations), width, height, visible ? RenderPriority.VisiblePreview : RenderPriority.Prefetch);
     }
 
     /// <summary>Draws one tile, or requests it when it is not cached.</summary>
@@ -398,11 +430,11 @@ public sealed class PageCanvas : Control
     {
         var tab = frame.Tab;
         var tileSize = TileGrid.TileSize;
-        var key = new TileKey(tab.Source.Id, grid.Page, grid.ScaleKey, tab.Rotation, tab.NightMode, (short)column, (short)row);
+        var key = new TileKey(tab.Source.Id, grid.Page, grid.ScaleKey, tab.Rotation, tab.PageTone.Id, (short)column, (short)row);
         TileGrid.GetTileSize(grid.PixelWidth, grid.PixelHeight, column, row, out var tileWidth, out var tileHeight);
         if (!frame.Hub.Cache.TryGet(key, out var surface))
         {
-            var info = new PageRenderInfo(grid.Page, grid.Scale, tab.Rotation, column * tileSize, row * tileSize, frame.Flags);
+            var info = new PageRenderInfo(grid.Page, grid.Scale, tab.Rotation, column * tileSize, row * tileSize, RenderFlags.Annotations);
             frame.Request(key, info, tileWidth, tileHeight, visible ? RenderPriority.Visible : RenderPriority.Prefetch);
             return;
         }
@@ -429,7 +461,7 @@ public sealed class PageCanvas : Control
         if (visible)
         {
             context.FillRectangle(ShadowBrush, rect.Translate(new(ShadowOffset, ShadowOffset)));
-            context.FillRectangle(frame.Tab.NightMode ? Brushes.Black : Brushes.White, rect);
+            context.FillRectangle(PaperBrush.Get(frame.Tab.PageTone), rect);
         }
 
         DrawPreview(context, frame, page, rect, visible);
@@ -491,19 +523,25 @@ public sealed class PageCanvas : Control
         if (tab.Search.GetHits(page) is { } hits)
         {
             var current = tab.Search.CurrentHit;
+            var fill = HitBrush;
             foreach (var hit in hits)
             {
-                var brush = ReferenceEquals(hit, current) ? CurrentSearchBrush : SearchBrush;
+                var pen = ReferenceEquals(hit, current) ? _currentHitPen : null;
                 foreach (var rect in hit.Bounds)
                 {
-                    context.FillRectangle(brush, transform.ToCanvas(rect));
+                    context.DrawRectangle(fill, pen, transform.ToCanvas(rect));
                 }
             }
         }
 
+        if (SelectionBrush is not { } selection)
+        {
+            return;
+        }
+
         foreach (var rect in GetSelectionRects(page))
         {
-            context.FillRectangle(SelectionBrush, transform.ToCanvas(rect));
+            context.FillRectangle(selection, transform.ToCanvas(rect));
         }
     }
 
@@ -629,7 +667,7 @@ public sealed class PageCanvas : Control
                 .Skip(1)
                 .SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
             tab.WhenAnyValue(static x => x.Zoom).Skip(1).Where(_ => tab.ZoomMode == ZoomMode.Free).SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
-            tab.WhenAnyValue(static x => x.NightMode).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.WhenAnyValue(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.NavigationRequests.SubscribeSafe(OnNavigationRequested, OnError),
             tab.DocumentChanges.SubscribeSafe(_ => OnDocumentChanged(), OnError),
             tab.Search.HighlightChanges.SubscribeSafe(_ => InvalidateVisual(), OnError),

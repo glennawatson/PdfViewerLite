@@ -15,8 +15,13 @@ the tabbed workflow of Adobe Reader, while looking at home on KDE.
   Dolphin's *Recent Files*, the open dialog is the KDE one (via the XDG portal), and *Show in Folder* opens Dolphin.
 - **Viewer features**: continuous single, dual and book (cover) layouts; fit width, fit page and free zoom
   (Ctrl+wheel zooms around the pointer); rotation; thumbnails, outline and search results sidebar; find with match
-  case and whole words; text selection and copy; links; back/forward history; page labels; night mode; document
+  case and whole words; text selection and copy; links; back/forward history; page labels; comfort page colours; document
   properties; password protected documents; reload when the file changes on disk.
+
+- **Comfort first**: calm by default and predictable, following [comfort design rules](docs/COMFORT.md) for ADHD
+  and autism. You can choose Calm, High contrast, Dark or Light (or follow the desktop), soft page colours instead
+  of glaring white, text labels on the tool bar, reduced motion, a steady text cursor, and confirmation before
+  closing several tabs. Everything is in Preferences (Ctrl+,).
 
 See [docs/FEATURES.md](docs/FEATURES.md) for parity with GNOME Papers 50 and what is planned.
 

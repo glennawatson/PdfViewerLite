@@ -76,4 +76,19 @@ public sealed class KdeGlobalsParserTests
         await Assert.That(KdeGlobalsParser.TryParseColor("1,2,300", out _)).IsFalse();
         await Assert.That(KdeGlobalsParser.TryParseColor(null, out _)).IsFalse();
     }
+
+    /// <summary>Verifies the KDE motion and caret preferences are read.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ParsesMotionAndCaret()
+    {
+        const int blinkRate = 1000;
+        const string content = $"{BreezeDark}\n[KDE]\nAnimationDurationFactor=0\nCursorBlinkRate=1000\n";
+
+        var palette = KdeGlobalsParser.Parse(content);
+
+        await Assert.That(palette!.AnimationDurationFactor).IsEqualTo(0D);
+        await Assert.That(palette.CursorBlinkRateMilliseconds).IsEqualTo(blinkRate);
+        await Assert.That(KdeGlobalsParser.Parse(BreezeDark)!.AnimationDurationFactor).IsNull();
+    }
 }

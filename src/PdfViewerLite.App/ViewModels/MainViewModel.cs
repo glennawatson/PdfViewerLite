@@ -6,7 +6,9 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Core.Rendering;
 using PdfViewerLite.Core.Settings;
+using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
 using ReactiveUI;
 using ReactiveUI.Primitives;
@@ -20,14 +22,20 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>The number of recent documents shown on the start page.</summary>
     private const int RecentCount = 24;
 
+    /// <summary>Closing this many tabs at once asks first.</summary>
+    private const int ConfirmCloseThreshold = 2;
+
     /// <summary>The number of closed tabs that can be reopened.</summary>
     private const int ClosedTabMemory = 32;
 
     /// <summary>The services.</summary>
     private readonly AppServices _services;
 
-    /// <summary>Recently closed tabs, most recent last.</summary>
-    private readonly List<SessionTab> _closedTabs = [];
+    /// <summary>Recently closed tabs, most recent last; tabs closed together form one group and reopen together.</summary>
+    private readonly List<SessionTab[]> _closedTabs = [];
+
+    /// <summary>Follows the resolved theme so every tab draws pages in the current tone.</summary>
+    private readonly IDisposable _themeSubscription;
 
     /// <summary>Initializes a new instance of the <see cref="MainViewModel"/> class.</summary>
     /// <param name="services">The application services.</param>
@@ -35,23 +43,31 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
-        NightMode = services.Settings.NightMode;
         OpenCommand = ReactiveCommand.CreateFromTask(OpenWithDialogAsync);
         CloseTabCommand = ReactiveCommand.Create<DocumentTabViewModel?>(tab => CloseTab(tab ?? SelectedTab));
-        CloseOtherTabsCommand = ReactiveCommand.Create<DocumentTabViewModel?>(tab => CloseOtherTabs(tab ?? SelectedTab));
-        CloseAllTabsCommand = ReactiveCommand.Create(CloseAllTabs);
+        CloseOtherTabsCommand = ReactiveCommand.CreateFromTask<DocumentTabViewModel?>(tab => CloseOtherTabsAsync(tab ?? SelectedTab));
+        CloseAllTabsCommand = ReactiveCommand.CreateFromTask(CloseAllTabsAsync);
+        DismissStatusCommand = ReactiveCommand.Create(() => StatusMessage = null);
         NextTabCommand = ReactiveCommand.Create(() => CycleTab(1));
         PreviousTabCommand = ReactiveCommand.Create(() => CycleTab(-1));
         ReopenClosedTabCommand = ReactiveCommand.Create(ReopenClosedTab);
-        ToggleNightModeCommand = ReactiveCommand.Create(() => NightMode = !NightMode);
+        TogglePageToneCommand = ReactiveCommand.Create(() => PageToneEnabled = !PageToneEnabled);
         OpenRecentCommand = ReactiveCommand.Create<RecentDocument>(recent => Open([recent.FilePath]));
         ShowInFolderCommand = ReactiveCommand.CreateFromTask(ShowInFolderAsync);
         PropertiesCommand = ReactiveCommand.CreateFromTask(ShowPropertiesAsync);
+        PreferencesCommand = ReactiveCommand.CreateFromTask(async () => await ShowPreferencesInteraction.Handle(new(services)).ToTask().ConfigureAwait(true));
         RefreshRecentDocuments();
+        _themeSubscription = services.Theme.SubscribeSafe(OnTheme, static error => Trace.TraceError(error.ToString()));
     }
 
     /// <summary>Gets the interaction asking the view for files to open.</summary>
     public Interaction<RxVoid, IReadOnlyList<string>> OpenFileInteraction { get; } = new();
+
+    /// <summary>Gets the interaction asking the user to confirm a destructive action.</summary>
+    public Interaction<ConfirmRequest, bool> ConfirmInteraction { get; } = new();
+
+    /// <summary>Gets the interaction asking the view to show the preferences.</summary>
+    public Interaction<PreferencesViewModel, RxVoid> ShowPreferencesInteraction { get; } = new();
 
     /// <summary>Gets the interaction asking the view to show document properties.</summary>
     public Interaction<DocumentTabViewModel, RxVoid> ShowPropertiesInteraction { get; } = new();
@@ -84,22 +100,31 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the window title.</summary>
     public string WindowTitle => SelectedTab is { } tab ? $"{tab.Title} — PdfViewerLite" : "PdfViewerLite";
 
-    /// <summary>Gets or sets a value indicating whether pages are drawn with inverted colours.</summary>
-    public bool NightMode
+    /// <summary>Gets or sets a value indicating whether pages are drawn in the comfort page colour rather than plain white.</summary>
+    public bool PageToneEnabled
     {
-        get;
+        get => _services.Settings.PageToneEnabled;
         set
         {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            _services.Settings.NightMode = value;
-            foreach (var tab in Tabs)
+            if (value == _services.Settings.PageToneEnabled)
             {
-                tab.NightMode = value;
+                return;
             }
+
+            _services.Settings.PageToneEnabled = value;
+            this.RaisePropertyChanged();
+            _services.ApplySettings();
         }
     }
 
-    /// <summary>Gets a transient status message, for example a failed download.</summary>
+    /// <summary>Gets the page tone tabs draw with.</summary>
+    public PageTone PageTone
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = PageTone.None;
+
+    /// <summary>Gets a status message, for example a failed download; it stays until dismissed.</summary>
     public string? StatusMessage
     {
         get;
@@ -118,6 +143,9 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the close all tabs command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> CloseAllTabsCommand { get; }
 
+    /// <summary>Gets the command dismissing the status message.</summary>
+    public ReactiveCommand<RxVoid, string?> DismissStatusCommand { get; }
+
     /// <summary>Gets the next tab command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> NextTabCommand { get; }
 
@@ -127,14 +155,17 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the reopen closed tab command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ReopenClosedTabCommand { get; }
 
-    /// <summary>Gets the night mode toggle command.</summary>
-    public ReactiveCommand<RxVoid, bool> ToggleNightModeCommand { get; }
+    /// <summary>Gets the command switching between the comfort page colour and plain white pages.</summary>
+    public ReactiveCommand<RxVoid, bool> TogglePageToneCommand { get; }
 
     /// <summary>Gets the command opening a recent document.</summary>
     public ReactiveCommand<RecentDocument, RxVoid> OpenRecentCommand { get; }
 
     /// <summary>Gets the command showing the selected document in the file manager.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ShowInFolderCommand { get; }
+
+    /// <summary>Gets the preferences command.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> PreferencesCommand { get; }
 
     /// <summary>Gets the document properties command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> PropertiesCommand { get; }
@@ -258,17 +289,8 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
             return;
         }
 
-        Remember(tab);
-        var wasSelected = tab == SelectedTab;
-        Tabs.RemoveAt(index);
-        tab.Dispose();
-        _services.Pool.Remove(tab.Source);
-        if (wasSelected)
-        {
-            SelectedTab = Tabs.Count == 0 ? null : Tabs[Math.Min(index, Tabs.Count - 1)];
-        }
-
-        UpdateHasTabs();
+        Remember([tab]);
+        Close(tab, index);
     }
 
     /// <summary>Reloads the recent documents list.</summary>
@@ -284,6 +306,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        _themeSubscription.Dispose();
         foreach (var tab in Tabs)
         {
             tab.Dispose();
@@ -324,7 +347,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
             }
         }
 
-        var tab = new DocumentTabViewModel(_services.Pool.Create(path, null), _services) { NightMode = NightMode };
+        var tab = new DocumentTabViewModel(_services.Pool.Create(path, null), _services) { PageTone = PageTone };
         if (pageIndex > 0)
         {
             tab.ReportPosition(new(pageIndex, 0), pageIndex);
@@ -386,28 +409,89 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         }
     }
 
-    /// <summary>Closes every tab except one.</summary>
+    /// <summary>Closes every tab except one, asking first when more than one would close.</summary>
     /// <param name="keep">The tab to keep.</param>
-    private void CloseOtherTabs(DocumentTabViewModel? keep)
+    /// <returns>A task.</returns>
+    private async Task CloseOtherTabsAsync(DocumentTabViewModel? keep)
     {
-        for (var i = Tabs.Count - 1; i >= 0; i--)
+        var closing = new List<DocumentTabViewModel>(Tabs.Count);
+        foreach (var tab in Tabs)
         {
-            if (Tabs[i] != keep)
+            if (tab != keep)
             {
-                CloseTab(Tabs[i]);
+                closing.Add(tab);
             }
+        }
+
+        if (await ConfirmCloseAsync(closing.Count).ConfigureAwait(true))
+        {
+            CloseGroup(closing);
         }
     }
 
-    /// <summary>Closes every tab.</summary>
-    private void CloseAllTabs()
+    /// <summary>Closes every tab, asking first when there is more than one.</summary>
+    /// <returns>A task.</returns>
+    private async Task CloseAllTabsAsync()
     {
-        for (var i = Tabs.Count - 1; i >= 0; i--)
+        if (!await ConfirmCloseAsync(Tabs.Count).ConfigureAwait(true))
         {
-            CloseTab(Tabs[i]);
+            return;
         }
 
+        CloseGroup([.. Tabs]);
         RefreshRecentDocuments();
+    }
+
+    /// <summary>Asks before closing several tabs at once.</summary>
+    /// <param name="count">The number of tabs that would close.</param>
+    /// <returns><see langword="true"/> to go ahead.</returns>
+    private async Task<bool> ConfirmCloseAsync(int count)
+    {
+        if (count < ConfirmCloseThreshold)
+        {
+            return true;
+        }
+
+        var request = new ConfirmRequest($"Close {count} tabs?", "You can reopen them together with Reopen Closed Tabs (Ctrl+Shift+T).", "Close Tabs");
+        return await ConfirmInteraction.Handle(request).ToTask().ConfigureAwait(true);
+    }
+
+    /// <summary>Closes several tabs as one group that reopens together.</summary>
+    /// <param name="closing">The tabs.</param>
+    private void CloseGroup(List<DocumentTabViewModel> closing)
+    {
+        if (closing.Count == 0)
+        {
+            return;
+        }
+
+        Remember(closing);
+        foreach (var tab in closing)
+        {
+            Close(tab, Tabs.IndexOf(tab));
+        }
+    }
+
+    /// <summary>Removes and disposes a tab, selecting a neighbour when it was selected.</summary>
+    /// <param name="tab">The tab.</param>
+    /// <param name="index">Its index.</param>
+    private void Close(DocumentTabViewModel tab, int index)
+    {
+        if (index < 0)
+        {
+            return;
+        }
+
+        var wasSelected = tab == SelectedTab;
+        Tabs.RemoveAt(index);
+        tab.Dispose();
+        _services.Pool.Remove(tab.Source);
+        if (wasSelected)
+        {
+            SelectedTab = Tabs.Count == 0 ? null : Tabs[Math.Min(index, Tabs.Count - 1)];
+        }
+
+        UpdateHasTabs();
     }
 
     /// <summary>Selects the next or previous tab, wrapping around.</summary>
@@ -423,35 +507,60 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         SelectedTab = Tabs[(index + direction + Tabs.Count) % Tabs.Count];
     }
 
-    /// <summary>Reopens the most recently closed tab.</summary>
+    /// <summary>Reopens the most recently closed tab, or every tab of a group closed together.</summary>
     private void ReopenClosedTab()
     {
-        while (_closedTabs.Count > 0)
+        if (_closedTabs.Count == 0)
         {
-            var entry = _closedTabs[^1];
-            _closedTabs.RemoveAt(_closedTabs.Count - 1);
-            if (!File.Exists(entry.FilePath))
-            {
-                continue;
-            }
-
-            SelectedTab = OpenOrFind(entry.FilePath, entry.PageIndex);
             return;
+        }
+
+        var group = _closedTabs[^1];
+        _closedTabs.RemoveAt(_closedTabs.Count - 1);
+        DocumentTabViewModel? last = null;
+        foreach (var entry in group)
+        {
+            if (File.Exists(entry.FilePath))
+            {
+                last = OpenOrFind(entry.FilePath, entry.PageIndex);
+            }
+        }
+
+        if (last is not null)
+        {
+            SelectedTab = last;
         }
     }
 
-    /// <summary>Remembers a closed tab so it can be reopened.</summary>
-    /// <param name="tab">The tab.</param>
-    private void Remember(DocumentTabViewModel tab)
+    /// <summary>Remembers closed tabs so they can be reopened together.</summary>
+    /// <param name="tabs">The tabs.</param>
+    private void Remember(List<DocumentTabViewModel> tabs)
     {
         if (_closedTabs.Count >= ClosedTabMemory)
         {
             _closedTabs.RemoveAt(0);
         }
 
-        _closedTabs.Add(new() { FilePath = tab.FilePath, PageIndex = Math.Max(0, tab.CurrentPageIndex) });
+        var group = new SessionTab[tabs.Count];
+        for (var i = 0; i < group.Length; i++)
+        {
+            group[i] = new() { FilePath = tabs[i].FilePath, PageIndex = Math.Max(0, tabs[i].CurrentPageIndex) };
+        }
+
+        _closedTabs.Add(group);
     }
 
     /// <summary>Updates <see cref="HasTabs"/>.</summary>
     private void UpdateHasTabs() => HasTabs = Tabs.Count > 0;
+
+    /// <summary>Applies a new theme's page tone to every tab.</summary>
+    /// <param name="theme">The theme.</param>
+    private void OnTheme(ResolvedTheme theme)
+    {
+        PageTone = theme.PageTone;
+        foreach (var tab in Tabs)
+        {
+            tab.PageTone = theme.PageTone;
+        }
+    }
 }

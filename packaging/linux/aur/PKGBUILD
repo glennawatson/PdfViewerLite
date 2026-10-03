@@ -22,7 +22,7 @@ _rid() {
 build() {
   cd "PdfViewerLite-$pkgver"
   export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
-  dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -r "$(_rid)" -o "$srcdir/publish"
+  dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$(_rid)" -o "$srcdir/publish"
 }
 
 package() {

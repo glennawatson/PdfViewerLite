@@ -4,117 +4,200 @@
 
 using System.Runtime.CompilerServices;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
-using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Core.Theming;
 
 namespace PdfViewerLite.App.Theming;
 
 /// <summary>
-/// Applies the desktop colour scheme (for example KDE's from <c>kdeglobals</c>) to the application's resources and the
-/// Fluent theme, so the window content matches Breeze while KWin draws the window frame.
+/// Applies a <see cref="ResolvedTheme"/> (a built-in scheme or the desktop's, plus the comfort settings) to the
+/// application's resources, the Fluent palette and a few comfort styles.
 /// </summary>
 internal static class DesktopThemeApplier
 {
     /// <summary>Points to device independent pixels.</summary>
     private const double PixelsPerPoint = 96.0 / 72.0;
 
-    /// <summary>The alpha of border lines.</summary>
-    private const byte BorderAlpha = 0x33;
-
     /// <summary>The alpha of the tab hover highlight.</summary>
-    private const byte HoverAlpha = 0x22;
+    private const byte HoverAlpha = 0x26;
+
+    /// <summary>The alpha of search hit and text selection fills, soft enough to keep the text readable.</summary>
+    private const byte HighlightAlpha = 0x59;
 
     /// <summary>How much darker the tab bar is than the tool bar.</summary>
     private const double TabBarShade = 0.04;
 
-    /// <summary>How much darker the page area is than the window, for light schemes.</summary>
-    private const double LightCanvasShade = 0.12;
+    /// <summary>How much of the text colour untinted icons use.</summary>
+    private const double IconMix = 0.78;
 
-    /// <summary>How much darker the page area is than the window, for dark schemes.</summary>
-    private const double DarkCanvasShade = 0.35;
+    /// <summary>How much of the text colour the Fluent "medium high" base uses.</summary>
+    private const double MediumHighMix = 0.8;
 
-    /// <summary>The resource keys this class sets.</summary>
-    private static readonly string[] ResourceKeys =
-    [
-        "AppWindowBackground", "AppHeaderBackground", "AppViewBackground", "AppCanvasBackground", "AppForeground",
-        "AppSecondaryForeground", "AppAccentBrush", "AppBorderBrush", "AppTabHoverBackground",
-    ];
+    /// <summary>How much of the text colour the Fluent "medium low" base uses.</summary>
+    private const double MediumLowMix = 0.4;
 
-    /// <summary>Applies a palette, or restores the built in Breeze look when <paramref name="palette"/> is null.</summary>
+    /// <summary>How much of the text colour the Fluent "low" base uses.</summary>
+    private const double LowMix = 0.2;
+
+    /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
+    private const uint Opaque = 0xFF000000U;
+
+    /// <summary>The bit offset of the alpha channel.</summary>
+    private const int AlphaShift = 24;
+
+    /// <summary>A caret blink interval long enough to read as steady.</summary>
+    private static readonly TimeSpan SteadyCaretInterval = TimeSpan.FromDays(1);
+
+    /// <summary>Turns off every transition when motion is reduced.</summary>
+    private static readonly Style ReduceMotionStyle = new(static x => x.Is<Control>()) { Setters = { new Setter(Animatable.TransitionsProperty, null) } };
+
+    /// <summary>Stops the text caret from blinking.</summary>
+    private static readonly Style SteadyCaretStyle = new(static x => x.Is<TextBox>()) { Setters = { new Setter(TextBox.CaretBlinkIntervalProperty, SteadyCaretInterval) } };
+
+    /// <summary>Hides tool bar text labels when the user prefers icons only.</summary>
+    private static readonly Style HideLabelsStyle = new(static x => x.OfType<TextBlock>().Class("label")) { Setters = { new Setter(Visual.IsVisibleProperty, false) } };
+
+    /// <summary>Applies a theme to the application.</summary>
     /// <param name="application">The application.</param>
-    /// <param name="palette">The palette.</param>
-    internal static void Apply(Application application, DesktopPalette? palette)
+    /// <param name="theme">The theme.</param>
+    internal static void Apply(Application application, ResolvedTheme theme)
     {
         ArgumentNullException.ThrowIfNull(application);
-        var resources = application.Resources;
-        if (palette is null)
-        {
-            foreach (var key in ResourceKeys)
-            {
-                _ = resources.Remove(key);
-            }
-
-            application.RequestedThemeVariant = ThemeVariant.Default;
-            return;
-        }
-
-        var variant = palette.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
+        ArgumentNullException.ThrowIfNull(theme);
+        var scheme = theme.Scheme;
+        var variant = scheme.IsDark ? ThemeVariant.Dark : ThemeVariant.Light;
         application.RequestedThemeVariant = variant;
-        var window = ToColor(palette.WindowBackground);
-        var foreground = ToColor(palette.WindowForeground);
-        var accent = ToColor(palette.Accent);
-        resources["AppWindowBackground"] = new SolidColorBrush(Shade(window, TabBarShade));
-        resources["AppHeaderBackground"] = new SolidColorBrush(window);
-        resources["AppViewBackground"] = new SolidColorBrush(ToColor(palette.ViewBackground));
-        resources["AppCanvasBackground"] = new SolidColorBrush(Shade(window, palette.IsDark ? DarkCanvasShade : LightCanvasShade));
-        resources["AppForeground"] = new SolidColorBrush(foreground);
-        resources["AppSecondaryForeground"] = new SolidColorBrush(ToColor(palette.InactiveForeground));
-        resources["AppAccentBrush"] = new SolidColorBrush(accent);
-        resources["AppBorderBrush"] = new SolidColorBrush(Color.FromArgb(BorderAlpha, foreground.R, foreground.G, foreground.B));
-        resources["AppTabHoverBackground"] = new SolidColorBrush(Color.FromArgb(HoverAlpha, accent.R, accent.G, accent.B));
-
+        ApplyResources(application.Resources, scheme, theme);
         foreach (var style in application.Styles)
         {
             if (style is FluentTheme fluent)
             {
-                fluent.Palettes[variant] = new() { Accent = accent, RegionColor = window, BaseHigh = foreground, AltHigh = ToColor(palette.ViewBackground) };
+                fluent.Palettes[variant] = CreatePalette(scheme);
             }
         }
+
+        SetStyle(application.Styles, ReduceMotionStyle, theme.ReduceMotion);
+        SetStyle(application.Styles, SteadyCaretStyle, theme.SteadyCaret);
+        SetStyle(application.Styles, HideLabelsStyle, !theme.ShowLabels);
     }
 
-    /// <summary>Applies the desktop font to a window.</summary>
+    /// <summary>Applies the theme's font to a window.</summary>
     /// <param name="window">The window.</param>
-    /// <param name="palette">The palette.</param>
-    internal static void ApplyFont(Window window, DesktopPalette? palette)
+    /// <param name="theme">The theme.</param>
+    internal static void ApplyFont(Window window, ResolvedTheme theme)
     {
         ArgumentNullException.ThrowIfNull(window);
-        if (palette?.FontFamily is { Length: > 0 } family)
+        ArgumentNullException.ThrowIfNull(theme);
+        if (theme.FontFamily is { Length: > 0 } family)
         {
             window.FontFamily = new($"{family}, Noto Sans, sans-serif");
         }
+        else
+        {
+            window.ClearValue(TemplatedControl.FontFamilyProperty);
+        }
 
-        if (palette?.FontSizePoints is { } points)
+        if (theme.FontSizePoints is { } points)
         {
             window.FontSize = Math.Round(points * PixelsPerPoint);
         }
+        else
+        {
+            window.ClearValue(TemplatedControl.FontSizeProperty);
+        }
     }
 
-    /// <summary>Converts 0xAARRGGBB to a colour.</summary>
-    /// <param name="argb">The packed 0xAARRGGBB value.</param>
-    /// <returns>The colour.</returns>
+    /// <summary>Converts 0xRRGGBB to an opaque colour.</summary>
+    /// <param name="rgb">The colour.</param>
+    /// <returns>The Avalonia colour.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static Color ToColor(uint argb) => Color.FromUInt32(argb);
+    internal static Color ToColor(uint rgb) => Color.FromUInt32(Opaque | rgb);
 
-    /// <summary>Darkens a colour.</summary>
-    /// <param name="color">The colour.</param>
-    /// <param name="amount">The fraction to darken by.</param>
-    /// <returns>The darker colour.</returns>
-    private static Color Shade(Color color, double amount)
+    /// <summary>Converts 0xRRGGBB and an alpha to a colour.</summary>
+    /// <param name="rgb">The colour.</param>
+    /// <param name="alpha">The alpha.</param>
+    /// <returns>The Avalonia colour.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Color ToColor(uint rgb, byte alpha) => Color.FromUInt32(((uint)alpha << AlphaShift) | rgb);
+
+    /// <summary>Sets the application brushes.</summary>
+    /// <param name="resources">The application resources.</param>
+    /// <param name="scheme">The scheme.</param>
+    /// <param name="theme">The theme.</param>
+    private static void ApplyResources(IResourceDictionary resources, ColorScheme scheme, ResolvedTheme theme)
     {
-        var factor = 1 - amount;
-        return Color.FromRgb((byte)(color.R * factor), (byte)(color.G * factor), (byte)(color.B * factor));
+        var tints = scheme.Tints;
+        resources["AppWindowBackground"] = Brush(ColorMath.Shade(scheme.Window, TabBarShade));
+        resources["AppHeaderBackground"] = Brush(scheme.Header);
+        resources["AppViewBackground"] = Brush(scheme.View);
+        resources["AppCanvasBackground"] = Brush(scheme.Canvas);
+        resources["AppForeground"] = Brush(scheme.Text);
+        resources["AppSecondaryForeground"] = Brush(scheme.InactiveText);
+        resources["AppAccentBrush"] = Brush(scheme.Accent);
+        resources["AppBorderBrush"] = Brush(scheme.Border);
+        resources["AppTabHoverBackground"] = new SolidColorBrush(ToColor(scheme.Accent, HoverAlpha));
+        resources["AppSelectionBrush"] = Brush(scheme.Selection);
+        resources["AppIconBrush"] = Brush(ColorMath.Mix(scheme.Text, scheme.Header, IconMix));
+        resources["AppIconNav"] = Brush(tints.Navigation);
+        resources["AppIconAdd"] = Brush(tints.Add);
+        resources["AppIconEdit"] = Brush(tints.Edit);
+        resources["AppIconRemove"] = Brush(tints.Remove);
+        resources["AppHitBrush"] = new SolidColorBrush(ToColor(tints.Edit, HighlightAlpha));
+        resources["AppCurrentHitOutline"] = Brush(scheme.Accent);
+        resources["AppTextSelectionBrush"] = new SolidColorBrush(ToColor(tints.Navigation, HighlightAlpha));
+        resources["AppPaperBrush"] = Brush(theme.PageTone.IsIdentity ? 0xFFFFFFU : theme.PageTone.Paper);
+    }
+
+    /// <summary>Builds a Fluent palette from a scheme.</summary>
+    /// <param name="scheme">The scheme.</param>
+    /// <returns>The palette.</returns>
+    private static ColorPaletteResources CreatePalette(ColorScheme scheme) => new()
+    {
+        Accent = ToColor(scheme.Accent),
+        RegionColor = ToColor(scheme.Window),
+        ErrorText = ToColor(scheme.Tints.Remove),
+        BaseHigh = ToColor(scheme.Text),
+        BaseMediumHigh = ToColor(ColorMath.Mix(scheme.Text, scheme.Window, MediumHighMix)),
+        BaseMedium = ToColor(scheme.InactiveText),
+        BaseMediumLow = ToColor(ColorMath.Mix(scheme.Text, scheme.Window, MediumLowMix)),
+        BaseLow = ToColor(ColorMath.Mix(scheme.Text, scheme.Window, LowMix)),
+        AltHigh = ToColor(scheme.View),
+        AltMediumHigh = ToColor(scheme.View),
+        AltMedium = ToColor(scheme.View),
+        AltLow = ToColor(scheme.View),
+        ChromeLow = ToColor(scheme.Header),
+        ChromeMedium = ToColor(scheme.Header),
+        ChromeMediumLow = ToColor(scheme.Window),
+        ChromeHigh = ToColor(scheme.Border),
+        ListLow = ToColor(ColorMath.Mix(scheme.Selection, scheme.View, MediumLowMix)),
+        ListMedium = ToColor(scheme.Selection),
+    };
+
+    /// <summary>Creates a solid brush.</summary>
+    /// <param name="rgb">The colour as 0xRRGGBB.</param>
+    /// <returns>The brush.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static SolidColorBrush Brush(uint rgb) => new(ToColor(rgb));
+
+    /// <summary>Adds or removes a comfort style.</summary>
+    /// <param name="styles">The application styles.</param>
+    /// <param name="style">The style.</param>
+    /// <param name="enabled">Whether the style applies.</param>
+    private static void SetStyle(Styles styles, Style style, bool enabled)
+    {
+        var present = styles.Contains(style);
+        if (enabled && !present)
+        {
+            styles.Add(style);
+        }
+        else if (!enabled && present)
+        {
+            _ = styles.Remove(style);
+        }
     }
 }

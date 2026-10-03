@@ -51,6 +51,9 @@ public static class KdeGlobalsParser
     /// <summary>The general settings section.</summary>
     private const string GeneralSection = "General";
 
+    /// <summary>The KDE behaviour section.</summary>
+    private const string KdeSection = "KDE";
+
     /// <summary>The number of components in an RGBA quadruple.</summary>
     private const int RgbaComponents = 4;
 
@@ -74,6 +77,8 @@ public static class KdeGlobalsParser
             ? generalAccent
             : GetColor(ini, "Colors:Selection", BackgroundKey, OpaqueAlpha | 0x3DAEE9U);
         ParseFont(Get(ini, GeneralSection, "font"), out var family, out var size);
+        var animation = double.TryParse(Get(ini, KdeSection, "AnimationDurationFactor"), NumberStyles.Float, CultureInfo.InvariantCulture, out var factor) ? factor : (double?)null;
+        var blink = int.TryParse(Get(ini, KdeSection, "CursorBlinkRate"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var rate) ? rate : (int?)null;
         return new()
         {
             SchemeName = Get(ini, GeneralSection, "ColorScheme"),
@@ -89,6 +94,8 @@ public static class KdeGlobalsParser
             InactiveForeground = GetColor(ini, WindowSection, "ForegroundInactive", windowForeground),
             FontFamily = family,
             FontSizePoints = size,
+            AnimationDurationFactor = animation,
+            CursorBlinkRateMilliseconds = blink,
             IsDark = Luminance(windowBackground) < DarkThreshold,
         };
     }
@@ -208,7 +215,7 @@ public static class KdeGlobalsParser
             if (IsSection(line))
             {
                 ref var section = ref CollectionsMarshal.GetValueRefOrAddDefault(result, line[1..^1].ToString(), out _);
-                section ??= new(StringComparer.Ordinal);
+                section ??= [with(StringComparer.Ordinal)];
                 current = section;
             }
             else if (current is not null)

@@ -6,18 +6,21 @@
              x:Class="PdfViewerLite.App.Views.DocumentView"
              x:DataType="vm:DocumentTabViewModel">
   <DockPanel>
-    <!-- Document tool bar. -->
+    <!-- Document tool bar: the main actions carry text labels (rule 7.3); rarer ones live in More. -->
     <Border DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-          <ToggleButton Classes="tool" ToolTip.Tip="Find (Ctrl+F)" IsChecked="{Binding Search.IsOpen}">
-            <Path Classes="icon" Data="{StaticResource IconSearch}" />
+          <ToggleButton Classes="tool" ToolTip.Tip="Ctrl+F" IsChecked="{Binding Search.IsOpen}">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
+              <TextBlock Classes="label" Text="Find" />
+            </StackPanel>
           </ToggleButton>
-          <ToggleButton Classes="tool" ToolTip.Tip="Night mode (Ctrl+I)" IsChecked="{Binding NightMode}">
-            <Path Classes="icon" Data="{StaticResource IconNight}" />
-          </ToggleButton>
-          <Button Classes="tool" ToolTip.Tip="More">
-            <Path Classes="icon" Data="{StaticResource IconMenu}" />
+          <Button Classes="tool" ToolTip.Tip="Rotate, page layout, reload, properties">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon" Data="{StaticResource IconMenu}" />
+              <TextBlock Classes="label" Text="More" />
+            </StackPanel>
             <Button.Flyout>
               <MenuFlyout Placement="BottomEdgeAlignedRight">
                 <MenuItem Header="Rotate _Left" InputGesture="Ctrl+Left" Command="{Binding RotateLeftCommand}" />
@@ -36,19 +39,28 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal">
-          <ToggleButton Classes="tool" ToolTip.Tip="Sidebar (F9)" IsChecked="{Binding SidebarVisible}">
-            <Path Classes="icon" Data="{StaticResource IconSidebar}" />
+          <ToggleButton Classes="tool" ToolTip.Tip="F9" IsChecked="{Binding SidebarVisible}">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconSidebar}" />
+              <TextBlock Classes="label" Text="Sidebar" />
+            </StackPanel>
           </ToggleButton>
           <Rectangle Classes="separator" />
-          <Button Classes="tool" ToolTip.Tip="Back (Alt+Left)" Command="{Binding GoBackCommand}">
-            <Path Classes="icon" Data="{StaticResource IconBack}" />
+          <Button Classes="tool" ToolTip.Tip="Alt+Left" Command="{Binding GoBackCommand}">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconBack}" />
+              <TextBlock Classes="label" Text="Back" />
+            </StackPanel>
           </Button>
-          <Button Classes="tool" ToolTip.Tip="Forward (Alt+Right)" Command="{Binding GoForwardCommand}">
-            <Path Classes="icon" Data="{StaticResource IconForward}" />
+          <Button Classes="tool" ToolTip.Tip="Alt+Right" Command="{Binding GoForwardCommand}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Classes="label leading" Text="Forward" />
+              <Path Classes="icon nav" Data="{StaticResource IconForward}" />
+            </StackPanel>
           </Button>
           <Rectangle Classes="separator" />
-          <Button Classes="tool" ToolTip.Tip="Previous page" Command="{Binding PreviousPageCommand}">
-            <Path Classes="icon" Data="{StaticResource IconPageUp}" />
+          <Button Classes="tool" ToolTip.Tip="Previous page (Page Up)" Command="{Binding PreviousPageCommand}">
+            <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
           </Button>
           <TextBox x:Name="PageBox" Width="56" MinHeight="28" Padding="6,3" VerticalAlignment="Center" HorizontalContentAlignment="Center"
                    Text="{Binding PageEntry}" ToolTip.Tip="Go to page (Ctrl+L)">
@@ -59,14 +71,14 @@
           <TextBlock Classes="secondary" VerticalAlignment="Center" Margin="6,0">
             <Run Text="of " /><Run Text="{Binding PageCount}" />
           </TextBlock>
-          <Button Classes="tool" ToolTip.Tip="Next page" Command="{Binding NextPageCommand}">
-            <Path Classes="icon" Data="{StaticResource IconPageDown}" />
+          <Button Classes="tool" ToolTip.Tip="Next page (Page Down)" Command="{Binding NextPageCommand}">
+            <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
           </Button>
           <Rectangle Classes="separator" />
           <Button Classes="tool" ToolTip.Tip="Zoom out (Ctrl+-)" Command="{Binding ZoomOutCommand}">
-            <Path Classes="icon" Data="{StaticResource IconZoomOut}" />
+            <Path Classes="icon nav" Data="{StaticResource IconZoomOut}" />
           </Button>
-          <Button Classes="tool" MinWidth="64" Content="{Binding ZoomText}" ToolTip.Tip="Zoom">
+          <Button Classes="tool" MinWidth="64" Content="{Binding ZoomText}" ToolTip.Tip="Zoom: fit width, fit page or a fixed size">
             <Button.Flyout>
               <MenuFlyout>
                 <MenuItem Header="Fit _Width" InputGesture="Ctrl+2" Command="{Binding FitWidthCommand}" />
@@ -83,22 +95,26 @@
             </Button.Flyout>
           </Button>
           <Button Classes="tool" ToolTip.Tip="Zoom in (Ctrl++)" Command="{Binding ZoomInCommand}">
-            <Path Classes="icon" Data="{StaticResource IconZoomIn}" />
+            <Path Classes="icon nav" Data="{StaticResource IconZoomIn}" />
           </Button>
-          <Button Classes="tool" ToolTip.Tip="Fit width" Command="{Binding FitWidthCommand}">
-            <Path Classes="icon" Data="{StaticResource IconFitWidth}" />
-          </Button>
-          <Button Classes="tool" ToolTip.Tip="Fit page" Command="{Binding FitPageCommand}">
-            <Path Classes="icon" Data="{StaticResource IconFitPage}" />
-          </Button>
-          <Rectangle Classes="separator" />
-          <Button Classes="tool" ToolTip.Tip="Rotate left" Command="{Binding RotateLeftCommand}">
-            <Path Classes="icon" Data="{StaticResource IconRotateLeft}" />
-          </Button>
-          <Button Classes="tool" ToolTip.Tip="Rotate right" Command="{Binding RotateRightCommand}">
-            <Path Classes="icon" Data="{StaticResource IconRotateRight}" />
+          <Button Classes="tool" ToolTip.Tip="Ctrl+2" Command="{Binding FitWidthCommand}">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconFitWidth}" />
+              <TextBlock Classes="label" Text="Fit Width" />
+            </StackPanel>
           </Button>
         </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Shown only when the user chose to be asked before reloading a changed file. -->
+    <Border DockPanel.Dock="Top" Classes="toolbar" IsVisible="{Binding HasPendingReload}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+          <Button Content="Reload" Command="{Binding ReloadCommand}" />
+          <Button Content="Dismiss" Command="{Binding DismissReloadCommand}" />
+        </StackPanel>
+        <TextBlock VerticalAlignment="Center" Margin="6,0" Text="This file changed on disk." />
       </DockPanel>
     </Border>
 
@@ -120,14 +136,14 @@
           <Path Classes="icon" Data="{StaticResource IconWholeWord}" />
         </ToggleButton>
         <Button Classes="tool" ToolTip.Tip="Previous result (Shift+F3)" Command="{Binding Search.PreviousCommand}">
-          <Path Classes="icon" Data="{StaticResource IconPageUp}" />
+          <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
         </Button>
         <Button Classes="tool" ToolTip.Tip="Next result (F3)" Command="{Binding Search.NextCommand}">
-          <Path Classes="icon" Data="{StaticResource IconPageDown}" />
+          <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
         </Button>
         <TextBlock Classes="secondary" VerticalAlignment="Center" Margin="8,0" Text="{Binding Search.Status}" />
         <Button Classes="tool" ToolTip.Tip="Close (Esc)" Command="{Binding Search.CloseCommand}">
-          <Path Classes="icon" Data="{StaticResource IconClose}" />
+          <Path Classes="icon remove" Data="{StaticResource IconClose}" />
         </Button>
       </StackPanel>
     </Border>
@@ -138,13 +154,13 @@
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center" Margin="4">
             <ToggleButton Classes="tool" ToolTip.Tip="Thumbnails" IsChecked="{Binding IsThumbnailsMode}">
-              <Path Classes="icon" Data="{StaticResource IconThumbnails}" />
+              <Path Classes="icon nav" Data="{StaticResource IconThumbnails}" />
             </ToggleButton>
             <ToggleButton Classes="tool" ToolTip.Tip="Outline" IsChecked="{Binding IsOutlineMode}">
-              <Path Classes="icon" Data="{StaticResource IconOutline}" />
+              <Path Classes="icon nav" Data="{StaticResource IconOutline}" />
             </ToggleButton>
             <ToggleButton Classes="tool" ToolTip.Tip="Search results" IsChecked="{Binding IsSearchMode}">
-              <Path Classes="icon" Data="{StaticResource IconSearch}" />
+              <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
             </ToggleButton>
           </StackPanel>
           <Panel>
@@ -199,7 +215,7 @@
       <Panel Grid.Column="2">
         <ScrollViewer x:Name="Scroller" Background="{DynamicResource AppCanvasBackground}"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-          <controls:PageCanvas x:Name="Canvas" Tab="{Binding}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+          <controls:PageCanvas x:Name="Canvas" Tab="{Binding}" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}" SelectionBrush="{DynamicResource AppTextSelectionBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
         </ScrollViewer>
 
         <Border IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
@@ -219,7 +235,7 @@
                 <KeyBinding Gesture="Enter" Command="{Binding SubmitPasswordCommand}" />
               </TextBox.KeyBindings>
             </TextBox>
-            <Button HorizontalAlignment="Right" Classes="accent" Content="Unlock" Command="{Binding SubmitPasswordCommand}" />
+            <Button HorizontalAlignment="Right" Content="Unlock" Command="{Binding SubmitPasswordCommand}" />
           </StackPanel>
         </Border>
       </Panel>

@@ -11,9 +11,9 @@
               Data="{StaticResource IconDocument}" HorizontalAlignment="Center" />
         <TextBlock FontSize="20" HorizontalAlignment="Center" Text="Open a document to get started" />
         <TextBlock Classes="secondary" HorizontalAlignment="Center" Text="Drop PDF files here, or choose them from a folder." />
-        <Button Classes="accent" HorizontalAlignment="Center" Padding="16,6" Command="{Binding OpenCommand}">
+        <Button HorizontalAlignment="Center" Padding="16,6" Command="{Binding OpenCommand}">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Path Classes="icon" Data="{StaticResource IconOpen}" />
+            <Path Classes="icon add" Data="{StaticResource IconOpen}" />
             <TextBlock Text="Open…" />
           </StackPanel>
         </Button>

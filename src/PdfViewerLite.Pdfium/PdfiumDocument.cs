@@ -42,7 +42,7 @@ public sealed class PdfiumDocument : IDocument
     private readonly PdfiumDocumentHandle _handle;
 
     /// <summary>Loaded pages, most recently used last.</summary>
-    private readonly List<PdfiumPage> _pages = new(PageCacheSize);
+    private readonly List<PdfiumPage> _pages = [with(PageCacheSize)];
 
     /// <summary>The page sizes.</summary>
     private readonly PageSize[] _pageSizes;

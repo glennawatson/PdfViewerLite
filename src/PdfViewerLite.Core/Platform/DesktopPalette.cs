@@ -49,6 +49,12 @@ public sealed record DesktopPalette
     /// <summary>Gets the user interface font size in points.</summary>
     public double? FontSizePoints { get; init; }
 
+    /// <summary>Gets the desktop animation speed factor (0 = instant, 1 = normal), when set.</summary>
+    public double? AnimationDurationFactor { get; init; }
+
+    /// <summary>Gets the text cursor blink interval in milliseconds (0 = no blinking), when set.</summary>
+    public int? CursorBlinkRateMilliseconds { get; init; }
+
     /// <summary>Gets a value indicating whether the palette is dark.</summary>
     public bool IsDark { get; init; }
 }

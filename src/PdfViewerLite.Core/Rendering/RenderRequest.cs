@@ -16,6 +16,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// <param name="Priority">The queue priority.</param>
 /// <param name="Client">The requesting client.</param>
 /// <param name="Generation">The client generation when requested.</param>
+/// <param name="Tone">The page tone applied after rendering.</param>
 [DebuggerDisplay("{Key} {Priority}")]
 public readonly record struct RenderRequest(
     TileKey Key,
@@ -25,4 +26,5 @@ public readonly record struct RenderRequest(
     int Height,
     RenderPriority Priority,
     RenderClient Client,
-    int Generation);
+    int Generation,
+    PageTone Tone);

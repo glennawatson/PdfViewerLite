@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
     <OutputType>WinExe</OutputType>
     <Description>PdfViewerLite: a fast, tabbed PDF viewer.</Description>
     <AssemblyName>pdfviewerlite</AssemblyName>
