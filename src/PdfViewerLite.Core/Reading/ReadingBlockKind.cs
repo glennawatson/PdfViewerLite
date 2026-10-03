@@ -21,4 +21,10 @@ public enum ReadingBlockKind
 
     /// <summary>A footnote, read after the page's main text.</summary>
     Footnote = 4,
+
+    /// <summary>A cell of a table, from a tagged document.</summary>
+    TableCell = 5,
+
+    /// <summary>A figure or formula, read by its alternative text.</summary>
+    Figure = 6,
 }

@@ -48,6 +48,12 @@ public static class ReadingOrder
     /// <summary>A heading's font is at least this many times the body size, unless it is bold.</summary>
     private const float HeadingSizeRatio = 1.15F;
 
+    /// <summary>How much larger than the body text a heading found from the layout must be to count as level 1.</summary>
+    private const float TopHeadingRatio = 1.5F;
+
+    /// <summary>The level given to a smaller heading found from the layout.</summary>
+    private const int MinorHeadingLevel = 2;
+
     /// <summary>A footnote's font is at most this share of the body size.</summary>
     private const float FootnoteSizeRatio = 0.9F;
 
@@ -91,7 +97,7 @@ public static class ReadingOrder
     {
         ArgumentNullException.ThrowIfNull(characters);
         ArgumentNullException.ThrowIfNull(repeatedMargins);
-        var lines = BuildLines(characters);
+        var lines = BuildLines(characters, null);
         for (var i = lines.Count - 1; i >= 0; i--)
         {
             if (IsMarginNoise(lines[i], pageSize, repeatedMargins))
@@ -113,12 +119,64 @@ public static class ReadingOrder
         var footnotes = new List<ReadingBlock>();
         foreach (var block in ordered)
         {
-            var reading = block.ToReadingBlock(Classify(block, body, pageSize));
+            var reading = block.ToReadingBlock(Classify(block, body, pageSize), 0, false);
             (reading.Kind == ReadingBlockKind.Footnote ? footnotes : main).Add(reading);
         }
 
         main.AddRange(footnotes);
         return new(pageIndex, main);
+    }
+
+    /// <summary>
+    /// Builds a page from a tagged document's structure: one block per element, in the document's logical order,
+    /// with each element's characters joined into lines as the layout would be.
+    /// </summary>
+    /// <param name="pageIndex">The page.</param>
+    /// <param name="characters">The page's characters in the engine's order.</param>
+    /// <param name="tagged">The page's block-level elements in logical order.</param>
+    /// <returns>The page's blocks.</returns>
+    public static ReadingPage FromStructure(int pageIndex, IReadOnlyList<PageCharacter> characters, IReadOnlyList<TaggedBlock> tagged)
+    {
+        ArgumentNullException.ThrowIfNull(characters);
+        ArgumentNullException.ThrowIfNull(tagged);
+        var subset = new List<PageCharacter>();
+        var indices = new List<int>();
+        var elements = new List<List<TextLine>>(tagged.Count);
+        var all = new List<TextLine>();
+        var hasHeadings = false;
+        foreach (var element in tagged)
+        {
+            subset.Clear();
+            indices.Clear();
+            foreach (var index in element.Characters)
+            {
+                if ((uint)index >= (uint)characters.Count)
+                {
+                    continue;
+                }
+
+                subset.Add(characters[index]);
+                indices.Add(index);
+            }
+
+            var lines = BuildLines(subset, indices);
+            elements.Add(lines);
+            all.AddRange(lines);
+            hasHeadings |= element.Kind == ReadingBlockKind.Heading;
+        }
+
+        // Some producers tag every heading as a paragraph; then the layout says which paragraphs are headings.
+        var body = hasHeadings || all.Count == 0 ? 0 : BodyFontSize(all);
+        var blocks = new List<ReadingBlock>(tagged.Count);
+        for (var i = 0; i < tagged.Count; i++)
+        {
+            if (FromElement(tagged[i], elements[i], body) is { } block)
+            {
+                blocks.Add(block);
+            }
+        }
+
+        return new(pageIndex, blocks);
     }
 
     /// <summary>Collects the signatures of a page's header and footer lines, to find those repeated across pages.</summary>
@@ -128,7 +186,7 @@ public static class ReadingOrder
     public static void CollectMarginSignatures(PageSize pageSize, IReadOnlyList<PageCharacter> characters, List<string> output)
     {
         ArgumentNullException.ThrowIfNull(output);
-        foreach (var line in BuildLines(characters))
+        foreach (var line in BuildLines(characters, null))
         {
             if (InMargin(line.Bounds, pageSize) && Signature(line.Text) is { Length: > 0 } signature)
             {
@@ -250,8 +308,9 @@ public static class ReadingOrder
 
     /// <summary>Joins characters into lines, splitting wide gaps so side-by-side columns stay apart.</summary>
     /// <param name="characters">The characters.</param>
+    /// <param name="pageIndices">Each character's page index, when the characters are a subset of the page; otherwise their positions are used.</param>
     /// <returns>The lines.</returns>
-    private static List<TextLine> BuildLines(IReadOnlyList<PageCharacter> characters)
+    private static List<TextLine> BuildLines(IReadOnlyList<PageCharacter> characters, List<int>? pageIndices)
     {
         var lines = new List<TextLine>();
         TextLine? current = null;
@@ -268,17 +327,84 @@ public static class ReadingOrder
 
             if (current is null || StartsNewLine(current, character, RunRight(characters, i, current)))
             {
-                current = new(i, character, rightToLeftPage);
+                current = new(PageIndex(pageIndices, i), character, rightToLeftPage);
                 lines.Add(current);
                 pendingSpace = false;
                 continue;
             }
 
-            current.Append(i, character, pendingSpace || Gap(current.Last, character.Bounds) > character.FontSize * SpaceGapShare);
+            current.Append(PageIndex(pageIndices, i), character, pendingSpace || Gap(current.Last, character.Bounds) > character.FontSize * SpaceGapShare);
             pendingSpace = false;
         }
 
         return lines;
+    }
+
+    /// <summary>Gets a character's page index.</summary>
+    /// <param name="pageIndices">The page indices of a subset of characters, or <see langword="null"/> for the whole page.</param>
+    /// <param name="position">The character's position in the list being read.</param>
+    /// <returns>The page index.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int PageIndex(List<int>? pageIndices, int position) => pageIndices?[position] ?? position;
+
+    /// <summary>Makes one block from a tagged element's lines, or from its replacement text.</summary>
+    /// <param name="element">The element.</param>
+    /// <param name="lines">Its characters joined into lines.</param>
+    /// <param name="body">The body font size, to find headings tagged as paragraphs; zero to trust the tags.</param>
+    /// <returns>The block, or <see langword="null"/> when it has nothing to read.</returns>
+    private static ReadingBlock? FromElement(TaggedBlock element, List<TextLine> lines, float body)
+    {
+        var block = Join(lines);
+        if (element.ReplacementText is { Length: > 0 } replacement)
+        {
+            // Actual text and figure descriptions are read as written; they map to no single page character.
+            var unmapped = new int[replacement.Length];
+            Array.Fill(unmapped, -1);
+            return new(element.Kind, replacement, unmapped, block?.Bounds ?? default, block?.FontSize ?? 0) { Level = element.Level, IsTagged = true };
+        }
+
+        if (block is null)
+        {
+            return null;
+        }
+
+        var (kind, level) = TaggedRole(element, block, body);
+        return block.ToReadingBlock(kind, level, true);
+    }
+
+    /// <summary>Gets a tagged element's role, promoting a paragraph that looks like a heading when the tags have none.</summary>
+    /// <param name="element">The element.</param>
+    /// <param name="block">Its text.</param>
+    /// <param name="body">The body font size, or zero to trust the tags.</param>
+    /// <returns>The kind and heading level.</returns>
+    private static (ReadingBlockKind Kind, int Level) TaggedRole(TaggedBlock element, TextBlock block, float body)
+    {
+        if (body <= 0 || element.Kind != ReadingBlockKind.Paragraph || !IsHeading(block, body))
+        {
+            return (element.Kind, element.Level);
+        }
+
+        return (ReadingBlockKind.Heading, block.FontSize >= body * TopHeadingRatio ? 1 : MinorHeadingLevel);
+    }
+
+    /// <summary>Joins lines into one block, in the order given.</summary>
+    /// <param name="lines">The lines.</param>
+    /// <returns>The block, or <see langword="null"/> when there are no lines.</returns>
+    private static TextBlock? Join(List<TextLine> lines)
+    {
+        TextBlock? block = null;
+        foreach (var line in lines)
+        {
+            if (block is null)
+            {
+                block = new(line);
+                continue;
+            }
+
+            block.Add(line);
+        }
+
+        return block;
     }
 
     /// <summary>Determines whether a character starts a new line: below the line, back to its left, or past a column gap.</summary>
@@ -799,8 +925,10 @@ public static class ReadingOrder
 
         /// <summary>Joins the lines into one, mending words hyphenated at line ends.</summary>
         /// <param name="kind">The block's kind.</param>
+        /// <param name="level">The heading level, or zero.</param>
+        /// <param name="isTagged">Whether the block comes from the document's structure tags.</param>
         /// <returns>The block.</returns>
-        internal ReadingBlock ToReadingBlock(ReadingBlockKind kind)
+        internal ReadingBlock ToReadingBlock(ReadingBlockKind kind, int level, bool isTagged)
         {
             var text = new StringBuilder(TextLength + _lines.Count);
             var indices = new List<int>(TextLength + _lines.Count);
@@ -825,7 +953,7 @@ public static class ReadingOrder
                 indices.AddRange(line.Indices);
             }
 
-            return new(kind, text.ToString(), [.. indices], Bounds, FontSize);
+            return new(kind, text.ToString(), [.. indices], Bounds, FontSize) { Level = level, IsTagged = isTagged };
         }
     }
 }

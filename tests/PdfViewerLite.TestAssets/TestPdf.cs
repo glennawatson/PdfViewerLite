@@ -40,6 +40,21 @@ public static class TestPdf
     /// <summary>The contents of the embedded file in <see cref="CreateWithAttachment"/>.</summary>
     public static readonly string AttachmentText = "Meeting notes: bring the signed form.";
 
+    /// <summary>The running header of <see cref="CreateTagged"/>, marked as an artifact.</summary>
+    public static readonly string TaggedHeader = "Running header 7";
+
+    /// <summary>The heading of <see cref="CreateTagged"/>.</summary>
+    public static readonly string TaggedHeading = "Tagged Heading";
+
+    /// <summary>The first paragraph of <see cref="CreateTagged"/>, drawn below the second.</summary>
+    public static readonly string TaggedFirst = "First paragraph comes first.";
+
+    /// <summary>The second paragraph of <see cref="CreateTagged"/>, drawn above the first.</summary>
+    public static readonly string TaggedSecond = "Second paragraph comes later.";
+
+    /// <summary>The figure description of <see cref="CreateTagged"/>.</summary>
+    public static readonly string TaggedFigure = "A black bar";
+
     /// <summary>The name of the visible layer in <see cref="CreateWithLayers"/>.</summary>
     public static readonly string DrawingLayer = "Drawing";
 
@@ -419,6 +434,49 @@ public static class TestPdf
                /OCProperties << /OCGs [{{drawing}} 0 R {{notes}} 0 R] /D << /Order [{{drawing}} 0 R {{notes}} 0 R] /OFF [{{notes}} 0 R] >> >> >>
             """);
         var info = Add(objects, $"<< /Title (Layers) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page tagged document whose drawing order and position disagree with its logical order: a
+    /// running header marked as an artifact, a level 1 heading, a first paragraph drawn below a second one, and a
+    /// figure with alternative text.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateTagged()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+        var stream = string.Create(CultureInfo.InvariantCulture, $"""
+            /Artifact BMC BT /F1 9 Tf 72 760 Td ({TaggedHeader}) Tj ET EMC
+            /P << /MCID 2 >> BDC BT /F1 12 Tf 72 650 Td ({TaggedSecond}) Tj ET EMC
+            /H1 << /MCID 0 >> BDC BT /F1 20 Tf 72 700 Td ({TaggedHeading}) Tj ET EMC
+            /P << /MCID 1 >> BDC BT /F1 12 Tf 72 600 Td ({TaggedFirst}) Tj ET EMC
+            /Figure << /MCID 3 >> BDC 0 0 0 rg 72 400 100 50 re f EMC
+
+            """);
+        var content = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {stream.Length} >>\nstream\n{stream}endstream"));
+        var root = Reserve(objects);
+        var document = Reserve(objects);
+        var heading = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Type /StructElem /S /H1 /P {document} 0 R /Pg {page} 0 R /K 0 >>"));
+        var first = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Type /StructElem /S /P /P {document} 0 R /Pg {page} 0 R /K 1 >>"));
+        var second = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Type /StructElem /S /P /P {document} 0 R /Pg {page} 0 R /K 2 >>"));
+        var figure = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Type /StructElem /S /Figure /P {document} 0 R /Pg {page} 0 R /K 3 /Alt ({TaggedFigure}) >>"));
+        objects[document - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /StructElem /S /Document /P {root} 0 R /K [{heading} 0 R {first} 0 R {second} 0 R {figure} 0 R] >>");
+        objects[root - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /StructTreeRoot /K [{{document}} 0 R]
+               /ParentTree << /Nums [0 [{{heading}} 0 R {{first}} 0 R {{second}} 0 R {{figure}} 0 R]] >> /ParentTreeNextKey 1 >>
+            """);
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{content}} 0 R /StructParents 0 >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R /MarkInfo << /Marked true >> /StructTreeRoot {root} 0 R /Lang (en-GB) >>");
+        var info = Add(objects, $"<< /Title (Tagged) /Author ({Author}) >>");
         return Serialize(objects, catalog, info);
     }
 

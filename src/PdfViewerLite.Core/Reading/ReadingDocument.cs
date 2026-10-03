@@ -146,7 +146,10 @@ public sealed class ReadingDocument
 
             var characters = new List<PageCharacter>();
             source.GetCharacters(pageIndex, characters);
-            var page = ReadingOrder.Analyze(pageIndex, _sizes[pageIndex], characters, GetRepeatedMargins(source));
+            var tagged = new List<TaggedBlock>();
+            var page = source is ITaggedStructureSource structure && structure.GetTaggedBlocks(pageIndex, tagged)
+                ? ReadingOrder.FromStructure(pageIndex, characters, tagged)
+                : ReadingOrder.Analyze(pageIndex, _sizes[pageIndex], characters, GetRepeatedMargins(source));
             _pages[pageIndex] = page;
             return page;
         }

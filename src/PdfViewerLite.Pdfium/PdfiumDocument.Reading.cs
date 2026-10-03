@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Runtime.InteropServices;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Reading;
 using PdfViewerLite.Pdfium.Native;
@@ -13,6 +14,12 @@ public sealed partial class PdfiumDocument : ITextLayoutSource
 {
     /// <summary>The font weight from which text counts as bold.</summary>
     private const int BoldWeight = 600;
+
+    /// <summary>The font descriptor flag that asks for bold glyphs to be drawn heavier (bit 19).</summary>
+    private const int ForceBoldFlag = 1 << 18;
+
+    /// <summary>The longest base font name read.</summary>
+    private const int FontNameBytes = 128;
 
     /// <summary>A typical font's ascent-to-descent height relative to its size.</summary>
     private const float LooseBoxToSize = 1.15F;
@@ -34,13 +41,14 @@ public sealed partial class PdfiumDocument : ITextLayoutSource
 
         var count = NativeMethods.FPDFText_CountChars(textPage);
         _ = output.EnsureCapacity(output.Count + count);
+        var fonts = new Dictionary<nint, bool>();
         for (var i = 0; i < count; i++)
         {
             var value = (char)NativeMethods.FPDFText_GetUnicode(textPage, i);
             var generated = NativeMethods.FPDFText_IsGenerated(textPage, i) == 1;
             var bounds = generated ? default : Bounds(page, textPage, i);
             var size = EffectiveSize(textPage, i, generated);
-            var bold = NativeMethods.FPDFText_GetFontWeight(textPage, i) >= BoldWeight;
+            var bold = !generated && IsBold(textPage, i, fonts);
             output.Add(new(value, bounds, size, bold, generated));
         }
     }
@@ -84,5 +92,59 @@ public sealed partial class PdfiumDocument : ITextLayoutSource
 
         var drawn = (box.Top - box.Bottom) / LooseBoxToSize;
         return drawn > size * ScaledTextRatio ? drawn : size;
+    }
+
+    /// <summary>
+    /// Determines whether a character is bold: by its weight, or failing that by its font's descriptor weight,
+    /// ForceBold flag or name (many fonts give no weight, but are called Helvetica-Bold or MinionPro-Semibold).
+    /// </summary>
+    /// <param name="textPage">The text page.</param>
+    /// <param name="index">The character.</param>
+    /// <param name="fonts">The answer for each font already seen on the page.</param>
+    /// <returns><see langword="true"/> when the character is bold.</returns>
+    private static bool IsBold(PdfiumTextPageHandle textPage, int index, Dictionary<nint, bool> fonts)
+    {
+        if (NativeMethods.FPDFText_GetFontWeight(textPage, index) >= BoldWeight)
+        {
+            return true;
+        }
+
+        var textObject = NativeMethods.FPDFText_GetTextObject(textPage, index);
+        var font = textObject == 0 ? 0 : NativeMethods.FPDFTextObj_GetFont(textObject);
+        if (font == 0)
+        {
+            return false;
+        }
+
+        ref var bold = ref CollectionsMarshal.GetValueRefOrAddDefault(fonts, font, out var known);
+        if (!known)
+        {
+            bold = IsBoldFont(font);
+        }
+
+        return bold;
+    }
+
+    /// <summary>Determines whether a font is bold from its descriptor and name.</summary>
+    /// <param name="font">The font.</param>
+    /// <returns><see langword="true"/> for a bold font.</returns>
+    private static unsafe bool IsBoldFont(nint font)
+    {
+        var flags = NativeMethods.FPDFFont_GetFlags(font);
+        if (NativeMethods.FPDFFont_GetWeight(font) >= BoldWeight || (flags > 0 && (flags & ForceBoldFlag) != 0))
+        {
+            return true;
+        }
+
+        Span<byte> name = stackalloc byte[FontNameBytes];
+        nuint length;
+        fixed (byte* buffer = name)
+        {
+            length = NativeMethods.FPDFFont_GetBaseFontName(font, buffer, FontNameBytes);
+        }
+
+        var text = name[..(int)Math.Min(length, FontNameBytes)];
+        return text.IndexOf("Bold"u8) >= 0 || text.IndexOf("Black"u8) >= 0 || text.IndexOf("Heavy"u8) >= 0
+            || text.IndexOf("Semibold"u8) >= 0 || text.IndexOf("SemiBold"u8) >= 0 || text.IndexOf("Demi"u8) >= 0;
     }
 }

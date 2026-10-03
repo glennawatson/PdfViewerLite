@@ -14,4 +14,11 @@ namespace PdfViewerLite.Core.Reading;
 /// <param name="Bounds">The block's box on the page.</param>
 /// <param name="FontSize">The block's main font size in points.</param>
 [DebuggerDisplay("{Kind}: {Text}")]
-public sealed record ReadingBlock(ReadingBlockKind Kind, string Text, int[] CharIndices, PageRect Bounds, float FontSize);
+public sealed record ReadingBlock(ReadingBlockKind Kind, string Text, int[] CharIndices, PageRect Bounds, float FontSize)
+{
+    /// <summary>Gets the heading level, 1 to 6, for a heading; zero otherwise.</summary>
+    public int Level { get; init; }
+
+    /// <summary>Gets a value indicating whether the block comes from the document's own structure tags rather than its layout.</summary>
+    public bool IsTagged { get; init; }
+}

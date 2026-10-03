@@ -24,6 +24,12 @@ public class ReadingOrderBenchmarks
     /// <summary>The repeated margins.</summary>
     private readonly HashSet<string> _repeated = [with(StringComparer.Ordinal)];
 
+    /// <summary>The tagged document's characters.</summary>
+    private readonly List<PageCharacter> _taggedCharacters = [];
+
+    /// <summary>The tagged document's blocks, reused.</summary>
+    private readonly List<TaggedBlock> _taggedBlocks = [];
+
     /// <summary>The document.</summary>
     private OcrDocument _document = null!;
 
@@ -36,6 +42,9 @@ public class ReadingOrderBenchmarks
     /// <summary>The first page in reading order.</summary>
     private ReadingPage _page = null!;
 
+    /// <summary>A tagged document, read through its structure tree.</summary>
+    private OcrDocument _tagged = null!;
+
     /// <summary>Opens a two-page article and reads its first page's characters.</summary>
     [GlobalSetup]
     public void Setup()
@@ -45,11 +54,18 @@ public class ReadingOrderBenchmarks
         _size = _document.Document.GetPageSizes()[0];
         _source.GetCharacters(0, _characters);
         _page = ReadingOrder.Analyze(0, _size, _characters, _repeated);
+        _tagged = new(TestPdf.CreateTagged());
+        ((ITextLayoutSource)_tagged.Document).GetCharacters(0, _taggedCharacters);
+        _ = ((ITaggedStructureSource)_tagged.Document).GetTaggedBlocks(0, _taggedBlocks);
     }
 
     /// <summary>Closes the document.</summary>
     [GlobalCleanup]
-    public void Cleanup() => _document.Dispose();
+    public void Cleanup()
+    {
+        _document.Dispose();
+        _tagged.Dispose();
+    }
 
     /// <summary>Reads a page's characters and their positions from PDFium.</summary>
     /// <returns>The character count.</returns>
@@ -70,4 +86,19 @@ public class ReadingOrderBenchmarks
     /// <returns>The text length.</returns>
     [Benchmark]
     public int Flatten() => ReadingDocument.Flatten(_page, out _).Length;
+
+    /// <summary>Reads a tagged page's structure tree into blocks.</summary>
+    /// <returns>The number of blocks.</returns>
+    [Benchmark]
+    public int ReadTags()
+    {
+        _taggedBlocks.Clear();
+        _ = ((ITaggedStructureSource)_tagged.Document).GetTaggedBlocks(0, _taggedBlocks);
+        return _taggedBlocks.Count;
+    }
+
+    /// <summary>Builds a tagged page's reading blocks from its structure.</summary>
+    /// <returns>The number of blocks.</returns>
+    [Benchmark]
+    public int FromStructure() => ReadingOrder.FromStructure(0, _taggedCharacters, _taggedBlocks).Blocks.Count;
 }

@@ -2,6 +2,46 @@
   // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
   // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
   {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument+StructureWalker.",
+    "reason": "Reading a tagged page's structure tree makes one TaggedBlock (with its character index array) per element, which is the result, and remembers which marked content it has used. It runs once per page when Focus Mode or Read Aloud first reads it; ReadingDocument caches the page."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.IsBold(",
+    "reason": "The per-page cache of whether each font is bold grows its buckets when a page uses a new font; see GetCharacters."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ReadUtf16(",
+    "reason": "A string read from PDFium, such as an outline title or a figure's alternative text, is the result; one per call."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.Native.NativeText.FromUtf16(",
+    "reason": "A string read from PDFium, such as an outline title or a figure's alternative text, is the result; one per call."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.MapMarkedContent(",
+    "reason": "Reading a tagged page groups its characters by marked content id in a dictionary of index lists, once per page; ReadingDocument caches the result."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ReadTree(",
+    "reason": "Reading a tagged page creates the structure walker and its used-id set once per page; ReadingDocument caches the result."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ReadElementString(",
+    "reason": "An element's /ActualText or a figure's /Alt text is read into a string only when the element has one; it becomes the block's text."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetCharacters(",
+    "reason": "Reading a page's characters remembers whether each of its fonts is bold, so each font's name is read once per page rather than once per character. Runs once per page when its reading order is worked out."
+  },
+  {
     "type": "System.String",
     "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetText(",
     "reason": "The extracted text is the result; one string per call, sized exactly."
