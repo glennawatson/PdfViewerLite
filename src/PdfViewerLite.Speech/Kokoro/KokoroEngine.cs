@@ -24,8 +24,11 @@ public sealed class KokoroEngine : ISpeechEngine
     /// <summary>The length of a voice's style vector.</summary>
     private const int StyleLength = 256;
 
-    /// <summary>The padding tokens around each window, one at each end; also halves the processor count for threads.</summary>
+    /// <summary>The padding tokens around each window, one at each end.</summary>
     private const int PadTokens = 2;
+
+    /// <summary>The processors left to the rest of the app (drawing pages, the window) while speech is made.</summary>
+    private const int ReservedProcessors = 1;
 
     /// <summary>The most threads inference uses, leaving the rest of the computer responsive.</summary>
     private const int MaxThreads = 4;
@@ -198,7 +201,7 @@ public sealed class KokoroEngine : ISpeechEngine
             return _session;
         }
 
-        using var options = new SessionOptions { IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / PadTokens, 1, MaxThreads) };
+        using var options = new SessionOptions { IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount - ReservedProcessors, 1, MaxThreads) };
         _session = new(Path.Combine(_directory, KokoroModel.ModelFile), options);
         return _session;
     }

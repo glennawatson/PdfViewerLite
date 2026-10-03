@@ -38,8 +38,8 @@ public sealed class MeloEngine : ISpeechEngine
     /// <summary>The fewest phones, with blanks and padding, that hold a sound.</summary>
     private const int MinPhones = 6;
 
-    /// <summary>Halves the processor count for threads.</summary>
-    private const int ThreadDivisor = 2;
+    /// <summary>The processors left to the rest of the app (drawing pages, the window) while speech is made.</summary>
+    private const int ReservedProcessors = 1;
 
     /// <summary>The most threads inference uses, leaving the rest of the computer responsive.</summary>
     private const int MaxThreads = 4;
@@ -350,7 +350,7 @@ public sealed class MeloEngine : ISpeechEngine
     {
         if (_synthesizer is null || _bert is null)
         {
-            using var options = new SessionOptions { IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount / ThreadDivisor, 1, MaxThreads) };
+            using var options = new SessionOptions { IntraOpNumThreads = Math.Clamp(Environment.ProcessorCount - ReservedProcessors, 1, MaxThreads) };
             _synthesizer ??= new(Path.Combine(_directory, MeloModel.ModelFile), options);
             _bert ??= new(Path.Combine(_directory, MeloModel.BertFile), options);
         }
