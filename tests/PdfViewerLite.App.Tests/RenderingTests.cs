@@ -64,6 +64,12 @@ public sealed class RenderingTests
     /// <summary>How different from the background a pixel must be to count as drawn.</summary>
     private const int InkThreshold = 60;
 
+    /// <summary>How many characters the caret test steps.</summary>
+    private const int CaretSteps = 3;
+
+    /// <summary>The length of the "Page 1" heading, before the next line starts.</summary>
+    private const int HeadingLength = 6;
+
     /// <summary>Masks off the alpha channel.</summary>
     private const uint RgbMask = 0xFFFFFFU;
 
@@ -369,6 +375,46 @@ public sealed class RenderingTests
             await Assert.That(tab.IsPageByPage).IsFalse();
             await Assert.That(tab.ZoomMode).IsEqualTo(zoomBefore);
             await Assert.That(tab.SidebarVisible).IsTrue();
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies caret navigation starts on the current page and moves by character and by line.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task MovesCaretThroughText()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("caret.pdf", PageByPagePages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var tab = main.SelectedTab!;
+            var canvas = window.GetVisualDescendants().OfType<PageCanvas>().Single();
+            _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > 0);
+
+            _ = await tab.ToggleCaretModeCommand.Execute().ToTask();
+            var started = await UiWait.UntilAsync(() => canvas.Caret == (0, 0));
+            for (var i = 0; i < CaretSteps; i++)
+            {
+                window.KeyPress(Avalonia.Input.Key.Right, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.ArrowRight, null);
+            }
+
+            var moved = await UiWait.UntilAsync(() => canvas.Caret == (0, CaretSteps));
+            window.KeyPress(Avalonia.Input.Key.Down, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.ArrowDown, null);
+            var down = await UiWait.UntilAsync(() => canvas.Caret.Char > HeadingLength);
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "caret.png");
+
+            await Assert.That(started).IsTrue();
+            await Assert.That(moved).IsTrue();
+            await Assert.That(down).IsTrue();
+            await Assert.That(canvas.Caret.Page).IsEqualTo(0);
         }
         finally
         {

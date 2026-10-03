@@ -186,6 +186,7 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Chrome.IsVisible, static presenting => !presenting));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.VerticalScrollBarVisibility, ScrollBars));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.HorizontalScrollBarVisibility, ScrollBars));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.IsCaretMode, static v => v.CaretModeItem.IsChecked, static on => on, static on => on));
         bindings.Add(this.Bind(ViewModel, static vm => vm.IsPageByPage, static v => v.PageByPageItem.IsChecked, static on => on, static on => on));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveAsCommand, static v => v.SaveAsItem));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReloadCommand, static v => v.ReloadItem));

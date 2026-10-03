@@ -102,6 +102,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
         SaveCommand = ReactiveCommand.Create(() => Save(FilePath));
         PrintCommand = ReactiveCommand.CreateFromTask(PrintAsync);
+        ToggleCaretModeCommand = ReactiveCommand.Create(() => { IsCaretMode = !IsCaretMode; });
         PresentCommand = ReactiveCommand.Create(() => SetPresenting(!IsPresenting));
         StopPresentingCommand = ReactiveCommand.Create(() => SetPresenting(false));
         DismissNoticeCommand = ReactiveCommand.Create(() => { Notice = null; });
@@ -255,6 +256,16 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
+
+    /// <summary>Gets or sets a value indicating whether a text cursor is moved through the page with the arrow keys (F7).</summary>
+    public bool IsCaretMode
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Gets the command turning caret navigation on or off.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ToggleCaretModeCommand { get; }
 
     /// <summary>Gets or sets a value indicating whether pages are shown one at a time instead of scrolling continuously.</summary>
     public bool IsPageByPage

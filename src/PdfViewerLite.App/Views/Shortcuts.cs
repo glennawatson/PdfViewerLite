@@ -50,6 +50,7 @@ internal static class Shortcuts
         (new(Key.Home, KeyModifiers.Control), static vm => vm.SelectedTab?.FirstPageCommand),
         (new(Key.End, KeyModifiers.Control), static vm => vm.SelectedTab?.LastPageCommand),
         (new(Key.F9), static vm => vm.SelectedTab?.ToggleSidebarCommand),
+        (new(Key.F7), static vm => vm.SelectedTab?.ToggleCaretModeCommand),
         (new(Key.F5), static vm => vm.SelectedTab?.ReloadCommand),
         (new(Key.F5, KeyModifiers.Shift), static vm => vm.SelectedTab?.PresentCommand),
     ];

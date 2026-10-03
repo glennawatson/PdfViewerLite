@@ -49,6 +49,7 @@
                 <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
                 <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
                 <MenuItem x:Name="PresentItem" Header="P_resent" InputGesture="Shift+F5" ToolTip.Tip="Full screen, one page at a time; Esc to stop" />
+                <MenuItem x:Name="CaretModeItem" Header="_Caret Navigation" InputGesture="F7" ToggleType="CheckBox" ToolTip.Tip="Move through the text with the arrow keys; Shift selects" />
                 <MenuItem x:Name="PageByPageItem" Header="Page _by Page" ToggleType="CheckBox" ToolTip.Tip="Show one page at a time instead of scrolling continuously" />
                 <Separator />
                 <MenuItem x:Name="SaveItem" Header="_Save" InputGesture="Ctrl+S" />

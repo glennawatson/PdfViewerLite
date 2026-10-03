@@ -231,6 +231,7 @@ public sealed partial class PageCanvas : Control
         }
 
         DrawAnnotationOverlay(context, tab);
+        DrawCaret(context, tab);
     }
 
     /// <inheritdoc/>
@@ -336,6 +337,7 @@ public sealed partial class PageCanvas : Control
 
         _selectionAnchor = (page, character);
         _selectionFocus = (page, character);
+        _caret = (page, character);
         _selecting = true;
         e.Pointer.Capture(this);
     }
@@ -409,7 +411,7 @@ public sealed partial class PageCanvas : Control
             return;
         }
 
-        if (HandleAnnotationKey(e.Key) || HandlePageByPageKey(e))
+        if (HandleAnnotationKey(e.Key) || HandleCaretKey(e) || HandlePageByPageKey(e))
         {
             e.Handled = true;
             return;
@@ -703,6 +705,7 @@ public sealed partial class PageCanvas : Control
             tab.Search.HighlightChanges.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.PageEdits.SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.WhenAnyValue(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),
             tab.Annotations.WhenAnyValue(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
         tab.EnsureLoaded();
