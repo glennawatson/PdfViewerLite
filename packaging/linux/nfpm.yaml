@@ -19,7 +19,7 @@ depends:
   - libx11-6 | libX11
   - libice6 | libICE
   - libsm6 | libSM
-# Text recognition (More > Recognise Text) uses Tesseract when it is installed, so it is recommended per format.
+# Printing straight to a printer uses libcups, and text recognition (More > Recognise Text) uses Tesseract, when installed.
 overrides:
   rpm:
     depends:
@@ -28,10 +28,12 @@ overrides:
       - libICE
       - libSM
     recommends:
+      - cups-libs
       - tesseract
       - tesseract-langpack-eng
   deb:
     recommends:
+      - libcups2
       - libtesseract5
       - tesseract-ocr-eng
 contents:

@@ -35,7 +35,7 @@ documents. Every feature has a BenchmarkDotNet benchmark; allocations are checke
 | Signatures | Draw or type, digital signatures listed and checked | Draw or type a signature, list and check digital signatures | Done |
 | Attachments | Yes | Sidebar panel, save to a place you choose | Done |
 | Save / save a copy | Yes | Yes; signed documents are saved incrementally | Done |
-| Print | Yes | Print preview (pages, ranges, pages per sheet, annotations, Save as PDF), then the desktop's print dialog through the XDG portal | Done |
+| Print | Yes | Browser-style preview; sends straight to the printer queue via CUPS (printer, copies, colour, two-sided, paper, pages, pages per sheet, annotations), Save as PDF, or the desktop's dialog via the XDG portal | Done |
 | Presentation mode | Yes | More ▸ Present (Shift+F5), Esc to stop | Done |
 | Text recognition (OCR) | No | More ▸ Recognise Text adds a searchable text layer with Tesseract | Done |
 | Caret navigation | Yes | F7: a steady cursor moved with the arrow keys, Shift selects | Done |
