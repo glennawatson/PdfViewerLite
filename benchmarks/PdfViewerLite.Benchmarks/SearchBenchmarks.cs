@@ -10,7 +10,6 @@ using PdfViewerLite.TestAssets;
 namespace PdfViewerLite.Benchmarks;
 
 /// <summary>Measures text search and extraction on a page.</summary>
-[MemoryDiagnoser]
 public class SearchBenchmarks
 {
     /// <summary>The page count of the generated document.</summary>

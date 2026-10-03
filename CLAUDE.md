@@ -11,7 +11,7 @@ dotnet test --project $PWD/tests/PdfViewerLite.Core.Tests/PdfViewerLite.Core.Tes
 dotnet run --project src/PdfViewerLite.App -- file.pdf
 scripts/publish-linux.sh linux-x64                     # Native AOT; must stay free of trim/AOT warnings
 dotnet run -c Release --project benchmarks/PdfViewerLite.Benchmarks -- --filter '*'
-scripts/audit-allocations.sh '*TileRender*'            # EventPipe allocation trace per benchmark, then the audit tool
+scripts/audit-allocations.sh '*TileRender*'            # benchmarks with EventPipe traces, then the allocation audit
 ```
 
 Headless UI tests save screenshots when `PDFVIEWERLITE_SCREENSHOTS` is set. With the .NET 11 SDK, `--project` needs
@@ -34,7 +34,8 @@ benchmarks target `net10.0`.
   subscriptions in a `MultipleDisposable`. Observe view model properties with `WhenAnyValue`, Avalonia properties
   with `GetObservable(property)` and routed events with `GetObservable(routedEvent)`. Framework CLR events are only
   bridged at the edge with `Signal.FromEvent` (see `FileChanges`). Prefer overriding `OnXxx` methods in controls.
-- Every feature has a BenchmarkDotNet benchmark. Any allocation PdfViewerLite makes inside a measured workload must
+- Every feature has a BenchmarkDotNet benchmark. Allocations are measured only with EventPipe traces read by
+  `tools/PdfViewerLite.AllocationAudit`; never add `[MemoryDiagnoser]`. Any allocation PdfViewerLite makes inside a measured workload must
   be listed with its reason in `benchmarks/allocations-explained.json`; `scripts/audit-allocations.sh` fails otherwise.
   Timings are a guide only: check they hold steady or improve.
 - PDFium calls must hold `PdfiumLibrary.EnterScope()`. The render hot path must not allocate.

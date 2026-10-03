@@ -14,26 +14,17 @@ namespace PdfViewerLite.Benchmarks;
 /// <summary>Runs the benchmarks.</summary>
 public static class Program
 {
-    /// <summary>The switch that records an allocation trace for every benchmark.</summary>
-    private const string AuditSwitch = "--audit";
-
     /// <summary>
-    /// Entry point; pass BenchmarkDotNet arguments such as <c>--filter *</c>. With <c>--audit</c> every benchmark also
-    /// writes an EventPipe trace sampling each allocation with its stack, which <c>tools/PdfViewerLite.AllocationAudit</c>
-    /// reads.
+    /// Entry point; pass BenchmarkDotNet arguments such as <c>--filter *</c>. Allocations are measured only through
+    /// EventPipe: every run writes a .nettrace per benchmark sampling each allocation with its stack, which
+    /// <c>tools/PdfViewerLite.AllocationAudit</c> reads and checks against <c>benchmarks/allocations-explained.json</c>.
     /// </summary>
     /// <param name="args">The arguments.</param>
-    public static void Main(string[] args)
-    {
-        ArgumentNullException.ThrowIfNull(args);
-        var audit = Array.IndexOf(args, AuditSwitch) >= 0;
-        var config = audit ? CreateAuditConfig() : null;
-        _ = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run([.. args.Where(static arg => arg != AuditSwitch)], config);
-    }
+    public static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, CreateConfig());
 
-    /// <summary>Creates a configuration recording allocations with stacks.</summary>
+    /// <summary>Creates the configuration: the default jobs plus an EventPipe allocation trace.</summary>
     /// <returns>The configuration.</returns>
-    private static ManualConfig CreateAuditConfig()
+    private static ManualConfig CreateConfig()
     {
         const ClrTraceEventParser.Keywords keywords = ClrTraceEventParser.Keywords.GC | ClrTraceEventParser.Keywords.Type
             | ClrTraceEventParser.Keywords.GCSampledObjectAllocationHigh | ClrTraceEventParser.Keywords.Stack;

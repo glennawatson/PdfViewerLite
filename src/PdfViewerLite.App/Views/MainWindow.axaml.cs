@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -13,6 +14,7 @@ using Avalonia.VisualTree;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Views;
 
@@ -54,6 +56,12 @@ public sealed partial class MainWindow : Window
             TabStrip.GetObservable(PointerMovedEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnTabPointerMoved, OnError),
             TabStrip.GetObservable(PointerReleasedEvent, RoutingStrategies.Tunnel).SubscribeSafe(_ => _draggedTab = null, OnError),
             TabStrip.GetObservable(PointerWheelChangedEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnTabWheel, OnError),
+            TabStrip.GetObservable(ToolTip.ToolTipOpeningEvent).SubscribeSafe(OnTabPreviewOpening, OnError),
+            TabFinderList.GetObservable(SelectingItemsControl.SelectionChangedEvent).SubscribeSafe(_ => OnTabFound(), OnError),
+            Signal.FromEvent<EventHandler, RxVoid>(
+                static handler => (_, _) => handler(RxVoid.Default),
+                handler => TabFinderButton.Flyout!.Opened += handler,
+                handler => TabFinderButton.Flyout!.Opened -= handler).SubscribeSafe(_ => OnTabFinderOpened(), OnError),
         ];
     }
 
@@ -84,6 +92,7 @@ public sealed partial class MainWindow : Window
 
         _registrations =
         [
+            viewModel.TabFinderRequests.SubscribeSafe(_ => TabFinderButton.Flyout?.ShowAt(TabFinderButton), OnError),
             viewModel.OpenFileInteraction.RegisterHandler(OpenFilesAsync),
             viewModel.ShowPropertiesInteraction.RegisterHandler(ShowPropertiesAsync),
             viewModel.ConfirmInteraction.RegisterHandler(ConfirmAsync),
@@ -134,6 +143,16 @@ public sealed partial class MainWindow : Window
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
+    /// <summary>Readies the hover preview of the tab under the pointer.</summary>
+    /// <param name="e">The event.</param>
+    private static void OnTabPreviewOpening(CancelRoutedEventArgs e)
+    {
+        if ((e.Source as Control)?.DataContext is DocumentTabViewModel tab)
+        {
+            tab.PreparePreview();
+        }
+    }
+
     /// <summary>Accepts dragged files.</summary>
     /// <param name="e">The event.</param>
     private static void OnDragOver(DragEventArgs e) =>
@@ -146,6 +165,28 @@ public sealed partial class MainWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new() { Title = "Open Document", AllowMultiple = true, FileTypeFilter = [PdfFileType, FilePickerFileTypes.All] });
         context.SetOutput(ToPaths(files));
+    }
+
+    /// <summary>Refreshes the tab finder and focuses its search box.</summary>
+    private void OnTabFinderOpened()
+    {
+        ViewModel?.RefreshFoundTabs();
+        TabFinderList.SelectedItem = null;
+        _ = TabFinderBox.Focus();
+        TabFinderBox.SelectAll();
+    }
+
+    /// <summary>Selects the tab picked in the tab finder and closes it.</summary>
+    private void OnTabFound()
+    {
+        if (TabFinderList.SelectedItem is not DocumentTabViewModel tab || ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        viewModel.SelectedTab = tab;
+        TabFinderButton.Flyout?.Hide();
+        TabStrip.ScrollIntoView(tab);
     }
 
     /// <summary>Asks the user to confirm a destructive action.</summary>

@@ -9,7 +9,6 @@ using PdfViewerLite.Core.Layout;
 namespace PdfViewerLite.Benchmarks;
 
 /// <summary>Measures laying out and querying a long document.</summary>
-[MemoryDiagnoser]
 public class LayoutBenchmarks
 {
     /// <summary>The page count.</summary>

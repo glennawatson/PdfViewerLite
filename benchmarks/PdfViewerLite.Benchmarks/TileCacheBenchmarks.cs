@@ -9,7 +9,6 @@ using PdfViewerLite.Core.Rendering;
 namespace PdfViewerLite.Benchmarks;
 
 /// <summary>Measures the tile cache lookups made for every visible tile on every frame.</summary>
-[MemoryDiagnoser]
 public class TileCacheBenchmarks
 {
     /// <summary>The number of cached tiles.</summary>

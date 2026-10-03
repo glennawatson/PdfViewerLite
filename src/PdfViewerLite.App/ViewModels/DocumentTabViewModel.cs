@@ -26,6 +26,9 @@ namespace PdfViewerLite.App.ViewModels;
 [DebuggerDisplay("{FileName}")]
 public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 {
+    /// <summary>The width of tab hover previews, in device independent pixels.</summary>
+    private const double PreviewSize = 180;
+
     /// <summary>The width of sidebar thumbnails in device independent pixels.</summary>
     private const double ThumbnailWidth = 120;
 
@@ -86,6 +89,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
     }
 
+    /// <summary>Gets the width of the hover preview of a tab.</summary>
+    public static double PreviewWidth => PreviewSize;
+
     /// <summary>Gets the requests for the canvas to scroll.</summary>
     public IObservable<NavigationRequest> NavigationRequests => _navigationRequests;
 
@@ -118,6 +124,26 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the file name.</summary>
     public string FileName { get; }
+
+    /// <summary>Gets the folder the file is in.</summary>
+    public string Folder => Path.GetDirectoryName(Source.FilePath) ?? string.Empty;
+
+    /// <summary>Gets the page shown in the hover preview: the page the tab was last on.</summary>
+    public int PreviewPageIndex => Math.Max(0, CurrentPageIndex);
+
+    /// <summary>Gets the height of the hover preview, following the page's shape.</summary>
+    public double PreviewHeight
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Gets the hover preview caption, for example "Page 3 of 40".</summary>
+    public string PreviewCaption
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     /// <summary>Gets the document title.</summary>
     public string Title
@@ -515,6 +541,33 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
         GoToPage(page);
         Search.Refresh();
+    }
+
+    /// <summary>
+    /// Readies the hover preview: opens the document if it is not open (the pool closes the least recently used one
+    /// when full) and sizes the preview to the page the tab is on. Called when the preview is about to show.
+    /// </summary>
+    public void PreparePreview()
+    {
+        if (TryGetDocument() is null)
+        {
+            PreviewHeight = 0;
+            PreviewCaption = NeedsPassword ? "Password protected" : ErrorMessage ?? "This document could not be opened";
+            return;
+        }
+
+        var page = Math.Min(PreviewPageIndex, Source.PageCount - 1);
+        if (page < 0)
+        {
+            PreviewHeight = 0;
+            PreviewCaption = "No pages";
+            return;
+        }
+
+        var size = Source.PageSizes[page];
+        PreviewHeight = size.Width > 0 ? Math.Round(PreviewWidth * size.Height / size.Width) : PreviewWidth;
+        PreviewCaption = $"Page {GetPageDisplay(page)} of {Source.PageCount}";
+        this.RaisePropertyChanged(nameof(PreviewPageIndex));
     }
 
     /// <summary>Closes the native document while the tab is in the background; it reopens on demand.</summary>

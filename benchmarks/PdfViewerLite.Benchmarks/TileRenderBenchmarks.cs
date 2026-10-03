@@ -12,7 +12,6 @@ using PdfViewerLite.TestAssets;
 namespace PdfViewerLite.Benchmarks;
 
 /// <summary>Measures rasterising one tile through PDFium into a caller owned buffer; managed allocations should be zero.</summary>
-[MemoryDiagnoser]
 public class TileRenderBenchmarks
 {
     /// <summary>The page count of the generated document.</summary>
@@ -36,12 +35,16 @@ public class TileRenderBenchmarks
     /// <summary>The document.</summary>
     private IDocument _document = null!;
 
+    /// <summary>The size of the first page, cached as the app's document source does.</summary>
+    private PageSize _firstPage;
+
     /// <summary>Opens the document.</summary>
     [GlobalSetup]
     public void Setup()
     {
         _path = TestPdf.WriteTempFile(DocumentPages);
         _document = new PdfiumEngine().Open(_path, null);
+        _firstPage = _document.GetPageSizes()[0];
     }
 
     /// <summary>Closes the document.</summary>
@@ -70,6 +73,23 @@ public class TileRenderBenchmarks
         var tileSize = TileGrid.TileSize;
         var target = new RenderTarget(_pixels, tileSize, tileSize, tileSize * BytesPerPixel);
         var rendered = _document.Render(new(0, Scale, PageRotation.None, 0, 0, RenderFlags.Annotations), target);
+        _tone.Apply(target);
+        return rendered;
+    }
+
+    /// <summary>
+    /// Renders a whole page at preview size, as a tab hover preview or thumbnail does, then applies the page tone.
+    /// The preview fits in the tile buffer, so nothing is allocated.
+    /// </summary>
+    /// <returns>Whether the preview rendered.</returns>
+    [Benchmark]
+    public bool RenderTabPreview()
+    {
+        var size = _firstPage;
+        var scale = TileGrid.GetPreviewScale(size, PageRotation.None);
+        TileGrid.GetPagePixelSize(size, PageRotation.None, scale, out var width, out var height);
+        var target = new RenderTarget(_pixels, width, height, width * BytesPerPixel);
+        var rendered = _document.Render(new(0, scale, PageRotation.None, 0, 0, RenderFlags.Annotations), target);
         _tone.Apply(target);
         return rendered;
     }

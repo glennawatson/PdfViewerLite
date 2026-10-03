@@ -71,4 +71,30 @@ public sealed class PageToneTests
         await Assert.That(calm.Id).IsNotEqualTo(soft.Id);
         await Assert.That(new PageTone(CalmPaper, CalmInk).Id).IsEqualTo(calm.Id);
     }
+
+    /// <summary>Verifies the vectorised path gives exactly what the per-pixel path gives, for every channel value.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task VectorMatchesScalar()
+    {
+        const int pixelBytes = 4;
+        const int values = 256;
+        const int tail = 12;
+        var tone = new PageTone(CalmPaper, CalmInk);
+        var pixels = new byte[(values * pixelBytes) + tail];
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = (byte)(i / pixelBytes);
+        }
+
+        var expected = (byte[])pixels.Clone();
+        for (var i = 0; i < expected.Length; i += pixelBytes)
+        {
+            tone.Apply(expected.AsSpan(i, pixelBytes));
+        }
+
+        tone.Apply(pixels);
+
+        await Assert.That(pixels.AsSpan().SequenceEqual(expected)).IsTrue();
+    }
 }

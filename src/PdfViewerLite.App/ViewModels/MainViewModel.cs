@@ -8,10 +8,12 @@ using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Rendering;
 using PdfViewerLite.Core.Settings;
+using PdfViewerLite.Core.Tabs;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -34,6 +36,9 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Recently closed tabs, most recent last; tabs closed together form one group and reopen together.</summary>
     private readonly List<SessionTab[]> _closedTabs = [];
 
+    /// <summary>Emits when the tab finder should open.</summary>
+    private readonly Signal<RxVoid> _tabFinderRequests = new();
+
     /// <summary>Follows the resolved theme so every tab draws pages in the current tone.</summary>
     private readonly IDisposable _themeSubscription;
 
@@ -48,6 +53,8 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         CloseOtherTabsCommand = ReactiveCommand.CreateFromTask<DocumentTabViewModel?>(tab => CloseOtherTabsAsync(tab ?? SelectedTab));
         CloseAllTabsCommand = ReactiveCommand.CreateFromTask(CloseAllTabsAsync);
         DismissStatusCommand = ReactiveCommand.Create(() => StatusMessage = null);
+        GoToTabCommand = ReactiveCommand.Create<DocumentTabViewModel?>(tab => SelectedTab = tab ?? SelectedTab);
+        ShowTabFinderCommand = ReactiveCommand.Create(() => _tabFinderRequests.OnNext(RxVoid.Default));
         NextTabCommand = ReactiveCommand.Create(() => CycleTab(1));
         PreviousTabCommand = ReactiveCommand.Create(() => CycleTab(-1));
         ReopenClosedTabCommand = ReactiveCommand.Create(ReopenClosedTab);
@@ -74,6 +81,20 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the open tabs.</summary>
     public ObservableCollection<DocumentTabViewModel> Tabs { get; } = [];
+
+    /// <summary>Gets the tabs matching <see cref="TabQuery"/>, shown in the tab finder.</summary>
+    public ObservableCollection<DocumentTabViewModel> FoundTabs { get; } = [];
+
+    /// <summary>Gets or sets what the user typed in the tab finder.</summary>
+    public string TabQuery
+    {
+        get;
+        set
+        {
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            RefreshFoundTabs();
+        }
+    } = string.Empty;
 
     /// <summary>Gets the recently opened documents shown on the start page.</summary>
     public ObservableCollection<RecentDocument> RecentDocuments { get; } = [];
@@ -142,6 +163,15 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the close all tabs command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> CloseAllTabsCommand { get; }
+
+    /// <summary>Gets the command selecting a tab from the tab finder.</summary>
+    public ReactiveCommand<DocumentTabViewModel?, RxVoid> GoToTabCommand { get; }
+
+    /// <summary>Gets the command opening the tab finder.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ShowTabFinderCommand { get; }
+
+    /// <summary>Gets the requests to open the tab finder.</summary>
+    public IObservable<RxVoid> TabFinderRequests => _tabFinderRequests;
 
     /// <summary>Gets the command dismissing the status message.</summary>
     public ReactiveCommand<RxVoid, string?> DismissStatusCommand { get; }
@@ -293,6 +323,25 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         Close(tab, index);
     }
 
+    /// <summary>Refreshes the tab finder's list from <see cref="TabQuery"/>.</summary>
+    public void RefreshFoundTabs()
+    {
+        var summaries = new TabSummary[Tabs.Count];
+        for (var i = 0; i < summaries.Length; i++)
+        {
+            var tab = Tabs[i];
+            summaries[i] = new(tab.FileName, tab.Title, tab.Folder);
+        }
+
+        var matches = new int[summaries.Length];
+        var count = TabFilter.Filter(TabQuery, summaries, matches);
+        FoundTabs.Clear();
+        for (var i = 0; i < count; i++)
+        {
+            FoundTabs.Add(Tabs[matches[i]]);
+        }
+    }
+
     /// <summary>Reloads the recent documents list.</summary>
     public void RefreshRecentDocuments()
     {
@@ -307,6 +356,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     public void Dispose()
     {
         _themeSubscription.Dispose();
+        _tabFinderRequests.Dispose();
         foreach (var tab in Tabs)
         {
             tab.Dispose();
