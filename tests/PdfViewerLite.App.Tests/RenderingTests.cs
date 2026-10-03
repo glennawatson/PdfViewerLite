@@ -27,6 +27,18 @@ namespace PdfViewerLite.App.Tests;
 /// <summary>Renders the real window headlessly and checks the pixels.</summary>
 public sealed class RenderingTests
 {
+    /// <summary>The left edge of the measured shape, in page points.</summary>
+    private const float MeasureLeft = 100;
+
+    /// <summary>The right edge of the measured shape, in page points.</summary>
+    private const float MeasureRight = 300;
+
+    /// <summary>The top of the measured shape, in page points.</summary>
+    private const float MeasureTop = 150;
+
+    /// <summary>The bottom of the measured shape, in page points.</summary>
+    private const float MeasureBottom = 300;
+
     /// <summary>The name of the Focus toggle.</summary>
     private const string FocusToggleName = "FocusToggle";
 
@@ -95,6 +107,42 @@ public sealed class RenderingTests
 
     /// <summary>Where the annotation test puts its note.</summary>
     private static readonly PagePoint NoteAt = new(420, 150);
+
+    /// <summary>Draws an area measurement over the page with its result, and saves a screenshot when asked.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ShowsAMeasurement()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("measure.pdf", Pages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var measure = main.SelectedTab!.Measure;
+            _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > ExpectedTiles);
+            measure.IsOn = true;
+            measure.IsArea = true;
+            measure.ScaleText = "1 cm = 1 m";
+            foreach (var (x, y) in (ReadOnlySpan<(float, float)>)[(MeasureLeft, MeasureTop), (MeasureRight, MeasureTop), (MeasureRight, MeasureBottom), (MeasureLeft, MeasureBottom)])
+            {
+                measure.AddPoint(0, new(x, y));
+            }
+
+            measure.Finish();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "measure.png");
+
+            await Assert.That(frame).IsNotNull();
+            await Assert.That(measure.Result).StartsWith("Area");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
 
     /// <summary>Verifies pages and thumbnails render, then saves a screenshot when PDFVIEWERLITE_SCREENSHOTS is set.</summary>
     /// <returns>A task.</returns>

@@ -27,6 +27,9 @@ public sealed class AnnotationsViewModel : ReactiveObject
     /// <summary>The freehand line width in points.</summary>
     private const float InkWidth = 1.5F;
 
+    /// <summary>The size of a kept measurement's label.</summary>
+    private const float MeasurementTextSize = 9;
+
     /// <summary>How far outside an annotation a click still picks it, in points.</summary>
     private const float HitTolerance = 3;
 
@@ -233,6 +236,35 @@ public sealed class AnnotationsViewModel : ReactiveObject
     /// <returns><see langword="true"/> when added.</returns>
     public bool AddInk(int page, ReadOnlySpan<PagePoint> points, ReadOnlySpan<int> strokeLengths, AnnotationKind kind) =>
         Editor is { } editor && Added(page, editor.AddInk(page, points, strokeLengths, AnnotationColors.Ink, InkWidth, kind));
+
+    /// <summary>
+    /// Keeps a measurement on the page: its lines as a drawing whose comment is the measurement, and the measurement
+    /// as text beside its last point, so it shows when the page is printed.
+    /// </summary>
+    /// <param name="page">The page.</param>
+    /// <param name="points">The measured points, in page space.</param>
+    /// <param name="closed">Whether the shape closes back to its first point, as an area does.</param>
+    /// <param name="description">The measurement, such as "Distance 12.4 m at 30°".</param>
+    /// <returns><see langword="true"/> when it was added.</returns>
+    public bool AddMeasurement(int page, ReadOnlySpan<PagePoint> points, bool closed, string description)
+    {
+        if (Editor is not { } editor || points.Length < 2)
+        {
+            return false;
+        }
+
+        PagePoint[] path = closed ? [.. points, points[0]] : [.. points];
+        ReadOnlySpan<int> lengths = [path.Length];
+        var line = editor.AddInk(page, path, lengths, AnnotationColors.Ink, InkWidth, AnnotationKind.Ink);
+        if (!Added(page, line))
+        {
+            return false;
+        }
+
+        _ = editor.SetContents(page, line, description);
+        _ = Added(page, editor.AddText(page, points[^1], description, MeasurementTextSize, AnnotationColors.Ink, AnnotationKind.TextBox));
+        return true;
+    }
 
     /// <summary>Asks for a note and adds it at a point.</summary>
     /// <param name="page">The page.</param>

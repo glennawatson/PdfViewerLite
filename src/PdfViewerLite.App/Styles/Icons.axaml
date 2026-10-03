@@ -45,5 +45,8 @@
   <StreamGeometry x:Key="IconPause">M0,0 M24,24 M8,5 L8,19 M16,5 L16,19</StreamGeometry>
   <StreamGeometry x:Key="IconPreviousSentence">M0,0 M24,24 M6,5 L6,19 M18,5 L10,12 L18,19</StreamGeometry>
   <StreamGeometry x:Key="IconNextSentence">M0,0 M24,24 M18,5 L18,19 M6,5 L14,12 L6,19</StreamGeometry>
+  <StreamGeometry x:Key="IconRuler">M0,0 M24,24 M3,15 L15,3 L21,9 L9,21 Z M7,11 L9,13 M10,8 L13,11 M13,5 L15,7</StreamGeometry>
+  <StreamGeometry x:Key="IconPerimeter">M0,0 M24,24 M4,18 L9,6 L15,14 L20,5 M4,18 L4,18 M3,17 L5,19 M8,5 L10,7 M14,13 L16,15 M19,4 L21,6</StreamGeometry>
+  <StreamGeometry x:Key="IconArea">M0,0 M24,24 M4,6 L14,4 L20,12 L12,20 L4,16 Z M8,9 L10,11 M11,8 L15,12 M8,13 L13,16</StreamGeometry>
   <StreamGeometry x:Key="IconFocus">M0,0 M24,24 M6,6 L18,6 M6,10 L18,10 M6,14 L18,14 M6,18 L13,18</StreamGeometry>
 </ResourceDictionary>

@@ -50,6 +50,12 @@ public sealed partial class PageCanvas : Control
     /// <summary>Defines the <see cref="DimBrush"/> property.</summary>
     public static readonly StyledProperty<IBrush?> DimBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(DimBrush));
 
+    /// <summary>Defines the <see cref="LabelBackground"/> property.</summary>
+    public static readonly StyledProperty<IBrush?> LabelBackgroundProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(LabelBackground));
+
+    /// <summary>Defines the <see cref="LabelForeground"/> property.</summary>
+    public static readonly StyledProperty<IBrush?> LabelForegroundProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(LabelForeground));
+
     /// <summary>Defines the <see cref="SpokenBrush"/> property.</summary>
     public static readonly StyledProperty<IBrush?> SpokenBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(SpokenBrush));
 
@@ -101,6 +107,9 @@ public sealed partial class PageCanvas : Control
     /// <summary>The text cursor.</summary>
     private static readonly Cursor TextCursor = new(StandardCursorType.Ibeam);
 
+    /// <summary>The pointer while measuring.</summary>
+    private static readonly Cursor CrossCursor = new(StandardCursorType.Cross);
+
     /// <summary>Links by page, loaded lazily.</summary>
     private readonly Dictionary<int, IReadOnlyList<PageLink>> _links = [];
 
@@ -150,6 +159,7 @@ public sealed partial class PageCanvas : Control
     static PageCanvas()
     {
         AffectsRender<PageCanvas>(TabProperty, HitBrushProperty, CurrentHitOutlineProperty, SelectionBrushProperty, SpokenBrushProperty, DimBrushProperty);
+        AffectsRender<PageCanvas>(LabelBackgroundProperty, LabelForegroundProperty);
         FocusableProperty.OverrideDefaultValue<PageCanvas>(true);
     }
 
@@ -179,6 +189,20 @@ public sealed partial class PageCanvas : Control
     {
         get => GetValue(SelectionBrushProperty);
         set => SetValue(SelectionBrushProperty, value);
+    }
+
+    /// <summary>Gets or sets the background of labels drawn over the page, such as a measurement.</summary>
+    public IBrush? LabelBackground
+    {
+        get => GetValue(LabelBackgroundProperty);
+        set => SetValue(LabelBackgroundProperty, value);
+    }
+
+    /// <summary>Gets or sets the text colour of labels drawn over the page.</summary>
+    public IBrush? LabelForeground
+    {
+        get => GetValue(LabelForegroundProperty);
+        set => SetValue(LabelForegroundProperty, value);
     }
 
     /// <summary>Gets or sets the translucent paper colour laid over text away from what is being read, for the focus band.</summary>
@@ -257,6 +281,7 @@ public sealed partial class PageCanvas : Control
         }
 
         DrawAnnotationOverlay(context, tab);
+        DrawMeasurement(context, tab);
         DrawCaret(context, tab);
     }
 
@@ -349,7 +374,7 @@ public sealed partial class PageCanvas : Control
 
         _ = Focus();
         _pressPoint = point.Position;
-        if (BeginAnnotationPress(point.Position, e))
+        if (BeginMeasurePress(point.Position, e) || BeginAnnotationPress(point.Position, e))
         {
             return;
         }
@@ -374,7 +399,7 @@ public sealed partial class PageCanvas : Control
         ArgumentNullException.ThrowIfNull(e);
         base.OnPointerMoved(e);
         var position = e.GetPosition(this);
-        if (ContinueStroke(position))
+        if (ContinueMeasure(position) || ContinueStroke(position))
         {
             return;
         }
@@ -437,7 +462,7 @@ public sealed partial class PageCanvas : Control
             return;
         }
 
-        if (HandleAnnotationKey(e.Key) || HandleCaretKey(e) || HandlePageByPageKey(e))
+        if (HandleMeasureKey(e.Key) || HandleAnnotationKey(e.Key) || HandleCaretKey(e) || HandlePageByPageKey(e))
         {
             e.Handled = true;
             return;

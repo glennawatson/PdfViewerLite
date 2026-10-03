@@ -54,6 +54,7 @@ internal static class Shortcuts
         (new(Key.F7), static vm => vm.SelectedTab?.ToggleCaretModeCommand),
         (new(Key.Y, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.ReadAloud.ToggleCommand),
         (new(Key.D4, KeyModifiers.Control), static vm => vm.SelectedTab?.FocusMode.ToggleCommand),
+        (new(Key.M, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.Measure.ToggleCommand),
         (new(Key.F5), static vm => vm.SelectedTab?.ReloadCommand),
         (new(Key.F5, KeyModifiers.Shift), static vm => vm.SelectedTab?.PresentCommand),
     ];

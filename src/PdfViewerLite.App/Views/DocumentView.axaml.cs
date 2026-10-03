@@ -221,6 +221,17 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
     private void BindAnnotationTools(MultipleDisposable bindings)
     {
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.IsAnnotating, static v => v.AnnotateBar.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Measure.IsOn, static v => v.MeasureBar.IsVisible));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Measure.ToggleCommand, static v => v.MeasureItem));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Measure.KeepCommand, static v => v.MeasureKeepButton));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Measure.CanKeep, static v => v.MeasureKeepButton.IsEnabled));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Measure.ClearCommand, static v => v.MeasureClearButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Measure.DoneCommand, static v => v.MeasureDoneButton));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.Measure.IsDistance, static v => v.DistanceTool.IsChecked, static on => on, IsOn));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.Measure.IsPerimeter, static v => v.PerimeterTool.IsChecked, static on => on, IsOn));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.Measure.IsArea, static v => v.AreaTool.IsChecked, static on => on, IsOn));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.Measure.ScaleText, static v => v.ScaleBox.Text));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Measure.Result, static v => v.MeasureResult.Text));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.UndoCommand, static v => v.UndoButton));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.CanUndo, static v => v.UndoButton.IsEnabled));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.DoneCommand, static v => v.AnnotateDoneButton));

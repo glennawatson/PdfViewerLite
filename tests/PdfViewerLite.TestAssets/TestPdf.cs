@@ -40,6 +40,9 @@ public static class TestPdf
     /// <summary>The contents of the embedded file in <see cref="CreateWithAttachment"/>.</summary>
     public static readonly string AttachmentText = "Meeting notes: bring the signed form.";
 
+    /// <summary>The scale <see cref="CreateWithViewport"/> declares.</summary>
+    public static readonly string ViewportScale = "1 in = 10 ft";
+
     /// <summary>The running header of <see cref="CreateTagged"/>, marked as an artifact.</summary>
     public static readonly string TaggedHeader = "Running header 7";
 
@@ -477,6 +480,30 @@ public static class TestPdf
         objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
         objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R /MarkInfo << /Marked true >> /StructTreeRoot {root} 0 R /Lang (en-GB) >>");
         var info = Add(objects, $"<< /Title (Tagged) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page drawing that declares its scale, as engineering PDFs do: a viewport covering the page whose
+    /// measure dictionary says 1 in on paper is 10 ft, with a matching number format.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateWithViewport()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        const string stream = "0 0 0 RG 72 72 m 216 72 l S\n";
+        var content = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {stream.Length} >>\nstream\n{stream}endstream"));
+        var measure = Add(objects, $"<< /Type /Measure /Subtype /RL /R ({ViewportScale}) /X [<< /Type /NumberFormat /U (ft) /C 0.138889 /D 100 >>] >>");
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}] /Contents {{content}} 0 R
+               /VP [<< /Type /Viewport /BBox [0 0 {{PortraitWidth}} {{PortraitHeight}}] /Measure {{measure}} 0 R >>] >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
+        var info = Add(objects, $"<< /Title (Plan) /Author ({Author}) >>");
         return Serialize(objects, catalog, info);
     }
 

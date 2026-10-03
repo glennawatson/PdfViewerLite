@@ -394,6 +394,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the annotation state.</summary>
     public AnnotationsViewModel Annotations => field ??= new(this);
 
+    /// <summary>Gets the measuring tool.</summary>
+    public MeasureViewModel Measure => field ??= new(this);
+
     /// <summary>Gets the digital signature state.</summary>
     public SignaturesViewModel Signatures => field ??= new(this, _services);
 

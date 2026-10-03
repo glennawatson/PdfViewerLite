@@ -62,6 +62,7 @@
                 <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
                 <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
                 <MenuItem x:Name="PresentItem" Header="P_resent" InputGesture="Shift+F5" ToolTip.Tip="Full screen, one page at a time; Esc to stop" />
+                <MenuItem x:Name="MeasureItem" Header="_Measure" InputGesture="Ctrl+Shift+M" ToolTip.Tip="Measure distances, lengths and areas on the page" />
                 <MenuItem x:Name="CaretModeItem" Header="_Caret Navigation" InputGesture="F7" ToggleType="CheckBox" ToolTip.Tip="Move through the text with the arrow keys; Shift selects" />
                 <MenuItem x:Name="PageByPageItem" Header="Page _by Page" ToggleType="CheckBox" ToolTip.Tip="Show one page at a time instead of scrolling continuously" />
                 <Separator />
@@ -134,6 +135,57 @@
           <Button AutomationProperties.Name="Zoom in" x:Name="ZoomInButton" Classes="tool" ToolTip.Tip="Zoom in (Ctrl++)">
             <Path Classes="icon nav" Data="{StaticResource IconZoomIn}" />
           </Button>
+        </WrapPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Measuring: shown only while measuring. Click points on the page; double-click or Enter finishes, Esc clears. -->
+    <Border x:Name="MeasureBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button AutomationProperties.Name="Keep on page" x:Name="MeasureKeepButton" Classes="tool" ToolTip.Tip="Keep the finished measurement on the page as an annotation">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconAdd}" />
+              <TextBlock Classes="label" Text="Keep" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Clear measurement" x:Name="MeasureClearButton" Classes="tool" ToolTip.Tip="Clear the measurement (Esc)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconClose}" />
+              <TextBlock Classes="label" Text="Clear" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Done measuring" x:Name="MeasureDoneButton" Classes="tool" ToolTip.Tip="Put the measuring tool away">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+              <TextBlock Classes="label" Text="Done" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <WrapPanel Orientation="Horizontal">
+          <ToggleButton AutomationProperties.Name="Distance" x:Name="DistanceTool" Classes="tool" ToolTip.Tip="Click two points to measure the distance between them">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconRuler}" />
+              <TextBlock Classes="label" Text="Distance" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Perimeter" x:Name="PerimeterTool" Classes="tool" ToolTip.Tip="Click points along a path; double-click to finish">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconPerimeter}" />
+              <TextBlock Classes="label" Text="Perimeter" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Area" x:Name="AreaTool" Classes="tool" ToolTip.Tip="Click the corners of a shape; double-click to finish">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconArea}" />
+              <TextBlock Classes="label" Text="Area" />
+            </StackPanel>
+          </ToggleButton>
+          <Rectangle Classes="separator" />
+          <TextBlock Classes="secondary" Text="Scale" VerticalAlignment="Center" Margin="4,0,6,0" />
+          <TextBox x:Name="ScaleBox" AutomationProperties.Name="Measuring scale" Width="130" Height="30" MinHeight="30" VerticalAlignment="Center"
+                   VerticalContentAlignment="Center" ToolTip.Tip="How the page relates to real size, such as 1 cm = 2 m or 1:100" />
+          <TextBlock x:Name="MeasureResult" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="12,0" FontWeight="SemiBold" />
         </WrapPanel>
       </DockPanel>
     </Border>
@@ -432,7 +484,8 @@
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
           <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
             <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
-                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" DimBrush="{DynamicResource AppDimBrush}" />
+                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" DimBrush="{DynamicResource AppDimBrush}"
+                                 LabelBackground="{DynamicResource AppWindowBackground}" LabelForeground="{DynamicResource AppForeground}" />
             <!-- The text field editor sits exactly over the field being filled in. -->
             <Canvas x:Name="FieldOverlay">
               <TextBox x:Name="FieldEditor" AutomationProperties.Name="Form field" Classes="field" IsVisible="False" />

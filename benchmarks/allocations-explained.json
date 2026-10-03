@@ -2,6 +2,16 @@
   // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
   // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
   {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Core.Measuring.Measurement.Describe(",
+    "reason": "The measurement's description is the result shown in the Measure bar and beside the shape; one string per pointer move while measuring."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Measuring.",
+    "reason": "Reading a drawing's declared scale parses the file's cross-reference data and its viewport and measure dictionaries, once per page when measuring starts on it."
+  },
+  {
     "type": "",
     "frame": "PdfViewerLite.Speech.English.TextNormalizer+",
     "reason": "The replacements of the sentence normalizer read their match groups and build the spoken words, once per sentence before it is phonemized; see TextNormalizer."
