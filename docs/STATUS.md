@@ -28,13 +28,25 @@ Acrobat Reader. See `docs/ACROBAT-PARITY.md`.
 - Benchmarks are in `MeloBenchmarks`, and their allocations are explained.
 - Docs updated: `LISTENING.md`, the README and `ACROBAT-PARITY.md`.
 
-## Remaining goal items after voices
+## Done after the voices
 
-- #32 Shape, arrow and stamp annotations.
-- #33 Comment replies and review status.
-- #34 Booklet and poster printing.
-- #35 Timestamp and LTV signature validation.
-- #36 Safe form JavaScript (XFA is low priority).
+- #32: shape, arrow and stamp annotations.
+- #33: comment replies and review status. Replies are saved with standard /IRT references.
+- #34: booklet and poster printing.
+- #35: trusted timestamps, document timestamps, and the document security store (LTV). There is also a timestamp
+  server setting for signing.
+- #36: Acrobat's built-in form scripts, run as C#. JavaScript is never run.
+
+## What is left
+
+- Run the full test suite with the real-world corpus downloaded, check the AOT publish, and refresh the screenshots.
+- Lower priority:
+  - XFA forms;
+  - tearing tabs off into windows;
+  - other formats (images, comics);
+  - scanning;
+  - a read mode that hides the toolbar.
+- Windows and macOS have only been built, not tested in use, because this environment is Linux only.
 
 ## Notes
 

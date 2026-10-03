@@ -47,7 +47,7 @@ every platform on each release, but tests only run on Linux.
 | Document properties | Yes | Yes | Done |
 | Password protected documents | Yes | Yes | Done |
 | Reload on change | No | Automatic or a Reload bar | Done |
-| Measuring tools | Yes | | Later |
+| Measuring tools | Yes | Measure bar (Ctrl+Shift+M): distance, perimeter and area at the drawing's declared scale (/VP /Measure) or one typed such as "1 cm = 2 m"; a finished measurement can be kept on the page | Done |
 | Other formats (images, DjVu, comics) | Images via conversion | Engine interface ready | Later |
 | Tear tabs off into new windows | Yes | | Later |
 
@@ -58,7 +58,7 @@ every platform on each release, but tests only run on Linux.
 | Find in document | Yes | Incremental, match case, whole words, F3 / Shift+F3 | Done |
 | Results list | Advanced Search panel | Search results sidebar | Done |
 | Search scanned pages | Needs Pro OCR | *Recognise Text* adds a searchable layer with Tesseract | Done |
-| Search across a folder of PDFs, indexes | Yes | | Later |
+| Search across a folder of PDFs, indexes | Yes | Search Folder (Ctrl+Shift+F) searches every PDF in a folder off the interface thread, listing each match with its context; opening one goes to the page and highlights the text. No saved index | Done |
 
 ## Forms
 
@@ -110,7 +110,7 @@ every platform on each release, but tests only run on Linux.
 | High contrast and page colours | Replace document colours | Calm, High contrast, Dark and Light themes; soft page tones that keep highlight colours true | Done |
 | Comfort | No | Reduced motion, steady caret, text labels on the tool bar, confirmation before closing several tabs ([COMFORT.md](COMFORT.md)) | Done |
 | Reading order for assistive output | Tags, or its own guess | Columns, headings, lists, captions and footnotes put in order; page numbers and running headers dropped | Done |
-| Tagged PDF structure | Yes | Reading order is inferred from layout, not read from tags | Partial |
+| Tagged PDF structure | Yes | Reading order follows the structure tree when the tags cover the text, with layout inference as the fallback; headings, lists, tables and figures are passed to assistive technology in Focus Mode | Done |
 
 ## Read Aloud
 

@@ -18,14 +18,17 @@ looking at home on each desktop, and it was built for KDE Plasma first.
   (Ctrl+wheel zooms around the pointer); rotation; thumbnails, outline, annotations, attachments and search results
   sidebars; find with match case and whole words; text selection and copy; links; back/forward history; page labels;
   comfort page colours; document properties; password protected documents; reload when the file changes on disk;
-  presentation mode; printing with a preview or through the platform's print dialog.
-- **Annotate, fill and sign**: highlight, underline, strike out, notes, text boxes and drawing from context menus that
-  follow what you are doing; fill in forms; draw or type a signature; list and check digital signatures; save or save
-  a copy.
+  presentation mode; printing with a preview or through the platform's print dialog, including booklets and posters;
+  measuring distance, perimeter and area at a drawing's scale; searching every PDF in a folder.
+- **Annotate, fill and sign**: highlight, underline, strike out, notes, text boxes, drawing, rectangles, ellipses,
+  arrows, lines and stamps from context menus that follow what you are doing; reply to comments and set their review
+  status; fill in forms, with their calculations, formats and checks run safely without JavaScript; draw or type a
+  signature, or sign with a certificate and an optional trusted timestamp; check digital signatures, including
+  timestamps, document timestamps and long-term validation data; save or save a copy.
 - **Text recognition**: *Recognise Text* gives scanned pages a searchable, selectable text layer using Tesseract.
 - **Focus Mode** (Ctrl+4): the document's text reflowed in a calm reading view, with your choice of font, size, line
-  spacing, paragraph spacing, text width and page colour. Two-column layouts, headings, lists, captions and footnotes
-  come out in a sensible order, page numbers and running headers are left out, and switching back to the pages keeps
+  spacing, paragraph spacing, text width and page colour. Tagged PDFs are read in their tagged order, and other
+  layouts are inferred: two-column layouts, headings, lists, captions and footnotes come out in a sensible order, page numbers and running headers are left out, and switching back to the pages keeps
   your place.
 - **Read Aloud**: natural sounding neural voices that run on your computer, so nothing you read is sent anywhere.
   MeloTTS is the default, with Australian, British, American and Indian English voices and BERT for natural phrasing;
