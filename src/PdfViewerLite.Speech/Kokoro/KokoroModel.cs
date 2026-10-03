@@ -9,30 +9,13 @@ namespace PdfViewerLite.Speech.Kokoro;
 
 /// <summary>
 /// The files and voices of Kokoro-82M (Apache-2.0): the unsigned 8 bit ONNX model from onnx-community, a handful of voices,
-/// and the misaki pronunciation dictionaries. About 190 MB, downloaded once into the voice folder.
+/// and the misaki pronunciation dictionaries, mirrored in this repository's <see cref="VoiceRelease"/>. About 190 MB,
+/// downloaded once into the voice folder.
 /// </summary>
 public static class KokoroModel
 {
     /// <summary>Kokoro's sample rate in hertz.</summary>
     private const int Hertz = 24_000;
-
-    /// <summary>The Hugging Face repository holding the ONNX export.</summary>
-    private const string ModelRepository = "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/";
-
-    /// <summary>The repository holding the misaki dictionaries.</summary>
-    private const string LexiconRepository = "https://raw.githubusercontent.com/hexgrad/misaki/main/misaki/data/";
-
-    /// <summary>Bytes in a megabyte.</summary>
-    private const long Megabyte = 1024 * 1024;
-
-    /// <summary>The model's approximate size.</summary>
-    private const long ModelBytes = 170 * Megabyte;
-
-    /// <summary>A voice pack's approximate size.</summary>
-    private const long VoiceBytes = 522 * 1024;
-
-    /// <summary>A dictionary's approximate size.</summary>
-    private const long LexiconBytes = 4 * Megabyte;
 
     /// <summary>
     /// Gets the model's file name inside the voice folder. The unsigned 8 bit export is used: on CPUs it synthesises
@@ -79,17 +62,17 @@ public static class KokoroModel
     /// <returns>The files.</returns>
     private static List<SpeechModelFile> BuildFiles()
     {
-        var files = new List<SpeechModelFile> { new(new($"{ModelRepository}onnx/{ModelFile}"), ModelFile, ModelBytes) };
+        var files = new List<SpeechModelFile> { VoiceRelease.File($"kokoro-{ModelFile}", ModelFile) };
         foreach (var voice in Voices)
         {
-            files.Add(new(new($"{ModelRepository}voices/{voice.Id}.bin"), VoiceFile(voice.Id), VoiceBytes));
+            files.Add(VoiceRelease.File($"kokoro-{voice.Id}.bin", VoiceFile(voice.Id)));
         }
 
         foreach (var british in (ReadOnlySpan<bool>)[false, true])
         {
             foreach (var lexicon in LexiconFiles(british))
             {
-                files.Add(new(new($"{LexiconRepository}{lexicon}"), lexicon, LexiconBytes));
+                files.Add(VoiceRelease.File($"misaki-{lexicon}", lexicon));
             }
         }
 

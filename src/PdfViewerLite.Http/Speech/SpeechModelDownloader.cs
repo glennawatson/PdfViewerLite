@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Security.Cryptography;
 using PdfViewerLite.Core.Speech;
 
 namespace PdfViewerLite.Http.Speech;
@@ -9,7 +10,7 @@ namespace PdfViewerLite.Http.Speech;
 /// <summary>
 /// Downloads an on-device voice's files with Refit. Each file is written to its own <c>.part</c> file and moved into
 /// place once complete, so an interrupted download is never mistaken for a finished one and two downloads at once do
-/// not collide; files already present are kept.
+/// not collide; files already present are kept. Each download is checked against its SHA-256 before it is kept.
 /// </summary>
 public static class SpeechModelDownloader
 {
@@ -58,7 +59,7 @@ public static class SpeechModelDownloader
     /// <param name="cancellationToken">Cancels the download, leaving finished files in place.</param>
     /// <returns>A task.</returns>
     /// <exception cref="HttpRequestException">Thrown when a server fails a request.</exception>
-    /// <exception cref="InvalidDataException">Thrown when a file's name would place it outside the voice folder.</exception>
+    /// <exception cref="InvalidDataException">Thrown when a file's name would place it outside the voice folder, or a download does not match its SHA-256.</exception>
     public static async Task DownloadAsync(IReadOnlyList<SpeechModelFile> files, string directory, IProgress<double> progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(progress);
@@ -76,6 +77,7 @@ public static class SpeechModelDownloader
 
             _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             var partial = $"{target}.{Guid.NewGuid():N}.part";
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             using (var response = await RefitClients.Download(file.Source, cancellationToken).ConfigureAwait(false))
             {
                 _ = response.EnsureSuccessStatusCode();
@@ -89,11 +91,18 @@ public static class SpeechModelDownloader
                         while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
                         {
                             await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                            hash.AppendData(buffer, 0, read);
                             done += read;
                             progress.Report(Math.Min(1D, (double)done / total));
                         }
                     }
                 }
+            }
+
+            if (!string.Equals(Convert.ToHexStringLower(hash.GetHashAndReset()), file.Sha256, StringComparison.Ordinal))
+            {
+                File.Delete(partial);
+                throw new InvalidDataException($"{file.LocalName} did not download intact; try again.");
             }
 
             File.Move(partial, target, true);

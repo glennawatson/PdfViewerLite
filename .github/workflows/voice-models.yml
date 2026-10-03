@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 env:
-  # Bump with VoiceRelease.Tag in src/PdfViewerLite.Speech/VoiceRelease.cs when the files change.
+  # Bump with VoiceRelease.ReleaseTag in src/PdfViewerLite.Speech/VoiceRelease.cs when the files change.
   RELEASE_TAG: voices-1
   MELO_COMMIT: 209145371cff8fc3bd60d7be902ea69cbdb7965a
   KOKORO_ONNX: https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231

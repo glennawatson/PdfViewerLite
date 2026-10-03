@@ -10,5 +10,6 @@ namespace PdfViewerLite.Core.Speech;
 /// <param name="Source">Where it is downloaded from.</param>
 /// <param name="LocalName">Its path inside the voice folder.</param>
 /// <param name="ApproximateBytes">About how large it is, for the download message.</param>
+/// <param name="Sha256">Its SHA-256 as lowercase hexadecimal; a download that does not match is discarded.</param>
 [DebuggerDisplay("{LocalName}")]
-public sealed record SpeechModelFile(Uri Source, string LocalName, long ApproximateBytes);
+public sealed record SpeechModelFile(Uri Source, string LocalName, long ApproximateBytes, string Sha256);
