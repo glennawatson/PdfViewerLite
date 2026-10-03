@@ -55,6 +55,8 @@
           </Grid>
           <TextBlock x:Name="PrinterHint" Classes="secondary" TextWrapping="Wrap" Margin="0,8,0,0"
                      Text="The printer, copies and paper are chosen in the next step." />
+          <Button x:Name="SystemDialogButton" Classes="link" Margin="0,4,0,0" HorizontalAlignment="Left"
+                  Content="Print using system dialog… (Ctrl+Shift+P)" />
         </StackPanel>
       </DockPanel>
     </Border>

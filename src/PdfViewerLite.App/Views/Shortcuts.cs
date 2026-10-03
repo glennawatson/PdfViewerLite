@@ -30,6 +30,7 @@ internal static class Shortcuts
         (new(Key.S, KeyModifiers.Control), static vm => vm.SelectedTab?.SaveCommand),
         (new(Key.S, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.SaveAsCommand),
         (new(Key.P, KeyModifiers.Control), static vm => vm.SelectedTab?.PrintCommand),
+        (new(Key.P, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.PrintWithSystemDialogCommand),
         (new(Key.Z, KeyModifiers.Control), static vm => vm.SelectedTab?.Annotations.UndoCommand),
         (new(Key.F, KeyModifiers.Control), static vm => vm.SelectedTab?.FindCommand),
         (new(Key.F3), static vm => vm.SelectedTab?.Search.NextCommand),

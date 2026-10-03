@@ -64,6 +64,19 @@
     <Setter Property="Background" Value="{DynamicResource AppTabHoverBackground}" />
   </Style>
 
+  <!-- A text-only button that reads like a link, for secondary choices such as the system print dialog. -->
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource AppCurrentHitOutline}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
+  </Style>
+
   <!-- Print preview sheets: no selection highlight, the sheets are only to look at. -->
   <Style Selector="ListBox.sheets ListBoxItem">
     <Setter Property="Padding" Value="0" />

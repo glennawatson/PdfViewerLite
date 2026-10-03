@@ -53,6 +53,11 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
         _services = services;
         var ready = this.WhenAnyValue(static vm => vm.IsValid, static vm => vm.IsBuilding, static (valid, building) => valid && !building);
         ConfirmCommand = ReactiveCommand.Create(() => _confirmed.OnNext(RxVoid.Default), ready);
+        SystemDialogCommand = ReactiveCommand.Create(() =>
+        {
+            UseSystemDialog = true;
+            _confirmed.OnNext(RxVoid.Default);
+        });
         _subscriptions =
         [
             this.WhenAnyValue(
@@ -143,6 +148,12 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the command confirming the print.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ConfirmCommand { get; }
+
+    /// <summary>Gets the command skipping these settings and printing the whole document from the desktop's own dialog.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> SystemDialogCommand { get; }
+
+    /// <summary>Gets a value indicating whether the user chose the desktop's own print dialog instead of these settings.</summary>
+    public bool UseSystemDialog { get; private set; }
 
     /// <summary>Gets the confirmations, which close the window.</summary>
     public IObservable<RxVoid> Confirmed => _confirmed;

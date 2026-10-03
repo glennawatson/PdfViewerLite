@@ -71,9 +71,24 @@ public sealed partial class PrintPreviewWindow : Window, IViewFor<PrintPreviewVi
             this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrinterHint.IsVisible, static d => d == PrintDestination.Printer),
             this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrintButton.Content, static d => d == PrintDestination.Printer ? "Print…" : "Save…"),
             this.BindCommand(ViewModel, static vm => vm.ConfirmCommand, static v => v.PrintButton),
+            this.BindCommand(ViewModel, static vm => vm.SystemDialogCommand, static v => v.SystemDialogButton),
             this.WhenAnyObservable(static v => v.ViewModel!.Confirmed).SubscribeSafe(_ => Close(true), OnError),
             CancelButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(false), OnError),
         ];
+    }
+
+    /// <inheritdoc/>
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        if (e.Key == Avalonia.Input.Key.P && e.KeyModifiers == (Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift) && ViewModel is { } preview)
+        {
+            _ = preview.SystemDialogCommand.Execute().Subscribe();
+            e.Handled = true;
+            return;
+        }
+
+        base.OnKeyDown(e);
     }
 
     /// <inheritdoc/>

@@ -12,6 +12,7 @@ using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Layout;
 using PdfViewerLite.Core.Navigation;
+using PdfViewerLite.Core.Printing;
 using PdfViewerLite.Core.Rendering;
 using PdfViewerLite.Core.Settings;
 using ReactiveUI;
@@ -102,6 +103,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
         SaveCommand = ReactiveCommand.Create(() => Save(FilePath));
         PrintCommand = ReactiveCommand.CreateFromTask(PrintAsync);
+        PrintWithSystemDialogCommand = ReactiveCommand.CreateFromTask(PrintWithSystemDialogAsync);
         ToggleCaretModeCommand = ReactiveCommand.Create(() => { IsCaretMode = !IsCaretMode; });
         PresentCommand = ReactiveCommand.Create(() => SetPresenting(!IsPresenting));
         StopPresentingCommand = ReactiveCommand.Create(() => SetPresenting(false));
@@ -495,6 +497,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the command handing the document, with its annotations and filled fields, to the desktop's print dialog.</summary>
     public ReactiveCommand<RxVoid, RxVoid> PrintCommand { get; }
 
+    /// <summary>Gets the command printing the whole document from the desktop's own print dialog, skipping the preview.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> PrintWithSystemDialogCommand { get; }
+
     /// <summary>Gets the interaction showing the print preview; the output says whether to print.</summary>
     public Interaction<PrintPreviewViewModel, bool> PrintPreviewInteraction { get; } = new();
 
@@ -798,6 +803,26 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         _ = ThumbnailClient.Advance();
     }
 
+    /// <summary>Deletes a file, ignoring failures.</summary>
+    /// <param name="path">The file.</param>
+    /// <returns><see langword="true"/> when deleted.</returns>
+    private static bool TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Reads document structure after the first successful open.</summary>
     private void OnFirstLoad()
     {
@@ -859,7 +884,19 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     private async Task PrintAsync()
     {
         using var preview = new PrintPreviewViewModel(this, _services);
-        if (!await PrintPreviewInteraction.Handle(preview).ToTask().ConfigureAwait(true) || preview.TakePrintFile() is not { } file)
+        if (!await PrintPreviewInteraction.Handle(preview).ToTask().ConfigureAwait(true))
+        {
+            return;
+        }
+
+        if (preview.UseSystemDialog)
+        {
+            _ = preview.TakePrintFile() is { } unused && TryDelete(unused);
+            await PrintWithSystemDialogAsync().ConfigureAwait(true);
+            return;
+        }
+
+        if (preview.TakePrintFile() is not { } file)
         {
             return;
         }
@@ -888,6 +925,52 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         {
             // The desktop holds its own handle to the file, so the name can go now.
             File.Delete(file);
+        }
+    }
+
+    /// <summary>Hands the whole document, as it looks now, straight to the desktop's print dialog.</summary>
+    /// <returns>A task.</returns>
+    private async Task PrintWithSystemDialogAsync()
+    {
+        var printer = _services.Platform.Printer;
+        if (!printer.IsAvailable)
+        {
+            Notice = "Printing is not available on this desktop. Choose Save as PDF instead.";
+            return;
+        }
+
+        if (TryGetDocument() is not IPageExporter exporter || Source.PageCount == 0)
+        {
+            return;
+        }
+
+        var file = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-print-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            var pages = new int[Source.PageCount];
+            for (var i = 0; i < pages.Length; i++)
+            {
+                pages[i] = i;
+            }
+
+            bool written;
+            await using (var stream = File.Create(file))
+            {
+                written = exporter.ExportPages(pages, SheetLayout.Default, stream);
+            }
+
+            if (!written)
+            {
+                Notice = "Could not prepare the document for printing.";
+            }
+            else if (!await printer.PrintAsync(file, FileName, CancellationToken.None).ConfigureAwait(true))
+            {
+                Notice = "The print dialog could not be opened.";
+            }
+        }
+        finally
+        {
+            _ = TryDelete(file);
         }
     }
 
