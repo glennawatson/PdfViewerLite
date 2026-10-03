@@ -10,6 +10,12 @@ namespace PdfViewerLite.Core.Tests.Platform;
 /// <summary>Tests for <see cref="PipeSingleInstance"/>, the single window used on Windows and macOS; named pipes also work on Linux.</summary>
 public sealed class PipeSingleInstanceTests
 {
+    /// <summary>The length of a name too long to fit in a socket path as it is.</summary>
+    private const int LongName = 200;
+
+    /// <summary>The longest socket path macOS accepts.</summary>
+    private const int MaxSocketPath = 104;
+
     /// <summary>How long to wait for a forwarded request.</summary>
     private static readonly TimeSpan Wait = TimeSpan.FromSeconds(5);
 
@@ -38,6 +44,22 @@ public sealed class PipeSingleInstanceTests
     [Test]
     public async Task ReportsWhenNothingIsRunning() =>
         await Assert.That(await PipeSingleInstance.TryForwardAsync($"PdfViewerLiteTest-{Guid.NewGuid():N}", new([], null))).IsFalse();
+
+    /// <summary>A long name still makes a socket path macOS accepts, and the same name always maps to the same pipe.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task KeepsSocketPathsShort()
+    {
+        var name = new string('n', LongName);
+        var pipe = PipeSingleInstance.PipeNameFor(name);
+
+        await Assert.That(pipe).IsEqualTo(PipeSingleInstance.PipeNameFor(name));
+        await Assert.That(PipeSingleInstance.PipeNameFor("App-me")).IsEqualTo("App-me");
+        if (!OperatingSystem.IsWindows())
+        {
+            await Assert.That(Path.GetTempPath().Length + "CoreFxPipe_".Length + pipe.Length).IsLessThanOrEqualTo(MaxSocketPath);
+        }
+    }
 
     /// <summary>Messages round trip, dropping anything with a line break and an empty token.</summary>
     /// <returns>A task.</returns>

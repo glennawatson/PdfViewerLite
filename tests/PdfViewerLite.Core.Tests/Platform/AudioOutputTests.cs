@@ -5,12 +5,17 @@
 using System.Diagnostics;
 using PdfViewerLite.Core.Speech;
 using PdfViewerLite.Platform.Linux.Audio;
+using PdfViewerLite.Platform.MacOS.Audio;
+using PdfViewerLite.Platform.Windows.Audio;
 
 namespace PdfViewerLite.Core.Tests.Platform;
 
-/// <summary>Plays through the real PulseAudio or PipeWire server; skipped when there is none (CI starts one with a silent sink).</summary>
+/// <summary>
+/// Plays through the platform's real audio output: PulseAudio or PipeWire on Linux (CI starts a silent sink), WASAPI on
+/// Windows and Audio Queue Services on macOS; skipped when the machine has no output device.
+/// </summary>
 [NotInParallel]
-public sealed class PulseAudioOutputTests
+public sealed class AudioOutputTests
 {
     /// <summary>Kokoro's sample rate.</summary>
     private const int Hertz = 24_000;
@@ -101,7 +106,7 @@ public sealed class PulseAudioOutputTests
     /// <summary>Creates the output, skipping the test when there is no sound server.</summary>
     /// <returns>The output.</returns>
     /// <exception cref="TUnit.Core.Exceptions.SkipTestException">There is no sound server.</exception>
-    private static async Task<PulseAudioOutput> RequireServerAsync()
+    private static async Task<IAudioOutput> RequireServerAsync()
     {
 #if NET11_0_OR_GREATER
         await Task.CompletedTask;
@@ -109,7 +114,7 @@ public sealed class PulseAudioOutputTests
         // The .NET 10 and .NET 11 test runs execute at the same time; one of them playing keeps the timings meaningful.
         throw new TUnit.Core.Exceptions.SkipTestException("Playback is tested in the .NET 10 run.");
 #else
-        var output = new PulseAudioOutput();
+        var output = CreateOutput();
         if (output.IsAvailable)
         {
             // Read Aloud keeps one stream open across sentences; a silent sink takes a moment to start a new one, so the
@@ -119,7 +124,21 @@ public sealed class PulseAudioOutputTests
         }
 
         output.Dispose();
-        throw new TUnit.Core.Exceptions.SkipTestException("No PulseAudio or PipeWire server is running.");
+        throw new TUnit.Core.Exceptions.SkipTestException("This machine has no audio output device.");
 #endif
     }
+
+#if !NET11_0_OR_GREATER
+    /// <summary>Creates the output the app uses on this platform.</summary>
+    /// <returns>The output.</returns>
+    private static IAudioOutput CreateOutput()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new WasapiAudioOutput();
+        }
+
+        return OperatingSystem.IsMacOS() ? new AudioQueueOutput() : new PulseAudioOutput();
+    }
+#endif
 }

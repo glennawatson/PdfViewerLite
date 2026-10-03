@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Security.Cryptography;
 using System.Text;
 using ReactiveUI.Primitives.Signals;
 
@@ -17,6 +18,18 @@ namespace PdfViewerLite.Core.Platform;
 [DebuggerDisplay("{_name}")]
 public sealed class PipeSingleInstance : ISingleInstance
 {
+    /// <summary>The longest path a Unix domain socket takes on macOS, the shortest limit of the Unix platforms.</summary>
+    private const int MaxSocketPath = 104;
+
+    /// <summary>The prefix .NET puts before a pipe's name to make its socket file in the temporary folder.</summary>
+    private const string SocketPrefix = "CoreFxPipe_";
+
+    /// <summary>The prefix of a shortened pipe name.</summary>
+    private const string ShortPrefix = "pvl-";
+
+    /// <summary>How many bytes of the name's hash a shortened pipe name keeps.</summary>
+    private const int ShortHashBytes = 8;
+
     /// <summary>How long a forwarding launch waits for the running instance.</summary>
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(2);
 
@@ -111,7 +124,7 @@ public sealed class PipeSingleInstance : ISingleInstance
         ArgumentNullException.ThrowIfNull(request);
         try
         {
-            await using var client = new NamedPipeClientStream(".", name, PipeDirection.Out, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+            await using var client = new NamedPipeClientStream(".", PipeNameFor(name), PipeDirection.Out, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
             using var timeout = new CancellationTokenSource(ConnectTimeout);
             await client.ConnectAsync(timeout.Token).ConfigureAwait(false);
             var bytes = Encoding.UTF8.GetBytes(Encode(request));
@@ -170,11 +183,29 @@ public sealed class PipeSingleInstance : ISingleInstance
         _openRequests.Dispose();
     }
 
+    /// <summary>
+    /// Gets the pipe name for a claim name. On Unix the pipe is a socket file in the temporary folder, whose path
+    /// macOS limits to 104 characters and whose folder there is already long, so a name that would not fit is
+    /// replaced by a short one made from its hash; both launches compute the same name.
+    /// </summary>
+    /// <param name="name">The claim name.</param>
+    /// <returns>The pipe name.</returns>
+    internal static string PipeNameFor(string name)
+    {
+        if (OperatingSystem.IsWindows() || Path.GetTempPath().Length + SocketPrefix.Length + name.Length <= MaxSocketPath)
+        {
+            return name;
+        }
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(name));
+        return ShortPrefix + Convert.ToHexStringLower(hash.AsSpan(0, ShortHashBytes));
+    }
+
     /// <summary>Creates a pipe ready for the next launch.</summary>
-    /// <param name="name">The pipe name.</param>
+    /// <param name="name">The claim name.</param>
     /// <returns>The pipe.</returns>
     private static NamedPipeServerStream CreateServer(string name) =>
-        new(name, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        new(PipeNameFor(name), PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
     /// <summary>Accepts one connection after another until disposed.</summary>
     /// <param name="first">The first pipe, already created.</param>

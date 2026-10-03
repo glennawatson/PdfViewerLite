@@ -2,6 +2,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Platform.Linux\PdfViewerLite.Platform.Linux.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Platform.MacOS\PdfViewerLite.Platform.MacOS.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Platform.Windows\PdfViewerLite.Platform.Windows.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Http\PdfViewerLite.Http.csproj" />
   </ItemGroup>
