@@ -69,6 +69,7 @@ public sealed class AppServices : IDisposable
         RenderHub = new(Math.Max(MinCacheMegabytes, Settings.TileCacheMegabytes) * BytesPerMegabyte);
         Downloader = new(Path.Combine(Path.GetTempPath(), "pdfviewerlite-downloads"));
         _theme = new(ThemeResolver.Resolve(Settings, null));
+        Speech = SpeechSetup.CreateDefault(platform);
     }
 
     /// <summary>Gets the settings store.</summary>
@@ -102,7 +103,7 @@ public sealed class AppServices : IDisposable
     public RemoteDocumentDownloader Downloader { get; }
 
     /// <summary>Gets how the app reads aloud; tests replace it with fakes.</summary>
-    public SpeechSetup Speech { get; init; } = SpeechSetup.CreateDefault();
+    public SpeechSetup Speech { get; init; }
 
     /// <summary>Gets the sound output shared by every tab.</summary>
     public IAudioOutput Audio => _audio ??= Speech.CreateAudio();

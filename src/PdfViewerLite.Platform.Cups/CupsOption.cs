@@ -5,7 +5,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace PdfViewerLite.Platform.Linux.Cups;
+namespace PdfViewerLite.Platform.Cups;
 
 /// <summary>Native <c>cups_option_t</c>: a name and value, both UTF-8 strings.</summary>
 [StructLayout(LayoutKind.Sequential)]

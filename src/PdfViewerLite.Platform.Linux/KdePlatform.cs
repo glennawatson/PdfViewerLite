@@ -5,6 +5,8 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Core.Speech;
+using PdfViewerLite.Platform.Linux.Audio;
 using PdfViewerLite.Platform.Linux.DBus;
 using PdfViewerLite.Platform.Linux.Kde;
 using PdfViewerLite.Platform.Linux.Recent;
@@ -33,6 +35,10 @@ public sealed class KdePlatform : IDesktopPlatform
 
     /// <inheritdoc/>
     public IPrintService Printer { get; } = new LinuxPrintService();
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IAudioOutput CreateAudioOutput() => new PulseAudioOutput();
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

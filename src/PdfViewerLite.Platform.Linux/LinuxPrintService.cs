@@ -5,7 +5,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Platform;
-using PdfViewerLite.Platform.Linux.Cups;
+using PdfViewerLite.Platform.Cups;
 using PdfViewerLite.Platform.Linux.DBus;
 
 namespace PdfViewerLite.Platform.Linux;

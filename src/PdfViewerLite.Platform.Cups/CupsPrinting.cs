@@ -8,10 +8,10 @@ using System.Text;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Printing;
 
-namespace PdfViewerLite.Platform.Linux.Cups;
+namespace PdfViewerLite.Platform.Cups;
 
 /// <summary>Lists printers and sends jobs straight to their queues through libcups, as browsers do.</summary>
-internal static unsafe class CupsPrinting
+public static unsafe class CupsPrinting
 {
     /// <summary>The most copies one job asks for.</summary>
     private const int MaxCopies = 999;
@@ -19,12 +19,24 @@ internal static unsafe class CupsPrinting
     /// <summary>The option holding a printer's description.</summary>
     private const string InfoOption = "printer-info";
 
+    /// <summary>The libcups file names, most specific first.</summary>
+    private static readonly string[] Candidates = OperatingSystem.IsMacOS() ? ["/usr/lib/libcups.2.dylib", "libcups.2.dylib"] : ["libcups.so.2", "libcups.so"];
+
+    /// <summary>Gets a value indicating whether libcups can be loaded.</summary>
+    public static bool IsAvailable
+    {
+        get
+        {
+            NativeLibraries.Register(typeof(CupsPrinting).Assembly, NativeMethods.Library, Candidates);
+            return NativeLibraries.TryLoad(typeof(CupsPrinting).Assembly, NativeMethods.Library);
+        }
+    }
+
     /// <summary>Gets the printers, the default first.</summary>
     /// <returns>The printers; empty when CUPS is not installed or not running.</returns>
-    internal static IReadOnlyList<PrinterInfo> GetPrinters()
+    public static IReadOnlyList<PrinterInfo> GetPrinters()
     {
-        CupsLibraryResolver.Install();
-        if (!CupsLibraryResolver.TryLoad())
+        if (!IsAvailable)
         {
             return [];
         }
@@ -59,26 +71,14 @@ internal static unsafe class CupsPrinting
         }
     }
 
-    /// <summary>Builds the CUPS options for a job.</summary>
-    /// <param name="options">The job settings.</param>
-    /// <returns>Option names and values.</returns>
-    internal static (string Name, string Value)[] BuildOptions(in PrintJobOptions options) =>
-    [
-        ("copies", Math.Clamp(options.Copies, 1, MaxCopies).ToString(CultureInfo.InvariantCulture)),
-        ("media", options.Paper == PaperSize.Letter ? "na_letter_8.5x11in" : "iso_a4_210x297mm"),
-        ("sides", options.TwoSided ? "two-sided-long-edge" : "one-sided"),
-        ("print-color-mode", options.Colour ? "color" : "monochrome"),
-    ];
-
     /// <summary>Sends a PDF to a printer's queue.</summary>
     /// <param name="filePath">The PDF.</param>
     /// <param name="title">The job title.</param>
     /// <param name="options">The printer and settings.</param>
     /// <returns>Whether the queue accepted the job.</returns>
-    internal static PrintOutcome Submit(string filePath, string title, in PrintJobOptions options)
+    public static PrintOutcome Submit(string filePath, string title, in PrintJobOptions options)
     {
-        CupsLibraryResolver.Install();
-        if (!CupsLibraryResolver.TryLoad())
+        if (!IsAvailable)
         {
             return new(false, "The print system (CUPS) is not installed.");
         }
@@ -121,6 +121,17 @@ internal static unsafe class CupsPrinting
             }
         }
     }
+
+    /// <summary>Builds the CUPS options for a job.</summary>
+    /// <param name="options">The job settings.</param>
+    /// <returns>Option names and values.</returns>
+    internal static (string Name, string Value)[] BuildOptions(in PrintJobOptions options) =>
+    [
+        ("copies", Math.Clamp(options.Copies, 1, MaxCopies).ToString(CultureInfo.InvariantCulture)),
+        ("media", options.Paper == PaperSize.Letter ? "na_letter_8.5x11in" : "iso_a4_210x297mm"),
+        ("sides", options.TwoSided ? "two-sided-long-edge" : "one-sided"),
+        ("print-color-mode", options.Colour ? "color" : "monochrome"),
+    ];
 
     /// <summary>Orders printers: the default first, then by name.</summary>
     /// <param name="left">The first printer.</param>

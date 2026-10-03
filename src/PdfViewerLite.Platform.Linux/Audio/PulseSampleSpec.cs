@@ -4,7 +4,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace PdfViewerLite.Speech.Audio;
+namespace PdfViewerLite.Platform.Linux.Audio;
 
 /// <summary>Native <c>pa_sample_spec</c>: the sample format, rate and channel count.</summary>
 [StructLayout(LayoutKind.Sequential)]

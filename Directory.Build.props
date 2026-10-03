@@ -17,6 +17,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Lets every OS build the Windows platform project and publish for Windows runtime identifiers. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
 
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

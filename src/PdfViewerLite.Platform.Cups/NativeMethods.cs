@@ -4,12 +4,12 @@
 
 using System.Runtime.InteropServices;
 
-namespace PdfViewerLite.Platform.Linux.Cups;
+namespace PdfViewerLite.Platform.Cups;
 
 /// <summary>Source generated entry points of libcups (<c>cups/cups.h</c>), Apache-2.0.</summary>
 internal static unsafe partial class NativeMethods
 {
-    /// <summary>The native library name, resolved by <see cref="CupsLibraryResolver"/>.</summary>
+    /// <summary>The native library name, resolved through <see cref="Core.Platform.NativeLibraries"/>.</summary>
     internal const string Library = "cups";
 
     /// <summary>Native <c>cupsGetDests2</c>.</summary>

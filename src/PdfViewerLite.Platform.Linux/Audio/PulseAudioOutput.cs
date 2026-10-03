@@ -3,9 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Speech;
 
-namespace PdfViewerLite.Speech.Audio;
+namespace PdfViewerLite.Platform.Linux.Audio;
 
 /// <summary>
 /// Plays speech through PulseAudio's simple API, which PipeWire also provides. Audio is written in short pieces so Stop
@@ -20,17 +21,23 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
     /// <summary>The playback direction.</summary>
     private const int Playback = 1;
 
+    /// <summary>The sample rate a stream is first opened at, Kokoro's.</summary>
+    private const int DefaultRate = 24_000;
+
+    /// <summary>The audio the server keeps buffered, in seconds.</summary>
+    private const double TargetSeconds = 0.15;
+
     /// <summary>The samples written at a time, a tenth of a second at 24 kHz.</summary>
     private const int Chunk = 2_400;
 
-    /// <summary>The microseconds of latency left that count as finished: what remains is the sound card's own delay.</summary>
-    private const ulong FinishedLatency = 30_000;
+    /// <summary>The longest wait for buffered audio, in microseconds, should the server report nonsense.</summary>
+    private const ulong MaxWaitMicroseconds = 10_000_000;
 
     /// <summary>The latency PulseAudio reports on error.</summary>
     private const ulong LatencyError = ulong.MaxValue;
 
-    /// <summary>How often to check whether the audio has finished playing.</summary>
-    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(20);
+    /// <summary>The libpulse-simple file names.</summary>
+    private static readonly string[] Candidates = ["libpulse-simple.so.0", "libpulse-simple.so"];
 
     /// <summary>Serialises playback.</summary>
     private readonly Lock _gate = new();
@@ -41,13 +48,20 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
     /// <summary>The open stream's sample rate.</summary>
     private int _rate;
 
-    /// <inheritdoc/>
+    /// <summary>Gets a value indicating whether libpulse-simple loads and a sound server accepts a stream.</summary>
     public bool IsAvailable
     {
         get
         {
-            PulseLibraryResolver.Install();
-            return PulseLibraryResolver.TryLoad();
+            if (!LibraryLoads())
+            {
+                return false;
+            }
+
+            lock (_gate)
+            {
+                return Open(_rate > 0 ? _rate : DefaultRate) is not null;
+            }
         }
     }
 
@@ -68,22 +82,34 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
         return Task.Run(() => Play(audio, cancellationToken), CancellationToken.None);
     }
 
-    /// <summary>Waits until the buffered audio has played, flushing it if cancelled.</summary>
+    /// <summary>
+    /// Waits for the buffered audio to play, flushing it if cancelled. The server's latency, read once after the last
+    /// write, is how long the written audio takes to be heard; it is not polled to zero, as an idle stream keeps
+    /// reporting the device's own delay.
+    /// </summary>
     /// <param name="stream">The stream.</param>
     /// <param name="cancellationToken">The cancellation.</param>
     private static void WaitUntilPlayed(PulseStreamHandle stream, CancellationToken cancellationToken)
     {
         var latency = NativeMethods.PaSimpleGetLatency(stream, out _);
-        while (latency is > FinishedLatency and not LatencyError)
+        if (latency == LatencyError)
         {
-            if (cancellationToken.WaitHandle.WaitOne(PollInterval))
-            {
-                _ = NativeMethods.PaSimpleFlush(stream, out _);
-                return;
-            }
-
-            latency = NativeMethods.PaSimpleGetLatency(stream, out _);
+            return;
         }
+
+        var remaining = TimeSpan.FromMicroseconds(Math.Min(latency, MaxWaitMicroseconds));
+        if (cancellationToken.WaitHandle.WaitOne(remaining))
+        {
+            _ = NativeMethods.PaSimpleFlush(stream, out _);
+        }
+    }
+
+    /// <summary>Determines whether libpulse-simple can be loaded.</summary>
+    /// <returns><see langword="true"/> when found.</returns>
+    private static bool LibraryLoads()
+    {
+        NativeLibraries.Register(typeof(PulseAudioOutput).Assembly, NativeMethods.Library, Candidates);
+        return NativeLibraries.TryLoad(typeof(PulseAudioOutput).Assembly, NativeMethods.Library);
     }
 
     /// <summary>Writes the audio piece by piece, then waits for it to finish playing.</summary>
@@ -131,17 +157,21 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
 
         _stream?.Dispose();
         _stream = null;
-        if (!IsAvailable)
+        if (!LibraryLoads())
         {
             return null;
         }
 
         var spec = new PulseSampleSpec(Float32LittleEndian, (uint)rate, 1);
+
+        // A short buffer starts playing at once and lets Stop take effect quickly; the default holds about two seconds.
+        var target = (uint)(rate * sizeof(float) * TargetSeconds);
+        var attributes = new PulseBufferAttributes(uint.MaxValue, target, uint.MaxValue, uint.MaxValue, uint.MaxValue);
         fixed (byte* name = "PdfViewerLite\0"u8)
         {
             fixed (byte* description = "Read aloud\0"u8)
             {
-                var stream = NativeMethods.PaSimpleNew(null, name, Playback, null, description, &spec, null, null, out _);
+                var stream = NativeMethods.PaSimpleNew(null, name, Playback, null, description, &spec, null, &attributes, out _);
                 if (stream.IsInvalid)
                 {
                     stream.Dispose();

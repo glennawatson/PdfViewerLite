@@ -33,6 +33,9 @@ internal sealed class PrintingPlatform(IPrintService printer) : IDesktopPlatform
     public string? GetLaunchActivationToken() => null;
 
     /// <inheritdoc/>
+    public PdfViewerLite.Core.Speech.IAudioOutput CreateAudioOutput() => new PdfViewerLite.Core.Speech.NullAudioOutput();
+
+    /// <inheritdoc/>
     public Task<bool> TryForwardAsync(OpenRequest request) => Task.FromResult(false);
 
     /// <inheritdoc/>

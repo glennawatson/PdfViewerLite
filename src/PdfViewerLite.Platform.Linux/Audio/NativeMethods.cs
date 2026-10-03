@@ -4,12 +4,12 @@
 
 using System.Runtime.InteropServices;
 
-namespace PdfViewerLite.Speech.Audio;
+namespace PdfViewerLite.Platform.Linux.Audio;
 
 /// <summary>Source generated entry points of PulseAudio's simple API (libpulse-simple, LGPL, loaded at run time), which PipeWire also provides.</summary>
 internal static unsafe partial class NativeMethods
 {
-    /// <summary>The native library name, resolved by <see cref="PulseLibraryResolver"/>.</summary>
+    /// <summary>The native library name, resolved through <see cref="Core.Platform.NativeLibraries"/>.</summary>
     internal const string Library = "pulse-simple";
 
     /// <summary>Native <c>pa_simple_new</c>.</summary>
@@ -32,7 +32,7 @@ internal static unsafe partial class NativeMethods
         byte* streamName,
         PulseSampleSpec* spec,
         void* channelMap,
-        void* attributes,
+        PulseBufferAttributes* attributes,
         out int error);
 
     /// <summary>Native <c>pa_simple_write</c>.</summary>

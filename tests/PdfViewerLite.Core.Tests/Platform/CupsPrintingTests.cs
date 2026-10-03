@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using PdfViewerLite.Core.Printing;
-using PdfViewerLite.Platform.Linux.Cups;
+using PdfViewerLite.Platform.Cups;
 
 namespace PdfViewerLite.Core.Tests.Platform;
 

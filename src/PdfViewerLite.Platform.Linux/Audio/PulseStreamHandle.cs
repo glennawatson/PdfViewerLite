@@ -4,7 +4,7 @@
 
 using Microsoft.Win32.SafeHandles;
 
-namespace PdfViewerLite.Speech.Audio;
+namespace PdfViewerLite.Platform.Linux.Audio;
 
 /// <summary>Owns a <c>pa_simple</c> playback stream.</summary>
 internal sealed class PulseStreamHandle : SafeHandleZeroOrMinusOneIsInvalid

@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Core.Speech;
 
 namespace PdfViewerLite.App.Services;
 
@@ -29,6 +30,10 @@ public sealed class FallbackPlatform : IDesktopPlatform
 
     /// <inheritdoc/>
     public IPrintService Printer { get; } = new NullPrintService();
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IAudioOutput CreateAudioOutput() => new NullAudioOutput();
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

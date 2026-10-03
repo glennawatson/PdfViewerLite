@@ -5,7 +5,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace PdfViewerLite.Platform.Linux.Cups;
+namespace PdfViewerLite.Platform.Cups;
 
 /// <summary>Native <c>cups_dest_t</c>: a printer or class, with its options.</summary>
 [StructLayout(LayoutKind.Sequential)]

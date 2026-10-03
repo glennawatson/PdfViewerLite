@@ -2,6 +2,8 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using PdfViewerLite.Core.Speech;
+
 namespace PdfViewerLite.Core.Platform;
 
 /// <summary>
@@ -24,6 +26,10 @@ public interface IDesktopPlatform
 
     /// <summary>Gets the print service.</summary>
     IPrintService Printer { get; }
+
+    /// <summary>Creates the sound output Read Aloud plays through; dispose it when done.</summary>
+    /// <returns>The output, which reports whether sound can be played.</returns>
+    IAudioOutput CreateAudioOutput();
 
     /// <summary>Gets the window activation token the launcher handed this process, if any.</summary>
     /// <returns>The token.</returns>

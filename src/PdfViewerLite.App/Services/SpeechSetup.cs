@@ -3,10 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Speech;
 using PdfViewerLite.Http.Speech;
-using PdfViewerLite.Speech.Audio;
 using PdfViewerLite.Speech.Kokoro;
 
 namespace PdfViewerLite.App.Services;
@@ -32,14 +32,15 @@ public sealed record SpeechSetup(
     /// <summary>Gets the voice files still to download.</summary>
     public long MissingBytes => SpeechModelDownloader.ApproximateBytes(SpeechModelDownloader.Missing(VoiceFiles, VoiceDirectory));
 
-    /// <summary>Creates the default setup: Kokoro on this computer, or Azure with the person's key, played through PulseAudio or PipeWire.</summary>
+    /// <summary>Creates the default setup: Kokoro on this computer, or Azure with the person's key, played through the desktop's sound output.</summary>
+    /// <param name="platform">The desktop integration, which provides the sound output.</param>
     /// <returns>The setup.</returns>
-    public static SpeechSetup CreateDefault() =>
+    public static SpeechSetup CreateDefault(IDesktopPlatform platform) =>
         new(
             DefaultVoiceDirectory,
             KokoroModel.Files,
             CreateEngineFor,
-            static () => new PulseAudioOutput(),
+            platform.CreateAudioOutput,
             static (progress, cancellationToken) => SpeechModelDownloader.DownloadAsync(KokoroModel.Files, DefaultVoiceDirectory, progress, cancellationToken));
 
     /// <summary>Creates the engine the settings choose.</summary>
