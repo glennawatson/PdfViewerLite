@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Ocr\PdfViewerLite.Ocr.csproj" />
     <ProjectReference Include="..\..\tests\PdfViewerLite.TestAssets\PdfViewerLite.TestAssets.csproj" />
   </ItemGroup>
 

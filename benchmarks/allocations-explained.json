@@ -10,5 +10,20 @@
     "type": "",
     "frame": "PdfViewerLite.Core.Signatures.SignatureVerifier.",
     "reason": "Checking a signature decodes the CMS and builds the certificate chain with System.Security.Cryptography, which allocates, and SignedCms needs the signed bytes as one array. It runs only when the user asks to check signatures."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Core.Ocr.OcrRunner.",
+    "reason": "The page and strip pixel buffers are rented from ArrayPool<byte>.Shared. The pool allocates them the first time a page is recognised (or after it trims idle buffers on a gen 2 GC); later pages reuse them. Seen once per trace."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Ocr.",
+    "reason": "Each recognised word becomes a string (the result), and Tesseract's result iterator is wrapped in one SafeHandle per page. Recognition itself takes hundreds of milliseconds in Tesseract's native code."
+  },
+  {
+    "type": "RuntimeTypeCache",
+    "frame": "PdfViewerLite.",
+    "reason": "The first time a LibraryImport returns a given SafeHandle type, the generated marshaller creates it with new T(), which builds the runtime's per-type activator cache once for the life of the process."
   }
 ]

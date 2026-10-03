@@ -3,7 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 
@@ -48,6 +50,27 @@ public static class OcrRunner
 
     /// <summary>The red byte of a BGRA pixel.</summary>
     private const int RedOffset = 2;
+
+    /// <summary>The pixels in one vector of 32 bit lanes.</summary>
+    private const int LanePixels = 8;
+
+    /// <summary>The first pixel of the third vector in a step.</summary>
+    private const int ThirdLane = LanePixels * 2;
+
+    /// <summary>The first pixel of the fourth vector in a step.</summary>
+    private const int FourthLane = LanePixels * 3;
+
+    /// <summary>The pixels converted per vector step.</summary>
+    private const int BlockPixels = LanePixels * 4;
+
+    /// <summary>The bit offset of green in 0xAARRGGBB.</summary>
+    private const int GreenShift = 8;
+
+    /// <summary>The bit offset of red in 0xAARRGGBB.</summary>
+    private const int RedShift = 16;
+
+    /// <summary>Masks one channel in each lane.</summary>
+    private static readonly Vector256<uint> ChannelLanes = Vector256.Create(0xFFU);
 
     /// <summary>Recognises one page and writes its words onto it.</summary>
     /// <param name="document">The document.</param>
@@ -101,18 +124,39 @@ public static class OcrRunner
         return new(pageIndex, written > 0 ? OcrPageStatus.Recognized : OcrPageStatus.NoTextFound, written);
     }
 
-    /// <summary>Converts BGRA pixels to 8 bit luma.</summary>
+    /// <summary>Converts BGRA pixels to 8 bit luma, 32 pixels at a time where vectors are accelerated.</summary>
     /// <param name="bgra">The pixels, four bytes each.</param>
     /// <param name="grey">The destination, one byte per pixel.</param>
     public static void ToGrey(ReadOnlySpan<byte> bgra, Span<byte> grey)
     {
         var count = Math.Min(bgra.Length / BytesPerPixel, grey.Length);
-        for (var i = 0; i < count; i++)
+        var i = 0;
+        if (Vector256.IsHardwareAccelerated && BitConverter.IsLittleEndian)
+        {
+            var pixels = MemoryMarshal.Cast<byte, uint>(bgra);
+            for (; i <= count - BlockPixels; i += BlockPixels)
+            {
+                var low = Vector256.Narrow(Luma(Vector256.Create(pixels.Slice(i, LanePixels))), Luma(Vector256.Create(pixels.Slice(i + LanePixels, LanePixels))));
+                var high = Vector256.Narrow(Luma(Vector256.Create(pixels.Slice(i + ThirdLane, LanePixels))), Luma(Vector256.Create(pixels.Slice(i + FourthLane, LanePixels))));
+                Vector256.Narrow(low, high).CopyTo(grey.Slice(i, BlockPixels));
+            }
+        }
+
+        for (; i < count; i++)
         {
             var pixel = bgra.Slice(i * BytesPerPixel, BytesPerPixel);
             grey[i] = (byte)(((pixel[0] * BlueWeight) + (pixel[GreenOffset] * GreenWeight) + (pixel[RedOffset] * RedWeight)) >> WeightShift);
         }
     }
+
+    /// <summary>Computes the luma of eight little endian BGRA pixels.</summary>
+    /// <param name="pixels">The pixels as 0xAARRGGBB.</param>
+    /// <returns>The luma of each, from 0 to 255.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector256<uint> Luma(Vector256<uint> pixels) =>
+        (((pixels & ChannelLanes) * BlueWeight)
+            + (((pixels >> GreenShift) & ChannelLanes) * GreenWeight)
+            + (((pixels >> RedShift) & ChannelLanes) * RedWeight)) >> WeightShift;
 
     /// <summary>Gets the render scale for a page: scanning resolution, reduced for very large pages.</summary>
     /// <param name="size">The page size in points.</param>
