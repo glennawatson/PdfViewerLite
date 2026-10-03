@@ -187,7 +187,11 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PrintCommand, static v => v.PrintItem));
         bindings.Add(this.BindInteraction(ViewModel, static vm => vm.PrintPreviewInteraction, ShowPrintPreviewAsync));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PresentCommand, static v => v.PresentItem));
-        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Chrome.IsVisible, static presenting => !presenting));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ShowsChrome, static v => v.Chrome.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsReading, static v => v.ReadModeBar.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.ReadModeTitle.Text));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadModeCommand, static v => v.LeaveReadModeButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadModeCommand, static v => v.ReadModeItem));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.VerticalScrollBarVisibility, ScrollBars));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.HorizontalScrollBarVisibility, ScrollBars));
         bindings.Add(this.Bind(ViewModel, static vm => vm.IsCaretMode, static v => v.CaretModeItem.IsChecked, static on => on, static on => on));

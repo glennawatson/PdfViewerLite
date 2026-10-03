@@ -37,7 +37,7 @@ every platform on each release, but tests only run on Linux.
 | Zoom | Fit width, fit page, marquee, free zoom | Fit width, fit page, free zoom; Ctrl+wheel zooms around the pointer | Done |
 | Rotate view | Yes | Yes | Done |
 | Full screen / presentation | Full screen mode | Present (Shift+F5), Esc to stop | Done |
-| Read mode (chrome hidden) | Yes | Focus Mode covers reading; the toolbar stays | Partial |
+| Read mode (chrome hidden) | Yes | More ▸ Read Mode (Ctrl+H) puts the tool bars and sidebar away, leaving a thin bar with Leave Read Mode; Esc also leaves | Done |
 | Page thumbnails | Yes | Virtualised, rendered on demand | Done |
 | Bookmarks (outline) | Yes | Yes | Done |
 | Layers | Yes | Show and hide optional content | Done |

@@ -188,6 +188,32 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
         _bindings = null;
     }
 
+    /// <summary>Ends presenting or read mode, as Escape does.</summary>
+    /// <param name="tab">The tab.</param>
+    /// <returns><see langword="true"/> when either was on.</returns>
+    private static bool LeaveFullView(DocumentTabViewModel? tab)
+    {
+        switch (tab)
+        {
+            case { IsPresenting: true }:
+            {
+                tab.SetPresenting(false);
+                return true;
+            }
+
+            case { IsReading: true }:
+            {
+                tab.SetReading(false);
+                return true;
+            }
+
+            default:
+            {
+                return false;
+            }
+        }
+    }
+
     /// <summary>Converts storage items to local paths.</summary>
     /// <param name="items">The items.</param>
     /// <returns>The paths.</returns>
@@ -424,9 +450,8 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
             return;
         }
 
-        if (e.Key == Key.Escape && viewModel.SelectedTab is { IsPresenting: true } presenting)
+        if (e.Key == Key.Escape && LeaveFullView(viewModel.SelectedTab))
         {
-            presenting.SetPresenting(false);
             e.Handled = true;
             return;
         }

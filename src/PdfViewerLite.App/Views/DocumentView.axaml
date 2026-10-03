@@ -5,7 +5,19 @@
              x:Class="PdfViewerLite.App.Views.DocumentView">
   <!-- Layout only: every binding is made in code with ReactiveUI.Binding (DocumentView.axaml.cs). -->
   <DockPanel>
-    <!-- Everything above the pages; hidden while presenting. -->
+    <!-- Read mode's only control: the way back to the tool bars. -->
+    <Border x:Name="ReadModeBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <Button AutomationProperties.Name="Leave Read Mode" x:Name="LeaveReadModeButton" DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Bring back the tool bars (Esc or Ctrl+H)">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+            <TextBlock Classes="label" Text="Leave Read Mode" />
+          </StackPanel>
+        </Button>
+        <TextBlock x:Name="ReadModeTitle" Classes="secondary" VerticalAlignment="Center" Margin="12,0" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+    <!-- Everything above the pages; hidden while presenting or reading. -->
     <StackPanel x:Name="Chrome" DockPanel.Dock="Top">
     <!-- Document tool bar: the main actions carry text labels (rule 7.3); rarer ones live in More. -->
     <Border DockPanel.Dock="Top" Classes="toolbar">
@@ -61,6 +73,7 @@
                 <MenuItem x:Name="SingleLayoutItem" Header="_Single Page" />
                 <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
                 <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
+                <MenuItem x:Name="ReadModeItem" Header="Rea_d Mode" InputGesture="Ctrl+H" ToolTip.Tip="Put the tool bars and sidebar away so the pages fill the window" />
                 <MenuItem x:Name="PresentItem" Header="P_resent" InputGesture="Shift+F5" ToolTip.Tip="Full screen, one page at a time; Esc to stop" />
                 <MenuItem x:Name="MeasureItem" Header="_Measure" InputGesture="Ctrl+Shift+M" ToolTip.Tip="Measure distances, lengths and areas on the page" />
                 <MenuItem x:Name="CaretModeItem" Header="_Caret Navigation" InputGesture="F7" ToggleType="CheckBox" ToolTip.Tip="Move through the text with the arrow keys; Shift selects" />

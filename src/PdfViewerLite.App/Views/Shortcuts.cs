@@ -58,6 +58,7 @@ internal static class Shortcuts
         (new(Key.M, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.Measure.ToggleCommand),
         (new(Key.F5), static vm => vm.SelectedTab?.ReloadCommand),
         (new(Key.F5, KeyModifiers.Shift), static vm => vm.SelectedTab?.PresentCommand),
+        (new(Key.H, KeyModifiers.Control), static vm => vm.SelectedTab?.ReadModeCommand),
     ];
 
     /// <summary>Runs the command of the shortcut a key press matches.</summary>

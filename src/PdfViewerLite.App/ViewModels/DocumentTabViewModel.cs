@@ -56,6 +56,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Emits the index of each page whose content was edited.</summary>
     private readonly Signal<int> _pageEdits = new();
 
+    /// <summary>Whether the sidebar was shown before read mode put it away.</summary>
+    private bool _sidebarBeforeReading;
+
     /// <summary>When the file was last saved from this tab, so the change notice that follows is not taken for an outside edit.</summary>
     private long _savedAt;
 
@@ -119,6 +122,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         PrintWithSystemDialogCommand = ReactiveCommand.CreateFromTask(PrintWithSystemDialogAsync);
         ToggleCaretModeCommand = ReactiveCommand.Create(() => { IsCaretMode = !IsCaretMode; });
         PresentCommand = ReactiveCommand.Create(() => SetPresenting(!IsPresenting));
+        ReadModeCommand = ReactiveCommand.Create(() => SetReading(!IsReading));
         StopPresentingCommand = ReactiveCommand.Create(() => SetPresenting(false));
         DismissNoticeCommand = ReactiveCommand.Create(() => { Notice = null; });
         SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync);
@@ -293,8 +297,32 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     public bool IsPresenting
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(ShowsChrome));
+        }
     }
+
+    /// <summary>
+    /// Gets a value indicating whether read mode is on: the tool bars and sidebar are put away so the pages fill the
+    /// window, as Acrobat's Read Mode does; a small bar offers the way back.
+    /// </summary>
+    public bool IsReading
+    {
+        get;
+        private set
+        {
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(ShowsChrome));
+        }
+    }
+
+    /// <summary>Gets a value indicating whether the tool bars are shown: not while presenting or reading.</summary>
+    public bool ShowsChrome => !IsPresenting && !IsReading;
+
+    /// <summary>Gets the command turning read mode on or off.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> ReadModeCommand { get; }
 
     /// <summary>Gets the command starting or ending presenting.</summary>
     public ReactiveCommand<RxVoid, RxVoid> PresentCommand { get; }
@@ -812,6 +840,27 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             Notice = $"Could not save: {ex.Message}";
             return false;
         }
+    }
+
+    /// <summary>Turns read mode on or off, putting the sidebar away and bringing it back as it was.</summary>
+    /// <param name="reading">Whether to read.</param>
+    public void SetReading(bool reading)
+    {
+        if (reading == IsReading)
+        {
+            return;
+        }
+
+        if (reading)
+        {
+            _sidebarBeforeReading = SidebarVisible;
+            SidebarVisible = false;
+            IsReading = true;
+            return;
+        }
+
+        IsReading = false;
+        SidebarVisible = _sidebarBeforeReading;
     }
 
     /// <summary>Starts or ends presenting, keeping the tab's own view to restore afterwards.</summary>
