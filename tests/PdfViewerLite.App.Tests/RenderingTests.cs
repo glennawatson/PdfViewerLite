@@ -13,6 +13,7 @@ using PdfViewerLite.App.Theming;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
 using PdfViewerLite.Core.Annotations;
+using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Theming;
@@ -37,6 +38,9 @@ public sealed class RenderingTests
 
     /// <summary>The number of cached tiles that shows rendering is well under way.</summary>
     private const int ExpectedTiles = 6;
+
+    /// <summary>Half, for finding the middle of a field.</summary>
+    private const float Half = 0.5F;
 
     /// <summary>The number of annotations the annotation test adds.</summary>
     private const int AnnotationCount = 2;
@@ -181,6 +185,53 @@ public sealed class RenderingTests
             var bar = window.GetVisualDescendants().OfType<Border>().Single(static b => b.Name == "AnnotateBar");
             await Assert.That(bar.IsVisible).IsTrue();
             await Assert.That(tab.Annotations.Items.Count).IsEqualTo(AnnotationCount);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies clicking a text field opens an editor over it, and that typing fills the field.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task FillsFormFields()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        var path = Path.Combine(test.Directory, "form.pdf");
+        await File.WriteAllBytesAsync(path, TestPdf.CreateForm());
+        main.Open([path]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var tab = main.SelectedTab!;
+            var fields = new List<FormField>();
+            ((IFormFiller)tab.TryGetDocument()!).GetFields(0, fields);
+            var nameField = fields.Single(static f => f.Kind == FormFieldKind.Text);
+            var agree = fields.Single(static f => f.Kind == FormFieldKind.CheckBox);
+            var centre = new PagePoint(nameField.Bounds.Left + (nameField.Bounds.Width * Half), nameField.Bounds.Top + (nameField.Bounds.Height * Half));
+
+            _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > 0 && test.Services.RenderHub.Scheduler.QueueLength == 0);
+            var hit = tab.Forms.HitTest(0, centre);
+            _ = tab.Forms.Activate(hit!);
+            _ = tab.Forms.Activate(agree);
+            tab.Forms.EditText = "Glenn Watson";
+            _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Scheduler.QueueLength == 0);
+            using var frame = window.CaptureRenderedFrame();
+            Save(frame, "form.png");
+            var editor = window.GetVisualDescendants().OfType<TextBox>().Single(static t => t.Name == "FieldEditor");
+            var editorShown = editor.IsVisible;
+            tab.Forms.Commit();
+            fields.Clear();
+            ((IFormFiller)tab.TryGetDocument()!).GetFields(0, fields);
+
+            await Assert.That(hit).IsNotNull();
+            await Assert.That(editorShown).IsTrue();
+            await Assert.That(fields.Single(static f => f.Kind == FormFieldKind.Text).Value).IsEqualTo("Glenn Watson");
+            await Assert.That(fields.Single(static f => f.Kind == FormFieldKind.CheckBox).IsChecked).IsTrue();
+            await Assert.That(tab.HasUnsavedChanges).IsTrue();
         }
         finally
         {

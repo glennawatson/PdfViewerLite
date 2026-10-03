@@ -319,8 +319,14 @@
       <Panel Grid.Column="2">
         <ScrollViewer x:Name="Scroller" Background="{DynamicResource AppCanvasBackground}"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-          <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
-                               SelectionBrush="{DynamicResource AppTextSelectionBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+          <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
+            <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
+                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" />
+            <!-- The text field editor sits exactly over the field being filled in. -->
+            <Canvas x:Name="FieldOverlay">
+              <TextBox x:Name="FieldEditor" Classes="field" IsVisible="False" />
+            </Canvas>
+          </Panel>
         </ScrollViewer>
 
         <Border x:Name="ErrorPanel" Background="{DynamicResource AppCanvasBackground}">

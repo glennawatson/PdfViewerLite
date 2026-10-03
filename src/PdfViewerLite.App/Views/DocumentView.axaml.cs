@@ -30,6 +30,12 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
     /// <summary>Defines the <see cref="ViewModel"/> property.</summary>
     public static readonly StyledProperty<DocumentTabViewModel?> ViewModelProperty = AvaloniaProperty.Register<DocumentView, DocumentTabViewModel?>(nameof(ViewModel));
 
+    /// <summary>The smallest editor font size.</summary>
+    private const double MinFieldFontSize = 10;
+
+    /// <summary>The editor font size as a share of the field height.</summary>
+    private const double FieldFontShare = 0.6;
+
     /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
     private const uint OpaqueAlpha = 0xFF000000U;
 
@@ -94,6 +100,7 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         BindSidebar(_bindings);
         BindPages(_bindings);
         BindWindowCommands(_bindings);
+        BindFieldEditor(_bindings);
         Dispatcher.UIThread.Post(FocusControl, Canvas, DispatcherPriority.Loaded);
     }
 
@@ -114,6 +121,19 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
     /// <param name="state">The control.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void FocusControl(object? state) => (state as Control)?.Focus();
+
+    /// <summary>Focuses a text box passed as dispatcher state and selects its text.</summary>
+    /// <param name="state">The text box.</param>
+    private static void FocusAndSelect(object? state)
+    {
+        if (state is not TextBox box)
+        {
+            return;
+        }
+
+        _ = box.Focus();
+        box.SelectAll();
+    }
 
     /// <summary>Converts a nullable toggle state to a plain flag.</summary>
     /// <param name="value">The toggle state.</param>
@@ -295,6 +315,50 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
                 PropertiesItem.Command = main?.PropertiesCommand;
             },
             OnError));
+    }
+
+    /// <summary>Binds the editor placed over the text field being filled in.</summary>
+    /// <param name="bindings">The bindings.</param>
+    private void BindFieldEditor(MultipleDisposable bindings)
+    {
+        bindings.Add(this.Bind(ViewModel, static vm => vm.Forms.EditText, static v => v.FieldEditor.Text, static text => text, static text => text ?? string.Empty));
+        bindings.Add(this.WhenAnyValue(static v => v.ViewModel!.Forms.Editing).SubscribeSafe(ShowFieldEditor, OnError));
+        bindings.Add(KeyPresses(FieldEditor, Key.Escape, KeyModifiers.None).SubscribeSafe(_ => ViewModel?.Forms.Cancel(), OnError));
+        bindings.Add(FieldEditor.GetObservable(KeyDownEvent, RoutingStrategies.Tunnel).Where(static args => args.Key == Key.Tab).SubscribeSafe(OnFieldTab, OnError));
+        bindings.Add(KeyPresses(FieldEditor, Key.Enter, KeyModifiers.None)
+            .Where(_ => ViewModel?.Forms.Editing is { IsMultiline: false })
+            .SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
+        bindings.Add(FieldEditor.GetObservable(LostFocusEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
+    }
+
+    /// <summary>Places the editor over a field and focuses it, or hides it.</summary>
+    /// <param name="field">The field being edited, or <see langword="null"/>.</param>
+    private void ShowFieldEditor(Core.Forms.FormField? field)
+    {
+        if (field is null)
+        {
+            FieldEditor.IsVisible = false;
+            _ = Canvas.Focus();
+            return;
+        }
+
+        var rect = Canvas.GetCanvasRect(field.PageIndex, field.Bounds);
+        Avalonia.Controls.Canvas.SetLeft(FieldEditor, rect.X);
+        Avalonia.Controls.Canvas.SetTop(FieldEditor, rect.Y);
+        FieldEditor.Width = rect.Width;
+        FieldEditor.Height = rect.Height;
+        FieldEditor.AcceptsReturn = field.IsMultiline;
+        FieldEditor.FontSize = Math.Max(MinFieldFontSize, rect.Height * FieldFontShare);
+        FieldEditor.IsVisible = true;
+        Dispatcher.UIThread.Post(FocusAndSelect, FieldEditor, DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Moves to the next text field on Tab.</summary>
+    /// <param name="e">The key press.</param>
+    private void OnFieldTab(KeyEventArgs e)
+    {
+        e.Handled = true;
+        _ = ViewModel?.Forms.CommitAndMoveNext();
     }
 
     /// <summary>Asks the user for text.</summary>

@@ -169,6 +169,15 @@
     <Setter Property="CornerRadius" Value="4" />
   </Style>
 
+  <!-- The editor over a form field: plain, so it reads as the field itself. -->
+  <Style Selector="TextBox.field">
+    <Setter Property="Padding" Value="3,0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+
   <Style Selector="TextBlock.secondary">
     <Setter Property="Foreground" Value="{DynamicResource AppSecondaryForeground}" />
   </Style>

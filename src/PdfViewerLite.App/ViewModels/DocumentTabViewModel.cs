@@ -320,6 +320,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the annotation state.</summary>
     public AnnotationsViewModel Annotations => field ??= new(this);
 
+    /// <summary>Gets the form filling state.</summary>
+    public FormsViewModel Forms => field ??= new(this);
+
     /// <summary>Gets the Fill &amp; Sign state.</summary>
     public FillAndSignViewModel FillAndSign => field ??= new(this, _services);
 

@@ -84,6 +84,11 @@ public sealed partial class PageCanvas
                 return true;
             }
 
+            case AnnotationTool.Select when page >= 0 && TryActivateField(tab, page, position):
+            {
+                return true;
+            }
+
             case AnnotationTool.Select when page >= 0:
             {
                 var hit = annotations.HitTest(page, ToPage(tab, page, position));
