@@ -9,4 +9,8 @@
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
+  </ItemGroup>
 </Project>

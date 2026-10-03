@@ -85,11 +85,13 @@ public sealed partial class SignaturesWindow : Window, IViewFor<SignaturesViewMo
         }
 
         var who = signature.SignerName.Length > 0 ? signature.SignerName : "Unknown signer";
+        who = signature.IsDocumentTimestamp ? $"Document timestamp by {who}" : who;
         panel.Children.Add(new TextBlock { Text = who, FontWeight = FontWeight.SemiBold });
         panel.Children.Add(new TextBlock { Text = signature.Summary, TextWrapping = TextWrapping.Wrap });
         AddDetail(panel, signature.SigningTime is { } time ? string.Create(CultureInfo.CurrentCulture, $"Signed {time.ToLocalTime():f}") : null);
         AddDetail(panel, signature.Reason.Length > 0 ? $"Reason: {signature.Reason}" : null);
         AddDetail(panel, signature.Issuer.Length > 0 ? $"Certificate issued by {signature.Issuer}" : null);
+        AddDetail(panel, signature.TimestampSummary.Length > 0 ? signature.TimestampSummary : null);
         AddDetail(panel, signature.Detail.Length > 0 ? signature.Detail : null);
         return panel;
     }

@@ -9,6 +9,7 @@ using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Signatures;
 using PdfViewerLite.Core.Signatures.Signing;
+using PdfViewerLite.Http.Signatures;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 
@@ -77,6 +78,13 @@ public sealed class SignaturesViewModel : ReactiveObject
         Signatures.Clear();
     }
 
+    /// <summary>Determines whether an exception is a signing failure to tell the user about, rather than a bug.</summary>
+    /// <param name="exception">The exception.</param>
+    /// <returns><see langword="true"/> for a damaged file, a certificate problem, a file error or an unreachable timestamp server.</returns>
+    private static bool IsSigningFailure(Exception exception) =>
+        exception is InvalidDataException or NotSupportedException or CryptographicException or IOException or UnauthorizedAccessException
+            or HttpRequestException or TaskCanceledException;
+
     /// <summary>Checks every signature against the file.</summary>
     /// <param name="raw">The signatures as stored.</param>
     /// <param name="path">The file.</param>
@@ -84,9 +92,10 @@ public sealed class SignaturesViewModel : ReactiveObject
     private static DocumentSignature[] VerifyAll(IReadOnlyList<RawSignature> raw, string path)
     {
         var results = new DocumentSignature[raw.Count];
+        var store = DocumentSecurityStore.Read(File.ReadAllBytes(path));
         for (var i = 0; i < results.Length; i++)
         {
-            results[i] = SignatureVerifier.Verify(raw[i], path, []);
+            results[i] = SignatureVerifier.Verify(raw[i], path, [], store);
         }
 
         return results;
@@ -130,12 +139,13 @@ public sealed class SignaturesViewModel : ReactiveObject
             var signing = new SigningRequest(Math.Max(0, _owner.CurrentPageIndex), request.Reason, request.Location, TimeProvider.System.GetUtcNow());
             try
             {
-                var signed = await Task.Run(() => PdfSigner.Sign(source, certificate, signing)).ConfigureAwait(true);
+                var timestamper = Uri.TryCreate(_services.Settings.TimestampServer, UriKind.Absolute, out var server) ? new TimestampAuthorityClient(server) : null;
+                var signed = await Task.Run(() => PdfSigner.Sign(source, certificate, signing, timestamper)).ConfigureAwait(true);
                 var temporary = $"{destination}.signing";
                 await File.WriteAllBytesAsync(temporary, signed).ConfigureAwait(true);
                 File.Move(temporary, destination, true);
             }
-            catch (Exception ex) when (ex is InvalidDataException or NotSupportedException or CryptographicException or IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (IsSigningFailure(ex))
             {
                 _owner.Notice = $"Could not sign: {ex.Message}";
                 return;

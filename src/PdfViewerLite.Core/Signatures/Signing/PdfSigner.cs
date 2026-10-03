@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -28,6 +29,9 @@ public static class PdfSigner
 
     /// <summary>The OID of SHA-256.</summary>
     private const string Sha256Oid = "2.16.840.1.101.3.4.2.1";
+
+    /// <summary>The unsigned attribute holding a signature's timestamp token.</summary>
+    private const string TimestampTokenOid = "1.2.840.113549.1.9.16.2.14";
 
     /// <summary>Signature flags: the document has signatures and must only be appended to.</summary>
     private const int SigFlags = 3;
@@ -58,7 +62,18 @@ public static class PdfSigner
     /// <returns>The signed PDF.</returns>
     /// <exception cref="ArgumentException">The certificate has no private key.</exception>
     /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
-    public static byte[] Sign(byte[] source, X509Certificate2 certificate, in SigningRequest request)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static byte[] Sign(byte[] source, X509Certificate2 certificate, in SigningRequest request) => Sign(source, certificate, request, null);
+
+    /// <summary>Signs a PDF, adding a trusted timestamp to the signature when a timestamp authority is given.</summary>
+    /// <param name="source">The PDF's bytes.</param>
+    /// <param name="certificate">The signing certificate, with its private key.</param>
+    /// <param name="request">What the signature records.</param>
+    /// <param name="timestamper">The timestamp authority, or <see langword="null"/> for none.</param>
+    /// <returns>The signed PDF.</returns>
+    /// <exception cref="ArgumentException">The certificate has no private key.</exception>
+    /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
+    public static byte[] Sign(byte[] source, X509Certificate2 certificate, in SigningRequest request, ISignatureTimestamper? timestamper)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(certificate);
@@ -68,20 +83,89 @@ public static class PdfSigner
         }
 
         var structure = PdfReader.Read(source);
-        var update = BuildUpdate(structure, certificate, request);
+        var update = BuildUpdate(structure, SignatureDictionary(certificate, request), request.PageIndex);
         var bytes = new byte[source.Length + update.Length];
         source.CopyTo(bytes, 0);
         update.CopyTo(bytes, source.Length);
-        FillSignature(bytes, source.Length, certificate, request.Time);
+        FillSignature(bytes, source.Length, certificate, request.Time, timestamper);
         return bytes;
+    }
+
+    /// <summary>
+    /// Adds a document timestamp (PAdES-LTA): a timestamp token from a timestamp authority over the whole file as it
+    /// stands, so the document, its signatures and any long-term validation data can be shown to have existed then.
+    /// </summary>
+    /// <param name="source">The PDF's bytes, usually already signed.</param>
+    /// <param name="timestamper">The timestamp authority.</param>
+    /// <returns>The timestamped PDF.</returns>
+    /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
+    /// <exception cref="CryptographicException">The token is larger than the space reserved for it.</exception>
+    public static byte[] AddDocumentTimestamp(byte[] source, ISignatureTimestamper timestamper)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(timestamper);
+        var structure = PdfReader.Read(source);
+        var dictionary = $"<< /Type /DocTimeStamp /Filter /Adobe.PPKLite /SubFilter /ETSI.RFC3161 /ByteRange {ByteRangePlaceholder} /Contents <{new string('0', ContentsHexLength)}> >>";
+        var update = BuildUpdate(structure, dictionary, 0);
+        var bytes = new byte[source.Length + update.Length];
+        source.CopyTo(bytes, 0);
+        update.CopyTo(bytes, source.Length);
+        var (signed, contentsStart) = PrepareRange(bytes, source.Length);
+        WriteContents(bytes, contentsStart, timestamper.Timestamp(signed));
+        return bytes;
+    }
+
+    /// <summary>
+    /// Adds long-term validation data (PAdES LTV): the certificates of the signers' chains and the revocation data
+    /// that shows they were not revoked, stored in the document security store so the signatures can still be checked
+    /// once the certificates expire or their issuers stop answering. An existing store is replaced by one holding both.
+    /// </summary>
+    /// <param name="source">The signed PDF's bytes.</param>
+    /// <param name="certificates">The DER certificates to store.</param>
+    /// <param name="ocspResponses">The DER OCSP responses to store.</param>
+    /// <param name="crls">The DER certificate revocation lists to store.</param>
+    /// <returns>The PDF with the store.</returns>
+    /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
+    public static byte[] AddValidationData(byte[] source, IReadOnlyList<byte[]> certificates, IReadOnlyList<byte[]> ocspResponses, IReadOnlyList<byte[]> crls)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(certificates);
+        ArgumentNullException.ThrowIfNull(ocspResponses);
+        ArgumentNullException.ThrowIfNull(crls);
+        var structure = PdfReader.Read(source);
+        var root = PdfPages.ReadReference(structure.Trailer, "Root"u8);
+        var next = 0;
+        foreach (var number in structure.Entries.Keys)
+        {
+            next = Math.Max(next, number + 1);
+        }
+
+        var objects = new SortedDictionary<int, string>();
+        var store = new StringBuilder("<< /Type /DSS");
+        foreach (var (key, items) in (ReadOnlySpan<(string, IReadOnlyList<byte[]>)>)[("Certs", certificates), ("OCSPs", ocspResponses), ("CRLs", crls)])
+        {
+            _ = store.Append(CultureInfo.InvariantCulture, $" /{key} [");
+            foreach (var item in items)
+            {
+                objects[next] = string.Create(CultureInfo.InvariantCulture, $"<< /Length {item.Length} >>\nstream\n{Encoding.Latin1.GetString(item)}\nendstream");
+                _ = store.Append(CultureInfo.InvariantCulture, $"{next} 0 R ");
+                next++;
+            }
+
+            _ = store.Append(']');
+        }
+
+        var catalog = PdfReader.GetObject(structure, root).Span;
+        objects[root] = PdfEditing.AddEntry(PdfEditing.RemoveKey(catalog, "DSS"u8), $"/DSS {store.Append(" >>")}");
+        return [.. source, .. PdfUpdateWriter.Serialize(structure, objects, root, next)];
     }
 
     /// <summary>Builds the incremental update: signature, field, updated page and form, cross-reference and trailer.</summary>
     /// <param name="structure">The file structure.</param>
-    /// <param name="certificate">The certificate, for the signer's name.</param>
-    /// <param name="request">The request.</param>
+    /// <param name="signatureDictionary">The signature dictionary, with placeholders for its byte range and contents.</param>
+    /// <param name="pageIndex">The page the field belongs to.</param>
     /// <returns>The update's bytes.</returns>
-    private static byte[] BuildUpdate(PdfStructure structure, X509Certificate2 certificate, in SigningRequest request)
+    private static byte[] BuildUpdate(PdfStructure structure, string signatureDictionary, int pageIndex)
     {
         var trailer = structure.Trailer;
         var root = PdfPages.ReadReference(trailer, "Root"u8);
@@ -95,12 +179,12 @@ public static class PdfSigner
         }
 
         var catalog = PdfReader.GetObject(structure, root);
-        var page = PdfPages.FindPage(structure, catalog, request.PageIndex);
+        var page = PdfPages.FindPage(structure, catalog, pageIndex);
         var signature = (int)size;
         var field = signature + 1;
         var objects = new SortedDictionary<int, string>
         {
-            [signature] = SignatureDictionary(certificate, request),
+            [signature] = signatureDictionary,
             [field] = string.Create(
                 CultureInfo.InvariantCulture,
                 $"<< /Type /Annot /Subtype /Widget /FT /Sig /T {PdfEditing.HexText($"Signature {signature}")} /V {signature} 0 R /Rect [0 0 0 0] /F {WidgetFlags} /P {page} 0 R >>"),
@@ -188,8 +272,30 @@ public static class PdfSigner
     /// <param name="updateStart">Where the update starts.</param>
     /// <param name="certificate">The certificate.</param>
     /// <param name="time">The signing time.</param>
+    /// <param name="timestamper">The timestamp authority, or <see langword="null"/>.</param>
     /// <exception cref="CryptographicException">The signature is larger than the space reserved for it.</exception>
-    private static void FillSignature(byte[] bytes, int updateStart, X509Certificate2 certificate, DateTimeOffset time)
+    private static void FillSignature(byte[] bytes, int updateStart, X509Certificate2 certificate, DateTimeOffset time, ISignatureTimestamper? timestamper)
+    {
+        var (signed, contentsStart) = PrepareRange(bytes, updateStart);
+        var cms = new SignedCms(new(signed), true);
+        var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, certificate) { DigestAlgorithm = new(Sha256Oid), IncludeOption = X509IncludeOption.WholeChain };
+        _ = signer.SignedAttributes.Add(new Pkcs9SigningTime(time.UtcDateTime));
+        cms.ComputeSignature(signer, true);
+        if (timestamper is not null)
+        {
+            // The token stamps the signature value and travels as an unsigned attribute of the signer (PAdES-T).
+            var signerInfo = cms.SignerInfos[0];
+            signerInfo.AddUnsignedAttribute(new(TimestampTokenOid, timestamper.Timestamp(signerInfo.GetSignature())));
+        }
+
+        WriteContents(bytes, contentsStart, cms.Encode());
+    }
+
+    /// <summary>Fills in the byte range and returns the bytes it covers: everything except the signature's own digits.</summary>
+    /// <param name="bytes">The whole file with its update.</param>
+    /// <param name="updateStart">Where the update starts.</param>
+    /// <returns>The signed bytes and where the contents' opening bracket is.</returns>
+    private static (byte[] Signed, int ContentsStart) PrepareRange(byte[] bytes, int updateStart)
     {
         var update = bytes.AsSpan(updateStart);
         var contentsStart = updateStart + update.IndexOf("/Contents <"u8) + "/Contents "u8.Length;
@@ -201,11 +307,17 @@ public static class PdfSigner
         var signed = new byte[contentsStart + (bytes.Length - contentsEnd)];
         bytes.AsSpan(0, contentsStart).CopyTo(signed);
         bytes.AsSpan(contentsEnd).CopyTo(signed.AsSpan(contentsStart));
-        var cms = new SignedCms(new(signed), true);
-        var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, certificate) { DigestAlgorithm = new(Sha256Oid), IncludeOption = X509IncludeOption.WholeChain };
-        _ = signer.SignedAttributes.Add(new Pkcs9SigningTime(time.UtcDateTime));
-        cms.ComputeSignature(signer, true);
-        var hex = Convert.ToHexString(cms.Encode());
+        return (signed, contentsStart);
+    }
+
+    /// <summary>Writes the signature or token into the space reserved for it, as hex padded with zeros.</summary>
+    /// <param name="bytes">The whole file.</param>
+    /// <param name="contentsStart">Where the contents' opening bracket is.</param>
+    /// <param name="der">The DER-encoded signature or token.</param>
+    /// <exception cref="CryptographicException">It is larger than the space reserved for it.</exception>
+    private static void WriteContents(byte[] bytes, int contentsStart, byte[] der)
+    {
+        var hex = Convert.ToHexString(der);
         if (hex.Length > ContentsHexLength)
         {
             throw new CryptographicException("The signature is larger than the space reserved for it.");

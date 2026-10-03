@@ -33,6 +33,11 @@
       <TextBox AutomationProperties.Name="Azure region" x:Name="AzureRegionBox" Grid.Row="2" Grid.Column="1" PlaceholderText="For example uksouth or eastus" />
       <TextBlock x:Name="SpeechNote" Grid.Row="3" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" />
     </Grid>
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="16">
+      <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Timestamp server" />
+      <TextBox AutomationProperties.Name="Timestamp server" x:Name="TimestampServerBox" Grid.Row="0" Grid.Column="1" PlaceholderText="Optional, for example http://timestamp.digicert.com" />
+      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" Text="When signing with a certificate, a timestamp server records a trusted signing time, so the signature stays valid after the certificate expires. Only a fingerprint of the signature is sent." />
+    </Grid>
     <Button x:Name="CloseButton" HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" />
   </StackPanel>
 </Window>

@@ -245,5 +245,25 @@
     "type": "",
     "frame": "PdfViewerLite.Pdfium.PdfiumDocument.ImportBooklet(",
     "reason": "The booklet page order, sized to the sheets, once per print preview or print."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.TestAssets.TestTimestampAuthority.",
+    "reason": "The benchmark's local timestamp authority, standing in for a remote one: it builds and signs each token. The app makes none of these allocations; its tokens come from the network."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.DocumentSecurityStore.",
+    "reason": "The document security store is read once when the user checks a document's signatures: the file's structure, the store's certificate streams, and a certificate object for each."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.SignatureVerifier.",
+    "reason": "Checking a signature runs when the user asks to see the signatures: it reads the signed bytes, decodes the CMS and any timestamp token, and builds certificate chains."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Signatures.Signing.PdfSigner.",
+    "reason": "Signing or timestamping writes a new copy of the file with an incremental update, the CMS signature or token, and its hex form; once per signature."
   }
 ]

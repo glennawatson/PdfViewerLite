@@ -66,6 +66,7 @@ public sealed partial class PreferencesWindow : Window, IViewFor<PreferencesView
             this.Bind(ViewModel, static vm => vm.SpeechEngine, static v => v.SpeechEngineBox.SelectedIndex),
             this.Bind(ViewModel, static vm => vm.AzureKey, static v => v.AzureKeyBox.Text),
             this.Bind(ViewModel, static vm => vm.AzureRegion, static v => v.AzureRegionBox.Text),
+            this.Bind(ViewModel, static vm => vm.TimestampServer, static v => v.TimestampServerBox.Text),
             this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyLabel.IsVisible),
             this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyBox.IsVisible),
             this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionLabel.IsVisible),

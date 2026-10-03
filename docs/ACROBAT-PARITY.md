@@ -88,7 +88,7 @@ every platform on each release, but tests only run on Linux.
 | Fill & Sign: drawn or typed signature | Yes | Yes | Done |
 | Certificate (digital) signing | Yes | `.p12`/`.pfx`, incremental update with a detached CMS (SHA-256) signature; earlier signatures stay valid | Done |
 | Validate signatures | Yes | List and check digital signatures | Done |
-| Timestamp server, long-term validation | Yes | | Later |
+| Timestamp server, long-term validation | Yes | Signatures with an RFC 3161 timestamp are checked as of the trusted time, so they stay valid after the certificate expires; document timestamps (PAdES-LTA) are checked over the file; the document security store (PAdES LTV) supplies certificates and is reported. Signing can add a timestamp from a server set in Preferences | Done |
 | Request signatures (Adobe Sign) | Yes | | Out of scope |
 
 ## Printing

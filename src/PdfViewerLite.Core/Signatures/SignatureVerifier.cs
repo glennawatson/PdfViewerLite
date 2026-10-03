@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -31,6 +32,12 @@ public static class SignatureVerifier
     /// <summary>A byte range holds offset and length pairs.</summary>
     private const int PairSize = 2;
 
+    /// <summary>The unsigned attribute holding a signature's RFC 3161 timestamp token.</summary>
+    private const string TimestampTokenOid = "1.2.840.113549.1.9.16.2.14";
+
+    /// <summary>The sub-filter of a document timestamp.</summary>
+    private const string DocumentTimestampFilter = "ETSI.RFC3161";
+
     /// <summary>How long a revocation lookup may take.</summary>
     private static readonly TimeSpan RevocationTimeout = TimeSpan.FromSeconds(5);
 
@@ -39,10 +46,25 @@ public static class SignatureVerifier
     /// <param name="filePath">The document's file.</param>
     /// <param name="extraTrust">Certificates to trust in addition to the system's, for example in tests.</param>
     /// <returns>The checked signature.</returns>
-    public static DocumentSignature Verify(RawSignature signature, string filePath, X509Certificate2Collection extraTrust)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static DocumentSignature Verify(RawSignature signature, string filePath, X509Certificate2Collection extraTrust) =>
+        Verify(signature, filePath, extraTrust, DocumentSecurityStore.Read(File.ReadAllBytes(filePath)));
+
+    /// <summary>
+    /// Checks a signature against the file it was read from, using the file's document security store: its
+    /// certificates help build the chain, and a valid trusted timestamp sets the time the certificate is checked at,
+    /// so a signature made while the certificate was valid stays valid after it expires.
+    /// </summary>
+    /// <param name="signature">The signature as stored.</param>
+    /// <param name="filePath">The document's file.</param>
+    /// <param name="extraTrust">Certificates to trust in addition to the system's, for example in tests.</param>
+    /// <param name="store">The file's document security store, read once for all its signatures.</param>
+    /// <returns>The checked signature.</returns>
+    public static DocumentSignature Verify(RawSignature signature, string filePath, X509Certificate2Collection extraTrust, DocumentSecurityStore store)
     {
         ArgumentNullException.ThrowIfNull(signature);
         ArgumentNullException.ThrowIfNull(extraTrust);
+        ArgumentNullException.ThrowIfNull(store);
         using var file = File.OpenHandle(filePath);
         var length = RandomAccess.GetLength(file);
         if (!TryGetSignedLength(signature.ByteRange, length, out var signedLength) || !TryGetEncodedLength(signature.Contents, out var encodedLength))
@@ -51,6 +73,12 @@ public static class SignatureVerifier
         }
 
         var signed = ReadSigned(file, signature.ByteRange, signedLength);
+        var coversAll = signature.ByteRange[^PairSize] + signature.ByteRange[^1] == length;
+        if (string.Equals(signature.SubFilter, DocumentTimestampFilter, StringComparison.Ordinal))
+        {
+            return VerifyDocumentTimestamp(signature, signed, signature.Contents.AsSpan(0, encodedLength), coversAll, new(extraTrust, store));
+        }
+
         var cms = new SignedCms(new(signed), true);
         try
         {
@@ -66,15 +94,11 @@ public static class SignatureVerifier
             return Unchecked(signature, "The signature does not include the signer's certificate.");
         }
 
-        var intact = CheckSignature(cms);
-        var coversAll = signature.ByteRange[^PairSize] + signature.ByteRange[^1] == length;
-        var integrity = SignatureIntegrity.Invalid;
-        if (intact)
-        {
-            integrity = coversAll ? SignatureIntegrity.Intact : SignatureIntegrity.ChangedAfterSigning;
-        }
-
-        var trusted = IsTrusted(certificate, cms.Certificates, extraTrust, out var detail);
+        var integrity = Integrity(CheckSignature(cms), coversAll);
+        var trust = new TrustSources(extraTrust, store);
+        var timestamp = ReadSignatureTimestamp(cms.SignerInfos[0], trust);
+        DateTimeOffset? checkedAt = timestamp is { IsValid: true } ? timestamp.Time : null;
+        var trusted = IsTrusted(certificate, cms.Certificates, trust, checkedAt, out var detail);
         return new(
             signature.Index,
             certificate.GetNameInfo(X509NameType.SimpleName, false),
@@ -83,7 +107,77 @@ public static class SignatureVerifier
             signature.Reason,
             integrity,
             trusted,
-            detail);
+            detail) { Timestamp = timestamp, HasLongTermValidation = store.HasRevocationData, CheckedAt = checkedAt };
+    }
+
+    /// <summary>Gets the integrity from whether the signature matches and whether it covers the whole file.</summary>
+    /// <param name="intact">Whether the signed bytes match.</param>
+    /// <param name="coversAll">Whether the signature covers the whole file.</param>
+    /// <returns>The integrity.</returns>
+    private static SignatureIntegrity Integrity(bool intact, bool coversAll)
+    {
+        if (!intact)
+        {
+            return SignatureIntegrity.Invalid;
+        }
+
+        return coversAll ? SignatureIntegrity.Intact : SignatureIntegrity.ChangedAfterSigning;
+    }
+
+    /// <summary>Checks a document timestamp: a timestamp token over the signed bytes instead of a person's signature.</summary>
+    /// <param name="signature">The signature as stored.</param>
+    /// <param name="signed">The signed bytes.</param>
+    /// <param name="token">The timestamp token.</param>
+    /// <param name="coversAll">Whether it covers the whole file.</param>
+    /// <param name="trust">The extra trust and the document security store.</param>
+    /// <returns>The checked document timestamp.</returns>
+    private static DocumentSignature VerifyDocumentTimestamp(RawSignature signature, byte[] signed, ReadOnlySpan<byte> token, bool coversAll, in TrustSources trust)
+    {
+        if (!Rfc3161TimestampToken.TryDecode(token.ToArray(), out var decoded, out _))
+        {
+            return Unchecked(signature, "The document timestamp could not be read.");
+        }
+
+        var valid = decoded.VerifySignatureForData(signed, out var authority, trust.Store.Certificates);
+        var time = decoded.TokenInfo.Timestamp;
+        var trusted = authority is not null && IsTrusted(authority, decoded.AsSignedCms().Certificates, trust, time, out _);
+        var name = authority?.GetNameInfo(X509NameType.SimpleName, false) ?? string.Empty;
+        return new(
+            signature.Index,
+            name,
+            authority?.GetNameInfo(X509NameType.SimpleName, true) ?? string.Empty,
+            time,
+            signature.Reason,
+            Integrity(valid, coversAll),
+            trusted,
+            string.Empty) { Timestamp = new(time, name, valid, trusted), IsDocumentTimestamp = true, HasLongTermValidation = trust.Store.HasRevocationData, CheckedAt = time };
+    }
+
+    /// <summary>Reads and checks the timestamp on a signature: that it stamps this signature and that its authority is trusted.</summary>
+    /// <param name="signer">The signer.</param>
+    /// <param name="trust">The extra trust and the document security store.</param>
+    /// <returns>The timestamp, or <see langword="null"/> when the signature has none.</returns>
+    private static SignatureTimestamp? ReadSignatureTimestamp(SignerInfo signer, in TrustSources trust)
+    {
+        foreach (var attribute in signer.UnsignedAttributes)
+        {
+            if (attribute.Oid.Value != TimestampTokenOid || attribute.Values.Count == 0)
+            {
+                continue;
+            }
+
+            if (!Rfc3161TimestampToken.TryDecode(attribute.Values[0].RawData, out var token, out _))
+            {
+                return new(DateTimeOffset.MinValue, string.Empty, false, false);
+            }
+
+            var valid = token.VerifySignatureForSignerInfo(signer, out var authority, trust.Store.Certificates);
+            var time = token.TokenInfo.Timestamp;
+            var trusted = authority is not null && IsTrusted(authority, token.AsSignedCms().Certificates, trust, time, out _);
+            return new(time, authority?.GetNameInfo(X509NameType.SimpleName, false) ?? string.Empty, valid, trusted);
+        }
+
+        return null;
     }
 
     /// <summary>Checks the signature mathematically, without judging the certificate.</summary>
@@ -102,21 +196,29 @@ public static class SignatureVerifier
         }
     }
 
-    /// <summary>Determines whether a certificate chains to a trusted root, offline.</summary>
+    /// <summary>Determines whether a certificate chains to a trusted root, as of a time.</summary>
     /// <param name="certificate">The signer's certificate.</param>
     /// <param name="included">Certificates included in the signature.</param>
-    /// <param name="extraTrust">Extra trusted roots.</param>
+    /// <param name="trust">Extra trusted roots and the document security store's certificates.</param>
+    /// <param name="at">The time to check at, a trusted timestamp's; now when <see langword="null"/>.</param>
     /// <param name="detail">Why the chain is not trusted, or an empty string.</param>
     /// <returns><see langword="true"/> when trusted.</returns>
-    private static bool IsTrusted(X509Certificate2 certificate, X509Certificate2Collection included, X509Certificate2Collection extraTrust, out string detail)
+    private static bool IsTrusted(X509Certificate2 certificate, X509Certificate2Collection included, in TrustSources trust, DateTimeOffset? at, out string detail)
     {
         using var chain = new X509Chain();
         chain.ChainPolicy.UrlRetrievalTimeout = RevocationTimeout;
         chain.ChainPolicy.ExtraStore.AddRange(included);
-        if (extraTrust.Count > 0)
+        chain.ChainPolicy.ExtraStore.AddRange(trust.Store.Certificates);
+        if (at is { } time)
+        {
+            chain.ChainPolicy.VerificationTime = time.UtcDateTime;
+            chain.ChainPolicy.VerificationTimeIgnored = false;
+        }
+
+        if (trust.Extra.Count > 0)
         {
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-            chain.ChainPolicy.CustomTrustStore.AddRange(extraTrust);
+            chain.ChainPolicy.CustomTrustStore.AddRange(trust.Extra);
         }
 
         var trusted = chain.Build(certificate);
@@ -254,4 +356,9 @@ public static class SignatureVerifier
     /// <returns>The result.</returns>
     private static DocumentSignature Unchecked(RawSignature signature, string detail) =>
         new(signature.Index, string.Empty, string.Empty, signature.SigningTime, signature.Reason, SignatureIntegrity.Unknown, false, detail);
+
+    /// <summary>Where trust comes from besides the system: extra roots, and the document's own security store.</summary>
+    /// <param name="Extra">Extra trusted roots.</param>
+    /// <param name="Store">The document security store.</param>
+    private readonly record struct TrustSources(X509Certificate2Collection Extra, DocumentSecurityStore Store);
 }

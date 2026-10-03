@@ -85,6 +85,13 @@ public sealed class PreferencesViewModel : ReactiveObject
         set => Update(() => _services.Settings.AzureSpeechKey = value?.Trim() ?? string.Empty, nameof(AzureKey));
     }
 
+    /// <summary>Gets or sets the timestamp server used when signing with a certificate; empty for none.</summary>
+    public string TimestampServer
+    {
+        get => _services.Settings.TimestampServer;
+        set => Update(() => _services.Settings.TimestampServer = value?.Trim() ?? string.Empty, nameof(TimestampServer));
+    }
+
     /// <summary>Gets or sets the Azure Speech region.</summary>
     public string AzureRegion
     {

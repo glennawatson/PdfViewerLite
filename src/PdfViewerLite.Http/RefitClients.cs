@@ -5,6 +5,7 @@
 using System.Collections.Concurrent;
 using PdfViewerLite.Http.GitHub;
 using PdfViewerLite.Http.Remote;
+using PdfViewerLite.Http.Signatures;
 using PdfViewerLite.Http.Speech;
 using Refit;
 
@@ -50,6 +51,15 @@ public static class RefitClients
         ArgumentNullException.ThrowIfNull(httpClient);
         httpClient.BaseAddress ??= AzureSpeechEngine.EndpointFor(region);
         return RestService.ForGenerated<IAzureSpeechApi>(httpClient, HttpJsonContext.Default);
+    }
+
+    /// <summary>Creates a client for an RFC 3161 timestamp authority.</summary>
+    /// <param name="httpClient">The HTTP client with its base address set to the authority's host.</param>
+    /// <returns>The client.</returns>
+    public static ITimestampAuthorityApi CreateTimestampAuthorityApi(HttpClient httpClient)
+    {
+        ArgumentNullException.ThrowIfNull(httpClient);
+        return RestService.ForGenerated<ITimestampAuthorityApi>(httpClient, HttpJsonContext.Default);
     }
 
     /// <summary>Starts downloading a file, sharing one client per host.</summary>

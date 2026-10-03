@@ -60,6 +60,12 @@ public sealed class AppSettings
     /// <summary>Gets or sets the person's Azure Speech region, for example <c>uksouth</c>.</summary>
     public string AzureSpeechRegion { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the RFC 3161 timestamp server used when signing with a certificate, for example
+    /// <c>http://timestamp.digicert.com</c>; empty signs without a trusted timestamp.
+    /// </summary>
+    public string TimestampServer { get; set; } = string.Empty;
+
     /// <summary>Gets or sets how much of the text being read aloud is marked.</summary>
     public ReadAloudHighlight ReadAloudHighlight { get; set; }
 
