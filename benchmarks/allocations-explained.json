@@ -7,6 +7,16 @@
     "reason": "Opening a document creates its PdfiumDocument, once per file opened."
   },
   {
+    "type": "PdfViewerLite.Pdfium.Native.PdfiumDocumentHandle",
+    "frame": "PdfViewerLite.Pdfium.Native.NativeMethods.FPDF_LoadCustomDocument(",
+    "reason": "Opening a document wraps PDFium's document in one SafeHandle so it is always closed, once per file opened."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.Native.PdfiumFileSource..ctor(",
+    "reason": "Opening a document opens its file handle and the read structure PDFium keeps for the document's life, once per file opened."
+  },
+  {
     "type": "",
     "frame": "PdfViewerLite.Pdfium.PdfiumDocument..ctor(",
     "reason": "A newly opened document sets up its page sizes, its page and annotation caches and its form environment, once per file opened."

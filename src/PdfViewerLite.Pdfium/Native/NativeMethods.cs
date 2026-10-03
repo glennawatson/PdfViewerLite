@@ -25,12 +25,12 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial CULong FPDF_GetLastError();
 
-    /// <summary>Native <c>FPDF_LoadDocument</c> entry point.</summary>
-    /// <param name="filePath">The UTF-8 file path.</param>
+    /// <summary>Native <c>FPDF_LoadCustomDocument</c> entry point.</summary>
+    /// <param name="access">The <see cref="FileRead"/> structure, which must stay alive while the document is open.</param>
     /// <param name="password">The password.</param>
     /// <returns>The document handle.</returns>
     [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf8)]
-    internal static partial PdfiumDocumentHandle FPDF_LoadDocument(string filePath, string? password);
+    internal static partial PdfiumDocumentHandle FPDF_LoadCustomDocument(NativeBufferHandle access, string? password);
 
     /// <summary>Native <c>FPDF_LoadMemDocument64</c> entry point.</summary>
     /// <param name="data">The PDF bytes, which must stay alive while the document is open.</param>

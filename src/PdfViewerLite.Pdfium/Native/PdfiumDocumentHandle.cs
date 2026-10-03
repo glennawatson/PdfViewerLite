@@ -15,6 +15,9 @@ internal sealed class PdfiumDocumentHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
     }
 
+    /// <summary>Gets or sets the file the document reads from, closed once the document is.</summary>
+    internal PdfiumFileSource? Source { get; set; }
+
     /// <inheritdoc/>
     protected override bool ReleaseHandle()
     {
@@ -23,6 +26,7 @@ internal sealed class PdfiumDocumentHandle : SafeHandleZeroOrMinusOneIsInvalid
             NativeMethods.FPDF_CloseDocument(handle);
         }
 
+        Source?.Dispose();
         return true;
     }
 }

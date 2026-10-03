@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Annotations;
+using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Signatures;
 using PdfViewerLite.Core.Signatures.Signing;
 using PdfViewerLite.Http.Signatures;
@@ -143,7 +144,7 @@ public sealed class SignaturesViewModel : ReactiveObject
                 var signed = await Task.Run(() => PdfSigner.Sign(source, certificate, signing, timestamper)).ConfigureAwait(true);
                 var temporary = $"{destination}.signing";
                 await File.WriteAllBytesAsync(temporary, signed).ConfigureAwait(true);
-                File.Move(temporary, destination, true);
+                FileReplacement.Replace(temporary, destination);
             }
             catch (Exception ex) when (IsSigningFailure(ex))
             {

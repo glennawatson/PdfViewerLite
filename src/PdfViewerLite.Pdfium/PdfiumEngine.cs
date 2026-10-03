@@ -68,14 +68,31 @@ public sealed class PdfiumEngine : IDocumentEngine
     /// <returns>The document.</returns>
     private static PdfiumDocument OpenCore(string fullPath, string? password)
     {
+        PdfiumFileSource source;
+        try
+        {
+            source = new(fullPath);
+        }
+        catch (IOException)
+        {
+            throw CreateOpenException((int)PdfiumError.File, fullPath);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw CreateOpenException((int)PdfiumError.File, fullPath);
+        }
+
         using var scope = PdfiumLibrary.EnterScope();
-        var handle = NativeMethods.FPDF_LoadDocument(fullPath, password);
+        var handle = NativeMethods.FPDF_LoadCustomDocument(source.Access, password);
         if (handle.IsInvalid)
         {
             var error = (int)NativeMethods.FPDF_GetLastError().Value;
             handle.Dispose();
+            source.Dispose();
             throw CreateOpenException(error, fullPath);
         }
+
+        handle.Source = source;
 
         var document = new PdfiumDocument(handle, fullPath);
         if (document.PageCount == 0)

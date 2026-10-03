@@ -12,6 +12,7 @@ using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Layout;
 using PdfViewerLite.Core.Navigation;
+using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Printing;
 using PdfViewerLite.Core.Reading;
 using PdfViewerLite.Core.Rendering;
@@ -826,7 +827,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
             }
 
             _ = Interlocked.Exchange(ref _savedAt, Environment.TickCount64);
-            File.Move(temporary, path, true);
+            FileReplacement.Replace(temporary, path);
             HasUnsavedChanges = Source.HasUnsavedChanges;
             return true;
         }
