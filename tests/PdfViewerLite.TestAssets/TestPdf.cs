@@ -96,6 +96,58 @@ public static class TestPdf
         return Serialize(objects, catalog, info);
     }
 
+    /// <summary>
+    /// Creates a one page form: a text field "Name", a check box "Agree" (with checked and unchecked appearances) and a
+    /// combo box "Colour" offering Red, Green and Blue.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateForm()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+        const string tick = "q 0 g BT /ZaDb 12 Tf 2 3 Td (4) Tj ET Q";
+        var zapf = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /ZapfDingbats >>");
+        var on = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /XObject /Subtype /Form /BBox [0 0 16 16]
+               /Resources << /Font << /ZaDb {{zapf}} 0 R >> >> /Length {{tick.Length}} >>
+            stream
+            {{tick}}
+            endstream
+            """));
+        var off = Add(objects, "<< /Type /XObject /Subtype /Form /BBox [0 0 16 16] /Length 0 >>\nstream\n\nendstream");
+        var name = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /FT /Tx /T (Name) /Rect [72 650 300 674] /P {{page}} 0 R /F 4
+               /DA (/Helv 12 Tf 0 g) /MK << /BC [0.5 0.5 0.5] >> >>
+            """));
+        var agree = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /FT /Btn /T (Agree) /Rect [72 610 88 626] /P {{page}} 0 R /F 4 /V /Off /AS /Off
+               /MK << /BC [0.5 0.5 0.5] >> /AP << /N << /Yes {{on}} 0 R /Off {{off}} 0 R >> >> >>
+            """));
+        var colour = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /FT /Ch /Ff 131072 /T (Colour) /Rect [72 570 200 594] /P {{page}} 0 R /F 4
+               /Opt [(Red) (Green) (Blue)] /V (Red) /DA (/Helv 12 Tf 0 g) /MK << /BC [0.5 0.5 0.5] >> >>
+            """));
+        var content = new StringBuilder();
+        AppendText(content, PortraitHeight - Margin, HeadingSize, "Form");
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R /Annots [{{name}} 0 R {{agree}} 0 R {{colour}} 0 R] >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Catalog /Pages {{pages}} 0 R
+               /AcroForm << /Fields [{{name}} 0 R {{agree}} 0 R {{colour}} 0 R] /NeedAppearances true /DA (/Helv 12 Tf 0 g)
+                            /DR << /Font << /Helv {{font}} 0 R /ZaDb {{zapf}} 0 R >> >> >> >>
+            """);
+        var info = Add(objects, $"<< /Title (Form) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
     /// <summary>Writes a PDF to a new temporary file.</summary>
     /// <param name="pageCount">The number of pages.</param>
     /// <returns>The file path.</returns>

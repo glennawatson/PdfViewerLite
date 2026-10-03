@@ -32,6 +32,9 @@ internal sealed class PdfiumPage : IDisposable
     /// <summary>The virtual device height.</summary>
     private readonly int _deviceHeight;
 
+    /// <summary>The document's form, told when the page closes.</summary>
+    private readonly PdfiumForm _form;
+
     /// <summary>The text page, once loaded.</summary>
     private PdfiumTextPageHandle? _textPage;
 
@@ -43,8 +46,10 @@ internal sealed class PdfiumPage : IDisposable
     /// <param name="index">The page index.</param>
     /// <param name="handle">The loaded page handle.</param>
     /// <param name="documentPageSizes">The sizes of every page in the document.</param>
-    internal PdfiumPage(PdfiumDocumentHandle document, int index, PdfiumPageHandle handle, PageSize[] documentPageSizes)
+    /// <param name="form">The document's form, told when the page closes.</param>
+    internal PdfiumPage(PdfiumDocumentHandle document, int index, PdfiumPageHandle handle, PageSize[] documentPageSizes, PdfiumForm form)
     {
+        _form = form;
         _document = document;
         _documentPageSizes = documentPageSizes;
         var size = documentPageSizes[index];
@@ -90,6 +95,7 @@ internal sealed class PdfiumPage : IDisposable
     {
         _textPage?.Dispose();
         _textPage = null;
+        _form.BeforeClose(Handle);
         Handle.Dispose();
     }
 

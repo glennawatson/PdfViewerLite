@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Documents;
+using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Rendering;
 using PdfViewerLite.Pdfium.Native;
@@ -16,7 +17,7 @@ namespace PdfViewerLite.Pdfium;
 
 /// <summary>A PDF document backed by PDFium. Every member is serialised through the process wide PDFium lock.</summary>
 [DebuggerDisplay("{FilePath} ({PageCount} pages)")]
-public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor
+public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, IFormFiller
 {
     /// <summary>The number of parsed pages kept loaded.</summary>
     private const int PageCacheSize = 8;
@@ -51,6 +52,9 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor
     /// <summary>The fonts used for text written on pages.</summary>
     private readonly PdfiumFonts _fonts;
 
+    /// <summary>The interactive form, if the document has one.</summary>
+    private readonly PdfiumForm _form;
+
     /// <summary>1 once the document has been disposed.</summary>
     private int _disposed;
 
@@ -61,6 +65,7 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor
     {
         _handle = handle;
         _fonts = new(handle);
+        _form = new(handle);
         FilePath = filePath;
         var count = Math.Max(0, NativeMethods.FPDF_GetPageCount(handle));
         _pageSizes = new PageSize[count];
@@ -158,7 +163,9 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor
             try
             {
                 _ = NativeMethods.FPDFBitmap_FillRect(bitmap, 0, 0, target.Width, target.Height, new(White));
-                NativeMethods.FPDF_RenderPageBitmap(bitmap, page.Handle, -info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, ToNativeFlags(info.Flags));
+                var flags = ToNativeFlags(info.Flags);
+                NativeMethods.FPDF_RenderPageBitmap(bitmap, page.Handle, -info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, flags);
+                _form.Draw(bitmap, page.Handle, new(-info.OffsetX, -info.OffsetY, pageWidth, pageHeight, (int)info.Rotation, flags));
             }
             finally
             {
@@ -303,6 +310,8 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor
 
         _pages.Clear();
         _annotationCache.Clear();
+        _fieldCache.Clear();
+        _form.Dispose();
         _fonts.Dispose();
         _handle.Dispose();
     }
@@ -458,7 +467,8 @@ public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor
             _pages.RemoveAt(0);
         }
 
-        var page = new PdfiumPage(_handle, pageIndex, handle, _pageSizes);
+        var page = new PdfiumPage(_handle, pageIndex, handle, _pageSizes, _form);
+        _form.AfterLoad(handle);
         _pages.Add(page);
         return page;
     }
