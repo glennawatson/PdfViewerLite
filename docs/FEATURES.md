@@ -35,10 +35,10 @@ documents. Every feature has a BenchmarkDotNet benchmark; allocations are checke
 | Signatures | Draw or type, digital signatures listed and checked | Draw or type a signature, list and check digital signatures | Done |
 | Attachments | Yes | Sidebar panel, save to a place you choose | Done |
 | Save / save a copy | Yes | Yes; signed documents are saved incrementally | Done |
-| Print | Yes | XDG print portal (KDE's print dialog), with annotations and filled fields | Done |
+| Print | Yes | Print preview (pages, ranges, pages per sheet, annotations, Save as PDF), then the desktop's print dialog through the XDG portal | Done |
 | Presentation mode | Yes | More ▸ Present (Shift+F5), Esc to stop | Done |
 | Text recognition (OCR) | No | More ▸ Recognise Text adds a searchable text layer with Tesseract | Done |
-| Caret navigation | Yes | | Planned |
+| Caret navigation | Yes | F7: a steady cursor moved with the arrow keys, Shift selects | Done |
 | Layers (optional content) | Yes | PDFium has no public API to switch layers | Blocked |
 | Signing with a certificate | Yes | Signatures are visual; certificate signing needs a PDF writer for incremental updates | Planned |
 | Other formats (DjVu, comics, TIFF) | Partly | Engine interface ready | Later |
