@@ -98,6 +98,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         ReloadCommand = ReactiveCommand.Create(Reload);
         DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
         SaveCommand = ReactiveCommand.Create(() => Save(FilePath));
+        PrintCommand = ReactiveCommand.CreateFromTask(PrintAsync);
         DismissNoticeCommand = ReactiveCommand.Create(() => { Notice = null; });
         SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync);
     }
@@ -462,6 +463,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the command submitting the typed password.</summary>
     public ReactiveCommand<RxVoid, RxVoid> SubmitPasswordCommand { get; }
 
+    /// <summary>Gets the command handing the document, with its annotations and filled fields, to the desktop's print dialog.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> PrintCommand { get; }
+
     /// <summary>Gets the reload command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> ReloadCommand { get; }
 
@@ -711,6 +715,42 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Writes the document as it looks now, including annotations and filled fields, to a new temporary file for
+    /// printing. The caller deletes the file.
+    /// </summary>
+    /// <returns>The file, or <see langword="null"/> when it could not be written.</returns>
+    public string? WritePrintCopy()
+    {
+        if (TryGetDocument() is not IAnnotationEditor editor)
+        {
+            return null;
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-print-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            using (var stream = File.Create(path))
+            {
+                if (editor.Save(stream))
+                {
+                    return path;
+                }
+            }
+
+            File.Delete(path);
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Closes the native document while the tab is in the background; it reopens on demand.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Unload() => RenderHub.Cache.RemoveDocument(Source.Id);
@@ -780,6 +820,37 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         }
 
         Reload();
+    }
+
+    /// <summary>Writes a print copy and hands it to the desktop's print dialog, saying so in the notice when it cannot.</summary>
+    /// <returns>A task.</returns>
+    private async Task PrintAsync()
+    {
+        var printer = _services.Platform.Printer;
+        if (!printer.IsAvailable)
+        {
+            Notice = "Printing is not available on this desktop.";
+            return;
+        }
+
+        if (WritePrintCopy() is not { } copy)
+        {
+            Notice = "Could not prepare the document for printing.";
+            return;
+        }
+
+        try
+        {
+            if (!await printer.PrintAsync(copy, FileName, CancellationToken.None).ConfigureAwait(true))
+            {
+                Notice = "The print dialog could not be opened.";
+            }
+        }
+        finally
+        {
+            // The desktop holds its own handle to the file, so the name can go now.
+            File.Delete(copy);
+        }
     }
 
     /// <summary>Asks where to save a copy and saves it there.</summary>

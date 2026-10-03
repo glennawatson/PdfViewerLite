@@ -50,6 +50,7 @@
                 <Separator />
                 <MenuItem x:Name="SaveItem" Header="_Save" InputGesture="Ctrl+S" />
                 <MenuItem x:Name="SaveAsItem" Header="Save _As…" InputGesture="Ctrl+Shift+S" />
+                <MenuItem x:Name="PrintItem" Header="_Print…" InputGesture="Ctrl+P" />
                 <MenuItem x:Name="ReloadItem" Header="Re_load" InputGesture="F5" />
                 <MenuItem x:Name="RecognizeTextItem" Header="Recognise _Text" ToolTip.Tip="Make scanned pages searchable by recognising their text" />
                 <MenuItem x:Name="ShowInFolderItem" Header="Show in _Folder" />

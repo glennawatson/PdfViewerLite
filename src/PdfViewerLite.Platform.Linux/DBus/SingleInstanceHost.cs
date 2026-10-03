@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using PdfViewerLite.Core.Platform;
 using ReactiveUI.Primitives.Signals;
 using Tmds.DBus.Protocol;
 
@@ -14,7 +15,7 @@ namespace PdfViewerLite.Platform.Linux.DBus;
 /// so every document opens as a tab in the existing window.
 /// </summary>
 [DebuggerDisplay("{AppIdentity.ApplicationId}")]
-public sealed class SingleInstanceHost : IDisposable
+public sealed class SingleInstanceHost : ISingleInstance
 {
     /// <summary>How long a forwarding launch waits for the primary instance.</summary>
     private static readonly TimeSpan ForwardTimeout = TimeSpan.FromSeconds(3);

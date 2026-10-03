@@ -13,9 +13,6 @@ using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
 using PdfViewerLite.Ocr;
 using PdfViewerLite.Pdfium;
-using PdfViewerLite.Platform.Linux.DBus;
-using PdfViewerLite.Platform.Linux.Kde;
-using PdfViewerLite.Platform.Linux.Recent;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Services;
@@ -42,19 +39,16 @@ public sealed class AppServices : IDisposable
     /// <summary>Initializes a new instance of the <see cref="AppServices"/> class.</summary>
     /// <param name="settingsStore">The settings store.</param>
     /// <param name="engine">The document engine.</param>
-    /// <param name="recentDocuments">The recent documents store.</param>
-    /// <param name="fileManager">The file manager launcher.</param>
-    /// <param name="themeSource">The desktop theme source, if any.</param>
-    public AppServices(SettingsStore settingsStore, IDocumentEngine engine, IRecentDocumentStore recentDocuments, IFileManagerLauncher fileManager, IDesktopThemeSource? themeSource)
+    /// <param name="platform">The desktop integration.</param>
+    public AppServices(SettingsStore settingsStore, IDocumentEngine engine, IDesktopPlatform platform)
     {
         ArgumentNullException.ThrowIfNull(settingsStore);
+        ArgumentNullException.ThrowIfNull(platform);
+        Platform = platform;
         SettingsStore = settingsStore;
         Settings = settingsStore.Load();
         Pool = new(engine, Math.Max(1, Settings.MaxOpenDocuments));
         RenderHub = new(Math.Max(MinCacheMegabytes, Settings.TileCacheMegabytes) * BytesPerMegabyte);
-        RecentDocuments = recentDocuments;
-        FileManager = fileManager;
-        ThemeSource = themeSource;
         Downloader = new(Path.Combine(Path.GetTempPath(), "pdfviewerlite-downloads"));
         _theme = new(ThemeResolver.Resolve(Settings, null));
     }
@@ -71,14 +65,17 @@ public sealed class AppServices : IDisposable
     /// <summary>Gets the render hub.</summary>
     public RenderHub RenderHub { get; }
 
+    /// <summary>Gets the desktop integration.</summary>
+    public IDesktopPlatform Platform { get; }
+
     /// <summary>Gets the recent documents store.</summary>
-    public IRecentDocumentStore RecentDocuments { get; }
+    public IRecentDocumentStore RecentDocuments => Platform.RecentDocuments;
 
     /// <summary>Gets the file manager launcher.</summary>
-    public IFileManagerLauncher FileManager { get; }
+    public IFileManagerLauncher FileManager => Platform.FileManager;
 
     /// <summary>Gets the desktop theme source, if any.</summary>
-    public IDesktopThemeSource? ThemeSource { get; }
+    public IDesktopThemeSource? ThemeSource => Platform.ThemeSource;
 
     /// <summary>Gets the remote document downloader.</summary>
     public RemoteDocumentDownloader Downloader { get; }
@@ -90,14 +87,10 @@ public sealed class AppServices : IDisposable
     public ResolvedTheme CurrentTheme => _theme.Value;
 
     /// <summary>Creates the services for the current platform.</summary>
+    /// <param name="platform">The desktop integration, normally from <see cref="DesktopPlatforms.Detect"/>.</param>
     /// <returns>The services.</returns>
-    public static AppServices CreateDefault()
-    {
-        var engine = new PdfiumEngine();
-        return OperatingSystem.IsLinux() || OperatingSystem.IsFreeBSD()
-            ? new(new SettingsStore(), engine, new XbelRecentDocumentStore(), new DBusFileManagerLauncher(), new KdeThemeSource())
-            : new(new SettingsStore(), engine, new NullRecentDocumentStore(), new NullFileManagerLauncher(), null);
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static AppServices CreateDefault(IDesktopPlatform platform) => new(new SettingsStore(), new PdfiumEngine(), platform);
 
     /// <summary>Creates a text recogniser for the configured languages; dispose it when done.</summary>
     /// <returns>The recogniser, which reports whether Tesseract was found.</returns>

@@ -4,10 +4,10 @@
 
 using System.Diagnostics;
 
-namespace PdfViewerLite.Platform.Linux.DBus;
+namespace PdfViewerLite.Core.Platform;
 
-/// <summary>A request from another process to open documents or raise the window.</summary>
-/// <param name="Uris">The URIs or paths to open; empty to just activate.</param>
-/// <param name="ActivationToken">The XDG activation or startup notification token, if supplied.</param>
+/// <summary>A request to open documents in the running window.</summary>
+/// <param name="Uris">Paths or URIs to open; empty to just raise the window.</param>
+/// <param name="ActivationToken">The window activation token, if any, so the desktop lets the window come forward.</param>
 [DebuggerDisplay("{Uris.Count} uris")]
 public sealed record OpenRequest(IReadOnlyList<string> Uris, string? ActivationToken);

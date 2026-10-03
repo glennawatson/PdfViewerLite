@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using PdfViewerLite.Core.Platform;
 using Tmds.DBus.Protocol;
 
 namespace PdfViewerLite.Platform.Linux.DBus;

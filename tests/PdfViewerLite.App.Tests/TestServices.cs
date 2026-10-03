@@ -14,10 +14,17 @@ internal sealed class TestServices : IDisposable
 {
     /// <summary>Initializes a new instance of the <see cref="TestServices"/> class.</summary>
     internal TestServices()
+        : this(new FallbackPlatform())
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="TestServices"/> class with a desktop integration.</summary>
+    /// <param name="platform">The desktop integration.</param>
+    internal TestServices(PdfViewerLite.Core.Platform.IDesktopPlatform platform)
     {
         Directory = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-app-{Guid.NewGuid():N}");
         _ = System.IO.Directory.CreateDirectory(Directory);
-        Services = new(new SettingsStore(Path.Combine(Directory, "settings.json")), new PdfiumEngine(), new NullRecentDocumentStore(), new NullFileManagerLauncher(), null);
+        Services = new(new SettingsStore(Path.Combine(Directory, "settings.json")), new PdfiumEngine(), platform);
     }
 
     /// <summary>Gets the working directory.</summary>

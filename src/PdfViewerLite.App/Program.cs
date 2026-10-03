@@ -4,8 +4,9 @@
 
 using System.Runtime.CompilerServices;
 using Avalonia;
+using PdfViewerLite.App.Services;
+using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Platform.Linux;
-using PdfViewerLite.Platform.Linux.DBus;
 using ReactiveUI.Avalonia;
 
 namespace PdfViewerLite.App;
@@ -16,8 +17,11 @@ public static class Program
     /// <summary>The argument that skips forwarding to a running instance.</summary>
     private const string NewInstanceArgument = "--new-instance";
 
-    /// <summary>Gets the single instance host, when this process owns the application's D-Bus name.</summary>
-    internal static SingleInstanceHost? InstanceHost { get; private set; }
+    /// <summary>Gets the desktop integration.</summary>
+    internal static IDesktopPlatform Platform { get; private set; } = new FallbackPlatform();
+
+    /// <summary>Gets the single running window claim, when this process holds it.</summary>
+    internal static ISingleInstance? InstanceHost { get; private set; }
 
     /// <summary>Gets the documents passed on the command line, as absolute paths or URIs.</summary>
     internal static IReadOnlyList<string> StartupDocuments { get; private set; } = [];
@@ -31,15 +35,15 @@ public static class Program
         ArgumentNullException.ThrowIfNull(args);
         var newInstance = Array.IndexOf(args, NewInstanceArgument) >= 0;
         StartupDocuments = NormalizeArguments(args);
-        if (!newInstance && (OperatingSystem.IsLinux() || OperatingSystem.IsFreeBSD()))
+        Platform = DesktopPlatforms.Detect();
+        if (!newInstance)
         {
-            var token = SingleInstanceHost.GetLaunchActivationToken();
-            if (SingleInstanceHost.TryForwardAsync(StartupDocuments, token).GetAwaiter().GetResult())
+            if (Platform.TryForwardAsync(new(StartupDocuments, Platform.GetLaunchActivationToken())).GetAwaiter().GetResult())
             {
                 return 0;
             }
 
-            InstanceHost = SingleInstanceHost.TryStartAsync().GetAwaiter().GetResult();
+            InstanceHost = Platform.TryClaimSingleInstanceAsync().GetAwaiter().GetResult();
         }
 
         try

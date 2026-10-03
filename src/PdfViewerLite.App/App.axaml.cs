@@ -16,7 +16,6 @@ using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Theming;
-using PdfViewerLite.Platform.Linux.DBus;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
@@ -80,7 +79,7 @@ public sealed class App : Application
     /// <param name="desktop">The desktop lifetime.</param>
     private void Start(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var services = AppServices.CreateDefault();
+        var services = AppServices.CreateDefault(Program.Platform);
         var viewModel = new MainViewModel(services);
         var window = new MainWindow { DataContext = viewModel, Width = services.Settings.WindowWidth, Height = services.Settings.WindowHeight };
         if (services.Settings.WindowMaximized)
