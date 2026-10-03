@@ -38,6 +38,7 @@
   <ItemGroup Label="Platform / HTTP">
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.95.1" />
     <PackageVersion Include="Refit" Version="16.3.0" />
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

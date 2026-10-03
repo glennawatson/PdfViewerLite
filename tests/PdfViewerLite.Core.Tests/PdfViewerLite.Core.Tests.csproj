@@ -2,5 +2,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Platform.Linux\PdfViewerLite.Platform.Linux.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />
   </ItemGroup>
 </Project>

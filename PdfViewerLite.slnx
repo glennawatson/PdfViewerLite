@@ -8,6 +8,7 @@
     <Project Path="src/PdfViewerLite.Http/PdfViewerLite.Http.csproj" />
     <Project Path="src/PdfViewerLite.Ocr/PdfViewerLite.Ocr.csproj" />
     <Project Path="src/PdfViewerLite.Pdfium/PdfViewerLite.Pdfium.csproj" />
+    <Project Path="src/PdfViewerLite.Speech/PdfViewerLite.Speech.csproj" />
     <Project Path="src/PdfViewerLite.Platform.Linux/PdfViewerLite.Platform.Linux.csproj" />
   </Folder>
   <Folder Name="/tests/">
