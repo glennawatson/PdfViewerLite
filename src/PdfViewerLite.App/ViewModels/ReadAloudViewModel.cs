@@ -657,11 +657,12 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     {
         if (!engine.IsReady)
         {
-            var onDevice = _services.Settings.SpeechEngine == SpeechEngineChoice.OnDevice;
+            var onDevice = _services.Settings.SpeechEngine != SpeechEngineChoice.Azure;
             NeedsVoice = true;
             CanDownloadVoice = onDevice;
             StatusText = onDevice
-                ? $"The natural voice runs on this computer and needs a one-time download of about {Megabytes(_services.Speech.MissingBytes)}. What you read is never sent anywhere."
+                ? $"The natural voice runs on this computer and needs a one-time download of about {Megabytes(_services.Speech.MissingBytesFor(_services.Settings))}. "
+                    + "What you read is never sent anywhere."
                 : "Enter your Azure Speech key and region in Preferences, or choose the voice on this computer.";
             return false;
         }
@@ -920,7 +921,7 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         {
             StatusText = "Downloading the voice…";
             var progress = new Progress<double>(fraction => DownloadProgress = fraction);
-            await _services.Speech.DownloadVoice(progress, work.Token).ConfigureAwait(true);
+            await _services.Speech.DownloadVoice(_services.Settings, progress, work.Token).ConfigureAwait(true);
             IsDownloading = false;
             NeedsVoice = false;
             CanDownloadVoice = false;

@@ -22,6 +22,9 @@ public sealed class PreferencesViewModel : ReactiveObject
     /// <summary>The interface text sizes offered, in points; index 0 follows the desktop.</summary>
     private static readonly double[] FontSizes = [0, 9, 10, 11, 12, 14, 16];
 
+    /// <summary>The engines in the order they are offered: MeloTTS first, as the default.</summary>
+    private static readonly SpeechEngineChoice[] SpeechEngineChoices = [SpeechEngineChoice.OnDevice, SpeechEngineChoice.Kokoro, SpeechEngineChoice.Azure];
+
     /// <summary>The services.</summary>
     private readonly AppServices _services;
 
@@ -54,14 +57,22 @@ public sealed class PreferencesViewModel : ReactiveObject
     /// <summary>Gets the interface text size choices.</summary>
     public static IReadOnlyList<string> FontSizeOptions { get; } = [FollowDesktop, "9 pt", "10 pt", "11 pt", "12 pt", "14 pt", "16 pt"];
 
-    /// <summary>Gets the Read Aloud voice choices.</summary>
-    public static IReadOnlyList<string> SpeechEngineOptions { get; } = ["On this computer: natural and private", "Azure AI Speech with your own key"];
+    /// <summary>Gets the Read Aloud voice choices, in the order of <see cref="SpeechEngineChoices"/>.</summary>
+    public static IReadOnlyList<string> SpeechEngineOptions { get; } =
+    [
+        "On this computer: MeloTTS, natural and private (Australian, British, American, Indian)",
+        "On this computer: Kokoro (American, British)",
+        "Azure AI Speech with your own key",
+    ];
 
     /// <summary>Gets or sets the Read Aloud engine index.</summary>
     public int SpeechEngine
     {
-        get => (int)_services.Settings.SpeechEngine;
-        set => Update(() => _services.Settings.SpeechEngine = (SpeechEngineChoice)value, nameof(SpeechEngine), nameof(UsesAzure));
+        get => Math.Max(0, Array.IndexOf(SpeechEngineChoices, _services.Settings.SpeechEngine));
+        set => Update(
+            () => _services.Settings.SpeechEngine = SpeechEngineChoices[Math.Clamp(value, 0, SpeechEngineChoices.Length - 1)],
+            nameof(SpeechEngine),
+            nameof(UsesAzure));
     }
 
     /// <summary>Gets a value indicating whether Azure AI Speech is chosen, which shows its key and region.</summary>
