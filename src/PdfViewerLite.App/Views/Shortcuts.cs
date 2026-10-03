@@ -24,6 +24,7 @@ internal static class Shortcuts
         (new(Key.PageUp, KeyModifiers.Control), static vm => vm.PreviousTabCommand),
         (new(Key.T, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.ReopenClosedTabCommand),
         (new(Key.A, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.ShowTabFinderCommand),
+        (new(Key.F, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SearchFolderCommand),
         (new(Key.I, KeyModifiers.Control), static vm => vm.TogglePageToneCommand),
         (new(Key.OemComma, KeyModifiers.Control), static vm => vm.PreferencesCommand),
         (new(Key.Enter, KeyModifiers.Alt), static vm => vm.PropertiesCommand),

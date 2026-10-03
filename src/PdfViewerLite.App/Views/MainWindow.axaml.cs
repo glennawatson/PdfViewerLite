@@ -43,6 +43,12 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
     /// <summary>Bindings and interaction handlers made while the window is shown.</summary>
     private MultipleDisposable? _bindings;
 
+    /// <summary>The Search in Folder window, while it is open.</summary>
+    private FolderSearchWindow? _folderSearch;
+
+    /// <summary>Forgets the Search in Folder window when it closes.</summary>
+    private IDisposable? _folderSearchClosed;
+
     /// <summary>The tab being dragged.</summary>
     private DocumentTabViewModel? _draggedTab;
 
@@ -134,6 +140,7 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
             this.BindCommand(ViewModel, static vm => vm.TogglePageToneCommand, static v => v.PageToneMenuItem),
             this.OneWayBind(ViewModel, static vm => vm.PageToneEnabled, static v => v.PageToneMenuItem.IsChecked),
             this.BindCommand(ViewModel, static vm => vm.PreferencesCommand, static v => v.PreferencesMenuItem),
+            this.BindCommand(ViewModel, static vm => vm.SearchFolderCommand, static v => v.SearchFolderMenuItem),
             this.BindCommand(ViewModel, static vm => vm.CloseAllTabsCommand, static v => v.CloseAllMenuItem),
             this.OneWayBind(ViewModel, static vm => vm.StatusMessage, static v => v.StatusText.Text),
             this.OneWayBind(ViewModel, static vm => vm.StatusMessage, static v => v.StatusBar.IsVisible, static message => message is not null),
@@ -145,6 +152,7 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
             this.BindInteraction(ViewModel, static vm => vm.ShowPropertiesInteraction, ShowPropertiesAsync),
             this.BindInteraction(ViewModel, static vm => vm.ConfirmInteraction, ConfirmAsync),
             this.BindInteraction(ViewModel, static vm => vm.ShowPreferencesInteraction, ShowPreferencesAsync),
+            this.BindInteraction(ViewModel, static vm => vm.ShowFolderSearchInteraction, ShowFolderSearchAsync),
             this.WhenAnyObservable(static v => v.ViewModel!.TabFinderRequests).SubscribeSafe(_ => TabFinderButton.Flyout?.ShowAt(TabFinderButton), OnError),
             this.WhenAnyValue(static v => v.ViewModel!.SelectedTab!.IsPresenting).SubscribeSafe(OnPresentingChanged, OnError),
         ];
@@ -325,6 +333,34 @@ public sealed partial class MainWindow : Window, IViewFor<MainViewModel>
     {
         await new PreferencesWindow { ViewModel = context.Input }.ShowDialog(this);
         context.SetOutput(RxVoid.Default);
+    }
+
+    /// <summary>Shows the Search in Folder window, or brings it forward when it is already open.</summary>
+    /// <param name="context">The interaction context.</param>
+    /// <returns>A task.</returns>
+    private Task ShowFolderSearchAsync(IInteractionContext<FolderSearchViewModel, RxVoid> context)
+    {
+        if (_folderSearch is { } open)
+        {
+            open.Activate();
+        }
+        else
+        {
+            var window = new FolderSearchWindow { ViewModel = context.Input };
+            _folderSearch = window;
+            _folderSearchClosed = window.GetObservable(WindowClosedEvent, RoutingStrategies.Direct).SubscribeSafe(
+                _ =>
+                {
+                    _folderSearch = null;
+                    _folderSearchClosed?.Dispose();
+                    _folderSearchClosed = null;
+                },
+                OnError);
+            window.Show(this);
+        }
+
+        context.SetOutput(RxVoid.Default);
+        return Task.CompletedTask;
     }
 
     /// <summary>Shows the properties dialog.</summary>

@@ -38,8 +38,10 @@ benchmarks target `net10.0`.
 - No raw .NET events. Expose notifications as `IObservable<T>` built on ReactiveUI.Primitives (`Signal<T>`,
   `BehaviorSignal<T>`, `Signal.Defer`/`Using`), consume them with Primitives operators and `SubscribeSafe`, and keep
   subscriptions in a `MultipleDisposable`. Observe view model properties with `WhenAnyValue`, Avalonia properties
-  with `GetObservable(property)` and routed events with `GetObservable(routedEvent)`. Framework CLR events are only
-  bridged at the edge with `Signal.FromEvent` (see `FileChanges`). Prefer overriding `OnXxx` methods in controls.
+  with `GetObservable(property)` and routed events with `GetObservable(routedEvent)` (for example
+  `GetObservable(Window.WindowClosedEvent)` to learn a window closed). Framework CLR events are only bridged at the
+  edge with `Signal.FromEvent` (see `FileChanges`). "No raw events" means observe them as `IObservable<T>`, never
+  that a needed notification is worked around or polled. Prefer overriding `OnXxx` methods in controls.
 - Every feature has a BenchmarkDotNet benchmark. Allocations are measured only with EventPipe traces read by
   `tools/PdfViewerLite.AllocationAudit`; never add `[MemoryDiagnoser]`. Any allocation PdfViewerLite makes inside a measured workload must
   be listed with its reason in `benchmarks/allocations-explained.json`; `scripts/audit-allocations.sh` fails otherwise.

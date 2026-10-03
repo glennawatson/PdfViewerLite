@@ -2,6 +2,26 @@
   // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
   // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
   {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumEngine.OpenCore(",
+    "reason": "Opening a document creates its PdfiumDocument, once per file opened."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument..ctor(",
+    "reason": "A newly opened document sets up its page sizes, its page and annotation caches and its form environment, once per file opened."
+  },
+  {
+    "type": "PdfViewerLite.Pdfium.PdfiumPage",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.GetPage(",
+    "reason": "The first use of a page loads it into a PdfiumPage, kept in the document's page cache, so it happens once per page while the document stays open."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Search.FolderSearch.",
+    "reason": "Search in Folder keeps each match with its snippet (the result) and lists the file's matches; it runs off the UI thread once per file searched."
+  },
+  {
     "type": "System.String",
     "frame": "PdfViewerLite.Core.Measuring.Measurement.Describe(",
     "reason": "The measurement's description is the result shown in the Measure bar and beside the shape; one string per pointer move while measuring."

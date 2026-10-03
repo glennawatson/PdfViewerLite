@@ -48,6 +48,7 @@
             <MenuFlyout Placement="BottomEdgeAlignedRight">
               <MenuItem x:Name="OpenMenuItem" Header="_Open…" InputGesture="Ctrl+O" />
               <MenuItem x:Name="ReopenMenuItem" Header="_Reopen Closed Tabs" InputGesture="Ctrl+Shift+T" />
+              <MenuItem x:Name="SearchFolderMenuItem" Header="_Search in Folder…" InputGesture="Ctrl+Shift+F" />
               <Separator />
               <MenuItem x:Name="PageToneMenuItem" Header="_Comfort Page Colour" InputGesture="Ctrl+I" ToggleType="CheckBox" />
               <MenuItem x:Name="PreferencesMenuItem" Header="_Preferences…" InputGesture="Ctrl+OemComma" />

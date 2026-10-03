@@ -65,6 +65,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         OpenRecentCommand = ReactiveCommand.Create<RecentDocument>(recent => Open([recent.FilePath]));
         ShowInFolderCommand = ReactiveCommand.CreateFromTask(ShowInFolderAsync);
         PropertiesCommand = ReactiveCommand.CreateFromTask(ShowPropertiesAsync);
+        SearchFolderCommand = ReactiveCommand.CreateFromTask(ShowFolderSearchAsync);
         PreferencesCommand = ReactiveCommand.CreateFromTask(async () => await ShowPreferencesInteraction.Handle(new(services)).ToTask().ConfigureAwait(true));
         RefreshRecentDocuments();
         _themeSubscription = services.Theme.SubscribeSafe(OnTheme, static error => Trace.TraceError(error.ToString()));
@@ -221,6 +222,15 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the document properties command.</summary>
     public ReactiveCommand<RxVoid, RxVoid> PropertiesCommand { get; }
 
+    /// <summary>Gets the command that searches every PDF in a folder.</summary>
+    public ReactiveCommand<RxVoid, RxVoid> SearchFolderCommand { get; }
+
+    /// <summary>Gets the interaction that shows the Search in Folder window.</summary>
+    public Interaction<FolderSearchViewModel, RxVoid> ShowFolderSearchInteraction { get; } = new();
+
+    /// <summary>Gets the folder search, kept so its results stay while the window is closed and opened again.</summary>
+    public FolderSearchViewModel FolderSearch => field ??= new(_services, OpenAt);
+
     /// <summary>Opens files, file URIs or web addresses, selecting the last one. Already open files are selected instead.</summary>
     /// <param name="items">Paths or URIs.</param>
     public void Open(IEnumerable<string> items)
@@ -246,6 +256,24 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         {
             SelectedTab = last;
         }
+    }
+
+    /// <summary>Opens a file, or selects it when already open, at a page, with words found by a folder search shown.</summary>
+    /// <param name="path">The file.</param>
+    /// <param name="pageIndex">The page, zero-based.</param>
+    /// <param name="query">The words to show, or empty.</param>
+    public void OpenAt(string path, int pageIndex, string query)
+    {
+        var tab = OpenOrFind(path, pageIndex);
+        SelectedTab = tab;
+        tab.GoToPage(pageIndex);
+        if (query.Length == 0)
+        {
+            return;
+        }
+
+        tab.Search.Query = query;
+        tab.Search.IsOpen = true;
     }
 
     /// <summary>Restores the tabs open at the end of the previous run.</summary>
@@ -476,6 +504,19 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         Tabs.Insert(Math.Clamp(insertAt, 0, Tabs.Count), tab);
         UpdateHasTabs();
         return tab;
+    }
+
+    /// <summary>Shows the Search in Folder window, starting in the selected document's folder.</summary>
+    /// <returns>A task.</returns>
+    private async Task ShowFolderSearchAsync()
+    {
+        var search = FolderSearch;
+        if (search.Folder.Length == 0 && SelectedTab is { } tab && Path.GetDirectoryName(tab.FilePath) is { Length: > 0 } folder)
+        {
+            search.Folder = folder;
+        }
+
+        _ = await ShowFolderSearchInteraction.Handle(search).ToTask().ConfigureAwait(true);
     }
 
     /// <summary>Downloads a remote document and opens it.</summary>
