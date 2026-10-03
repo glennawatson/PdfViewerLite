@@ -1,0 +1,93 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System.Runtime.CompilerServices;
+using PdfViewerLite.Core.Speech;
+
+namespace PdfViewerLite.Speech.Kokoro;
+
+/// <summary>
+/// The files and voices of Kokoro-82M (Apache-2.0): the quantised ONNX model from onnx-community, a handful of voices,
+/// and the misaki pronunciation dictionaries. About 95 MB, downloaded once into the voice folder.
+/// </summary>
+public static class KokoroModel
+{
+    /// <summary>Kokoro's sample rate in hertz.</summary>
+    private const int Hertz = 24_000;
+
+    /// <summary>The Hugging Face repository holding the ONNX export.</summary>
+    private const string ModelRepository = "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/";
+
+    /// <summary>The repository holding the misaki dictionaries.</summary>
+    private const string LexiconRepository = "https://raw.githubusercontent.com/hexgrad/misaki/main/misaki/data/";
+
+    /// <summary>Bytes in a megabyte.</summary>
+    private const long Megabyte = 1024 * 1024;
+
+    /// <summary>The model's approximate size.</summary>
+    private const long ModelBytes = 92 * Megabyte;
+
+    /// <summary>A voice pack's approximate size.</summary>
+    private const long VoiceBytes = 522 * 1024;
+
+    /// <summary>A dictionary's approximate size.</summary>
+    private const long LexiconBytes = 4 * Megabyte;
+
+    /// <summary>Gets the model's file name inside the voice folder.</summary>
+    public static string ModelFile => "model_quantized.onnx";
+
+    /// <summary>Gets the audio sample rate Kokoro produces.</summary>
+    public static int SampleRate => Hertz;
+
+    /// <summary>Gets the voices offered: natural sounding American and British English voices.</summary>
+    public static IReadOnlyList<SpeechVoice> Voices { get; } =
+    [
+        new("af_heart", "Heart", "American English, warm"),
+        new("af_bella", "Bella", "American English, bright"),
+        new("am_michael", "Michael", "American English, calm"),
+        new("bf_emma", "Emma", "British English, gentle"),
+        new("bm_george", "George", "British English, steady"),
+    ];
+
+    /// <summary>Gets the files to download.</summary>
+    public static IReadOnlyList<KokoroModelFile> Files { get; } = BuildFiles();
+
+    /// <summary>Gets the local path of a voice pack.</summary>
+    /// <param name="voiceId">The voice.</param>
+    /// <returns>The path inside the voice folder.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string VoiceFile(string voiceId) => Path.Combine("voices", $"{voiceId}.bin");
+
+    /// <summary>Determines whether a voice speaks British English, from its id's first letter.</summary>
+    /// <param name="voiceId">The voice.</param>
+    /// <returns><see langword="true"/> for British voices.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsBritish(string voiceId) => voiceId.StartsWith('b');
+
+    /// <summary>Gets the dictionaries for an accent, gold first.</summary>
+    /// <param name="british">Whether British.</param>
+    /// <returns>The dictionary file names.</returns>
+    public static string[] LexiconFiles(bool british) => british ? ["gb_gold.json", "gb_silver.json"] : ["us_gold.json", "us_silver.json"];
+
+    /// <summary>Lists the files to download.</summary>
+    /// <returns>The files.</returns>
+    private static List<KokoroModelFile> BuildFiles()
+    {
+        var files = new List<KokoroModelFile> { new(new($"{ModelRepository}onnx/{ModelFile}"), ModelFile, ModelBytes) };
+        foreach (var voice in Voices)
+        {
+            files.Add(new(new($"{ModelRepository}voices/{voice.Id}.bin"), VoiceFile(voice.Id), VoiceBytes));
+        }
+
+        foreach (var british in (ReadOnlySpan<bool>)[false, true])
+        {
+            foreach (var lexicon in LexiconFiles(british))
+            {
+                files.Add(new(new($"{LexiconRepository}{lexicon}"), lexicon, LexiconBytes));
+            }
+        }
+
+        return files;
+    }
+}
