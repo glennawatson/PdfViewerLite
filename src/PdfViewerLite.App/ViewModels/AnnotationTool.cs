@@ -33,4 +33,19 @@ public enum AnnotationTool
 
     /// <summary>Clicking places the typed signature; used by Fill &amp; Sign.</summary>
     PlaceSignature = 8,
+
+    /// <summary>Dragging draws a rectangle.</summary>
+    Rectangle = 9,
+
+    /// <summary>Dragging draws an ellipse.</summary>
+    Ellipse = 10,
+
+    /// <summary>Dragging draws an arrow pointing where the drag ends.</summary>
+    Arrow = 11,
+
+    /// <summary>Dragging draws a straight line.</summary>
+    Line = 12,
+
+    /// <summary>Clicking places the chosen stamp.</summary>
+    Stamp = 13,
 }

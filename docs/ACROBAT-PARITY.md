@@ -77,7 +77,7 @@ every platform on each release, but tests only run on Linux.
 | Highlight, underline, strike-out | Yes | From selected text or the context menu | Done |
 | Sticky notes, text boxes, freehand drawing | Yes | With colours, recolour, edit and delete | Done |
 | Comment list | Yes | Annotations sidebar | Done |
-| Shapes, stamps, arrows | Yes | | Later |
+| Shapes, stamps, arrows | Yes | Annotate ▸ Shape (rectangle, ellipse, arrow, line: drag to draw) and Stamp (Approved, Reviewed, Draft, Confidential, Final, Not Approved: click to place), in muted tones of the chosen colour; saved as standard PDF annotations | Done |
 | Replies and review status on comments | Yes | | Later |
 | Shared review in the cloud | Yes | | Out of scope |
 

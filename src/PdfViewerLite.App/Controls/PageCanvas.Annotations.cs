@@ -54,6 +54,45 @@ public sealed partial class PageCanvas
     /// <summary>The commands of the open context menu, released when the next one opens.</summary>
     private MultipleDisposable? _menuCommands;
 
+    /// <summary>Runs a click tool: adds a note, text, a signature or a stamp where the page was clicked.</summary>
+    /// <param name="tab">The tab.</param>
+    /// <param name="clicked">The page.</param>
+    /// <param name="point">The point, in page space.</param>
+    private static void RunClickTool(DocumentTabViewModel tab, int clicked, PagePoint point)
+    {
+        switch (tab.Annotations.Tool)
+        {
+            case AnnotationTool.Note:
+            {
+                _ = tab.Annotations.AddNoteAsync(clicked, point);
+                break;
+            }
+
+            case AnnotationTool.Text:
+            {
+                _ = tab.Annotations.AddTextAsync(clicked, point);
+                break;
+            }
+
+            case AnnotationTool.PlaceSignature:
+            {
+                tab.FillAndSign.PlaceSignature(clicked, point);
+                break;
+            }
+
+            case AnnotationTool.Stamp:
+            {
+                _ = tab.Annotations.AddStamp(clicked, point);
+                break;
+            }
+
+            default:
+            {
+                break;
+            }
+        }
+    }
+
     /// <summary>Handles a left press for the active annotation tool.</summary>
     /// <param name="position">The canvas point.</param>
     /// <param name="e">The event.</param>
@@ -67,6 +106,11 @@ public sealed partial class PageCanvas
 
         var annotations = tab.Annotations;
         var page = _layout.HitTest(position.X, position.Y);
+        if (BeginShape(tab, page, position, e))
+        {
+            return true;
+        }
+
         switch (annotations.Tool)
         {
             case AnnotationTool.Draw or AnnotationTool.DrawSignature when page >= 0:
@@ -78,7 +122,7 @@ public sealed partial class PageCanvas
                 return true;
             }
 
-            case AnnotationTool.Note or AnnotationTool.Text or AnnotationTool.PlaceSignature when page >= 0:
+            case AnnotationTool.Note or AnnotationTool.Text or AnnotationTool.PlaceSignature or AnnotationTool.Stamp when page >= 0:
             {
                 _clickPage = page;
                 return true;
@@ -109,6 +153,11 @@ public sealed partial class PageCanvas
     /// <returns><see langword="true"/> when a stroke is being drawn.</returns>
     private bool ContinueStroke(Point position)
     {
+        if (ContinueShape(position))
+        {
+            return true;
+        }
+
         if (_strokePage < 0 || Tab is not { } tab)
         {
             return false;
@@ -134,6 +183,11 @@ public sealed partial class PageCanvas
         }
 
         var annotations = tab.Annotations;
+        if (EndShape(tab, position))
+        {
+            return true;
+        }
+
         if (_strokePage >= 0)
         {
             var page = _strokePage;
@@ -157,33 +211,7 @@ public sealed partial class PageCanvas
 
         var clicked = _clickPage;
         _clickPage = -1;
-        var point = ToPage(tab, clicked, position);
-        switch (annotations.Tool)
-        {
-            case AnnotationTool.Note:
-            {
-                _ = annotations.AddNoteAsync(clicked, point);
-                break;
-            }
-
-            case AnnotationTool.Text:
-            {
-                _ = annotations.AddTextAsync(clicked, point);
-                break;
-            }
-
-            case AnnotationTool.PlaceSignature:
-            {
-                tab.FillAndSign.PlaceSignature(clicked, point);
-                break;
-            }
-
-            default:
-            {
-                break;
-            }
-        }
-
+        RunClickTool(tab, clicked, ToPage(tab, clicked, position));
         return true;
     }
 
@@ -399,6 +427,7 @@ public sealed partial class PageCanvas
     /// <param name="tab">The tab.</param>
     private void DrawAnnotationOverlay(DrawingContext context, DocumentTabViewModel tab)
     {
+        DrawShapePreview(context, tab);
         if (_strokePage >= 0 && _stroke.Count > 1)
         {
             var transform = new PageTransform(_layout.GetPageBounds(_strokePage), _sizes[_strokePage], tab.Rotation, _layout.Options.Scale);

@@ -94,6 +94,21 @@ public class AnnotationBenchmarks
     [Benchmark]
     public bool AddTextBox() => _document.Remove(0, _document.AddText(0, TextAt, "Approved\nGlenn", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox));
 
+    /// <summary>Draws an arrow, then removes it.</summary>
+    /// <returns>Whether it was removed.</returns>
+    [Benchmark]
+    public bool AddArrow() => _document.Remove(0, _document.AddShape(0, AnnotationKind.Arrow, Points[0], Points[^1], AnnotationColors.Ink, InkWidth));
+
+    /// <summary>Adds a rectangle and removes it again.</summary>
+    /// <returns>Whether it was removed.</returns>
+    [Benchmark]
+    public bool AddRectangle() => _document.Remove(0, _document.AddShape(0, AnnotationKind.Rectangle, Points[0], Points[^1], AnnotationColors.Ink, InkWidth));
+
+    /// <summary>Places a stamp and removes it again.</summary>
+    /// <returns>Whether it was removed.</returns>
+    [Benchmark]
+    public bool AddStamp() => _document.Remove(0, _document.AddStamp(0, TextAt, "APPROVED", AnnotationColors.Clay));
+
     /// <summary>Recolours an existing highlight.</summary>
     /// <returns>Whether it changed.</returns>
     [Benchmark]

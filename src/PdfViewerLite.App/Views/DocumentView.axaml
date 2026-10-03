@@ -250,6 +250,36 @@
               <TextBlock Classes="label" Text="Text" />
             </StackPanel>
           </ToggleButton>
+          <Button AutomationProperties.Name="Shape" x:Name="ShapeButton" Classes="tool" ToolTip.Tip="Choose a shape, then drag on the page to draw it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconShape}" />
+              <TextBlock x:Name="ShapeText" Classes="label" Text="Shape" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="RectangleItem" Header="_Rectangle" />
+                <MenuItem x:Name="EllipseItem" Header="_Ellipse" />
+                <MenuItem x:Name="ArrowItem" Header="_Arrow" />
+                <MenuItem x:Name="LineItem" Header="_Line" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button AutomationProperties.Name="Stamp" x:Name="StampButton" Classes="tool" ToolTip.Tip="Choose a stamp, then click on the page to place it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconStamp}" />
+              <TextBlock x:Name="StampText" Classes="label" Text="Stamp" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="ApprovedItem" Header="_Approved" />
+                <MenuItem x:Name="ReviewedItem" Header="_Reviewed" />
+                <MenuItem x:Name="DraftItem" Header="_Draft" />
+                <MenuItem x:Name="ConfidentialItem" Header="_Confidential" />
+                <MenuItem x:Name="FinalItem" Header="_Final" />
+                <MenuItem x:Name="NotApprovedItem" Header="_Not Approved" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
           <Rectangle Classes="separator" />
           <!-- One colour button, always showing the colour's name, so colour is never the only cue. -->
           <Button AutomationProperties.Name="Annotation colour" x:Name="ColourButton" Classes="tool" ToolTip.Tip="Colour for new highlights, lines and notes, and for the picked annotation">

@@ -242,6 +242,18 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsDrawTool, static v => v.DrawTool.IsChecked, static on => on, IsOn));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsNoteTool, static v => v.NoteTool.IsChecked, static on => on, IsOn));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsTextTool, static v => v.TextTool.IsChecked, static on => on, IsOn));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.ShapeLabel, static v => v.ShapeText.Text));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.StampButtonLabel, static v => v.StampText.Text));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetToolCommand, static v => v.RectangleItem, Signal.Return(AnnotationTool.Rectangle)));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetToolCommand, static v => v.EllipseItem, Signal.Return(AnnotationTool.Ellipse)));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetToolCommand, static v => v.ArrowItem, Signal.Return(AnnotationTool.Arrow)));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetToolCommand, static v => v.LineItem, Signal.Return(AnnotationTool.Line)));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetStampCommand, static v => v.ApprovedItem, Signal.Return("APPROVED")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetStampCommand, static v => v.ReviewedItem, Signal.Return("REVIEWED")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetStampCommand, static v => v.DraftItem, Signal.Return("DRAFT")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetStampCommand, static v => v.ConfidentialItem, Signal.Return("CONFIDENTIAL")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetStampCommand, static v => v.FinalItem, Signal.Return("FINAL")));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetStampCommand, static v => v.NotApprovedItem, Signal.Return("NOT APPROVED")));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.ColorName, static v => v.ColourText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.Color, static v => v.ColourSwatch.Background, static color => new SolidColorBrush(Color.FromUInt32(OpaqueAlpha | color))));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.YellowItem, Signal.Return("Yellow")));

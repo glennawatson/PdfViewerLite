@@ -22,6 +22,11 @@ public static class AnnotationNames
         AnnotationKind.Note => "Note",
         AnnotationKind.TextBox => "Text",
         AnnotationKind.Signature => "Signature",
+        AnnotationKind.Rectangle => "Rectangle",
+        AnnotationKind.Ellipse => "Ellipse",
+        AnnotationKind.Arrow => "Arrow",
+        AnnotationKind.Line => "Line",
+        AnnotationKind.Stamp => "Stamp",
         _ => "Annotation",
     };
 

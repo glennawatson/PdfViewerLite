@@ -27,4 +27,19 @@ public static class AnnotationColors
 
     /// <summary>Gets the named colours in menu order.</summary>
     public static IReadOnlyList<(string Name, uint Color)> All { get; } = [("Yellow", Sand), ("Green", Sage), ("Blue", Slate), ("Red", Clay)];
+
+    /// <summary>
+    /// Gets the deeper tone of a soft colour, for lines, shapes and stamps, which need more weight than a highlight to
+    /// be seen; still muted rather than saturated. Colours without a deeper tone are returned as they are.
+    /// </summary>
+    /// <param name="color">The soft colour.</param>
+    /// <returns>The deeper tone.</returns>
+    public static uint Deep(uint color) => color switch
+    {
+        0xF0DC96U => 0x9A7420U,
+        0xBCDCB0U => 0x4F7A44U,
+        0xB4CCDCU => 0x3D6A8CU,
+        0xE8BCB4U => 0xA8473AU,
+        _ => color,
+    };
 }

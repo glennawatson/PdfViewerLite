@@ -30,6 +30,9 @@ public sealed class AnnotationsViewModel : ReactiveObject
     /// <summary>The size of a kept measurement's label.</summary>
     private const float MeasurementTextSize = 9;
 
+    /// <summary>The line width of shapes in points.</summary>
+    private const float ShapeWidth = 2;
+
     /// <summary>How far outside an annotation a click still picks it, in points.</summary>
     private const float HitTolerance = 3;
 
@@ -49,6 +52,11 @@ public sealed class AnnotationsViewModel : ReactiveObject
         _owner = owner;
         SetToolCommand = ReactiveCommand.Create<AnnotationTool>(tool => Tool = Tool == tool ? AnnotationTool.Select : tool);
         SetColorCommand = ReactiveCommand.Create<string>(SetColorByName);
+        SetStampCommand = ReactiveCommand.Create<string>(label =>
+        {
+            StampLabel = label;
+            Tool = AnnotationTool.Stamp;
+        });
         StartCommand = ReactiveCommand.Create(Start);
         DoneCommand = ReactiveCommand.Create(Done);
         UndoCommand = ReactiveCommand.Create(Undo);
@@ -56,6 +64,9 @@ public sealed class AnnotationsViewModel : ReactiveObject
         EditNoteCommand = ReactiveCommand.CreateFromTask<AnnotationItemViewModel?>(item => EditNoteAsync(item?.Annotation ?? Selected));
         GoToCommand = ReactiveCommand.Create<AnnotationItemViewModel?>(GoTo);
     }
+
+    /// <summary>Gets the stamps offered, in menu order.</summary>
+    public static IReadOnlyList<string> Stamps { get; } = ["APPROVED", "REVIEWED", "DRAFT", "CONFIDENTIAL", "FINAL", "NOT APPROVED"];
 
     /// <summary>Gets the interaction asking the user for text.</summary>
     public Interaction<TextPrompt, string?> PromptInteraction { get; } = new();
@@ -84,6 +95,8 @@ public sealed class AnnotationsViewModel : ReactiveObject
             this.RaisePropertyChanged(nameof(IsDrawTool));
             this.RaisePropertyChanged(nameof(IsNoteTool));
             this.RaisePropertyChanged(nameof(IsTextTool));
+            this.RaisePropertyChanged(nameof(ShapeLabel));
+            this.RaisePropertyChanged(nameof(StampButtonLabel));
         }
     }
 
@@ -136,6 +149,23 @@ public sealed class AnnotationsViewModel : ReactiveObject
         set => SetTool(value, AnnotationTool.Text);
     }
 
+    /// <summary>Gets the shape button's label: the shape being drawn, or "Shape".</summary>
+    public string ShapeLabel => GetShapeKind(Tool) is { } kind ? AnnotationNames.Get(kind) : "Shape";
+
+    /// <summary>Gets or sets the word on the stamp placed by the stamp tool.</summary>
+    public string StampLabel
+    {
+        get;
+        set
+        {
+            _ = this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(StampButtonLabel));
+        }
+    } = "APPROVED";
+
+    /// <summary>Gets the stamp button's label: the stamp being placed, or "Stamp".</summary>
+    public string StampButtonLabel => Tool == AnnotationTool.Stamp ? $"Stamp: {StampLabel}" : "Stamp";
+
     /// <summary>Gets or sets the colour for new highlights, lines and notes, as 0xRRGGBB.</summary>
     public uint Color
     {
@@ -165,6 +195,9 @@ public sealed class AnnotationsViewModel : ReactiveObject
 
     /// <summary>Gets the command choosing a tool.</summary>
     public ReactiveCommand<AnnotationTool, RxVoid> SetToolCommand { get; }
+
+    /// <summary>Gets the command choosing a stamp and the stamp tool.</summary>
+    public ReactiveCommand<string, RxVoid> SetStampCommand { get; }
 
     /// <summary>Gets the command choosing a colour by name ("Yellow", "Green", "Blue" or "Red").</summary>
     public ReactiveCommand<string, RxVoid> SetColorCommand { get; }
@@ -200,6 +233,34 @@ public sealed class AnnotationsViewModel : ReactiveObject
         AnnotationTool.StrikeOut => AnnotationKind.StrikeOut,
         _ => null,
     };
+
+    /// <summary>Gets the shape a tool draws, or <see langword="null"/> when it does not draw a shape.</summary>
+    /// <param name="tool">The tool.</param>
+    /// <returns>The kind.</returns>
+    public static AnnotationKind? GetShapeKind(AnnotationTool tool) => tool switch
+    {
+        AnnotationTool.Rectangle => AnnotationKind.Rectangle,
+        AnnotationTool.Ellipse => AnnotationKind.Ellipse,
+        AnnotationTool.Arrow => AnnotationKind.Arrow,
+        AnnotationTool.Line => AnnotationKind.Line,
+        _ => null,
+    };
+
+    /// <summary>Draws a shape between two points in the deeper tone of the chosen colour.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="kind">The shape.</param>
+    /// <param name="start">Where the drag started.</param>
+    /// <param name="end">Where it ended.</param>
+    /// <returns><see langword="true"/> when added.</returns>
+    public bool AddShape(int page, AnnotationKind kind, PagePoint start, PagePoint end) =>
+        Editor is { } editor && Added(page, editor.AddShape(page, kind, start, end, AnnotationColors.Deep(Color), ShapeWidth));
+
+    /// <summary>Places the chosen stamp at a point in the deeper tone of the chosen colour.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="location">The stamp's top-left corner.</param>
+    /// <returns><see langword="true"/> when placed.</returns>
+    public bool AddStamp(int page, PagePoint location) =>
+        Editor is { } editor && Added(page, editor.AddStamp(page, location, StampLabel, AnnotationColors.Deep(Color)));
 
     /// <summary>Marks the given lines of text on each page.</summary>
     /// <param name="kind">The markup kind.</param>
