@@ -9,13 +9,20 @@ namespace PdfViewerLite.Core.Speech;
 
 /// <summary>
 /// Splits a page's text into sentences for reading aloud, keeping their positions for the follow-along highlight. A
-/// sentence ends at <c>.</c>, <c>!</c> or <c>?</c> before white space (not after a common abbreviation), or at a blank
-/// line; very long runs are split at a comma or space so the voice never waits long. Allocates nothing beyond the list.
+/// sentence ends at <c>.</c>, <c>!</c> or <c>?</c> before white space (not after a common abbreviation), at a blank
+/// line, or after a heading (a short line of its own without end punctuation, followed by a capital); very long runs
+/// are split at a comma or space so the voice never waits long. Allocates nothing beyond the list.
 /// </summary>
 public static class SentenceSplitter
 {
     /// <summary>The longest sentence spoken in one piece, in characters.</summary>
     private const int MaxLength = 300;
+
+    /// <summary>The longest line taken for a heading, in characters.</summary>
+    private const int MaxHeadingLength = 40;
+
+    /// <summary>Characters with nothing to say: spaces and punctuation.</summary>
+    private static readonly SearchValues<char> Silent = SearchValues.Create(" \r\n\t.,;:!?-—…\"'()[]");
 
     /// <summary>Characters that end a sentence.</summary>
     private static readonly SearchValues<char> Terminators = SearchValues.Create(".!?");
@@ -109,10 +116,43 @@ public static class SentenceSplitter
         var next = index + 1 < text.Length ? text[index + 1] : ' ';
         var terminated = Terminators.Contains(text[index]) && char.IsWhiteSpace(next) && !IsAbbreviation(text, index);
 
-        // A blank line ends a paragraph, and so a sentence; a very long run is split where it can be.
-        var paragraph = text[index] == '\n' && next is '\n' or '\r' && index > start;
+        // A very long run is split where it can be.
         var tooLong = index - start >= MaxLength - 1 && IsBreakable(text[index]);
-        return terminated || paragraph || tooLong;
+        return terminated || tooLong || EndsLine(text, index, start);
+    }
+
+    /// <summary>
+    /// Determines whether a line break ends a sentence: a blank line ends a paragraph, and a heading such as "Page 1" or
+    /// "Introduction" is read on its own.
+    /// </summary>
+    /// <param name="text">The text.</param>
+    /// <param name="index">The character, a line feed for a sentence to end.</param>
+    /// <param name="start">Where the sentence started; a heading is a whole line from there.</param>
+    /// <returns><see langword="true"/> before a blank line, or after a short line without end punctuation followed by a capital or digit.</returns>
+    private static bool EndsLine(ReadOnlySpan<char> text, int index, int start)
+    {
+        if (text[index] != '\n' || index <= start)
+        {
+            return false;
+        }
+
+        if (IsLineBreak(text, index + 1))
+        {
+            return true;
+        }
+
+        var line = text[start..index].TrimEnd();
+        return line.Length is > 0 and <= MaxHeadingLength && !line.ContainsAny('\n', '\r') && char.IsLetterOrDigit(line[^1]) && StartsWithCapital(text, index + 1);
+    }
+
+    /// <summary>Determines whether the next words start with a capital letter or a digit.</summary>
+    /// <param name="text">The text.</param>
+    /// <param name="index">Where to look from.</param>
+    /// <returns><see langword="true"/> for a capital or digit after any white space.</returns>
+    private static bool StartsWithCapital(ReadOnlySpan<char> text, int index)
+    {
+        var next = SkipSpace(text, index);
+        return next < text.Length && (char.IsUpper(text[next]) || char.IsDigit(text[next]));
     }
 
     /// <summary>Determines whether a long run can be split after a character.</summary>
@@ -176,7 +216,7 @@ public static class SentenceSplitter
             end--;
         }
 
-        if (end > start && text[start..end].ContainsAnyExcept(" \r\n\t.,;:!?-—…\"'()[]"))
+        if (end > start && text[start..end].ContainsAnyExcept(Silent))
         {
             sentences.Add(new(start, end - start));
         }

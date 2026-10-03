@@ -44,6 +44,19 @@ public sealed class SentenceSplitterTests
         await Assert.That(text.Substring(sentences[0].Start, sentences[0].Length)).IsEqualTo("Heading");
     }
 
+    /// <summary>Verifies a heading on its own line is read on its own, while a wrapped sentence stays whole.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task SplitsHeadings()
+    {
+        const string text = "Page 1\r\nThe quick brown fox jumps over the lazy dog, then runs\r\nacross the field.\r\nUnique marker\r\nWith more";
+        List<SpeechSentence> sentences = [];
+        SentenceSplitter.Split(text, sentences);
+        var spoken = sentences.ConvertAll(static s => SentenceSplitter.ToSpeech(text.AsSpan(s.Start, s.Length)));
+
+        await Assert.That(spoken).IsEquivalentTo(["Page 1", "The quick brown fox jumps over the lazy dog, then runs across the field.", "Unique marker", "With more"]);
+    }
+
     /// <summary>Verifies long runs are split so the voice never waits long.</summary>
     /// <returns>A task.</returns>
     [Test]

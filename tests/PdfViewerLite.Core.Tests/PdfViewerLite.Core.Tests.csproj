@@ -5,4 +5,9 @@
     <ProjectReference Include="..\..\src\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Http\PdfViewerLite.Http.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- A 356 byte model with Kokoro's inputs and output, made with the onnx Python package, to prove the ONNX path. -->
+    <None Include="Speech\Fixtures\kokoro-stand-in.onnx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

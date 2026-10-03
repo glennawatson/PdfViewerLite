@@ -304,7 +304,7 @@
             <Path Classes="icon nav" Data="{StaticResource IconNextSentence}" />
           </Button>
           <ComboBox x:Name="VoiceBox" Width="250" VerticalAlignment="Center" Margin="8,0,2,0" ToolTip.Tip="Voice" />
-          <ComboBox x:Name="SpeedBox" Width="130" VerticalAlignment="Center" ToolTip.Tip="Speed" />
+          <ComboBox x:Name="SpeedBox" Width="150" VerticalAlignment="Center" ToolTip.Tip="Speed" />
           <Button x:Name="DownloadVoiceButton" Content="Download Voice" VerticalAlignment="Center" Margin="8,0,0,0" />
           <ProgressBar x:Name="VoiceDownloadProgress" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
         </StackPanel>

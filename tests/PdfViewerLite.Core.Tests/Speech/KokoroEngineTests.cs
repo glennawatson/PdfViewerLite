@@ -12,6 +12,18 @@ public sealed class KokoroEngineTests
     /// <summary>Kokoro's output sample rate.</summary>
     private const int KokoroHertz = 24_000;
 
+    /// <summary>The American voice used in tests.</summary>
+    private const string Heart = "af_heart";
+
+    /// <summary>The pad tokens at each end of the input.</summary>
+    private const int Padding = 2;
+
+    /// <summary>Double speed, which the stand-in multiplies the tokens by.</summary>
+    private const float Double = 2F;
+
+    /// <summary>The floats in a voice pack: 510 rows of 256.</summary>
+    private const int VoicePackFloats = 510 * 256;
+
     /// <summary>The engine is not ready until its files are installed.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -22,6 +34,38 @@ public sealed class KokoroEngineTests
 
         await Assert.That(engine.IsReady).IsFalse();
         await Assert.That(engine.Voices.Count).IsGreaterThan(0);
+    }
+
+    /// <summary>
+    /// Runs the whole on-device path against a stand-in model whose waveform is the padded token ids times the speed:
+    /// dictionary, phonemes, tokens, voice style, ONNX Runtime and the output tensor.
+    /// </summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task SpeaksThroughOnnxRuntime()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"kokoro-{Guid.NewGuid():N}");
+        try
+        {
+            InstallStandIn(directory);
+            using var engine = new KokoroEngine(directory);
+            List<long> tokens = [];
+            KokoroVocabulary.Tokenize(engine.Phonemize("Hello", Heart), tokens);
+
+            var audio = await engine.SynthesizeAsync("Hello", Heart, Double, CancellationToken.None);
+
+            await Assert.That(engine.IsReady).IsTrue();
+            await Assert.That(tokens.Count).IsGreaterThan(0);
+            await Assert.That(audio.SampleRate).IsEqualTo(KokoroHertz);
+            await Assert.That(audio.Samples.Length).IsEqualTo(tokens.Count + Padding);
+            await Assert.That(audio.Samples[0]).IsEqualTo(0F);
+            await Assert.That(audio.Samples[1]).IsEqualTo(tokens[0] * Double);
+            await Assert.That(audio.Samples[^1]).IsEqualTo(0F);
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
     }
 
     /// <summary>Every voice has a file to download and the model's files are all listed.</summary>
@@ -50,7 +94,27 @@ public sealed class KokoroEngineTests
     public async Task ChoosesTheAccent()
     {
         await Assert.That(KokoroModel.IsBritish("bf_emma")).IsTrue();
-        await Assert.That(KokoroModel.IsBritish("af_heart")).IsFalse();
+        await Assert.That(KokoroModel.IsBritish(Heart)).IsFalse();
         await Assert.That(KokoroModel.LexiconFiles(true)[0]).IsEqualTo("gb_gold.json");
+    }
+
+    /// <summary>Lays out the voice folder with the stand-in model, silent voice packs and a tiny dictionary.</summary>
+    /// <param name="directory">The folder.</param>
+    private static void InstallStandIn(string directory)
+    {
+        _ = Directory.CreateDirectory(Path.Combine(directory, "voices"));
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Speech", "Fixtures", "kokoro-stand-in.onnx"), Path.Combine(directory, KokoroModel.ModelFile));
+        var silence = new byte[VoicePackFloats * sizeof(float)];
+        foreach (var voice in KokoroModel.Voices)
+        {
+            File.WriteAllBytes(Path.Combine(directory, KokoroModel.VoiceFile(voice.Id)), silence);
+        }
+
+        foreach (var british in (bool[])[false, true])
+        {
+            var files = KokoroModel.LexiconFiles(british);
+            File.WriteAllText(Path.Combine(directory, files[0]), """{"hello": "həlˈO"}""");
+            File.WriteAllText(Path.Combine(directory, files[1]), "{}");
+        }
     }
 }

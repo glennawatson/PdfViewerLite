@@ -19,7 +19,8 @@ depends:
   - libx11-6 | libX11
   - libice6 | libICE
   - libsm6 | libSM
-# Printing straight to a printer uses libcups, and text recognition (More > Recognise Text) uses Tesseract, when installed.
+# Printing straight to a printer uses libcups, text recognition (More > Recognise Text) uses Tesseract, and Read Aloud
+# plays through libpulse-simple (PulseAudio or PipeWire), when installed.
 overrides:
   rpm:
     depends:
@@ -31,11 +32,13 @@ overrides:
       - cups-libs
       - tesseract
       - tesseract-langpack-eng
+      - pulseaudio-libs
   deb:
     recommends:
       - libcups2
       - libtesseract5
       - tesseract-ocr-eng
+      - libpulse0
 contents:
   - src: ${PUBLISH_DIR}/pdfviewerlite
     dst: /usr/lib/pdfviewerlite/pdfviewerlite
@@ -47,6 +50,10 @@ contents:
     dst: /usr/lib/pdfviewerlite/libSkiaSharp.so
   - src: ${PUBLISH_DIR}/libHarfBuzzSharp.so
     dst: /usr/lib/pdfviewerlite/libHarfBuzzSharp.so
+  - src: ${PUBLISH_DIR}/libonnxruntime.so
+    dst: /usr/lib/pdfviewerlite/libonnxruntime.so
+  - src: ${PUBLISH_DIR}/libonnxruntime_providers_shared.so
+    dst: /usr/lib/pdfviewerlite/libonnxruntime_providers_shared.so
   - src: /usr/lib/pdfviewerlite/pdfviewerlite
     dst: /usr/bin/pdfviewerlite
     type: symlink

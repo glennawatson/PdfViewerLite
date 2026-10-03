@@ -22,6 +22,10 @@ the tabbed workflow of Adobe Reader, while looking at home on KDE.
   follow what you are doing; fill in forms; draw or type a signature; list and check digital signatures; save or save
   a copy.
 - **Text recognition**: *Recognise Text* gives scanned pages a searchable, selectable text layer using Tesseract.
+- **Read Aloud**: a natural sounding neural voice (Kokoro-82M) that runs on your computer, so nothing you read is sent
+  anywhere. It is downloaded once (about 95 MB) the first time, with your go-ahead. The sentence being read is softly
+  marked and the view follows it; pause, skip a sentence, change voice or speed, or right-click and *Read Aloud from
+  Here* (Ctrl+Shift+Y). Azure AI Speech can be used instead with your own key.
 - **Hundreds of tabs**: hover over a tab to see a preview of its page, and find any open tab by name (Ctrl+Shift+A).
 
 - **Comfort first**: calm by default and predictable, following [comfort design rules](docs/COMFORT.md) for ADHD
@@ -67,6 +71,8 @@ set `PDFVIEWERLITE_SCREENSHOTS=<dir>` to save the rendered frames.
 | PDF engine | PDFium through our own source-generated `LibraryImport` bindings; binaries from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) | BSD-3 / Apache-2.0 |
 | D-Bus | [Tmds.DBus.Protocol](https://github.com/tmds/Tmds.DBus) | MIT |
 | HTTP | [Refit](https://github.com/reactiveui/refit) with generated clients and source-generated JSON | MIT |
+| Text recognition | Tesseract through source-generated `LibraryImport` bindings, loaded when installed | Apache-2.0 |
+| Read Aloud | [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (downloaded on first use) on [ONNX Runtime](https://onnxruntime.ai), pronunciations from [misaki](https://github.com/hexgrad/misaki); sound through libpulse-simple | Apache-2.0 / MIT / Apache-2.0 / LGPL (loaded at run time) |
 | Tests and benchmarks | TUnit, Avalonia.Headless, BenchmarkDotNet | MIT / Apache-2.0 |
 
 Every shipped assembly is trimmable and Native AOT compatible; `dotnet publish` produces a single native binary with

@@ -10,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
+using PdfViewerLite.App.Services;
 using PdfViewerLite.App.Theming;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
@@ -26,6 +27,9 @@ namespace PdfViewerLite.App.Tests;
 /// <summary>Renders the real window headlessly and checks the pixels.</summary>
 public sealed class RenderingTests
 {
+    /// <summary>The name of the Read Aloud bar.</summary>
+    private const string ReadAloudBarName = "ReadAloudBar";
+
     /// <summary>The window width.</summary>
     private const int WindowWidth = 1100;
 
@@ -337,6 +341,48 @@ public sealed class RenderingTests
             await Assert.That(Math.Abs(CentreY(count, window) - line)).IsLessThan(AlignmentTolerance);
             await Assert.That(Math.Abs(InkCentreY(pixels, stride, previous, window) - line)).IsLessThan(AlignmentTolerance);
             await Assert.That(Math.Abs(InkCentreY(pixels, stride, next, window) - line)).IsLessThan(AlignmentTolerance);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies Read Aloud shows its bar with Pause while reading, ticks the tool bar button and marks the sentence.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ShowsReadAloudBar()
+    {
+        var speech = new FakeSpeech(true, true);
+        using var test = new TestServices(new FallbackPlatform(), speech);
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("read.pdf", Pages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        try
+        {
+            var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
+            var reader = main.SelectedTab!.ReadAloud;
+            _ = await UiWait.UntilAsync(() => Find<Border>(view, ReadAloudBarName) is not null);
+            Find<ToggleButton>(view, "ReadAloudToggle").IsChecked = true;
+
+            await Assert.That(await UiWait.UntilAsync(() => reader.SpokenBounds.Count > 0 && Find<Button>(view, "PauseButton").IsVisible)).IsTrue();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            using var frame = window.CaptureRenderedFrame()!;
+            Save(frame, "read-aloud.png");
+
+            var voiceText = Find<ComboBox>(view, "VoiceBox").GetVisualDescendants().OfType<TextBlock>().Any(static t => t.Text == "One, Test voice" && t.IsEffectivelyVisible);
+            await Assert.That(voiceText).IsTrue();
+            await Assert.That(reader.IsOpen).IsTrue();
+            await Assert.That(Find<Border>(view, ReadAloudBarName).IsVisible).IsTrue();
+            await Assert.That(Find<Button>(view, "PlayButton").IsVisible).IsFalse();
+            await Assert.That(Find<ComboBox>(view, "VoiceBox").SelectedIndex).IsEqualTo(0);
+            await Assert.That(Find<Button>(view, "DownloadVoiceButton").IsVisible).IsFalse();
+
+            Find<Button>(view, "CloseReadAloudButton").Command!.Execute(null);
+            await Assert.That(await UiWait.UntilAsync(() => !Find<Border>(view, ReadAloudBarName).IsVisible)).IsTrue();
+            await Assert.That(Find<ToggleButton>(view, "ReadAloudToggle").IsChecked == true).IsFalse();
         }
         finally
         {

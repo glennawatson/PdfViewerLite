@@ -38,6 +38,7 @@ documents. Every feature has a BenchmarkDotNet benchmark; allocations are checke
 | Print | Yes | Browser-style preview; sends straight to the printer queue via CUPS (printer, copies, colour, two-sided, paper, pages, pages per sheet, annotations), Save as PDF, or the desktop's dialog via the XDG portal | Done |
 | Presentation mode | Yes | More ▸ Present (Shift+F5), Esc to stop | Done |
 | Text recognition (OCR) | No | More ▸ Recognise Text adds a searchable text layer with Tesseract | Done |
+| Read aloud | No (left to the Orca screen reader) | Read Aloud (Ctrl+Shift+Y): a natural neural voice (Kokoro) on this computer, downloaded once with consent; the sentence being read is marked and followed; pause, previous/next sentence, voice and speed; right-click *Read Aloud from Here*; optional Azure AI Speech with your own key | Done |
 | Caret navigation | Yes | F7: a steady cursor moved with the arrow keys, Shift selects | Done |
 | Layers (optional content) | Yes | Layers panel: tick to show, clear to hide; pages are drawn from an in-memory copy with the chosen default visibility, as PDFium has no layer API | Done |
 | Signing with a certificate | Yes | Fill & Sign ▸ Sign with Certificate (.p12/.pfx): an incremental update with a detached CMS (SHA-256) signature; earlier signatures stay valid | Done |
