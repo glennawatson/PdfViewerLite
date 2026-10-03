@@ -1,6 +1,6 @@
 name: Cross-platform tests
 
-# Runs the whole test suite on Windows and macOS, real PDFs and real voices included, so the same documents are
+# Runs the whole test suite on Linux, Windows and macOS, real PDFs and real voices included, so the same documents are
 # shown to open, navigate, search, annotate, fill, sign, save, print, reflow and read aloud on each platform.
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,20 @@ jobs:
         with:
           dotnet-version: 10.0.x
           global-json-file: global.json
+      # The processor decides which int8 kernels ONNX Runtime uses for the voices, so record it with the results.
+      - name: Show the processor
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) lscpu | grep 'Model name'; grep -ow 'avx512_vnni\|avx_vnni\|avx2' /proc/cpuinfo | sort -u ;;
+            Windows) powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name" ;;
+            macOS) sysctl -n machdep.cpu.brand_string ;;
+          esac
+      - name: Install Tesseract and a silent sound server
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libtesseract5 tesseract-ocr-eng pulseaudio
+          pulseaudio --daemonize=true --exit-idle-time=-1 -n --load="module-null-sink sink_name=silent" --load="module-native-protocol-unix"
       - name: Cache the voice files and the real-world PDF corpus
         uses: actions/cache@v4
         with:
