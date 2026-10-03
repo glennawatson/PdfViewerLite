@@ -27,6 +27,7 @@
     <ProjectReference Include="..\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Ocr\PdfViewerLite.Ocr.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Http\PdfViewerLite.Http.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Platform.Linux\PdfViewerLite.Platform.Linux.csproj" />
   </ItemGroup>
 

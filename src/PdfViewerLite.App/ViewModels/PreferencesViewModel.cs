@@ -54,6 +54,33 @@ public sealed class PreferencesViewModel : ReactiveObject
     /// <summary>Gets the interface text size choices.</summary>
     public static IReadOnlyList<string> FontSizeOptions { get; } = [FollowDesktop, "9 pt", "10 pt", "11 pt", "12 pt", "14 pt", "16 pt"];
 
+    /// <summary>Gets the Read Aloud voice choices.</summary>
+    public static IReadOnlyList<string> SpeechEngineOptions { get; } = ["On this computer: natural and private", "Azure AI Speech with your own key"];
+
+    /// <summary>Gets or sets the Read Aloud engine index.</summary>
+    public int SpeechEngine
+    {
+        get => (int)_services.Settings.SpeechEngine;
+        set => Update(() => _services.Settings.SpeechEngine = (SpeechEngineChoice)value, nameof(SpeechEngine), nameof(UsesAzure));
+    }
+
+    /// <summary>Gets a value indicating whether Azure AI Speech is chosen, which shows its key and region.</summary>
+    public bool UsesAzure => _services.Settings.SpeechEngine == SpeechEngineChoice.Azure;
+
+    /// <summary>Gets or sets the Azure Speech key.</summary>
+    public string AzureKey
+    {
+        get => _services.Settings.AzureSpeechKey;
+        set => Update(() => _services.Settings.AzureSpeechKey = value?.Trim() ?? string.Empty, nameof(AzureKey));
+    }
+
+    /// <summary>Gets or sets the Azure Speech region.</summary>
+    public string AzureRegion
+    {
+        get => _services.Settings.AzureSpeechRegion;
+        set => Update(() => _services.Settings.AzureSpeechRegion = value?.Trim().ToLowerInvariant() ?? string.Empty, nameof(AzureRegion));
+    }
+
     /// <summary>Gets or sets the colour scheme index.</summary>
     public int ColorScheme
     {
@@ -101,6 +128,16 @@ public sealed class PreferencesViewModel : ReactiveObject
     {
         get => _services.Settings.InterfaceFontSizePoints is { } points ? Math.Max(0, Array.IndexOf(FontSizes, points)) : 0;
         set => Update(() => _services.Settings.InterfaceFontSizePoints = value > 0 && value < FontSizes.Length ? FontSizes[value] : null, nameof(FontSize));
+    }
+
+    /// <summary>Applies a change that affects more than one property, re-themes and saves.</summary>
+    /// <param name="change">The change.</param>
+    /// <param name="propertyName">The property that changed.</param>
+    /// <param name="otherPropertyName">Another property that follows from it.</param>
+    private void Update(Action change, string propertyName, string otherPropertyName)
+    {
+        Update(change, propertyName);
+        this.RaisePropertyChanged(otherPropertyName);
     }
 
     /// <summary>Applies a change, re-themes and saves.</summary>

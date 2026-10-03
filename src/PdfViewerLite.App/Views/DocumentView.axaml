@@ -35,6 +35,12 @@
               <TextBlock Classes="label" Text="Find" />
             </StackPanel>
           </ToggleButton>
+          <ToggleButton x:Name="ReadAloudToggle" Classes="tool" ToolTip.Tip="Read the document aloud from this page (Ctrl+Shift+Y)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconSpeaker}" />
+              <TextBlock Classes="label" Text="Read Aloud" />
+            </StackPanel>
+          </ToggleButton>
           <Button Classes="tool" ToolTip.Tip="Rotate, page layout, save, reload, properties">
             <StackPanel Orientation="Horizontal">
               <Path Classes="icon" Data="{StaticResource IconMenu}" />
@@ -274,6 +280,38 @@
       </DockPanel>
     </Border>
 
+    <!-- Read Aloud: steady controls; the sentence being read is softly marked on the page and the view follows it. -->
+    <Border x:Name="ReadAloudBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="CloseReadAloudButton" DockPanel.Dock="Right" Content="Close" ToolTip.Tip="Stop reading (Ctrl+Shift+Y)" />
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2">
+          <Button x:Name="PreviousSentenceButton" Classes="tool" ToolTip.Tip="Previous sentence">
+            <Path Classes="icon nav" Data="{StaticResource IconPreviousSentence}" />
+          </Button>
+          <Button x:Name="PlayButton" Classes="tool" ToolTip.Tip="Carry on reading">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconPlay}" />
+              <TextBlock Classes="label" Text="Play" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="PauseButton" Classes="tool" ToolTip.Tip="Pause, keeping your place">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconPause}" />
+              <TextBlock Classes="label" Text="Pause" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="NextSentenceButton" Classes="tool" ToolTip.Tip="Next sentence">
+            <Path Classes="icon nav" Data="{StaticResource IconNextSentence}" />
+          </Button>
+          <ComboBox x:Name="VoiceBox" Width="250" VerticalAlignment="Center" Margin="8,0,2,0" ToolTip.Tip="Voice" />
+          <ComboBox x:Name="SpeedBox" Width="130" VerticalAlignment="Center" ToolTip.Tip="Speed" />
+          <Button x:Name="DownloadVoiceButton" Content="Download Voice" VerticalAlignment="Center" Margin="8,0,0,0" />
+          <ProgressBar x:Name="VoiceDownloadProgress" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
+        </StackPanel>
+        <TextBlock x:Name="ReadAloudText" VerticalAlignment="Center" Margin="8,0" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+
     <!-- A message that waits until dismissed, for example a failed save. -->
     <Border x:Name="NoticeBar" DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
@@ -375,7 +413,7 @@
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
           <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
             <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
-                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" />
+                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" />
             <!-- The text field editor sits exactly over the field being filled in. -->
             <Canvas x:Name="FieldOverlay">
               <TextBox x:Name="FieldEditor" Classes="field" IsVisible="False" />

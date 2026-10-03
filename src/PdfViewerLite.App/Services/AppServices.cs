@@ -5,10 +5,12 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Rendering;
+using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Ocr;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Settings;
+using PdfViewerLite.Core.Speech;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
 using PdfViewerLite.Ocr;
@@ -38,6 +40,18 @@ public sealed class AppServices : IDisposable
 
     /// <summary>The latest desktop palette, if any.</summary>
     private DesktopPalette? _palette;
+
+    /// <summary>The speech engine, kept while the settings that chose it stay the same.</summary>
+    private ISpeechEngine? _speechEngine;
+
+    /// <summary>The settings the speech engine was made for.</summary>
+    private (SpeechEngineChoice Choice, string Key, string Region) _speechEngineFor;
+
+    /// <summary>The sound output, created when first used.</summary>
+    private IAudioOutput? _audio;
+
+    /// <summary>The tab reading aloud, so only one speaks at a time.</summary>
+    private ReadAloudViewModel? _reader;
 
     /// <summary>Initializes a new instance of the <see cref="AppServices"/> class.</summary>
     /// <param name="settingsStore">The settings store.</param>
@@ -87,6 +101,12 @@ public sealed class AppServices : IDisposable
     /// <summary>Gets the remote document downloader.</summary>
     public RemoteDocumentDownloader Downloader { get; }
 
+    /// <summary>Gets how the app reads aloud; tests replace it with fakes.</summary>
+    public SpeechSetup Speech { get; init; } = SpeechSetup.CreateDefault();
+
+    /// <summary>Gets the sound output shared by every tab.</summary>
+    public IAudioOutput Audio => _audio ??= Speech.CreateAudio();
+
     /// <summary>Gets the resolved theme; the current value is replayed on subscription.</summary>
     public IObservable<ResolvedTheme> Theme => _theme;
 
@@ -106,6 +126,33 @@ public sealed class AppServices : IDisposable
     /// <returns>The recogniser, which reports whether Tesseract was found.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IOcrEngine CreateOcrEngine() => new TesseractEngine(string.IsNullOrWhiteSpace(Settings.OcrLanguage) ? DefaultOcrLanguage : Settings.OcrLanguage);
+
+    /// <summary>Gets the speech engine the settings choose, reusing it while they stay the same.</summary>
+    /// <returns>The engine.</returns>
+    public ISpeechEngine GetSpeechEngine()
+    {
+        var wanted = (Settings.SpeechEngine, Settings.AzureSpeechKey, Settings.AzureSpeechRegion);
+        if (_speechEngine is null || _speechEngineFor != wanted)
+        {
+            _speechEngine?.Dispose();
+            _speechEngine = Speech.CreateEngine(Settings, Speech.VoiceDirectory);
+            _speechEngineFor = wanted;
+        }
+
+        return _speechEngine;
+    }
+
+    /// <summary>Records which tab is reading aloud, pausing the one that was.</summary>
+    /// <param name="reader">The tab's reader.</param>
+    public void ClaimSpeech(ReadAloudViewModel reader)
+    {
+        if (_reader is not null && !ReferenceEquals(_reader, reader))
+        {
+            _reader.Pause();
+        }
+
+        _reader = reader;
+    }
 
     /// <summary>Asks the window to open a document as a tab.</summary>
     /// <param name="path">The document.</param>
@@ -152,6 +199,8 @@ public sealed class AppServices : IDisposable
         RenderHub.Dispose();
         Pool.Dispose();
         (ThemeSource as IDisposable)?.Dispose();
+        _speechEngine?.Dispose();
+        _audio?.Dispose();
     }
 
     /// <summary>Publishes the theme when it changed.</summary>

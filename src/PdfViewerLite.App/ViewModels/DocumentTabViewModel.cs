@@ -61,6 +61,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Watches the file for changes once loaded.</summary>
     private IDisposable? _fileWatch;
 
+    /// <summary>The Read Aloud state, once used.</summary>
+    private ReadAloudViewModel? _readAloud;
+
     /// <summary>How the tab looked before presenting.</summary>
     private PresentationState _beforePresenting;
 
@@ -386,6 +389,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the tab's text recognition, created on first use.</summary>
     public TextRecognitionViewModel TextRecognition => field ??= new(this, _services);
+
+    /// <summary>Gets the Read Aloud state, created when first used.</summary>
+    public ReadAloudViewModel ReadAloud => _readAloud ??= new(this, _services);
 
     /// <summary>Gets the form filling state.</summary>
     public FormsViewModel Forms => field ??= new(this);
@@ -810,6 +816,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        _readAloud?.Dispose();
         _fileWatch?.Dispose();
         Search.Dispose();
         _navigationRequests.Dispose();

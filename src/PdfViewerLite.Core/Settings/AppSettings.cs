@@ -45,6 +45,21 @@ public sealed class AppSettings
     /// <summary>Gets or sets the Tesseract languages used to recognise text, for example <c>eng</c> or <c>eng+deu</c>.</summary>
     public string OcrLanguage { get; set; } = "eng";
 
+    /// <summary>Gets or sets which voice reads documents aloud.</summary>
+    public SpeechEngineChoice SpeechEngine { get; set; }
+
+    /// <summary>Gets or sets the voice used to read aloud, or empty for the engine's first voice.</summary>
+    public string SpeechVoice { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets how fast documents are read aloud, 1 for normal.</summary>
+    public double SpeechSpeed { get; set; } = 1;
+
+    /// <summary>Gets or sets the person's Azure Speech key. The settings file is readable only by its owner.</summary>
+    public string AzureSpeechKey { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the person's Azure Speech region, for example <c>uksouth</c>.</summary>
+    public string AzureSpeechRegion { get; set; } = string.Empty;
+
     /// <summary>Gets or sets a value indicating whether the sidebar is shown.</summary>
     public bool ShowSidebar { get; set; } = true;
 

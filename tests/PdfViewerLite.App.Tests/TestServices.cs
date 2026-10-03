@@ -21,14 +21,26 @@ internal sealed class TestServices : IDisposable
     /// <summary>Initializes a new instance of the <see cref="TestServices"/> class with a desktop integration.</summary>
     /// <param name="platform">The desktop integration.</param>
     internal TestServices(PdfViewerLite.Core.Platform.IDesktopPlatform platform)
+        : this(platform, new FakeSpeech(true, false))
     {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="TestServices"/> class with a desktop integration and a fake voice.</summary>
+    /// <param name="platform">The desktop integration.</param>
+    /// <param name="speech">The fake voice and sound output.</param>
+    internal TestServices(PdfViewerLite.Core.Platform.IDesktopPlatform platform, FakeSpeech speech)
+    {
+        Speech = speech;
         Directory = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-app-{Guid.NewGuid():N}");
         _ = System.IO.Directory.CreateDirectory(Directory);
-        Services = new(new SettingsStore(Path.Combine(Directory, "settings.json")), new PdfiumEngine(), platform);
+        Services = new(new SettingsStore(Path.Combine(Directory, "settings.json")), new PdfiumEngine(), platform) { Speech = speech.CreateSetup(Directory) };
     }
 
     /// <summary>Gets the working directory.</summary>
     internal string Directory { get; }
+
+    /// <summary>Gets the fake voice and sound output.</summary>
+    internal FakeSpeech Speech { get; }
 
     /// <summary>Gets the services.</summary>
     internal AppServices Services { get; }

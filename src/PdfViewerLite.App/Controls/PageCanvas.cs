@@ -47,6 +47,9 @@ public sealed partial class PageCanvas : Control
     /// <summary>Defines the <see cref="SelectionBrush"/> property.</summary>
     public static readonly StyledProperty<IBrush?> SelectionBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(SelectionBrush));
 
+    /// <summary>Defines the <see cref="SpokenBrush"/> property.</summary>
+    public static readonly StyledProperty<IBrush?> SpokenBrushProperty = AvaloniaProperty.Register<PageCanvas, IBrush?>(nameof(SpokenBrush));
+
     /// <summary>The gap between pages.</summary>
     private const double PageSpacing = 12;
 
@@ -137,7 +140,7 @@ public sealed partial class PageCanvas : Control
     /// <summary>Initializes static members of the <see cref="PageCanvas"/> class.</summary>
     static PageCanvas()
     {
-        AffectsRender<PageCanvas>(TabProperty, HitBrushProperty, CurrentHitOutlineProperty, SelectionBrushProperty);
+        AffectsRender<PageCanvas>(TabProperty, HitBrushProperty, CurrentHitOutlineProperty, SelectionBrushProperty, SpokenBrushProperty);
         FocusableProperty.OverrideDefaultValue<PageCanvas>(true);
     }
 
@@ -167,6 +170,13 @@ public sealed partial class PageCanvas : Control
     {
         get => GetValue(SelectionBrushProperty);
         set => SetValue(SelectionBrushProperty, value);
+    }
+
+    /// <summary>Gets or sets the soft fill marking the sentence being read aloud.</summary>
+    public IBrush? SpokenBrush
+    {
+        get => GetValue(SpokenBrushProperty);
+        set => SetValue(SpokenBrushProperty, value);
     }
 
     /// <summary>Gets the selected text.</summary>
@@ -566,6 +576,7 @@ public sealed partial class PageCanvas : Control
             }
         }
 
+        DrawSpoken(context, tab, page, transform);
         if (SelectionBrush is not { } selection)
         {
             return;
@@ -574,6 +585,24 @@ public sealed partial class PageCanvas : Control
         foreach (var rect in GetSelectionRects(page))
         {
             context.FillRectangle(selection, transform.ToCanvas(rect));
+        }
+    }
+
+    /// <summary>Softly marks the sentence being read aloud.</summary>
+    /// <param name="context">The drawing context.</param>
+    /// <param name="tab">The tab.</param>
+    /// <param name="page">The page.</param>
+    /// <param name="transform">The page transform.</param>
+    private void DrawSpoken(DrawingContext context, DocumentTabViewModel tab, int page, in PageTransform transform)
+    {
+        if (SpokenBrush is not { } brush || tab.ReadAloud.SpokenPage != page)
+        {
+            return;
+        }
+
+        foreach (var rect in tab.ReadAloud.SpokenBounds)
+        {
+            context.FillRectangle(brush, transform.ToCanvas(rect));
         }
     }
 
@@ -703,6 +732,7 @@ public sealed partial class PageCanvas : Control
             tab.NavigationRequests.SubscribeSafe(OnNavigationRequested, OnError),
             tab.DocumentChanges.SubscribeSafe(_ => OnDocumentChanged(), OnError),
             tab.Search.HighlightChanges.SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.ReadAloud.WhenAnyValue(static x => x.SpokenBounds).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.PageEdits.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.WhenAnyValue(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),

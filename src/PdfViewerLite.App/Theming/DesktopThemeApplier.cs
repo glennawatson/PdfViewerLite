@@ -29,6 +29,9 @@ internal static class DesktopThemeApplier
     /// <summary>The alpha of search hit and text selection fills, soft enough to keep the text readable.</summary>
     private const byte HighlightAlpha = 0x59;
 
+    /// <summary>The opacity of the mark on the sentence being read aloud, lighter than a highlight.</summary>
+    private const byte SpokenAlpha = 0x40;
+
     /// <summary>How much darker the tab bar is than the tool bar.</summary>
     private const double TabBarShade = 0.04;
 
@@ -150,6 +153,7 @@ internal static class DesktopThemeApplier
         resources["AppHitBrush"] = new SolidColorBrush(ToColor(tints.Edit, HighlightAlpha));
         resources["AppCurrentHitOutline"] = Brush(scheme.Accent);
         resources["AppTextSelectionBrush"] = new SolidColorBrush(ToColor(tints.Navigation, HighlightAlpha));
+        resources["AppSpokenBrush"] = new SolidColorBrush(ToColor(tints.Add, SpokenAlpha));
         resources["AppPaperBrush"] = Brush(theme.PageTone.IsIdentity ? 0xFFFFFFU : theme.PageTone.Paper);
     }
 

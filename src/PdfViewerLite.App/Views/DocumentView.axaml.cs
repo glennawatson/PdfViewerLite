@@ -262,9 +262,34 @@ public sealed partial class DocumentView : UserControl, IViewFor<DocumentTabView
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.IsRunning, static v => v.RecognitionBar.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.ProgressText, static v => v.RecognitionText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.Progress, static v => v.RecognitionProgress.Value));
+        BindReadAloud(bindings);
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.HasPendingReload, static v => v.ReloadBar.IsVisible));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReloadCommand, static v => v.ReloadButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissReloadCommand, static v => v.DismissReloadButton));
+    }
+
+    /// <summary>Binds the Read Aloud button and bar.</summary>
+    /// <param name="bindings">The bindings.</param>
+    private void BindReadAloud(MultipleDisposable bindings)
+    {
+        bindings.Add(this.Bind(ViewModel, static vm => vm.ReadAloud.IsOpen, static v => v.ReadAloudToggle.IsChecked, static on => on, IsOn));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.IsOpen, static v => v.ReadAloudBar.IsVisible));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadAloud.CloseCommand, static v => v.CloseReadAloudButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadAloud.PlayPauseCommand, static v => v.PlayButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadAloud.PlayPauseCommand, static v => v.PauseButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadAloud.PreviousCommand, static v => v.PreviousSentenceButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadAloud.NextCommand, static v => v.NextSentenceButton));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.IsPlaying, static v => v.PauseButton.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.IsPlaying, static v => v.PlayButton.IsVisible, static playing => !playing));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.VoiceNames, static v => v.VoiceBox.ItemsSource));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.ReadAloud.VoiceIndex, static v => v.VoiceBox.SelectedIndex));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.SpeedNames, static v => v.SpeedBox.ItemsSource));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.ReadAloud.SpeedIndex, static v => v.SpeedBox.SelectedIndex));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.CanDownloadVoice, static v => v.DownloadVoiceButton.IsVisible));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReadAloud.DownloadVoiceCommand, static v => v.DownloadVoiceButton));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.IsDownloading, static v => v.VoiceDownloadProgress.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.DownloadProgress, static v => v.VoiceDownloadProgress.Value));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ReadAloud.StatusText, static v => v.ReadAloudText.Text));
     }
 
     /// <summary>Binds the find bar.</summary>

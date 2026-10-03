@@ -33,6 +33,7 @@ public sealed partial class PreferencesWindow : Window, IViewFor<PreferencesView
         MotionBox.ItemsSource = PreferencesViewModel.MotionOptions;
         CaretBox.ItemsSource = PreferencesViewModel.CaretOptions;
         FontSizeBox.ItemsSource = PreferencesViewModel.FontSizeOptions;
+        SpeechEngineBox.ItemsSource = PreferencesViewModel.SpeechEngineOptions;
     }
 
     /// <inheritdoc/>
@@ -62,6 +63,14 @@ public sealed partial class PreferencesWindow : Window, IViewFor<PreferencesView
             this.Bind(ViewModel, static vm => vm.Motion, static v => v.MotionBox.SelectedIndex),
             this.Bind(ViewModel, static vm => vm.Caret, static v => v.CaretBox.SelectedIndex),
             this.Bind(ViewModel, static vm => vm.FontSize, static v => v.FontSizeBox.SelectedIndex),
+            this.Bind(ViewModel, static vm => vm.SpeechEngine, static v => v.SpeechEngineBox.SelectedIndex),
+            this.Bind(ViewModel, static vm => vm.AzureKey, static v => v.AzureKeyBox.Text),
+            this.Bind(ViewModel, static vm => vm.AzureRegion, static v => v.AzureRegionBox.Text),
+            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyLabel.IsVisible),
+            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyBox.IsVisible),
+            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionLabel.IsVisible),
+            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionBox.IsVisible),
+            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.SpeechNote.Text, DescribeSpeech),
             CloseButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())),
         ];
     }
@@ -73,4 +82,11 @@ public sealed partial class PreferencesWindow : Window, IViewFor<PreferencesView
         _bindings?.Dispose();
         _bindings = null;
     }
+
+    /// <summary>Explains where the chosen voice runs.</summary>
+    /// <param name="azure">Whether Azure is chosen.</param>
+    /// <returns>The note.</returns>
+    private static string DescribeSpeech(bool azure) => azure
+        ? "Each sentence read aloud is sent to your own Azure Speech resource, which bills your Azure account. The key is kept in your settings file, readable only by you."
+        : "The voice runs on this computer, so nothing you read is sent anywhere. It is downloaded once, the first time you use Read Aloud.";
 }

@@ -269,6 +269,7 @@ public sealed partial class PageCanvas
         return
         [
             Item("_Copy", "Ctrl+C", CopySelection),
+            Item("_Read Aloud from Here", null, () => ReadAloudFromSelection(tab)),
             new Separator(),
             highlight,
             Item("_Underline", null, () => MarkSelection(tab, AnnotationKind.Underline, tab.Annotations.Color), editable),
@@ -303,8 +304,11 @@ public sealed partial class PageCanvas
     private List<Control> PageMenu(AnnotationsViewModel annotations, int page, PagePoint point)
     {
         var editable = annotations.CanAnnotate;
+        var tab = Tab!;
         return
         [
+            Item("_Read Aloud from Here", null, () => ReadAloudFrom(tab, page, point)),
+            new Separator(),
             Item("Add _Note Here…", null, () => _ = annotations.AddNoteAsync(page, point), editable),
             Item("Add _Text Here…", null, () => _ = annotations.AddTextAsync(page, point), editable),
             new Separator(),

@@ -24,6 +24,15 @@
       <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Interface text size" />
       <ComboBox x:Name="FontSizeBox" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch" />
     </Grid>
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
+      <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Read Aloud voice" />
+      <ComboBox x:Name="SpeechEngineBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <TextBlock x:Name="AzureKeyLabel" Grid.Row="1" VerticalAlignment="Center" Text="Azure Speech key" />
+      <TextBox x:Name="AzureKeyBox" Grid.Row="1" Grid.Column="1" PasswordChar="•" PlaceholderText="Key 1 or Key 2 from your Speech resource" />
+      <TextBlock x:Name="AzureRegionLabel" Grid.Row="2" VerticalAlignment="Center" Text="Azure region" />
+      <TextBox x:Name="AzureRegionBox" Grid.Row="2" Grid.Column="1" PlaceholderText="For example uksouth or eastus" />
+      <TextBlock x:Name="SpeechNote" Grid.Row="3" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" />
+    </Grid>
     <Button x:Name="CloseButton" HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" />
   </StackPanel>
 </Window>

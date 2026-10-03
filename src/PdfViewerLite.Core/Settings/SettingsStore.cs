@@ -76,7 +76,16 @@ public sealed class SettingsStore
         }
 
         var temp = $"{FilePath}.tmp";
-        using (var stream = File.Create(temp))
+
+        // The settings can hold the person's Azure Speech key, so the file is readable only by its owner.
+        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows())
+        {
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        File.Delete(temp);
+        using (var stream = new FileStream(temp, options))
         {
             JsonSerializer.Serialize(stream, settings, SettingsJsonContext.Default.AppSettings);
         }
