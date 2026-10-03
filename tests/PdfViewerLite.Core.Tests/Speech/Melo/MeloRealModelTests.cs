@@ -13,7 +13,7 @@ namespace PdfViewerLite.Core.Tests.Speech.Melo;
 /// long for the words), synthesis must keep ahead of playback, faster speech must be shorter, and long or awkward text
 /// must work. MeloTTS varies each reading slightly, as people do, so readings are not compared sample for sample.
 /// </summary>
-[NotInParallel(nameof(MeloRealModelTests))]
+[NotInParallel(nameof(KokoroRealModelTests))]
 public sealed class MeloRealModelTests
 {
     /// <summary>MeloTTS's sample rate.</summary>

@@ -15,7 +15,7 @@ namespace PdfViewerLite.Pdfium;
 /// Reads and edits annotations through PDFium. Callers hold the PDFium lock. Adding and changing annotations makes no
 /// managed allocations: strings are passed to PDFium pinned, and points are converted in stack or pooled buffers.
 /// </summary>
-internal static unsafe class PdfiumAnnotations
+internal static unsafe partial class PdfiumAnnotations
 {
     /// <summary>PDFium's text note subtype.</summary>
     private const int SubtypeText = 1;
@@ -352,7 +352,9 @@ internal static unsafe class PdfiumAnnotations
         SubtypeSquiggly => AnnotationKind.Squiggly,
         SubtypeStrikeOut => AnnotationKind.StrikeOut,
         SubtypeFreeText => AnnotationKind.TextBox,
-        SubtypeInk => HasSubject(annotation, SignatureSubject) ? AnnotationKind.Signature : AnnotationKind.Ink,
+        SubtypeInk => GetInkKind(annotation),
+        SubtypeSquare => AnnotationKind.Rectangle,
+        SubtypeCircle => AnnotationKind.Ellipse,
         SubtypeStamp => GetStampKind(annotation),
         _ => AnnotationKind.Other,
     };
@@ -367,7 +369,30 @@ internal static unsafe class PdfiumAnnotations
             return AnnotationKind.Signature;
         }
 
+        if (HasSubject(annotation, StampSubject))
+        {
+            return AnnotationKind.Stamp;
+        }
+
         return HasSubject(annotation, TextBoxSubject) ? AnnotationKind.TextBox : AnnotationKind.Other;
+    }
+
+    /// <summary>Tells signatures, arrows and lines this viewer drew apart from freehand ink.</summary>
+    /// <param name="annotation">The ink annotation.</param>
+    /// <returns>The kind.</returns>
+    private static AnnotationKind GetInkKind(nint annotation)
+    {
+        if (HasSubject(annotation, SignatureSubject))
+        {
+            return AnnotationKind.Signature;
+        }
+
+        if (HasSubject(annotation, ArrowSubject))
+        {
+            return AnnotationKind.Arrow;
+        }
+
+        return HasSubject(annotation, LineSubject) ? AnnotationKind.Line : AnnotationKind.Ink;
     }
 
     /// <summary>Reads an annotation's colour, falling back to the ink colour for stamps drawn from page objects.</summary>
@@ -597,6 +622,7 @@ internal static unsafe class PdfiumAnnotations
             }
 
             _ = NativeMethods.FPDFPageObj_SetFillColor(pageObject, (color >> RedShift) & ChannelMask, (color >> GreenShift) & ChannelMask, color & ChannelMask, Opaque);
+            _ = NativeMethods.FPDFPageObj_SetStrokeColor(pageObject, (color >> RedShift) & ChannelMask, (color >> GreenShift) & ChannelMask, color & ChannelMask, Opaque);
             changed |= NativeMethods.FPDFAnnot_UpdateObject(annotation, pageObject) != 0;
         }
 

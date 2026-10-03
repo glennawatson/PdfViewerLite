@@ -33,4 +33,19 @@ public enum AnnotationKind
 
     /// <summary>A drawn or typed signature.</summary>
     Signature = 8,
+
+    /// <summary>A rectangle drawn on the page.</summary>
+    Rectangle = 9,
+
+    /// <summary>An ellipse drawn on the page.</summary>
+    Ellipse = 10,
+
+    /// <summary>An arrow drawn on the page, pointing at its end.</summary>
+    Arrow = 11,
+
+    /// <summary>A straight line drawn on the page.</summary>
+    Line = 12,
+
+    /// <summary>A stamp such as "Approved" or "Draft".</summary>
+    Stamp = 13,
 }

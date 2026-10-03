@@ -80,6 +80,21 @@ public sealed partial class PdfiumDocument
     }
 
     /// <inheritdoc/>
+    public int AddShape(int pageIndex, AnnotationKind kind, PagePoint start, PagePoint end, uint color, float width)
+    {
+        using var scope = PdfiumLibrary.EnterScope();
+        return Changed(pageIndex, EditablePage(pageIndex) is { } page ? PdfiumAnnotations.AddShape(page, kind, start, end, color, width) : -1);
+    }
+
+    /// <inheritdoc/>
+    public int AddStamp(int pageIndex, PagePoint location, string label, uint color)
+    {
+        ArgumentNullException.ThrowIfNull(label);
+        using var scope = PdfiumLibrary.EnterScope();
+        return Changed(pageIndex, EditablePage(pageIndex) is { } page && _fonts.Get(false) is { } font ? PdfiumAnnotations.AddStamp(_fonts.Document, font, page, location, label, color) : -1);
+    }
+
+    /// <inheritdoc/>
     public bool SetColor(int pageIndex, int index, uint color)
     {
         using var scope = PdfiumLibrary.EnterScope();

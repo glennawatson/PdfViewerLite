@@ -57,6 +57,24 @@ public interface IAnnotationEditor
     /// <returns>The new annotation's index, or -1.</returns>
     int AddText(int pageIndex, PagePoint location, string text, float fontSize, uint color, AnnotationKind kind);
 
+    /// <summary>Draws a rectangle, ellipse, arrow or line between two points.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="kind"><see cref="AnnotationKind.Rectangle"/>, <see cref="AnnotationKind.Ellipse"/>, <see cref="AnnotationKind.Arrow"/> or <see cref="AnnotationKind.Line"/>.</param>
+    /// <param name="start">Where the drag started: a corner, or the arrow's tail.</param>
+    /// <param name="end">Where the drag ended: the opposite corner, or the arrow's point.</param>
+    /// <param name="color">The colour as 0xRRGGBB.</param>
+    /// <param name="width">The line width in points.</param>
+    /// <returns>The new annotation's index, or -1.</returns>
+    int AddShape(int pageIndex, AnnotationKind kind, PagePoint start, PagePoint end, uint color, float width);
+
+    /// <summary>Places a stamp: a framed word such as "APPROVED".</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="location">The top-left corner of the stamp.</param>
+    /// <param name="label">The word on the stamp.</param>
+    /// <param name="color">The colour as 0xRRGGBB.</param>
+    /// <returns>The new annotation's index, or -1.</returns>
+    int AddStamp(int pageIndex, PagePoint location, string label, uint color);
+
     /// <summary>Changes an annotation's colour.</summary>
     /// <param name="pageIndex">The zero based page index.</param>
     /// <param name="index">The annotation index.</param>

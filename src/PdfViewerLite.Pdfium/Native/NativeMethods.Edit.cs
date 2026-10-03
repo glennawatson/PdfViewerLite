@@ -208,6 +208,40 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial int FPDFPageObj_SetFillColor(nint pageObject, uint red, uint green, uint blue, uint alpha);
 
+    /// <summary>Native <c>FPDFPageObj_CreateNewRect</c> entry point.</summary>
+    /// <param name="x">The left edge.</param>
+    /// <param name="y">The bottom edge.</param>
+    /// <param name="width">The width.</param>
+    /// <param name="height">The height.</param>
+    /// <returns>A new path object.</returns>
+    [LibraryImport(Library)]
+    internal static partial nint FPDFPageObj_CreateNewRect(float x, float y, float width, float height);
+
+    /// <summary>Native <c>FPDFPageObj_SetStrokeColor</c> entry point.</summary>
+    /// <param name="pageObject">The page object.</param>
+    /// <param name="red">The red channel.</param>
+    /// <param name="green">The green channel.</param>
+    /// <param name="blue">The blue channel.</param>
+    /// <param name="alpha">The opacity.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPageObj_SetStrokeColor(nint pageObject, uint red, uint green, uint blue, uint alpha);
+
+    /// <summary>Native <c>FPDFPageObj_SetStrokeWidth</c> entry point.</summary>
+    /// <param name="pageObject">The page object.</param>
+    /// <param name="width">The line width.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPageObj_SetStrokeWidth(nint pageObject, float width);
+
+    /// <summary>Native <c>FPDFPath_SetDrawMode</c> entry point.</summary>
+    /// <param name="path">The path object.</param>
+    /// <param name="fillMode">0 for no fill.</param>
+    /// <param name="stroke">Non-zero to stroke.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPath_SetDrawMode(nint path, int fillMode, int stroke);
+
     /// <summary>Native <c>FPDFPageObj_GetBounds</c> entry point.</summary>
     /// <param name="pageObject">The page object.</param>
     /// <param name="left">The left edge.</param>
