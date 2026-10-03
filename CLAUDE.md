@@ -48,3 +48,11 @@ benchmarks target `net10.0`.
 - Comfort rules: check new UI against `docs/COMFORT.md`. Be quiet by default and change nothing the user did not ask
   for. Take colours from theme resources, use one icon tint per action kind, put text beside main actions, confirm
   group closes, and keep messages until they are dismissed.
+
+## Working on a goal
+
+When a goal is set (`/goal`), work through it without stopping: do not ask questions, do not enter plan mode, do not
+request plan approval and do not offer choices. Decide using these rules and `docs/COMFORT.md`, fix problems as they
+are found, and commit and push each finished step. Feedback the maintainer gives mid-goal (for example a screenshot
+with a mark on it) is a bug report: work out what is wrong from the image and fix it. Only stop to report something
+that genuinely blocks the work, such as a missing permission or an AOT blocker.
