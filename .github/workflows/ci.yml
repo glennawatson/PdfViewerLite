@@ -41,7 +41,7 @@ jobs:
       - name: Prepare test services
         run: dotnet run --file tools/ci/prepare.cs -- test
       - name: Cache voices and PDF corpus
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cache/pdfviewerlite/kokoro
@@ -106,7 +106,7 @@ jobs:
           minver-minimum-major-minor: '0.1'
       - name: Prepare native toolchain
         run: dotnet run --file tools/ci/prepare.cs -- package
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         if: matrix.platform == 'linux'
         with:
           go-version: stable
@@ -121,7 +121,7 @@ jobs:
       - name: Validate desktop entry
         if: matrix.platform == 'linux'
         run: desktop-file-validate packaging/linux/net.glennwatson.PdfViewerLite.desktop
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         if: matrix.platform == 'windows'
         with:
           path: artifacts/msix-sdk
@@ -215,7 +215,7 @@ jobs:
         with:
           name: signed-windows
           path: packages
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: packages/*
           prerelease: ${{ contains(github.ref_name, '-') }}
