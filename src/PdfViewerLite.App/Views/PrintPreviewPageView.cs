@@ -20,7 +20,7 @@ namespace PdfViewerLite.App.Views;
 
 /// <summary>One sheet in the print preview: the page on white paper with its caption beneath.</summary>
 [DebuggerDisplay("{ViewModel}")]
-public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserControl<PrintPreviewPage>
+public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserControl<PrintPreviewPage>, IDisposable
 {
     /// <summary>The longest side of a sheet on screen.</summary>
     private const double SheetSide = 620;
@@ -59,6 +59,17 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
         _bindings?.Dispose();
         _bindings = null;
         ReleaseBitmap();
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        if (change.Property == ViewModelProperty)
+        {
+            SetSheetSize(ViewModel);
+        }
+
+        base.OnPropertyChanged(change);
     }
 
     /// <inheritdoc/>
