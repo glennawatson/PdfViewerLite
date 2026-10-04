@@ -152,7 +152,7 @@ jobs:
     needs: package
     runs-on: ubuntu-24.04
     container:
-      image: ghcr.io/reactiveui/certum-signer:latest@sha256:7a77f04d311a937d1a724058a845dc09107bd79937281d86a43238c3e677413b
+      image: ghcr.io/reactiveui/certum-signer:latest@sha256:a609cf99c5bdb673fa7b1e48c2dd6c3b0a559377a0278f673889f3b2f4ebe6ce
     env:
       CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
       CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
