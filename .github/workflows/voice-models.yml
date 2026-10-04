@@ -1,64 +1,79 @@
 name: Voice models
 
-# Packages the pinned ONNX voice files as a GitHub release. C# tools import and check MeloTTS-English,
-# its BERT model and its front-end data. The Kokoro-82M files are mirrored at pinned revisions.
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the pinned voice release after validation
+        type: boolean
+        default: false
   push:
+    branches: [main]
     paths:
       - tools/voice-models/**
       - .github/workflows/voice-models.yml
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: voice-models
+  cancel-in-progress: false
 
 env:
-  # Bump with VoiceRelease.ReleaseTag in src/PdfViewerLite.Speech/VoiceRelease.cs when the files change.
   RELEASE_TAG: voices-2
-  KOKORO_ONNX: https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/1939ad2a8e416c0acfeecc08a694d14ef25f2231
-  MISAKI: https://raw.githubusercontent.com/hexgrad/misaki/fba1236595f2d2bf21d414ba6e57d25256afada3/misaki/data
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  check:
-    name: Check whether the release is published
+  generate:
+    name: Generate and validate voice files
     runs-on: ubuntu-24.04
-    outputs:
-      published: ${{ steps.release.outputs.published }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
     steps:
-      # A published release is never changed: the app pins each file's SHA-256, so new files need a new tag.
-      - id: release
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dotnet-environment
+        with:
+          dotnet-versions: |
+            10.0.x
+            11.0.100-rc.1.26425.128
+          minver-minimum-major-minor: '0.1'
+      - name: Check the pinned release
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-          fi
-
-  publish:
-    name: Import and publish
-    needs: check
-    if: needs.check.outputs.published != 'true'
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-          global-json-file: global.json
-      - name: Import the pinned MeloTTS ONNX files and front-end data
+          PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+        run: dotnet run --file tools/voice-models/release.cs -- check "$RELEASE_TAG" "$PUBLISH"
+      - name: Import the pinned MeloTTS files
+        if: steps.release.outputs.generate == 'true'
         run: dotnet run --file tools/voice-models/import_melo.cs -- tools/voice-models/melo-source.json release
-      - name: Check the files, upstream reference and synthesis
+      - name: Check the upstream reference and synthesis
+        if: steps.release.outputs.generate == 'true'
         run: >-
           dotnet run --file tools/voice-models/check_melo.cs --
           tools/voice-models/melo-source.json release
           tests/PdfViewerLite.Core.Tests/Speech/Melo/melo-reference.json
-      - name: Mirror the Kokoro files
-        run: tools/voice-models/mirror_kokoro.sh release
+      - name: Import the pinned Kokoro files
+        if: steps.release.outputs.generate == 'true'
+        run: dotnet run --file tools/voice-models/mirror_kokoro.cs -- release
       - name: Write the manifest
+        if: steps.release.outputs.generate == 'true'
         run: dotnet run --file tools/voice-models/manifest.cs -- release
-      - name: Publish the release
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: steps.release.outputs.generate == 'true'
+        with:
+          name: voice-models-${{ env.RELEASE_TAG }}
+          path: release/*
+          if-no-files-found: error
+      - name: Publish the voice release
+        if: steps.release.outputs.generate == 'true' && (github.event_name == 'push' || inputs.publish)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --title "Voice files ($RELEASE_TAG)" \
-            --notes "On-device voices for Read Aloud: MeloTTS-English (MIT) with bert-base-uncased (Apache-2.0), and a mirror of Kokoro-82M (Apache-2.0) with the misaki dictionaries (Apache-2.0). Built by the Voice models workflow; voices.json lists every file's SHA-256."
+        run: dotnet run --file tools/voice-models/release.cs -- publish "$RELEASE_TAG" release

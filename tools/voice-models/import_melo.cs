@@ -4,9 +4,12 @@
 // See the LICENSE file in the project root for full license information.
 
 #:project ../../src/PdfViewerLite.Core/PdfViewerLite.Core.csproj
+#:package Refit
 #:include MeloFiles.cs
+#:include IVoiceAssetApi.cs
 
 using PdfViewerLite.Tools.VoiceModels;
+using Refit;
 
 const int minArguments = 2;
 
@@ -28,7 +31,8 @@ _ = Directory.CreateDirectory(staging);
 
 try
 {
-    using var client = new HttpClient();
+    using var client = new HttpClient { BaseAddress = new("https://github.com") };
+    var api = RestService.ForGenerated<IVoiceAssetApi>(client);
     foreach (var file in files)
     {
         var target = Path.Combine(staging, file.LocalName);
@@ -38,7 +42,7 @@ try
         }
         else
         {
-            using var response = await client.GetAsync(file.Source, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            using var response = await api.DownloadAsync(file.Source, CancellationToken.None).ConfigureAwait(false);
             _ = response.EnsureSuccessStatusCode();
             using var source = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             using var destination = File.Create(target);

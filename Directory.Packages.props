@@ -54,6 +54,11 @@
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup Label="Packaging tools">
+    <PackageVersion Include="MinVer" Version="8.0.0" />
+    <PackageVersion Include="System.Drawing.Common" Version="10.0.12" />
+  </ItemGroup>
+
   <ItemGroup Label="Analyzers">
     <PackageVersion Include="StyleSharp.Analyzers" Version="$(RoslynCommonAnalyzersVersion)" />
     <PackageVersion Include="PerformanceSharp.Analyzers" Version="$(RoslynCommonAnalyzersVersion)" />

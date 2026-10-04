@@ -1,0 +1,82 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":separateMajorReleases",
+    ":combinePatchMinorReleases",
+    "group:dotnetMonorepo",
+    "group:nugetMonorepo",
+    "security:openssf-scorecard"
+  ],
+  "mode": "full",
+  "timezone": "Australia/Melbourne",
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 10,
+  "labels": ["dependencies"],
+  "recreateWhen": "auto",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "build",
+  "semanticCommitScope": "deps",
+  "commitMessageAction": "bump",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "schedule": ["at any time"],
+    "labels": ["dependencies", "security"]
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["/^Avalonia(\\.|$)/"],
+      "groupName": "Avalonia"
+    },
+    {
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["/^bblanchon\\.PDFium\\./"],
+      "groupName": "PDFium"
+    },
+    {
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["StyleSharp.Analyzers", "PerformanceSharp.Analyzers", "SecuritySharp.Analyzers"],
+      "groupName": "build analyzers",
+      "labels": ["dependencies", "build-gate"]
+    },
+    {
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["/^TUnit(\\.|$)/", "/^Microsoft\\.Testing\\./"],
+      "groupName": "test runner"
+    },
+    {
+      "matchManagers": ["nuget"],
+      "matchPackageNames": ["MinVer"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchManagers": ["nuget"],
+      "matchDepTypes": ["dotnet-sdk", "msbuild-sdk"],
+      "dependencyDashboardApproval": true,
+      "ignoreUnstable": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["pin", "pinDigest"],
+      "group": { "commitMessageTopic": "GitHub Actions digests" }
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["/^actions\\//", "/^github\\//", "/^microsoft\\//"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "automerge": true
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^ghcr\\.io\\/reactiveui\\//"],
+      "matchUpdateTypes": ["digest", "pin", "pinDigest"],
+      "automerge": true
+    }
+  ]
+}

@@ -3,7 +3,10 @@
     <!-- Libraries and tests build for .NET 10 (LTS) and .NET 11; the AOT app ships on .NET 10. -->
     <LibraryTargetFrameworks>net10.0;net11.0</LibraryTargetFrameworks>
     <TargetFrameworks>$(LibraryTargetFrameworks)</TargetFrameworks>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <MinVerTagPrefix></MinVerTagPrefix>
+    <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
+    <MinVerAutoIncrement>patch</MinVerAutoIncrement>
+    <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DebugType>embedded</DebugType>
     <Authors>Glenn Watson</Authors>
@@ -76,6 +79,7 @@
 
   <!-- Analyzer set shared with ReactiveUI. -->
   <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" />
     <PackageReference Include="StyleSharp.Analyzers" PrivateAssets="all" />
     <PackageReference Include="PerformanceSharp.Analyzers" PrivateAssets="all" />
     <PackageReference Include="SecuritySharp.Analyzers" PrivateAssets="all" />

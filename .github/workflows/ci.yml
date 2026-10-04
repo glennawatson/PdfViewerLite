@@ -1,90 +1,68 @@
-name: CI
+name: Build
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ['[0-9]*']
   pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: 1
 
 jobs:
   build:
-    name: Build and test
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          # The .NET 11 SDK from global.json builds everything; the .NET 10 runtime runs the net10.0 targets.
-          dotnet-version: 10.0.x
-          global-json-file: global.json
-      - name: Install Tesseract and a sound server for the OCR and playback tests
-        run: sudo apt-get update && sudo apt-get install -y libtesseract5 tesseract-ocr-eng pulseaudio
-      - name: Start a silent sound server
-        run: pulseaudio --daemonize=true --exit-idle-time=-1 -n --load="module-null-sink sink_name=silent" --load="module-native-protocol-unix"
-      - name: Cache the Kokoro voice files
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pdfviewerlite/kokoro
-          key: kokoro-${{ hashFiles('src/PdfViewerLite.Speech/Kokoro/KokoroModel.cs', 'src/PdfViewerLite.Speech/VoiceRelease.cs') }}
-      - name: Cache the MeloTTS voice files
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pdfviewerlite/melo
-          key: melo-${{ hashFiles('src/PdfViewerLite.Speech/VoiceRelease.cs') }}
-      - name: Cache the real-world PDF corpus
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pdfviewerlite/corpus
-          key: corpus-${{ hashFiles('tests/corpus/corpus.json') }}
-      - name: Build
-        run: dotnet build PdfViewerLite.slnx -c Release
-      - name: Build C# tools
-        run: |
-          dotnet build tools/voice-models/import_melo.cs -c Release
-          dotnet build tools/voice-models/check_melo.cs -c Release
-          dotnet build tools/voice-models/reference_melo.cs -c Release
-          dotnet build tools/voice-models/manifest.cs -c Release
-          dotnet build tools/accessibility/atspi-walk.cs -c Release
-          dotnet build tools/accessibility/create-check-pdf.cs -c Release
-      - name: Test
-        env:
-          # The Read Aloud integration tests run the real Kokoro model, downloaded by the app's own downloader.
-          PDFVIEWERLITE_KOKORO_DOWNLOAD: '1'
-          PDFVIEWERLITE_MELO_DOWNLOAD: '1'
-          # The compatibility tests run every operation on real PDFs listed in tests/corpus/corpus.json.
-          PDFVIEWERLITE_CORPUS_DOWNLOAD: '1'
-        run: dotnet test --solution PdfViewerLite.slnx -c Release --coverage --coverage-output-format cobertura
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results
-          path: '**/TestResults/**'
-          if-no-files-found: ignore
-
-  build-desktops:
-    name: Build on ${{ matrix.os }}
-    # Tests run on Linux; Windows and macOS build everything, including their platform integrations.
+    name: Build and test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          dotnet-version: 10.0.x
-          global-json-file: global.json
-      - name: Build
-        run: dotnet build PdfViewerLite.slnx -c Release
+          fetch-depth: 0
+      - uses: ./.github/actions/dotnet-environment
+        with:
+          dotnet-versions: |
+            10.0.x
+            11.0.100-rc.1.26425.128
+          minver-minimum-major-minor: '0.1'
+      - name: Prepare test services
+        run: dotnet run --file tools/ci/prepare.cs -- test
+      - name: Cache voices and PDF corpus
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pdfviewerlite/kokoro
+            ~/.cache/pdfviewerlite/melo
+            ~/.cache/pdfviewerlite/corpus
+          key: models-${{ runner.os }}-${{ hashFiles('src/PdfViewerLite.Speech/VoiceRelease.cs', 'tests/corpus/corpus.json') }}
+      - uses: ./.github/actions/dotnet-build
+        with:
+          src-folder: .
+          solution-file: PdfViewerLite.slnx
+      - name: Build C# tools
+        if: runner.os == 'Linux'
+        run: dotnet run --file tools/ci/build-tools.cs
+      - uses: ./.github/actions/dotnet-test
+        with:
+          src-folder: .
+          solution-file: PdfViewerLite.slnx
+        env:
+          PDFVIEWERLITE_KOKORO_DOWNLOAD: '1'
+          PDFVIEWERLITE_MELO_DOWNLOAD: '1'
+          PDFVIEWERLITE_CORPUS_DOWNLOAD: '1'
 
   package:
     name: Package ${{ matrix.rid }}
@@ -95,58 +73,66 @@ jobs:
         include:
           - rid: linux-x64
             os: ubuntu-24.04
-            appimage: x86_64
-            nfpm: amd64
+            platform: linux
           - rid: linux-arm64
             os: ubuntu-24.04-arm
-            appimage: aarch64
-            nfpm: arm64
+            platform: linux
+          - rid: win-x64
+            os: windows-latest
+            platform: windows
+          - rid: win-arm64
+            os: windows-latest
+            platform: windows
+          - rid: osx-arm64
+            os: macos-latest
+            platform: macos
+          - rid: osx-x64
+            os: macos-latest
+            platform: macos
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # The .NET 11 SDK from global.json builds everything; the .NET 10 runtime runs the net10.0 targets.
-          dotnet-version: 10.0.x
-          global-json-file: global.json
+          fetch-depth: 0
+      - uses: ./.github/actions/dotnet-environment
+        id: environment
+        with:
+          dotnet-versions: |
+            10.0.x
+            11.0.100-rc.1.26425.128
+          minver-minimum-major-minor: '0.1'
+      - name: Prepare native toolchain
+        run: dotnet run --file tools/ci/prepare.cs -- package
       - uses: actions/setup-go@v5
+        if: matrix.platform == 'linux'
         with:
           go-version: stable
-      - name: Install native toolchain
-        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev desktop-file-utils xvfb dbus at-spi2-core
-      - name: Version
-        id: version
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=0.1.0~ci${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Publish (Native AOT)
-        run: scripts/publish-linux.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
-      - name: Screen reader check (AT-SPI)
+      - name: Publish Native AOT
+        env:
+          RID: ${{ matrix.rid }}
+          VERSION: ${{ steps.environment.outputs.version-semver2 }}
+        run: dotnet run --file tools/packaging/publish.cs -- "$RID" "$VERSION"
+      - name: Screen reader check
+        if: matrix.platform == 'linux'
         run: scripts/check-screen-reader.sh artifacts/${{ matrix.rid }}/pdfviewerlite
       - name: Validate desktop entry
+        if: matrix.platform == 'linux'
         run: desktop-file-validate packaging/linux/net.glennwatson.PdfViewerLite.desktop
-      - name: AppImage
+      - uses: actions/cache@v4
+        if: matrix.platform == 'windows'
+        with:
+          path: artifacts/msix-sdk
+          key: msix-sdk-${{ runner.os }}-${{ hashFiles('tools/packaging/windows.cs') }}
+      - name: Package
         env:
-          APPIMAGE_EXTRACT_AND_RUN: 1
-        run: |
-          curl -sSfL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.appimage }}.AppImage"
-          chmod +x appimagetool && sudo mv appimagetool /usr/local/bin/
-          packaging/linux/build-appimage.sh artifacts/${{ matrix.rid }} ${{ matrix.appimage }} ${{ steps.version.outputs.value }}
-      - name: deb and rpm
-        env:
-          VERSION: ${{ steps.version.outputs.value }}
-          NFPM_ARCH: ${{ matrix.nfpm }}
-          PUBLISH_DIR: artifacts/${{ matrix.rid }}
-          MAINTAINER: Glenn Watson
-        run: |
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
-          for packager in deb rpm; do "$(go env GOPATH)/bin/nfpm" package -f packaging/linux/nfpm.yaml -p "$packager" -t artifacts/; done
-      - name: Tarball
-        run: tar -C artifacts -czf "artifacts/pdfviewerlite-${{ steps.version.outputs.value }}-${{ matrix.rid }}.tar.gz" ${{ matrix.rid }}
-      - uses: actions/upload-artifact@v4
+          RID: ${{ matrix.rid }}
+          VERSION: ${{ steps.environment.outputs.version-semver2 }}
+          PLATFORM: ${{ matrix.platform }}
+        run: dotnet run --file "tools/packaging/$PLATFORM.cs" -- "$RID" "$VERSION"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: packages-${{ matrix.rid }}
           path: |
@@ -154,98 +140,82 @@ jobs:
             artifacts/*.deb
             artifacts/*.rpm
             artifacts/*.tar.gz
-
-  package-windows:
-    name: Package ${{ matrix.rid }}
-    needs: [build, build-desktops]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - rid: win-x64
-            arch: x64
-          - rid: win-arm64
-            arch: arm64
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-          global-json-file: global.json
-      - name: Version
-        id: version
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=0.1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Publish (Native AOT)
-        run: scripts/publish.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
-      - name: Installer
-        run: |
-          choco install innosetup --no-progress -y
-          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" -DAppVersion=${{ steps.version.outputs.value }} -DArch=${{ matrix.arch }} \
-            -DSourceDir="$(cygpath -w "$PWD/artifacts/${{ matrix.rid }}")" -DOutputDir="$(cygpath -w "$PWD/artifacts")" packaging/windows/PdfViewerLite.iss
-      - name: Portable zip
-        run: 7z a "artifacts/pdfviewerlite-${{ steps.version.outputs.value }}-${{ matrix.rid }}.zip" "./artifacts/${{ matrix.rid }}/*"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: packages-${{ matrix.rid }}
-          path: |
-            artifacts/*-setup.exe
+            artifacts/*.msix
+            artifacts/*.msi
             artifacts/*.zip
-
-  package-macos:
-    name: Package ${{ matrix.rid }}
-    needs: [build, build-desktops]
-    strategy:
-      fail-fast: false
-      matrix:
-        rid: [osx-arm64, osx-x64]
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-          global-json-file: global.json
-      - name: Version
-        id: version
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=0.1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Publish (Native AOT)
-        run: scripts/publish.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
-      - name: App bundle and disk image
-        run: packaging/macos/build-app.sh artifacts/${{ matrix.rid }} ${{ steps.version.outputs.value }} ${{ matrix.rid }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: packages-${{ matrix.rid }}
-          path: |
             artifacts/*.dmg
-            artifacts/*.app.zip
+          if-no-files-found: error
+
+  sign-windows:
+    name: Sign Windows installers
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: package
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/reactiveui/certum-signer:latest@sha256:7a77f04d311a937d1a724058a845dc09107bd79937281d86a43238c3e677413b
+    env:
+      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
+      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
+      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: packages-win-*
+          merge-multiple: true
+          path: signed
+      - uses: ./.github/actions/certum-sign
+        with:
+          packages-glob: signed/*.msi*
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: signed-windows
+          path: signed/*.msi*
+          if-no-files-found: error
+
+  verify-windows:
+    name: Verify Windows signatures
+    needs: sign-windows
+    runs-on: windows-latest
+    env:
+      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/dotnet-environment
+        with:
+          dotnet-versions: |
+            10.0.x
+            11.0.100-rc.1.26425.128
+          minver-minimum-major-minor: '0.1'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: signed-windows
+          path: signed
+      - name: Verify installers
+        run: dotnet run --file tools/signing/verify-all.cs -- signed
 
   release:
     name: Release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [package, package-windows, package-macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [package, verify-windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: packages-*
           merge-multiple: true
           path: packages
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: signed-windows
+          path: packages
       - uses: softprops/action-gh-release@v2
         with:
           files: packages/*
+          prerelease: ${{ contains(github.ref_name, '-') }}
