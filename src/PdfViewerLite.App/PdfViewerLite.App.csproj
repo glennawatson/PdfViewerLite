@@ -3,7 +3,7 @@
     <TargetFrameworks>net10.0</TargetFrameworks>
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>..\..\packaging\windows\PdfViewerLite.ico</ApplicationIcon>
-    <Description>PdfViewerLite: a fast, tabbed PDF viewer.</Description>
+    <Description>Hyper PDF Viewer: a fast, tabbed PDF viewer.</Description>
     <AssemblyName>pdfviewerlite</AssemblyName>
     <RootNamespace>PdfViewerLite.App</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>

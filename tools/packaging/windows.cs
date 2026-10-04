@@ -9,6 +9,7 @@
 #:property TargetFrameworks=
 #:include BuildTools.cs
 #:include IPackagingSourceApi.cs
+#:include MsiBuilder.cs
 
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -162,6 +163,12 @@ using (var archive = ZipFile.OpenRead(package))
     }
 }
 
+var msiPackage = Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.msi");
+
+File.Delete(msiPackage);
+
+MsiBuilder.Build(source, msiPackage, version, rid, root);
+
 var portable = Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.zip");
 
 File.Delete(portable);
@@ -169,6 +176,8 @@ File.Delete(portable);
 ZipFile.CreateFromDirectory(source, portable);
 
 Console.WriteLine($"Created {package}");
+
+Console.WriteLine($"Created {msiPackage}");
 
 Console.WriteLine($"Created {portable}");
 

@@ -25,7 +25,7 @@ var source = Path.Combine(artifacts, rid);
 
 var stage = Path.Combine(artifacts, $"macos-{rid}");
 
-var app = Path.Combine(stage, "PdfViewerLite.app");
+var app = Path.Combine(stage, "Hyper PDF Viewer.app");
 
 if (Directory.Exists(stage))
 {
@@ -72,7 +72,7 @@ BuildTools.Run("codesign", "--verify", "--deep", "--strict", app);
 
 _ = Directory.CreateSymbolicLink(Path.Combine(stage, "Applications"), "/Applications");
 
-BuildTools.Run("hdiutil", "create", "-volname", "PdfViewerLite", "-srcfolder", stage, "-ov", "-format", "UDZO", Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.dmg"));
+BuildTools.Run("hdiutil", "create", "-volname", "Hyper PDF Viewer", "-srcfolder", stage, "-ov", "-format", "UDZO", Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.dmg"));
 
 BuildTools.Run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", app, Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.app.zip"));
 

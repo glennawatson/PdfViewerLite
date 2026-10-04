@@ -1,4 +1,4 @@
-# PdfViewerLite
+# Hyper PDF Viewer
 
 A PDF viewer for Linux, Windows and macOS. Read, search, annotate, fill forms, sign and print in one tabbed window. Documents stay on your computer unless you choose an online service.
 
