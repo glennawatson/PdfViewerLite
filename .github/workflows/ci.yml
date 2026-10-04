@@ -1,0 +1,28 @@
+name: Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  build:
+    name: Build and test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@main
+    with:
+      runner: ${{ matrix.os }}
+      srcFolder: '.'
+      solutionFile: PdfViewerLite.slnx
+      stampVersion: false
+      testPreparationFile: tools/ci/prepare.cs
+      dotnetVersions: |
+        10.0.x
+        11.0.100-rc.1.26425.128
