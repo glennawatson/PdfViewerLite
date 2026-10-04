@@ -34,19 +34,19 @@ internal static class AppBuilderExtensions
         {
             ArgumentNullException.ThrowIfNull(builder);
 
-            if (OperatingSystem.IsWindows())
+            if (isLinux || OperatingSystem.IsLinux())
+            {
+                builder = DesktopBackend.ShouldUseWayland(isLinux, x11Display, waylandDisplay)
+                    ? builder.UseWayland().With(new WaylandPlatformOptions { WlDisplayName = waylandDisplay })
+                    : builder.UseX11();
+            }
+            else if (OperatingSystem.IsWindows())
             {
                 builder = builder.UseWin32();
             }
             else if (OperatingSystem.IsMacOS())
             {
                 builder = builder.UseAvaloniaNative().With(new AvaloniaNativePlatformOptions { RenderingMode = [AvaloniaNativeRenderingMode.OpenGl, AvaloniaNativeRenderingMode.Software] });
-            }
-            else if (OperatingSystem.IsLinux())
-            {
-                builder = DesktopBackend.ShouldUseWayland(isLinux, x11Display, waylandDisplay)
-                    ? builder.UseWayland().With(new WaylandPlatformOptions { WlDisplayName = waylandDisplay })
-                    : builder.UseX11();
             }
 
             return builder.UseSkia();
