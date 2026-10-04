@@ -13,4 +13,4 @@ Short summaries of the sources used for the viewer. Original PDFs and web guidan
 
 These are summaries, not copies of the papers. Web and print findings inform desktop design. They do not prove this app suits every user. Personal preferences remain choices. Automated tests do not replace user testing.
 
-See [comfort rules](../COMFORT.md), [print design notes](../COMFORT-RESEARCH.md) and [signing notes](../FILL-AND-SIGN-RESEARCH.md).
+See [controls and print research](../COMFORT-RESEARCH.md) and [signing research](../FILL-AND-SIGN-RESEARCH.md).

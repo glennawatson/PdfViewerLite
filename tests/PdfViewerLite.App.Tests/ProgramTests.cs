@@ -18,7 +18,7 @@ public sealed class ProgramTests
     public async Task BuildAvaloniaApp_WaylandOnly_ConfiguresWayland()
     {
         var expected = AppBuilder.Configure<App>().UseWayland().WindowingSubsystemInitializer;
-        await Assert.That<Action?>(Program.BuildAvaloniaApp(true, null, WaylandDisplay).WindowingSubsystemInitializer).IsEqualTo(expected);
+        await Assert.That(Program.BuildAvaloniaApp(true, null, WaylandDisplay).WindowingSubsystemInitializer?.Method).IsEqualTo(expected?.Method);
     }
 
     /// <summary>Verifies that sessions with X11 keep the platform's default backend.</summary>
@@ -27,7 +27,7 @@ public sealed class ProgramTests
     public async Task BuildAvaloniaApp_BothDisplays_KeepsDefaultBackend()
     {
         var expected = AppBuilder.Configure<App>().UsePlatformDetect().WindowingSubsystemInitializer;
-        await Assert.That<Action?>(Program.BuildAvaloniaApp(true, ":0", WaylandDisplay).WindowingSubsystemInitializer).IsEqualTo(expected);
+        await Assert.That(Program.BuildAvaloniaApp(true, ":0", WaylandDisplay).WindowingSubsystemInitializer?.Method).IsEqualTo(expected?.Method);
     }
 
     /// <summary>Verifies that Wayland environment values do not override other operating systems.</summary>
@@ -36,6 +36,6 @@ public sealed class ProgramTests
     public async Task BuildAvaloniaApp_NonLinux_KeepsDefaultBackend()
     {
         var expected = AppBuilder.Configure<App>().UsePlatformDetect().WindowingSubsystemInitializer;
-        await Assert.That<Action?>(Program.BuildAvaloniaApp(false, null, WaylandDisplay).WindowingSubsystemInitializer).IsEqualTo(expected);
+        await Assert.That(Program.BuildAvaloniaApp(false, null, WaylandDisplay).WindowingSubsystemInitializer?.Method).IsEqualTo(expected?.Method);
     }
 }

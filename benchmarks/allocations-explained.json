@@ -2,6 +2,26 @@
   // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
   // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
   {
+    "type": "Avalonia.AvaloniaPropertyChangedEventArgs`1[System.Double]",
+    "frame": "PdfViewerLite.App.Views.PrintPreviewPageView.SetSheetSize(",
+    "reason": "Assigning a preview sheet changes its image width and height. Avalonia creates property notifications for layout. This runs when a sheet is assigned or recycled."
+  },
+  {
+    "type": "Avalonia.AvaloniaPropertyChangedEventArgs`1[System.String]",
+    "frame": "PdfViewerLite.App.Views.PrintPreviewPageView.SetSheetSize(",
+    "reason": "Assigning a preview sheet changes its caption. Avalonia creates a text property notification. This runs when the caption changes."
+  },
+  {
+    "type": "Avalonia.AvaloniaPropertyChangedEventArgs`1[System.Object]",
+    "frame": "PdfViewerLite.App.Views.PrintPreviewPageView.OnPropertyChanged(",
+    "reason": "Changing the preview view model updates the control's data context. Avalonia creates a property notification for the new context."
+  },
+  {
+    "type": "System.ComponentModel.PropertyChangedEventArgs",
+    "frame": "PdfViewerLite.App.Views.PrintPreviewPageView.OnPropertyChanged(",
+    "reason": "ReactiveUI notifies subscribers when the preview view model changes. Each assigned sheet triggers this notification."
+  },
+  {
     "type": "",
     "frame": "PdfViewerLite.App.ViewModels.PropertiesViewModel..ctor(",
     "reason": "Opening document properties creates a file-info object, display strings and property entries in a list. The dialog owns this snapshot."

@@ -1,0 +1,51 @@
+name: Bug report
+description: Report behavior that does not work as expected.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Enter the release version or commit. Write unknown if you cannot find it.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Enter your operating system and version. Include the package format and screen reader if relevant.
+      placeholder: Windows 11, x64, MSIX, NVDA
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Give numbered steps from opening the viewer to the problem. Say how often it happens.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe what should happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe what happens instead. Include the exact error if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: completion-checks
+    attributes:
+      label: Completion checks
+      description: Describe how to confirm the fix. Include related behavior that must keep working.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Add a sample file, screenshot, log or related issue if available.

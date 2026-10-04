@@ -1,6 +1,6 @@
 # Project rules
 
-PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users are people with ADHD or autism. Improve low-vision access alongside those needs. Follow [comfort rules](docs/COMFORT.md) and the [research](docs/research/README.md). Keep controls clear, stable and adjustable.
+PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users are people with ADHD or autism. Improve low-vision access alongside those needs. Follow the [comfort rules](../docs/PdViewerLite/COMFORT.md). Use the [research](docs/research/README.md) to guide choices. Keep controls clear, stable and adjustable.
 
 ## Performance
 
