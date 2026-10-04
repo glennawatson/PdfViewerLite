@@ -102,6 +102,10 @@ Install a Linux build with `packaging/linux/install.sh`. See [development rules]
 
 Report a problem with the [bug form](https://github.com/glennawatson/PdfViewerLite/issues/new?template=bugs.yml). Suggest a change with the [feature form](https://github.com/glennawatson/PdfViewerLite/issues/new?template=features.yml).
 
+## Research
+
+The [research notes](docs/research/README.md) explain the evidence behind the viewer's accessibility choices. They link to the original sources and state the limits of the findings.
+
 ## License
 
 [MIT](LICENSE).
