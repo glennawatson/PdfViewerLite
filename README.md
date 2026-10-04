@@ -39,15 +39,13 @@ Focus Mode lets you change the font, text size, spacing, width and page colour. 
 
 Read Aloud offers local English voices, including Australian, British, American and Indian English. The first use asks before downloading voice files. Pause, move between sentences, change speed or voice, and resume from your saved place. Sentence and word highlighting are optional.
 
-An optional online voice uses your own key. It sends the requested text to that service. See [speech checks](docs/LISTENING.md).
+An optional online voice uses your own key. It sends the requested text to that service.
 
 ## Fill and sign
 
 Choose **Fill & Sign** to type or draw a signature. Fill interactive fields directly on the page. Use **Annotate → Text** to write on a flat form. Save the document when finished.
 
 A visible signature is a mark on the page. A certificate signature lets readers check who signed and whether the file changed. Choose **Sign with Certificate** for that. Set a timestamp server in Preferences if needed.
-
-See the [signing design notes](docs/FILL-AND-SIGN-RESEARCH.md) and [milestone goals](docs/MILESTONES.md).
 
 ## Print and export
 
@@ -67,7 +65,7 @@ Preferences offers Calm, High contrast, Dark and Light themes. PDF pages can fol
 
 Adjust interface text size, motion and cursor blinking. Focus Mode adds reading text controls. Main actions have text labels. Messages stay until dismissed. Closing several tabs asks first.
 
-See [comfort rules](docs/COMFORT.md) and [accessibility research](docs/research/README.md). Research informs these choices. No single theme suits everyone.
+No single theme suits everyone. Choose the appearance that works for you.
 
 ## Shortcuts
 
@@ -98,7 +96,11 @@ dotnet run --project src/PdfViewerLite.App -- some.pdf
 scripts/publish-linux.sh linux-x64
 ```
 
-Install a Linux build with `packaging/linux/install.sh`. See [architecture and checks](docs/ARCHITECTURE.md) and [development rules](AGENTS.md).
+Install a Linux build with `packaging/linux/install.sh`. See [development rules](AGENTS.md).
+
+## Report a problem
+
+Report a problem with the [bug form](https://github.com/glennawatson/PdfViewerLite/issues/new?template=bugs.yml). Suggest a change with the [feature form](https://github.com/glennawatson/PdfViewerLite/issues/new?template=features.yml).
 
 ## License
 

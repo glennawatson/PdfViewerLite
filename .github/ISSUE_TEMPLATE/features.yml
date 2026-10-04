@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest a change to PdfViewerLite.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the task you want to complete. Explain what gets in the way.
+      placeholder: When I use the viewer to ..., I need ... because ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-change
+    attributes:
+      label: Proposed change
+      description: Describe what the viewer should do. Give a short example.
+    validations:
+      required: true
+  - type: textarea
+    id: completion-checks
+    attributes:
+      label: Completion checks
+      description: List the results that would show the change works. Include keyboard access where relevant.
+      placeholder: |-
+        - [ ] I can ...
+        - [ ] The viewer keeps ...
+    validations:
+      required: true
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms
+      description: Select each platform the change affects.
+      multiple: true
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Describe any workaround or other approach you have tried.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Add related issues, examples or screenshots. Include technical details if you have them.
