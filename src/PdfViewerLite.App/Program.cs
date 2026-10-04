@@ -71,19 +71,13 @@ public static class Program
     /// <param name="x11Display">The DISPLAY environment value.</param>
     /// <param name="waylandDisplay">The WAYLAND_DISPLAY environment value.</param>
     /// <returns>The application builder with the selected desktop backend.</returns>
-    internal static AppBuilder BuildAvaloniaApp(bool isLinux, string? x11Display, string? waylandDisplay)
-    {
-        var builder = AppBuilder.Configure<App>().UsePlatformDetect();
-        if (DesktopBackend.ShouldUseWayland(isLinux, x11Display, waylandDisplay))
-        {
-            builder = builder.UseWayland().With(new WaylandPlatformOptions { WlDisplayName = waylandDisplay });
-        }
-
-        return builder
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static AppBuilder BuildAvaloniaApp(bool isLinux, string? x11Display, string? waylandDisplay) =>
+        AppBuilder.Configure<App>()
+            .UseDesktopPlatform(isLinux, x11Display, waylandDisplay)
             .With(new X11PlatformOptions { WmClass = AppIdentity.WindowClass })
             .LogToTrace()
             .UseReactiveUI(static _ => { });
-    }
 
     /// <summary>Turns command line arguments into absolute paths or URIs, dropping options.</summary>
     /// <param name="args">The arguments.</param>

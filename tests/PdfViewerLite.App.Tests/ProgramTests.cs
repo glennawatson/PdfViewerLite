@@ -26,7 +26,7 @@ public sealed class ProgramTests
     [Test]
     public async Task BuildAvaloniaApp_BothDisplays_KeepsDefaultBackend()
     {
-        var expected = AppBuilder.Configure<App>().UsePlatformDetect().WindowingSubsystemInitializer;
+        var expected = AppBuilder.Configure<App>().UseX11().WindowingSubsystemInitializer;
         await Assert.That(Program.BuildAvaloniaApp(true, ":0", WaylandDisplay).WindowingSubsystemInitializer?.Method).IsEqualTo(expected?.Method);
     }
 
@@ -35,7 +35,7 @@ public sealed class ProgramTests
     [Test]
     public async Task BuildAvaloniaApp_NonLinux_KeepsDefaultBackend()
     {
-        var expected = AppBuilder.Configure<App>().UsePlatformDetect().WindowingSubsystemInitializer;
+        var expected = AppBuilder.Configure<App>().UseDesktopPlatform(false, null, null).WindowingSubsystemInitializer;
         await Assert.That(Program.BuildAvaloniaApp(false, null, WaylandDisplay).WindowingSubsystemInitializer?.Method).IsEqualTo(expected?.Method);
     }
 }

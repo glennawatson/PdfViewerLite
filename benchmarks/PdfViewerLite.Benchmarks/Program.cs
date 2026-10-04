@@ -5,6 +5,7 @@
 using System.Diagnostics.Tracing;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Diagnostics.Tracing.Parsers;
@@ -38,6 +39,8 @@ public static class Program
         const ClrTraceEventParser.Keywords keywords = ClrTraceEventParser.Keywords.GC | ClrTraceEventParser.Keywords.Type
             | ClrTraceEventParser.Keywords.GCSampledObjectAllocationHigh | ClrTraceEventParser.Keywords.Stack;
         EventPipeProvider[] providers = [new(ClrTraceEventParser.ProviderName, EventLevel.Verbose, (long)keywords)];
-        return DefaultConfig.Instance.AddDiagnoser(new EventPipeProfiler(EventPipeProfile.GcVerbose, providers));
+        return DefaultConfig.Instance
+            .AddJob(Job.Default.WithArguments([new MsBuildArgument("/p:TargetFramework=net10.0")]).AsMutator())
+            .AddDiagnoser(new EventPipeProfiler(EventPipeProfile.GcVerbose, providers));
     }
 }

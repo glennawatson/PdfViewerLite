@@ -8,8 +8,10 @@
   <Style Selector="Path.icon">
     <Setter Property="Width" Value="20" />
     <Setter Property="Height" Value="20" />
-    <Setter Property="Stretch" Value="Uniform" />
-    <Setter Property="StrokeThickness" Value="1.6" />
+    <Setter Property="Stretch" Value="None" />
+    <Setter Property="RenderTransformOrigin" Value="0,0" />
+    <Setter Property="RenderTransform" Value="scale(0.8333333)" />
+    <Setter Property="StrokeThickness" Value="1.92" />
     <Setter Property="StrokeLineCap" Value="Round" />
     <Setter Property="StrokeJoin" Value="Round" />
     <Setter Property="Stroke" Value="{DynamicResource AppIconBrush}" />

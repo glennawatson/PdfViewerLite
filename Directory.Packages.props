@@ -11,14 +11,24 @@
     <!-- StyleSharp.Analyzers, PerformanceSharp.Analyzers and SecuritySharp.Analyzers ship from the
          same release pipeline and always share a version. -->
     <RoslynCommonAnalyzersVersion>5.1.2</RoslynCommonAnalyzersVersion>
+    <SkiaVersion>4.153.1</SkiaVersion>
+    <HarfBuzzVersion>14.2.1.202</HarfBuzzVersion>
   </PropertyGroup>
 
   <ItemGroup Label="UI">
-    <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Win32" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.Native" Version="$(AvaloniaVersion)" />
+    <PackageVersion Include="Avalonia.X11" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Wayland" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Headless" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Diagnostics" Version="$(AvaloniaVersion)" />
+  </ItemGroup>
+
+  <!-- X11's package declares Skia, but its assembly does not reference it. Rendering is supplied by PdfViewerLite.Skia. -->
+  <ItemGroup>
+    <PrunePackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
   </ItemGroup>
 
   <ItemGroup Label="ReactiveUI">
@@ -34,8 +44,14 @@
 
   <ItemGroup Label="Platform / HTTP">
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.95.1" />
-    <PackageVersion Include="SkiaSharp" Version="4.153.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" />
+    <PackageVersion Include="SkiaSharp" Version="$(SkiaVersion)" />
+    <PackageVersion Include="HarfBuzzSharp" Version="$(HarfBuzzVersion)" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="$(HarfBuzzVersion)" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="$(SkiaVersion)" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.macOS" Version="$(SkiaVersion)" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="$(SkiaVersion)" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.WebAssembly" Version="$(SkiaVersion)" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="$(SkiaVersion)" />
     <PackageVersion Include="Refit" Version="16.3.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.30.0" />
   </ItemGroup>

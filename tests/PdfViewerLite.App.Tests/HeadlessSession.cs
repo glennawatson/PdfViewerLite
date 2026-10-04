@@ -22,5 +22,5 @@ public static class HeadlessSession
     /// <returns>The builder.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>().UseSkia().UseHeadless(new() { UseHeadlessDrawing = false }).UseReactiveUIForTests();
+        AppBuilder.Configure<App>().UseHeadless(new() { UseHeadlessDrawing = false }).UseSkia().UseReactiveUIForTests();
 }

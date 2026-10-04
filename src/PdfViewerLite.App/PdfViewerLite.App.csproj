@@ -32,10 +32,13 @@
     <ProjectReference Include="..\PdfViewerLite.Platform.Linux\PdfViewerLite.Platform.Linux.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Platform.MacOS\PdfViewerLite.Platform.MacOS.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Platform.Windows\PdfViewerLite.Platform.Windows.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Skia\PdfViewerLite.Skia.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Win32" />
+    <PackageReference Include="Avalonia.Native" />
+    <PackageReference Include="Avalonia.X11" />
     <PackageReference Include="Avalonia.Wayland" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="ReactiveUI.Avalonia" />
