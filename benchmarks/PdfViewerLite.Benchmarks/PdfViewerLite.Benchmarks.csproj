@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <Description>Allocation and throughput benchmarks for PdfViewerLite.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Platform.Cups\PdfViewerLite.Platform.Cups.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Ocr\PdfViewerLite.Ocr.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Http\PdfViewerLite.Http.csproj" />
+    <ProjectReference Include="..\..\tests\PdfViewerLite.TestAssets\PdfViewerLite.TestAssets.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\PdfViewerLite.App\Services\DesktopBackend.cs" Link="DesktopBackend.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,35 @@
+{
+  "source": "https://github.com/glennawatson/PdfViewerLite/releases/download/voices-2/",
+  "files": [
+    {
+      "name": "bert-en-vocab.txt",
+      "bytes": 231508,
+      "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    },
+    {
+      "name": "bert-en.onnx",
+      "bytes": 95747794,
+      "sha256": "eb44339cd9f71471955e906aff4145a976fa22e51b0e23668113d48cb2087184"
+    },
+    {
+      "name": "g2p-en.bin",
+      "bytes": 3339684,
+      "sha256": "9c0eff98ae7f6c69fde21dc4bf4849c0f28240527524ef2e87400e2a229c965d"
+    },
+    {
+      "name": "melo-en-lexicon.txt",
+      "bytes": 3577488,
+      "sha256": "e0f56092fca1721f9556ac7e9cab66cff2d4ec7b5afe5618036747c99513a823"
+    },
+    {
+      "name": "melo-en.json",
+      "bytes": 1449,
+      "sha256": "d93a30aceedcd4854c456baf1c57457c05c9e530161d54e591ef62a5fe9bd126"
+    },
+    {
+      "name": "melo-en.onnx",
+      "bytes": 170495455,
+      "sha256": "8e0246aa38588fd143af6562ebf2d2d9d92bbfc989b25770f61081ee182f66f5"
+    }
+  ]
+}

@@ -1,0 +1,569 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:PdfViewerLite.App.Controls"
+             xmlns:views="using:PdfViewerLite.App.Views"
+             x:Class="PdfViewerLite.App.Views.DocumentView">
+  <!-- Layout only: every binding is made in code with ReactiveUI.Binding (DocumentView.axaml.cs). -->
+  <DockPanel>
+    <!-- Read mode's only control: the way back to the tool bars. -->
+    <Border x:Name="ReadModeBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <Button AutomationProperties.Name="Leave Read Mode" x:Name="LeaveReadModeButton" DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Bring back the tool bars (Esc or Ctrl+H)">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+            <TextBlock Classes="label" Text="Leave Read Mode" />
+          </StackPanel>
+        </Button>
+        <TextBlock x:Name="ReadModeTitle" Classes="secondary" VerticalAlignment="Center" Margin="12,0" TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+    <!-- Everything above the pages; hidden while presenting or reading. -->
+    <StackPanel x:Name="Chrome" DockPanel.Dock="Top">
+    <!-- Named menus keep related actions together. Their labels stay visible in icons-only mode. -->
+    <Border DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <WrapPanel DockPanel.Dock="Bottom" Orientation="Horizontal">
+          <Button AutomationProperties.Name="Save" x:Name="SaveButton" Classes="tool" ToolTip.Tip="Save annotations and form entries (Ctrl+S)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconSave}" />
+              <TextBlock Classes="label" Text="Save" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Print" x:Name="PrintItem" Classes="tool" ToolTip.Tip="Print… (Ctrl+P)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconPrint}" />
+              <TextBlock Classes="label" Text="Print" />
+            </StackPanel>
+          </Button>
+          <ToggleButton AutomationProperties.Name="Annotate" x:Name="AnnotateToggle" Classes="tool" ToolTip.Tip="Highlight, draw, add notes and text">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconHighlight}" />
+              <TextBlock Classes="label" Text="Annotate" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Fill &amp; Sign" x:Name="FillSignToggle" Classes="tool" ToolTip.Tip="Fill in forms and sign">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconFillSign}" />
+              <TextBlock Classes="label" Text="Fill &amp; Sign" />
+            </StackPanel>
+          </ToggleButton>
+          <Rectangle Classes="separator" />
+          <ToggleButton AutomationProperties.Name="Find" x:Name="FindToggle" Classes="tool" ToolTip.Tip="Ctrl+F">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
+              <TextBlock Classes="label" Text="Find" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Focus" x:Name="FocusToggle" Classes="tool" ToolTip.Tip="Focus Mode: the text alone in one calm column (Ctrl+4)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconFocus}" />
+              <TextBlock Classes="label" Text="Focus" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Read Aloud" x:Name="ReadAloudToggle" Classes="tool" ToolTip.Tip="Read the document aloud from this page (Ctrl+Shift+Y)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconSpeaker}" />
+              <TextBlock Classes="label" Text="Read Aloud" />
+            </StackPanel>
+          </ToggleButton>
+          <Button x:Name="ViewMenuButton" AutomationProperties.Name="View" Classes="tool" Content="View ▾" ToolTip.Tip="Rotate, page layout, reading and presentation">
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight">
+                <MenuItem x:Name="RotateLeftItem" Header="Rotate _Left" InputGesture="Ctrl+Left" />
+                <MenuItem x:Name="RotateRightItem" Header="Rotate _Right" InputGesture="Ctrl+Right" />
+                <Separator />
+                <MenuItem x:Name="SingleLayoutItem" Header="_Single Page" />
+                <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
+                <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
+                <MenuItem x:Name="ReadModeItem" Header="Rea_d Mode" InputGesture="Ctrl+H" ToolTip.Tip="Put the tool bars and sidebar away so the pages fill the window" />
+                <MenuItem x:Name="PresentItem" Header="P_resent" InputGesture="Shift+F5" ToolTip.Tip="Full screen, one page at a time; Esc to stop" />
+                <MenuItem x:Name="CaretModeItem" Header="_Caret Navigation" InputGesture="F7" ToggleType="CheckBox" ToolTip.Tip="Move through the text with the arrow keys; Shift selects" />
+                <MenuItem x:Name="PageByPageItem" Header="Page _by Page" ToggleType="CheckBox" ToolTip.Tip="Show one page at a time instead of scrolling continuously" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button x:Name="DocumentMenuButton" AutomationProperties.Name="Document" Classes="tool" Content="Document ▾" ToolTip.Tip="Save a copy, reload, file location and properties">
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight">
+                <MenuItem x:Name="SaveItem" Header="_Save" InputGesture="Ctrl+S" />
+                <MenuItem x:Name="SaveAsItem" Header="Save _As…" InputGesture="Ctrl+Shift+S" />
+                <MenuItem x:Name="ReloadItem" Header="Re_load" InputGesture="F5" />
+                <MenuItem x:Name="ShowInFolderItem" Header="Show in _Folder" />
+                <MenuItem x:Name="PropertiesItem" Header="_Properties" InputGesture="Alt+Enter" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button x:Name="ToolsMenuButton" AutomationProperties.Name="Tools" Classes="tool" Content="Tools ▾" ToolTip.Tip="Measure and recognise scanned text">
+            <Button.Flyout>
+              <MenuFlyout Placement="BottomEdgeAlignedRight">
+                <MenuItem x:Name="MeasureItem" Header="_Measure" InputGesture="Ctrl+Shift+M" ToolTip.Tip="Measure distances, lengths and areas on the page" />
+                <MenuItem x:Name="RecognizeTextItem" Header="Recognise _Text" ToolTip.Tip="Make scanned pages searchable by recognising their text" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </WrapPanel>
+
+        <!-- Wraps rather than clips when the window is narrow, so no control is ever hidden. -->
+        <WrapPanel Orientation="Horizontal">
+          <ToggleButton AutomationProperties.Name="Sidebar" x:Name="SidebarToggle" Classes="tool" ToolTip.Tip="F9">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconSidebar}" />
+              <TextBlock Classes="label" Text="Sidebar" />
+            </StackPanel>
+          </ToggleButton>
+          <Rectangle Classes="separator" />
+          <Button AutomationProperties.Name="Back" x:Name="BackButton" Classes="tool" ToolTip.Tip="Alt+Left">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconBack}" />
+              <TextBlock Classes="label" Text="Back" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Forward" x:Name="ForwardButton" Classes="tool" ToolTip.Tip="Alt+Right">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Classes="label leading" Text="Forward" />
+              <Path Classes="icon nav" Data="{StaticResource IconForward}" />
+            </StackPanel>
+          </Button>
+          <Rectangle Classes="separator" />
+          <!-- One group on one centre line: the arrows together, then the page box and the page count. -->
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <Button AutomationProperties.Name="Previous page" x:Name="PreviousPageButton" Classes="tool" ToolTip.Tip="Previous page (Page Up)">
+              <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
+            </Button>
+            <Button AutomationProperties.Name="Next page" x:Name="NextPageButton" Classes="tool" ToolTip.Tip="Next page (Page Down)">
+              <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
+            </Button>
+            <TextBox x:Name="PageBox" AutomationProperties.Name="Page number" Width="56" Height="30" MinHeight="30" Margin="4,0,0,0" Padding="6,0" VerticalAlignment="Center"
+                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" ToolTip.Tip="Go to page (Ctrl+L)" />
+            <TextBlock x:Name="PageCountText" Classes="secondary" VerticalAlignment="Center" Margin="6,0" />
+          </StackPanel>
+          <Rectangle Classes="separator" />
+          <Button AutomationProperties.Name="Zoom out" x:Name="ZoomOutButton" Classes="tool" ToolTip.Tip="Zoom out (Ctrl+-)">
+            <Path Classes="icon nav" Data="{StaticResource IconZoomOut}" />
+          </Button>
+          <Button x:Name="ZoomButton" Classes="tool" MinWidth="64" ToolTip.Tip="Zoom: fit width, fit page or a fixed size">
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="FitWidthItem" Header="Fit _Width" InputGesture="Ctrl+2" />
+                <MenuItem x:Name="FitPageItem" Header="Fit _Page" InputGesture="Ctrl+1" />
+                <Separator />
+                <MenuItem x:Name="Zoom50Item" Header="50%" />
+                <MenuItem x:Name="Zoom75Item" Header="75%" />
+                <MenuItem x:Name="Zoom100Item" Header="100%" InputGesture="Ctrl+0" />
+                <MenuItem x:Name="Zoom125Item" Header="125%" />
+                <MenuItem x:Name="Zoom150Item" Header="150%" />
+                <MenuItem x:Name="Zoom200Item" Header="200%" />
+                <MenuItem x:Name="Zoom400Item" Header="400%" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button AutomationProperties.Name="Zoom in" x:Name="ZoomInButton" Classes="tool" ToolTip.Tip="Zoom in (Ctrl++)">
+            <Path Classes="icon nav" Data="{StaticResource IconZoomIn}" />
+          </Button>
+        </WrapPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Measuring: shown only while measuring. Click points on the page; double-click or Enter finishes, Esc clears. -->
+    <Border x:Name="MeasureBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button AutomationProperties.Name="Keep on page" x:Name="MeasureKeepButton" Classes="tool" ToolTip.Tip="Keep the finished measurement on the page as an annotation">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconAdd}" />
+              <TextBlock Classes="label" Text="Keep" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Clear measurement" x:Name="MeasureClearButton" Classes="tool" ToolTip.Tip="Clear the measurement (Esc)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconClose}" />
+              <TextBlock Classes="label" Text="Clear" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Done measuring" x:Name="MeasureDoneButton" Classes="tool" ToolTip.Tip="Put the measuring tool away">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+              <TextBlock Classes="label" Text="Done" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <WrapPanel Orientation="Horizontal">
+          <ToggleButton AutomationProperties.Name="Distance" x:Name="DistanceTool" Classes="tool" ToolTip.Tip="Click two points to measure the distance between them">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconRuler}" />
+              <TextBlock Classes="label" Text="Distance" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Perimeter" x:Name="PerimeterTool" Classes="tool" ToolTip.Tip="Click points along a path; double-click to finish">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconPerimeter}" />
+              <TextBlock Classes="label" Text="Perimeter" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Area" x:Name="AreaTool" Classes="tool" ToolTip.Tip="Click the corners of a shape; double-click to finish">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconArea}" />
+              <TextBlock Classes="label" Text="Area" />
+            </StackPanel>
+          </ToggleButton>
+          <Rectangle Classes="separator" />
+          <TextBlock Classes="secondary" Text="Scale" VerticalAlignment="Center" Margin="4,0,6,0" />
+          <TextBox x:Name="ScaleBox" AutomationProperties.Name="Measuring scale" Width="130" Height="30" MinHeight="30" VerticalAlignment="Center"
+                   VerticalContentAlignment="Center" ToolTip.Tip="How the page relates to real size, such as 1 cm = 2 m or 1:100" />
+          <TextBlock x:Name="MeasureResult" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="12,0" FontWeight="SemiBold" />
+        </WrapPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Annotate tools: shown only while annotating. Each tool has its name beside its icon. -->
+    <Border x:Name="AnnotateBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button AutomationProperties.Name="Undo" x:Name="UndoButton" Classes="tool" ToolTip.Tip="Remove the last annotation added (Ctrl+Z)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconUndo}" />
+              <TextBlock Classes="label" Text="Undo" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Done" x:Name="AnnotateDoneButton" Classes="tool" ToolTip.Tip="Put the annotation tools away">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+              <TextBlock Classes="label" Text="Done" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+        <WrapPanel Orientation="Horizontal">
+          <ToggleButton AutomationProperties.Name="Select" x:Name="SelectTool" Classes="tool" ToolTip.Tip="Select text and pick annotations">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconCursor}" />
+              <TextBlock Classes="label" Text="Select" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Highlight" x:Name="HighlightTool" Classes="tool" ToolTip.Tip="Select text to highlight it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconHighlight}" />
+              <TextBlock Classes="label" Text="Highlight" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Underline" x:Name="UnderlineTool" Classes="tool" ToolTip.Tip="Select text to underline it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconUnderline}" />
+              <TextBlock Classes="label" Text="Underline" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Strike" x:Name="StrikeOutTool" Classes="tool" ToolTip.Tip="Select text to strike it out">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconStrike}" />
+              <TextBlock Classes="label" Text="Strike" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Draw" x:Name="DrawTool" Classes="tool" ToolTip.Tip="Drag on the page to draw">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconDraw}" />
+              <TextBlock Classes="label" Text="Draw" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Note" x:Name="NoteTool" Classes="tool" ToolTip.Tip="Click on the page to add a sticky note">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconNote}" />
+              <TextBlock Classes="label" Text="Note" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton AutomationProperties.Name="Text" x:Name="TextTool" Classes="tool" ToolTip.Tip="Click on the page to write text">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconText}" />
+              <TextBlock Classes="label" Text="Text" />
+            </StackPanel>
+          </ToggleButton>
+          <Button AutomationProperties.Name="Shape" x:Name="ShapeButton" Classes="tool" ToolTip.Tip="Choose a shape, then drag on the page to draw it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconShape}" />
+              <TextBlock x:Name="ShapeText" Classes="label" Text="Shape" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="RectangleItem" Header="_Rectangle" />
+                <MenuItem x:Name="EllipseItem" Header="_Ellipse" />
+                <MenuItem x:Name="ArrowItem" Header="_Arrow" />
+                <MenuItem x:Name="LineItem" Header="_Line" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button AutomationProperties.Name="Stamp" x:Name="StampButton" Classes="tool" ToolTip.Tip="Choose a stamp, then click on the page to place it">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon add" Data="{StaticResource IconStamp}" />
+              <TextBlock x:Name="StampText" Classes="label" Text="Stamp" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="ApprovedItem" Header="_Approved" />
+                <MenuItem x:Name="ReviewedItem" Header="_Reviewed" />
+                <MenuItem x:Name="DraftItem" Header="_Draft" />
+                <MenuItem x:Name="ConfidentialItem" Header="_Confidential" />
+                <MenuItem x:Name="FinalItem" Header="_Final" />
+                <MenuItem x:Name="NotApprovedItem" Header="_Not Approved" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Rectangle Classes="separator" />
+          <!-- One colour button, always showing the colour's name, so colour is never the only cue. -->
+          <Button AutomationProperties.Name="Annotation colour" x:Name="ColourButton" Classes="tool" ToolTip.Tip="Colour for new highlights, lines and notes, and for the picked annotation">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border x:Name="ColourSwatch" Classes="swatch" />
+              <TextBlock x:Name="ColourText" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem x:Name="YellowItem" Header="_Yellow">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#F0DC96" />
+                  </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem x:Name="GreenItem" Header="_Green">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#BCDCB0" />
+                  </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem x:Name="BlueItem" Header="_Blue">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#B4CCDC" />
+                  </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem x:Name="RedItem" Header="_Red">
+                  <MenuItem.Icon>
+                    <Border Classes="swatch" Background="#E8BCB4" />
+                  </MenuItem.Icon>
+                </MenuItem>
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </WrapPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Fill & Sign tools: form fields are filled by clicking them; signatures are drawn or typed, then placed. -->
+    <Border x:Name="FillSignBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+      <DockPanel>
+        <Button AutomationProperties.Name="Done" x:Name="FillSignDoneButton" DockPanel.Dock="Right" Classes="tool" ToolTip.Tip="Put the Fill &amp; Sign tools away">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+            <TextBlock Classes="label" Text="Done" />
+          </StackPanel>
+        </Button>
+        <StackPanel Orientation="Horizontal">
+          <Button AutomationProperties.Name="Draw Signature" x:Name="DrawSignatureButton" Classes="tool" ToolTip.Tip="Then drag on the page to sign">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconDraw}" />
+              <TextBlock Classes="label" Text="Draw Signature" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Type Signature" x:Name="TypeSignatureButton" Classes="tool" ToolTip.Tip="Type your name, then click on the page to sign">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconSignature}" />
+              <TextBlock Classes="label" Text="Type Signature" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Sign with Certificate…" x:Name="CertificateSignButton" Classes="tool" ToolTip.Tip="Sign a copy with your digital certificate (.p12 or .pfx)">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon edit" Data="{StaticResource IconCertificate}" />
+              <TextBlock Classes="label" Text="Sign with Certificate…" />
+            </StackPanel>
+          </Button>
+          <TextBlock x:Name="FillSignHint" Classes="secondary" VerticalAlignment="Center" Margin="12,0" Text="Click a form field to fill it in." />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Shown for digitally signed documents. Signatures are checked only when asked, as checking may go online. -->
+    <Border x:Name="SignedBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="CheckSignaturesButton" DockPanel.Dock="Right" Content="Check Signatures" />
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="6,0">
+          <Path Classes="icon nav" Data="{StaticResource IconSignature}" />
+          <TextBlock x:Name="SignedText" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Steady progress while scanned pages are recognised; nothing moves except the bar, one step per page. -->
+    <Border x:Name="RecognitionBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="StopRecognitionButton" DockPanel.Dock="Right" Content="Stop" />
+        <ProgressBar x:Name="RecognitionProgress" DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
+        <TextBlock x:Name="RecognitionText" VerticalAlignment="Center" Margin="6,0" />
+      </DockPanel>
+    </Border>
+
+    <!-- Read Aloud: steady controls; the sentence being read is softly marked on the page and the view follows it. -->
+    <Border x:Name="ReadAloudBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="CloseReadAloudButton" DockPanel.Dock="Right" Content="Close" ToolTip.Tip="Stop reading (Ctrl+Shift+Y)" />
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2">
+          <Button AutomationProperties.Name="Previous sentence" x:Name="PreviousSentenceButton" Classes="tool" ToolTip.Tip="Previous sentence">
+            <Path Classes="icon nav" Data="{StaticResource IconPreviousSentence}" />
+          </Button>
+          <Button AutomationProperties.Name="Play" x:Name="PlayButton" Classes="tool" ToolTip.Tip="Carry on reading">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconPlay}" />
+              <TextBlock Classes="label" Text="Play" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Pause" x:Name="PauseButton" Classes="tool" ToolTip.Tip="Pause, keeping your place">
+            <StackPanel Orientation="Horizontal">
+              <Path Classes="icon nav" Data="{StaticResource IconPause}" />
+              <TextBlock Classes="label" Text="Pause" />
+            </StackPanel>
+          </Button>
+          <Button AutomationProperties.Name="Next sentence" x:Name="NextSentenceButton" Classes="tool" ToolTip.Tip="Next sentence">
+            <Path Classes="icon nav" Data="{StaticResource IconNextSentence}" />
+          </Button>
+          <ComboBox x:Name="VoiceBox" AutomationProperties.Name="Voice" Width="250" VerticalAlignment="Center" Margin="8,0,2,0" ToolTip.Tip="Voice" />
+          <ComboBox x:Name="SpeedBox" AutomationProperties.Name="Speed" Width="150" VerticalAlignment="Center" ToolTip.Tip="Speed" />
+          <Button AutomationProperties.Name="Options" x:Name="ReadAloudOptionsButton" Classes="tool" ToolTip.Tip="How what is read aloud is marked">
+            <TextBlock Classes="label" Text="Options" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="8" Margin="4">
+                  <CheckBox x:Name="WordMarkCheck" Content="Mark the word being read" />
+                  <CheckBox x:Name="FocusBandCheck" Content="Dim text away from what is read" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button x:Name="DownloadVoiceButton" Content="Download Voice" VerticalAlignment="Center" Margin="8,0,0,0" />
+          <ProgressBar x:Name="VoiceDownloadProgress" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
+        </StackPanel>
+        <TextBlock x:Name="ReadAloudText" VerticalAlignment="Center" Margin="8,0" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+
+    <!-- A message that waits until dismissed, for example a failed save. -->
+    <Border x:Name="NoticeBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="DismissNoticeButton" DockPanel.Dock="Right" Content="Dismiss" />
+        <TextBlock x:Name="NoticeText" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+
+    <!-- Shown when the user chose to be asked before reloading a changed file, or has unsaved edits. -->
+    <Border x:Name="ReloadBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+          <Button x:Name="ReloadButton" Content="Reload" />
+          <Button x:Name="DismissReloadButton" Content="Dismiss" />
+        </StackPanel>
+        <TextBlock VerticalAlignment="Center" Margin="6,0" Text="This file changed on disk." />
+      </DockPanel>
+    </Border>
+
+    <!-- Find bar. -->
+    <Border x:Name="FindBar" DockPanel.Dock="Top" Classes="toolbar">
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <TextBox x:Name="SearchBox" AutomationProperties.Name="Find in document" Width="280" MinHeight="28" Padding="8,3" VerticalAlignment="Center" PlaceholderText="Find in document" />
+        <ToggleButton AutomationProperties.Name="Match case" x:Name="MatchCaseToggle" Classes="tool" ToolTip.Tip="Match case">
+          <Path Classes="icon" Data="{StaticResource IconCase}" />
+        </ToggleButton>
+        <ToggleButton AutomationProperties.Name="Whole words" x:Name="WholeWordToggle" Classes="tool" ToolTip.Tip="Whole words">
+          <Path Classes="icon" Data="{StaticResource IconWholeWord}" />
+        </ToggleButton>
+        <Button AutomationProperties.Name="Previous result" x:Name="PreviousResultButton" Classes="tool" ToolTip.Tip="Previous result (Shift+F3)">
+          <Path Classes="icon nav" Data="{StaticResource IconPageUp}" />
+        </Button>
+        <Button AutomationProperties.Name="Next result" x:Name="NextResultButton" Classes="tool" ToolTip.Tip="Next result (F3)">
+          <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
+        </Button>
+        <TextBlock x:Name="SearchStatusText" Classes="secondary" VerticalAlignment="Center" Margin="8,0" />
+        <Button AutomationProperties.Name="Close find" x:Name="CloseFindButton" Classes="tool" ToolTip.Tip="Close (Esc)">
+          <Path Classes="icon remove" Data="{StaticResource IconClose}" />
+        </Button>
+      </StackPanel>
+    </Border>
+
+    </StackPanel>
+
+    <Grid ColumnDefinitions="Auto,Auto,*">
+      <!-- Sidebar. -->
+      <Border x:Name="Sidebar" Grid.Column="0" Width="220" Classes="sidebar">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center" Margin="4">
+            <ToggleButton AutomationProperties.Name="Thumbnails" x:Name="ThumbnailsToggle" Classes="tool" ToolTip.Tip="Thumbnails">
+              <Path Classes="icon nav" Data="{StaticResource IconThumbnails}" />
+            </ToggleButton>
+            <ToggleButton AutomationProperties.Name="Outline" x:Name="OutlineToggle" Classes="tool" ToolTip.Tip="Outline">
+              <Path Classes="icon nav" Data="{StaticResource IconOutline}" />
+            </ToggleButton>
+            <ToggleButton AutomationProperties.Name="Search results" x:Name="SearchResultsToggle" Classes="tool" ToolTip.Tip="Search results">
+              <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
+            </ToggleButton>
+            <ToggleButton AutomationProperties.Name="Annotations" x:Name="AnnotationsToggle" Classes="tool" ToolTip.Tip="Annotations">
+              <Path Classes="icon nav" Data="{StaticResource IconAnnotations}" />
+            </ToggleButton>
+            <!-- Only shown when the document has embedded files. -->
+            <ToggleButton AutomationProperties.Name="Attachments" x:Name="AttachmentsToggle" Classes="tool" ToolTip.Tip="Attachments">
+              <Path Classes="icon nav" Data="{StaticResource IconAttachment}" />
+            </ToggleButton>
+            <!-- Only shown when the document has layers. -->
+            <ToggleButton AutomationProperties.Name="Layers" x:Name="LayersToggle" Classes="tool" ToolTip.Tip="Layers">
+              <Path Classes="icon nav" Data="{StaticResource IconLayers}" />
+            </ToggleButton>
+          </StackPanel>
+          <Panel>
+            <ListBox x:Name="ThumbnailList" Classes="thumbnails" Background="Transparent" />
+            <Panel x:Name="OutlinePanel">
+              <TreeView x:Name="OutlineTree" Background="Transparent" />
+              <TextBlock x:Name="NoOutlineText" Classes="secondary" Margin="12" TextWrapping="Wrap" Text="This document has no outline." />
+            </Panel>
+            <Panel x:Name="AnnotationsPanel">
+              <ListBox x:Name="AnnotationList" Background="Transparent" />
+              <TextBlock x:Name="NoAnnotationsText" Classes="secondary" Margin="12" TextWrapping="Wrap"
+                         Text="No annotations yet. Choose Annotate, or right-click selected text." />
+            </Panel>
+            <ListBox x:Name="SearchResultList" Background="Transparent" />
+            <DockPanel x:Name="LayersPanel">
+              <TextBlock DockPanel.Dock="Top" Classes="secondary" Margin="12,4,12,8" TextWrapping="Wrap" Text="Tick a layer to show it. Only the view changes, not the file." />
+              <ListBox x:Name="LayerList" Background="Transparent" />
+            </DockPanel>
+            <DockPanel x:Name="AttachmentsPanel">
+              <Button x:Name="SaveAttachmentButton" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" Margin="8" Content="Save Attachment…" />
+              <ListBox x:Name="AttachmentList" Background="Transparent" />
+            </DockPanel>
+          </Panel>
+        </DockPanel>
+      </Border>
+      <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="1" Background="{DynamicResource AppBorderBrush}" />
+
+      <!-- Pages. -->
+      <Panel Grid.Column="2">
+        <views:FocusView x:Name="FocusPane" IsVisible="False" />
+        <ScrollViewer x:Name="Scroller" Background="{DynamicResource AppCanvasBackground}"
+                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+          <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
+            <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
+                                 SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" DimBrush="{DynamicResource AppDimBrush}"
+                                 LabelBackground="{DynamicResource AppWindowBackground}" LabelForeground="{DynamicResource AppForeground}" />
+            <!-- The text field editor sits exactly over the field being filled in. -->
+            <Canvas x:Name="FieldOverlay">
+              <TextBox x:Name="FieldEditor" AutomationProperties.Name="Form field" Classes="field" IsVisible="False" />
+            </Canvas>
+          </Panel>
+        </ScrollViewer>
+
+        <Border x:Name="ErrorPanel" Background="{DynamicResource AppCanvasBackground}">
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="480">
+            <Path Classes="icon" Width="48" Height="48" Stroke="{DynamicResource AppSecondaryForeground}" Data="{StaticResource IconDocument}" />
+            <TextBlock FontSize="16" HorizontalAlignment="Center" Text="This document could not be opened" />
+            <TextBlock x:Name="ErrorText" Classes="secondary" TextWrapping="Wrap" HorizontalAlignment="Center" />
+          </StackPanel>
+        </Border>
+
+        <Border x:Name="PasswordPanel" Background="{DynamicResource AppCanvasBackground}">
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Width="320">
+            <TextBlock FontSize="16" HorizontalAlignment="Center" Text="This document is password protected" />
+            <TextBox x:Name="PasswordBox" AutomationProperties.Name="Password" PasswordChar="●" PlaceholderText="Password" />
+            <Button x:Name="UnlockButton" HorizontalAlignment="Right" Content="Unlock" />
+          </StackPanel>
+        </Border>
+      </Panel>
+    </Grid>
+  </DockPanel>
+</UserControl>

@@ -1,0 +1,73 @@
+# deb and rpm packages built with nfpm (https://nfpm.goreleaser.com).
+# Environment: VERSION, NFPM_ARCH (amd64|arm64), PUBLISH_DIR (published build), MAINTAINER.
+name: pdfviewerlite
+arch: ${NFPM_ARCH}
+platform: linux
+version: ${VERSION}
+section: graphics
+priority: optional
+maintainer: ${MAINTAINER}
+description: |
+  Fast, tabbed PDF viewer.
+  Renders with PDFium, follows the KDE colour scheme and opens documents launched
+  from the file manager as tabs in the running window.
+vendor: Glenn Watson
+homepage: https://github.com/glennawatson/PdfViewerLite
+license: MIT
+depends:
+  - libfontconfig1 | fontconfig
+  - libx11-6 | libX11
+  - libice6 | libICE
+  - libsm6 | libSM
+# Printing straight to a printer uses libcups, text recognition (More > Recognise Text) uses Tesseract, and Read Aloud
+# plays through libpulse-simple (PulseAudio or PipeWire), when installed.
+overrides:
+  rpm:
+    depends:
+      - fontconfig
+      - libX11
+      - libICE
+      - libSM
+    recommends:
+      - libwayland-client
+      - libxkbcommon
+      - mesa-libEGL
+      - cups-libs
+      - tesseract
+      - tesseract-langpack-eng
+      - pulseaudio-libs
+  deb:
+    recommends:
+      - libwayland-client0
+      - libxkbcommon0
+      - libegl1
+      - libcups2
+      - libtesseract5
+      - tesseract-ocr-eng
+      - libpulse0
+contents:
+  - src: ${PUBLISH_DIR}/pdfviewerlite
+    dst: /usr/lib/pdfviewerlite/pdfviewerlite
+    file_info:
+      mode: 0755
+  - src: ${PUBLISH_DIR}/libpdfium.so
+    dst: /usr/lib/pdfviewerlite/libpdfium.so
+  - src: ${PUBLISH_DIR}/libSkiaSharp.so
+    dst: /usr/lib/pdfviewerlite/libSkiaSharp.so
+  - src: ${PUBLISH_DIR}/libHarfBuzzSharp.so
+    dst: /usr/lib/pdfviewerlite/libHarfBuzzSharp.so
+  - src: ${PUBLISH_DIR}/libonnxruntime.so
+    dst: /usr/lib/pdfviewerlite/libonnxruntime.so
+  - src: ${PUBLISH_DIR}/libonnxruntime_providers_shared.so
+    dst: /usr/lib/pdfviewerlite/libonnxruntime_providers_shared.so
+  - src: /usr/lib/pdfviewerlite/pdfviewerlite
+    dst: /usr/bin/pdfviewerlite
+    type: symlink
+  - src: packaging/linux/net.glennwatson.PdfViewerLite.desktop
+    dst: /usr/share/applications/net.glennwatson.PdfViewerLite.desktop
+  - src: packaging/linux/net.glennwatson.PdfViewerLite.metainfo.xml
+    dst: /usr/share/metainfo/net.glennwatson.PdfViewerLite.metainfo.xml
+  - src: packaging/linux/icons/net.glennwatson.PdfViewerLite.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/net.glennwatson.PdfViewerLite.svg
+  - src: LICENSE
+    dst: /usr/share/licenses/pdfviewerlite/LICENSE

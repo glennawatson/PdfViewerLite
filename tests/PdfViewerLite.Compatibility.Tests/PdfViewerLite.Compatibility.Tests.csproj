@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- The corpus is large, so it runs once, on the runtime the app ships with. -->
+    <TargetFrameworks>net10.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Http\PdfViewerLite.Http.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.TestAssets\PdfViewerLite.TestAssets.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\corpus\corpus.json" Link="corpus.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

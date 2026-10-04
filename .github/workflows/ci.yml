@@ -1,0 +1,251 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          # The .NET 11 SDK from global.json builds everything; the .NET 10 runtime runs the net10.0 targets.
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - name: Install Tesseract and a sound server for the OCR and playback tests
+        run: sudo apt-get update && sudo apt-get install -y libtesseract5 tesseract-ocr-eng pulseaudio
+      - name: Start a silent sound server
+        run: pulseaudio --daemonize=true --exit-idle-time=-1 -n --load="module-null-sink sink_name=silent" --load="module-native-protocol-unix"
+      - name: Cache the Kokoro voice files
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pdfviewerlite/kokoro
+          key: kokoro-${{ hashFiles('src/PdfViewerLite.Speech/Kokoro/KokoroModel.cs', 'src/PdfViewerLite.Speech/VoiceRelease.cs') }}
+      - name: Cache the MeloTTS voice files
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pdfviewerlite/melo
+          key: melo-${{ hashFiles('src/PdfViewerLite.Speech/VoiceRelease.cs') }}
+      - name: Cache the real-world PDF corpus
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pdfviewerlite/corpus
+          key: corpus-${{ hashFiles('tests/corpus/corpus.json') }}
+      - name: Build
+        run: dotnet build PdfViewerLite.slnx -c Release
+      - name: Build C# tools
+        run: |
+          dotnet build tools/voice-models/import_melo.cs -c Release
+          dotnet build tools/voice-models/check_melo.cs -c Release
+          dotnet build tools/voice-models/reference_melo.cs -c Release
+          dotnet build tools/voice-models/manifest.cs -c Release
+          dotnet build tools/accessibility/atspi-walk.cs -c Release
+          dotnet build tools/accessibility/create-check-pdf.cs -c Release
+      - name: Test
+        env:
+          # The Read Aloud integration tests run the real Kokoro model, downloaded by the app's own downloader.
+          PDFVIEWERLITE_KOKORO_DOWNLOAD: '1'
+          PDFVIEWERLITE_MELO_DOWNLOAD: '1'
+          # The compatibility tests run every operation on real PDFs listed in tests/corpus/corpus.json.
+          PDFVIEWERLITE_CORPUS_DOWNLOAD: '1'
+        run: dotnet test --solution PdfViewerLite.slnx -c Release --coverage --coverage-output-format cobertura
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: '**/TestResults/**'
+          if-no-files-found: ignore
+
+  build-desktops:
+    name: Build on ${{ matrix.os }}
+    # Tests run on Linux; Windows and macOS build everything, including their platform integrations.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - name: Build
+        run: dotnet build PdfViewerLite.slnx -c Release
+
+  package:
+    name: Package ${{ matrix.rid }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-24.04
+            appimage: x86_64
+            nfpm: amd64
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            appimage: aarch64
+            nfpm: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          # The .NET 11 SDK from global.json builds everything; the .NET 10 runtime runs the net10.0 targets.
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Install native toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev desktop-file-utils xvfb dbus at-spi2-core
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.1.0~ci${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish (Native AOT)
+        run: scripts/publish-linux.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: Screen reader check (AT-SPI)
+        run: scripts/check-screen-reader.sh artifacts/${{ matrix.rid }}/pdfviewerlite
+      - name: Validate desktop entry
+        run: desktop-file-validate packaging/linux/net.glennwatson.PdfViewerLite.desktop
+      - name: AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: |
+          curl -sSfL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.appimage }}.AppImage"
+          chmod +x appimagetool && sudo mv appimagetool /usr/local/bin/
+          packaging/linux/build-appimage.sh artifacts/${{ matrix.rid }} ${{ matrix.appimage }} ${{ steps.version.outputs.value }}
+      - name: deb and rpm
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          NFPM_ARCH: ${{ matrix.nfpm }}
+          PUBLISH_DIR: artifacts/${{ matrix.rid }}
+          MAINTAINER: Glenn Watson
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          for packager in deb rpm; do "$(go env GOPATH)/bin/nfpm" package -f packaging/linux/nfpm.yaml -p "$packager" -t artifacts/; done
+      - name: Tarball
+        run: tar -C artifacts -czf "artifacts/pdfviewerlite-${{ steps.version.outputs.value }}-${{ matrix.rid }}.tar.gz" ${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.rid }}
+          path: |
+            artifacts/*.AppImage
+            artifacts/*.deb
+            artifacts/*.rpm
+            artifacts/*.tar.gz
+
+  package-windows:
+    name: Package ${{ matrix.rid }}
+    needs: [build, build-desktops]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            arch: x64
+          - rid: win-arm64
+            arch: arm64
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish (Native AOT)
+        run: scripts/publish.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: Installer
+        run: |
+          choco install innosetup --no-progress -y
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" -DAppVersion=${{ steps.version.outputs.value }} -DArch=${{ matrix.arch }} \
+            -DSourceDir="$(cygpath -w "$PWD/artifacts/${{ matrix.rid }}")" -DOutputDir="$(cygpath -w "$PWD/artifacts")" packaging/windows/PdfViewerLite.iss
+      - name: Portable zip
+        run: 7z a "artifacts/pdfviewerlite-${{ steps.version.outputs.value }}-${{ matrix.rid }}.zip" "./artifacts/${{ matrix.rid }}/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.rid }}
+          path: |
+            artifacts/*-setup.exe
+            artifacts/*.zip
+
+  package-macos:
+    name: Package ${{ matrix.rid }}
+    needs: [build, build-desktops]
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [osx-arm64, osx-x64]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          global-json-file: global.json
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish (Native AOT)
+        run: scripts/publish.sh ${{ matrix.rid }} -p:Version=${{ steps.version.outputs.value }}
+      - name: App bundle and disk image
+        run: packaging/macos/build-app.sh artifacts/${{ matrix.rid }} ${{ steps.version.outputs.value }} ${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.rid }}
+          path: |
+            artifacts/*.dmg
+            artifacts/*.app.zip
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [package, package-windows, package-macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: packages
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: packages/*

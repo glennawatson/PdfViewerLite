@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PdfViewerLite.App.Views.RecentDocumentView">
+  <StackPanel Orientation="Horizontal" Spacing="10" Background="Transparent">
+    <Path Classes="icon" Data="{StaticResource IconDocument}" />
+    <StackPanel>
+      <TextBlock x:Name="NameText" />
+      <TextBlock x:Name="FolderText" Classes="secondary" FontSize="11" TextTrimming="CharacterEllipsis" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

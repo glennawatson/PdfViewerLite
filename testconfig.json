@@ -1,0 +1,24 @@
+{
+    "platform": {
+        "execution": {
+            "parallel": false
+        }
+    },
+    "codeCoverage": {
+        "Configuration": {
+            "Format": "cobertura",
+            "CodeCoverage": {
+                "SkipAutoProperties": true,
+                "ModulePaths": {
+                    "Include": [
+                        "PdfViewerLite\\..*"
+                    ],
+                    "Exclude": [
+                        ".*Tests\\.dll$",
+                        ".*TestRunner.*"
+                    ]
+                }
+            }
+        }
+    }
+}
