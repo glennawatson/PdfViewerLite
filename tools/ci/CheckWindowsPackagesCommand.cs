@@ -14,7 +14,7 @@ namespace PdfViewerLite.Tools.Commands;
 internal static class CheckWindowsPackagesCommand
 {
     /// <summary>The shared asset download client.</summary>
-    private static readonly HttpClient Client = new();
+    private static readonly HttpClient Client = new() { BaseAddress = new("https://github.com"), };
 
     /// <summary>Checks copies of the packaged installers after payload replacement.</summary>
     /// <param name="args">The artifacts directory.</param>
