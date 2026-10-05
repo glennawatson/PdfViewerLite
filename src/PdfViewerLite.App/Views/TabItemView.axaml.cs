@@ -6,6 +6,7 @@ using System.Diagnostics;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI;
 using ReactiveUI.Binding;
+using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Views;
 
@@ -29,6 +30,11 @@ public sealed partial class TabItemView : ReactiveUI.Avalonia.ReactiveUserContro
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.PreviewHeight, static v => v.PreviewPage.Height));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.PreviewHeight, static v => v.PreviewPage.IsVisible, static height => height > 0));
             disposables.Add(this.WhenChanged(static v => v.ViewModel).BindTo(this, static v => v.PreviewPage.Tab));
+
+            // The unsaved dot is only seen, so the tab's spoken name says it too. The name is an attached property
+            // on the tab strip's item, which a binding expression cannot reach.
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.FileName, static v => v.ViewModel!.HasUnsavedChanges, ItemAutomation.DescribeTab)
+                .SubscribeSafe(name => ItemAutomation.NameContainer(this, name), static error => Trace.TraceError(error.ToString())));
         });
     }
 }

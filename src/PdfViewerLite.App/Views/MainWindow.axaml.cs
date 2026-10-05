@@ -65,6 +65,7 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         _ = this.WhenActivated(
             disposables =>
             {
+                disposables.Add(ItemAutomation.NameItems(TabFinderList));
                 BindWindowEvents(disposables);
                 BindTabStrip(disposables, TabStrip);
                 BindTabFinder(disposables, TabFinderList, TabFinderBox, TabFinderButton.Flyout!);

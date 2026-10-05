@@ -26,6 +26,9 @@ public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<Pr
     public PromptWindow()
     {
         InitializeComponent();
+
+        // The box has no name of its own: it is named by the question above it, which changes with each prompt.
+        FieldLabels.Link((InputBox, LabelText));
         _ = this.WhenActivated(disposables =>
         {
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.Title));

@@ -6,7 +6,7 @@
         Background="{DynamicResource AppWindowBackground}">
   <!-- Cancel is the default button and Esc cancels, so the safe choice is always the easy one. -->
   <StackPanel Margin="20" Spacing="12">
-    <TextBlock x:Name="TitleText" FontSize="16" TextWrapping="Wrap" />
+    <TextBlock x:Name="TitleText" FontSize="16" TextWrapping="Wrap" AutomationProperties.HeadingLevel="1" />
     <TextBlock x:Name="MessageText" Classes="secondary" TextWrapping="Wrap" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
       <Button x:Name="ConfirmButton" views:ControlHelp.Text="{x:Static views:Descriptions.Confirm}" />

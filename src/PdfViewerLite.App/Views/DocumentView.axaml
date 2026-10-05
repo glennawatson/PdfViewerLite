@@ -6,7 +6,7 @@
   <!-- Layout only: every binding is made in code with ReactiveUI.Binding (DocumentView.axaml.cs). -->
   <DockPanel>
     <!-- Read mode's only control: the way back to the tool bars. -->
-    <Border x:Name="ReadModeBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+    <Border x:Name="ReadModeBar" DockPanel.Dock="Top" Classes="toolbar subbar" AutomationProperties.Name="Read mode" AutomationProperties.ControlTypeOverride="ToolBar">
       <DockPanel>
         <Button AutomationProperties.Name="Leave Read Mode" x:Name="LeaveReadModeButton" views:ControlHelp.Text="{x:Static views:Descriptions.LeaveReadMode}" DockPanel.Dock="Right" Classes="tool">
           <StackPanel Orientation="Horizontal">
@@ -20,7 +20,7 @@
     <!-- Everything above the pages; hidden while presenting or reading. -->
     <StackPanel x:Name="Chrome" DockPanel.Dock="Top">
     <!-- Named menus keep related actions together. Their labels stay visible in icons-only mode. -->
-    <Border DockPanel.Dock="Top" Classes="toolbar">
+    <Border x:Name="MainToolBar" DockPanel.Dock="Top" Classes="toolbar" AutomationProperties.Name="Tool bar" AutomationProperties.LandmarkType="Navigation" AutomationProperties.ControlTypeOverride="ToolBar">
       <DockPanel>
         <WrapPanel DockPanel.Dock="Bottom" Orientation="Horizontal">
           <Button AutomationProperties.Name="Save" x:Name="SaveButton" views:ControlHelp.Text="{x:Static views:Descriptions.Save}" Classes="tool">
@@ -141,7 +141,8 @@
           <Button AutomationProperties.Name="Zoom out" x:Name="ZoomOutButton" views:ControlHelp.Text="{x:Static views:Descriptions.ZoomOut}" Classes="tool">
             <Path Classes="icon nav" Data="{StaticResource IconZoomOut}" />
           </Button>
-          <Button x:Name="ZoomButton" views:ControlHelp.Text="{x:Static views:Descriptions.ZoomMenu}" Classes="tool" MinWidth="64">
+          <!-- Named by its content, the zoom, which is announced when it changes. -->
+          <Button x:Name="ZoomButton" views:ControlHelp.Text="{x:Static views:Descriptions.ZoomMenu}" AutomationProperties.LiveSetting="Polite" Classes="tool" MinWidth="64">
             <Button.Flyout>
               <MenuFlyout>
                 <MenuItem x:Name="FitWidthItem" views:ControlHelp.Text="{x:Static views:Descriptions.FitWidth}" Header="Fit _Width" InputGesture="Ctrl+2" />
@@ -165,7 +166,7 @@
     </Border>
 
     <!-- Measuring: shown only while measuring. Click points on the page; double-click or Enter finishes, Esc clears. -->
-    <Border x:Name="MeasureBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+    <Border x:Name="MeasureBar" DockPanel.Dock="Top" Classes="toolbar subbar" AutomationProperties.Name="Measure tools" AutomationProperties.ControlTypeOverride="ToolBar">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
           <Button AutomationProperties.Name="Keep on page" x:Name="MeasureKeepButton" views:ControlHelp.Text="{x:Static views:Descriptions.MeasureKeep}" Classes="tool">
@@ -207,7 +208,7 @@
             </StackPanel>
           </ToggleButton>
           <Rectangle Classes="separator" />
-          <TextBlock Classes="secondary" Text="Scale" VerticalAlignment="Center" Margin="4,0,6,0" />
+          <TextBlock x:Name="ScaleLabel" Classes="secondary" Text="Scale" VerticalAlignment="Center" Margin="4,0,6,0" />
           <TextBox x:Name="ScaleBox" views:ControlHelp.Text="{x:Static views:Descriptions.MeasureScale}" AutomationProperties.Name="Measuring scale" Width="130" Height="30" MinHeight="30" VerticalAlignment="Center"
                    VerticalContentAlignment="Center" />
           <TextBlock x:Name="MeasureResult" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="12,0" FontWeight="SemiBold" />
@@ -216,7 +217,7 @@
     </Border>
 
     <!-- Annotate tools: shown only while annotating. Each tool has its name beside its icon. -->
-    <Border x:Name="AnnotateBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+    <Border x:Name="AnnotateBar" DockPanel.Dock="Top" Classes="toolbar subbar" AutomationProperties.Name="Annotate tools" AutomationProperties.ControlTypeOverride="ToolBar">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
           <Button AutomationProperties.Name="Undo" x:Name="UndoButton" views:ControlHelp.Text="{x:Static views:Descriptions.Undo}" Classes="tool">
@@ -342,7 +343,7 @@
     </Border>
 
     <!-- Fill & Sign tools: form fields are filled by clicking them; signatures are drawn or typed, then placed. -->
-    <Border x:Name="FillSignBar" DockPanel.Dock="Top" Classes="toolbar subbar">
+    <Border x:Name="FillSignBar" DockPanel.Dock="Top" Classes="toolbar subbar" AutomationProperties.Name="Fill and Sign tools" AutomationProperties.ControlTypeOverride="ToolBar">
       <DockPanel>
         <Button AutomationProperties.Name="Done" x:Name="FillSignDoneButton" views:ControlHelp.Text="{x:Static views:Descriptions.FillSignDone}" DockPanel.Dock="Right" Classes="tool">
           <StackPanel Orientation="Horizontal">
@@ -389,13 +390,13 @@
     <Border x:Name="RecognitionBar" DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
         <Button x:Name="StopRecognitionButton" views:ControlHelp.Text="{x:Static views:Descriptions.StopRecognition}" DockPanel.Dock="Right" Content="Stop" />
-        <ProgressBar x:Name="RecognitionProgress" DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
-        <TextBlock x:Name="RecognitionText" VerticalAlignment="Center" Margin="6,0" />
+        <ProgressBar x:Name="RecognitionProgress" AutomationProperties.Name="Text recognition progress" DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
+        <TextBlock x:Name="RecognitionText" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="6,0" />
       </DockPanel>
     </Border>
 
     <!-- Read Aloud: steady controls; the sentence being read is softly marked on the page and the view follows it. -->
-    <Border x:Name="ReadAloudBar" DockPanel.Dock="Top" Classes="toolbar">
+    <Border x:Name="ReadAloudBar" DockPanel.Dock="Top" Classes="toolbar" AutomationProperties.Name="Read Aloud" AutomationProperties.ControlTypeOverride="ToolBar">
       <DockPanel>
         <Button x:Name="CloseReadAloudButton" views:ControlHelp.Text="{x:Static views:Descriptions.CloseReadAloud}" DockPanel.Dock="Right" Content="Close" />
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2">
@@ -431,9 +432,9 @@
             </Button.Flyout>
           </Button>
           <Button x:Name="DownloadVoiceButton" views:ControlHelp.Text="{x:Static views:Descriptions.DownloadVoice}" Content="Download Voice" VerticalAlignment="Center" Margin="8,0,0,0" />
-          <ProgressBar x:Name="VoiceDownloadProgress" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
+          <ProgressBar x:Name="VoiceDownloadProgress" AutomationProperties.Name="Voice download progress" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
         </StackPanel>
-        <TextBlock x:Name="ReadAloudText" VerticalAlignment="Center" Margin="8,0" TextWrapping="Wrap" />
+        <TextBlock x:Name="ReadAloudText" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="8,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
 
@@ -441,7 +442,7 @@
     <Border x:Name="NoticeBar" DockPanel.Dock="Top" Classes="toolbar">
       <DockPanel>
         <Button x:Name="DismissNoticeButton" views:ControlHelp.Text="{x:Static views:Descriptions.DismissMessage}" DockPanel.Dock="Right" Content="Dismiss" />
-        <TextBlock x:Name="NoticeText" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
+        <TextBlock x:Name="NoticeText" AutomationProperties.LiveSetting="Assertive" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
 
@@ -452,12 +453,12 @@
           <Button x:Name="ReloadButton" views:ControlHelp.Text="{x:Static views:Descriptions.ReloadChanged}" Content="Reload" />
           <Button x:Name="DismissReloadButton" views:ControlHelp.Text="{x:Static views:Descriptions.DismissReload}" Content="Dismiss" />
         </StackPanel>
-        <TextBlock VerticalAlignment="Center" Margin="6,0" Text="This file changed on disk." />
+        <TextBlock x:Name="ReloadText" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="6,0" Text="This file changed on disk." />
       </DockPanel>
     </Border>
 
     <!-- Find bar. -->
-    <Border x:Name="FindBar" DockPanel.Dock="Top" Classes="toolbar">
+    <Border x:Name="FindBar" DockPanel.Dock="Top" Classes="toolbar" AutomationProperties.Name="Find" AutomationProperties.LandmarkType="Search">
       <StackPanel Orientation="Horizontal" Spacing="2">
         <TextBox x:Name="SearchBox" views:ControlHelp.Text="{x:Static views:Descriptions.SearchBox}" AutomationProperties.Name="Find in document" Width="280" MinHeight="28" Padding="8,3" VerticalAlignment="Center" PlaceholderText="Find in document" />
         <ToggleButton AutomationProperties.Name="Match case" x:Name="MatchCaseToggle" views:ControlHelp.Text="{x:Static views:Descriptions.MatchCase}" Classes="tool">
@@ -472,7 +473,7 @@
         <Button AutomationProperties.Name="Next result" x:Name="NextResultButton" views:ControlHelp.Text="{x:Static views:Descriptions.NextResult}" Classes="tool">
           <Path Classes="icon nav" Data="{StaticResource IconPageDown}" />
         </Button>
-        <TextBlock x:Name="SearchStatusText" Classes="secondary" VerticalAlignment="Center" Margin="8,0" />
+        <TextBlock x:Name="SearchStatusText" AutomationProperties.LiveSetting="Polite" Classes="secondary" VerticalAlignment="Center" Margin="8,0" />
         <Button AutomationProperties.Name="Close find" x:Name="CloseFindButton" views:ControlHelp.Text="{x:Static views:Descriptions.CloseFind}" Classes="tool">
           <Path Classes="icon remove" Data="{StaticResource IconClose}" />
         </Button>
@@ -483,7 +484,7 @@
 
     <Grid ColumnDefinitions="Auto,Auto,*">
       <!-- Sidebar. -->
-      <Border x:Name="Sidebar" Grid.Column="0" Width="220" Classes="sidebar">
+      <Border x:Name="Sidebar" Grid.Column="0" Width="220" Classes="sidebar" AutomationProperties.Name="Sidebar" AutomationProperties.LandmarkType="Navigation">
         <DockPanel>
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center" Margin="4">
             <ToggleButton AutomationProperties.Name="Thumbnails" x:Name="ThumbnailsToggle" views:ControlHelp.Text="{x:Static views:Descriptions.Thumbnails}" Classes="tool">
@@ -508,24 +509,24 @@
             </ToggleButton>
           </StackPanel>
           <Panel>
-            <controls:ThumbnailListBox x:Name="ThumbnailList" Classes="thumbnails" Background="Transparent" />
+            <controls:ThumbnailListBox x:Name="ThumbnailList" AutomationProperties.Name="Page thumbnails" Classes="thumbnails" Background="Transparent" />
             <Panel x:Name="OutlinePanel">
-              <TreeView x:Name="OutlineTree" Background="Transparent" />
+              <TreeView x:Name="OutlineTree" AutomationProperties.Name="Outline" Background="Transparent" />
               <TextBlock x:Name="NoOutlineText" Classes="secondary" Margin="12" TextWrapping="Wrap" Text="This document has no outline." />
             </Panel>
             <Panel x:Name="AnnotationsPanel">
-              <ListBox x:Name="AnnotationList" Background="Transparent" />
+              <ListBox x:Name="AnnotationList" AutomationProperties.Name="Annotations" Background="Transparent" />
               <TextBlock x:Name="NoAnnotationsText" Classes="secondary" Margin="12" TextWrapping="Wrap"
                          Text="No annotations yet. Choose Annotate, or right-click selected text." />
             </Panel>
-            <ListBox x:Name="SearchResultList" Background="Transparent" />
+            <ListBox x:Name="SearchResultList" AutomationProperties.Name="Search results" Background="Transparent" />
             <DockPanel x:Name="LayersPanel">
               <TextBlock DockPanel.Dock="Top" Classes="secondary" Margin="12,4,12,8" TextWrapping="Wrap" Text="Tick a layer to show it. Only the view changes, not the file." />
-              <ListBox x:Name="LayerList" Background="Transparent" />
+              <ListBox x:Name="LayerList" AutomationProperties.Name="Layers" Background="Transparent" />
             </DockPanel>
             <DockPanel x:Name="AttachmentsPanel">
               <Button x:Name="SaveAttachmentButton" views:ControlHelp.Text="{x:Static views:Descriptions.SaveAttachment}" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" Margin="8" Content="Save Attachment…" />
-              <ListBox x:Name="AttachmentList" Background="Transparent" />
+              <ListBox x:Name="AttachmentList" AutomationProperties.Name="Attachments" Background="Transparent" />
             </DockPanel>
           </Panel>
         </DockPanel>
@@ -533,12 +534,13 @@
       <GridSplitter x:Name="SidebarSplitter" views:ControlHelp.Text="{x:Static views:Descriptions.SidebarSplitter}" Grid.Column="1" Width="1" Background="{DynamicResource AppBorderBrush}" />
 
       <!-- Pages. -->
-      <Panel Grid.Column="2">
+      <Panel x:Name="PageArea" Grid.Column="2" AutomationProperties.Name="Pages" AutomationProperties.LandmarkType="Main">
         <views:FocusView x:Name="FocusPane" IsVisible="False" />
         <ScrollViewer x:Name="Scroller" Background="{DynamicResource AppCanvasBackground}"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
           <Panel HorizontalAlignment="Left" VerticalAlignment="Top">
-            <controls:PageCanvas x:Name="Canvas" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
+            <!-- Named "Page 5 of 40" by its automation peer; the new page is announced as the reader moves. -->
+            <controls:PageCanvas x:Name="Canvas" AutomationProperties.HelpText="{x:Static views:Descriptions.Pages}" AutomationProperties.LiveSetting="Polite" HitBrush="{DynamicResource AppHitBrush}" CurrentHitOutline="{DynamicResource AppCurrentHitOutline}"
                                  SelectionBrush="{DynamicResource AppTextSelectionBrush}" SpokenBrush="{DynamicResource AppSpokenBrush}" DimBrush="{DynamicResource AppDimBrush}"
                                  LabelBackground="{DynamicResource AppWindowBackground}" LabelForeground="{DynamicResource AppForeground}" />
             <!-- The text field editor sits exactly over the field being filled in. -->
@@ -551,14 +553,14 @@
         <Border x:Name="ErrorPanel" Background="{DynamicResource AppCanvasBackground}">
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="480">
             <Path Classes="icon" Width="48" Height="48" Stroke="{DynamicResource AppSecondaryForeground}" Data="{StaticResource IconDocument}" />
-            <TextBlock FontSize="16" HorizontalAlignment="Center" Text="This document could not be opened" />
-            <TextBlock x:Name="ErrorText" Classes="secondary" TextWrapping="Wrap" HorizontalAlignment="Center" />
+            <TextBlock FontSize="16" HorizontalAlignment="Center" AutomationProperties.HeadingLevel="1" Text="This document could not be opened" />
+            <TextBlock x:Name="ErrorText" AutomationProperties.LiveSetting="Assertive" Classes="secondary" TextWrapping="Wrap" HorizontalAlignment="Center" />
           </StackPanel>
         </Border>
 
         <Border x:Name="PasswordPanel" Background="{DynamicResource AppCanvasBackground}">
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Width="320">
-            <TextBlock FontSize="16" HorizontalAlignment="Center" Text="This document is password protected" />
+            <TextBlock FontSize="16" HorizontalAlignment="Center" AutomationProperties.HeadingLevel="1" Text="This document is password protected" />
             <TextBox x:Name="PasswordBox" views:ControlHelp.Text="{x:Static views:Descriptions.DocumentPassword}" AutomationProperties.Name="Password" PasswordChar="●" PlaceholderText="Password" />
             <Button x:Name="UnlockButton" views:ControlHelp.Text="{x:Static views:Descriptions.Unlock}" HorizontalAlignment="Right" Content="Unlock" />
           </StackPanel>

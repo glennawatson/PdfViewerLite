@@ -55,6 +55,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         SingleLayoutItem.CommandParameter = "Single";
         DualLayoutItem.CommandParameter = "Dual";
         CoverLayoutItem.CommandParameter = "DualCover";
+        FieldLabels.Link((ScaleBox, ScaleLabel));
         _ = this.WhenActivated(disposables =>
         {
             BindToolBar(disposables);
@@ -177,6 +178,18 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <returns>The events.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static IObservable<RoutedEventArgs> FocusLosses(Control control) => control.Events().LostFocus;
+
+    /// <summary>Moves focus to the pages when a part of the view was hidden while it held the focus, so focus is never lost.</summary>
+    /// <param name="hidden">The part that was hidden.</param>
+    private void KeepFocus(Control hidden)
+    {
+        // Focus elsewhere, for example on the tab strip after switching tabs, is left where it is.
+        if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is Visual focused
+            && (hidden.IsVisualAncestorOf(focused) || focused is InputElement { IsEffectivelyVisible: false }))
+        {
+            FocusCanvas();
+        }
+    }
 
     /// <summary>Focuses the page canvas.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -357,6 +370,8 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <param name="bindings">The bindings.</param>
     private void BindFind(MultipleDisposable bindings)
     {
+        // Registered before the find bar's visibility binding, so the focus is checked before the bar hides.
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Search.IsOpen).Where(static open => !open).SubscribeSafe(_ => KeepFocus(FindBar), OnError));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Search.IsOpen, static v => v.FindBar.IsVisible));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Search.Query, static v => v.SearchBox.Text, static query => query, static text => text ?? string.Empty));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Search.MatchCase, static v => v.MatchCaseToggle.IsChecked, static on => on, IsOn));
@@ -378,6 +393,15 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <param name="bindings">The bindings.</param>
     private void BindSidebar(MultipleDisposable bindings)
     {
+        // Items are named as their containers are prepared, so these come before the lists are filled.
+        bindings.Add(ItemAutomation.NameItems(ThumbnailList));
+        bindings.Add(ItemAutomation.NameItems(SearchResultList));
+        bindings.Add(ItemAutomation.NameItems(AnnotationList));
+        bindings.Add(ItemAutomation.NameItems(AttachmentList));
+        bindings.Add(ItemAutomation.NameItems(LayerList));
+
+        // Registered before the sidebar's visibility binding, so the focus is checked before the sidebar hides.
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.SidebarVisible).Where(static visible => !visible).SubscribeSafe(_ => KeepFocus(Sidebar), OnError));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.SidebarVisible, static v => v.Sidebar.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.SidebarVisible, static v => v.SidebarSplitter.IsVisible));
         bindings.Add(this.Bind(ViewModel, static vm => vm.IsThumbnailsMode, static v => v.ThumbnailsToggle.IsChecked, static on => on, IsOn));

@@ -27,6 +27,19 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
         CaretBox.ItemsSource = PreferencesViewModel.CaretOptions;
         FontSizeBox.ItemsSource = PreferencesViewModel.FontSizeOptions;
         SpeechEngineBox.ItemsSource = PreferencesViewModel.SpeechEngineOptions;
+        FieldLabels.Link(
+            (SchemeBox, SchemeLabel),
+            (PageToneBox, PageToneLabel),
+            (ToolbarBox, ToolbarLabel),
+            (FileChangeBox, FileChangeLabel),
+            (MotionBox, MotionLabel),
+            (CaretBox, CaretLabel),
+            (FontSizeBox, FontSizeLabel),
+            (OpeningZoomBox, OpeningZoomLabel),
+            (SpeechEngineBox, SpeechEngineLabel),
+            (AzureKeyBox, AzureKeyLabel),
+            (AzureRegionBox, AzureRegionLabel),
+            (TimestampServerBox, TimestampServerLabel));
         _ = this.WhenActivated(disposables =>
         {
             disposables.Add(this.Bind(ViewModel, static vm => vm.ColorScheme, static v => v.SchemeBox.SelectedIndex));
@@ -51,6 +64,9 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
             disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
                 .SwitchMap(static closed => closed)
                 .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
+
+            // Start on the first choice, so the keyboard and screen readers begin at the top of the window.
+            _ = SchemeBox.Focus();
         });
     }
 
