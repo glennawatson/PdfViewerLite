@@ -38,10 +38,9 @@ public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<Pr
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Multiline, static v => v.ConfirmButton.IsDefault, IsSingleLine));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.AcceptCommand, static v => v.ConfirmButton));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.CancelCommand, static v => v.CancelButton));
-            if (ViewModel is { } viewModel)
-            {
-                disposables.Add(viewModel.Answered.SubscribeSafe(Close, static error => Trace.TraceError(error.ToString())));
-            }
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.Answered)
+                .SwitchMap(static answered => answered)
+                .SubscribeSafe(Close, static error => Trace.TraceError(error.ToString())));
 
             _ = InputBox.Focus();
             InputBox.SelectAll();

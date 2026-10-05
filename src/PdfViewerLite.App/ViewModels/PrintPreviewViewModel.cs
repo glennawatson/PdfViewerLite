@@ -13,7 +13,6 @@ using PdfViewerLite.Core.Printing;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
@@ -55,7 +54,7 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <summary>The subscriptions rebuilding the preview.</summary>
     private readonly MultipleDisposable _subscriptions;
 
-    /// <summary>Raises <see cref="Confirmed"/>.</summary>
+    /// <summary>Raises <see cref="Answered"/> with <see langword="true"/>.</summary>
     private readonly Signal<RxVoid> _confirmed = new();
 
     /// <summary>Whether the settings are valid and no build is running, so the print can be confirmed.</summary>
@@ -98,7 +97,7 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
                     static (_, _, _, _, _, _, _) => RxVoid.Default)
                 .SubscribeSafe(OnSettingsChanged, static error => Trace.TraceError(error.ToString())),
         ];
-        Confirmed = new(_confirmed);
+        Answered = Signal.Merge(_confirmed.Select(static _ => true), CancelCommand);
     }
 
     /// <summary>Gets the layout choices: pages in order, a booklet, or posters of 2, 3 or 4 sheets across.</summary>
@@ -191,8 +190,8 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the file that will print, once built.</summary>
     public string? PreviewPath { get; private set; }
 
-    /// <summary>Gets the confirmations, which close the window.</summary>
-    public AsObservableSignal<RxVoid> Confirmed{ get; }
+    /// <summary>Gets the answer, which closes the window: <see langword="true"/> to print.</summary>
+    public IObservable<bool> Answered { get; }
 
     /// <summary>Describes a sheet count.</summary>
     /// <param name="sheets">The sheets.</param>
@@ -282,6 +281,12 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
         {
         }
     }
+
+    /// <summary>Closes the window without printing.</summary>
+    /// <returns>Always <see langword="false"/>.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool Cancel() => false;
 
     /// <summary>Lists the printers off the UI thread and chooses the default one, when there are any.</summary>
     /// <returns>A task.</returns>

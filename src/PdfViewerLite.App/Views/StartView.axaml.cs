@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
@@ -31,24 +32,21 @@ public sealed partial class StartView : ReactiveUI.Avalonia.ReactiveUserControl<
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.OpenCommand, static v => v.OpenButton));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.RecentDocuments, static v => v.RecentList.ItemsSource));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.RecentDocuments.Count, static v => v.RecentPanel.IsVisible, static count => count > 0));
-            disposables.Add(ObservePicks(RecentList));
+            disposables.Add(Picks(RecentList).InvokeCommand(ViewModel, static vm => vm.OpenRecentCommand));
         });
     }
 
-    /// <summary>Opens a recent document on a click or Enter, never just because the selection moved.</summary>
+    /// <summary>Gets the recent documents picked with a click or Enter, never just because the selection moved.</summary>
     /// <param name="recent">The recent list; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
-    /// <returns>The subscription.</returns>
-    private IDisposable ObservePicks(ListBox recent)
-    {
-        var picks = Signal.Merge(
-            recent.Events().Tapped.Select(static _ => RxVoid.Default),
-            recent.Events().KeyDown.Where(static args => args.Key == Key.Enter).Select(static _ => RxVoid.Default));
-        return OpenRecent(picks.Select(_ => recent.SelectedItem).OfType<RecentDocument>());
-    }
-
-    /// <summary>Opens each chosen recent document.</summary>
-    /// <param name="chosen">The chosen documents; the binding generator needs the declared observable type here.</param>
-    /// <returns>The subscription.</returns>
+    /// <returns>
+    /// The picked documents, read from the item the event came from. The declared type matters: the binding generator
+    /// cannot see the types Events() generates, so InvokeCommand must start from this method's result.
+    /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private IDisposable OpenRecent(IObservable<RecentDocument> chosen) => chosen.InvokeCommand(ViewModel, static vm => vm.OpenRecentCommand);
+    private static IObservable<RecentDocument> Picks(ListBox recent) =>
+        Signal.Merge(
+                recent.Events().Tapped.Select(static args => args.Source),
+                recent.Events().KeyDown.Where(static args => args.Key == Key.Enter).Select(static args => args.Source))
+            .Select(static source => (source as StyledElement)?.DataContext)
+            .OfType<RecentDocument>();
 }

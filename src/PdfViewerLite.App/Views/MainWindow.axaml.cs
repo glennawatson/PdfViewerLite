@@ -54,9 +54,6 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
     /// <summary>Whether the user agreed to close with unsaved edits.</summary>
     private bool _closeConfirmed;
 
-    /// <summary>Whether a close confirmation is already open.</summary>
-    private bool _confirmingClose;
-
     /// <summary>Initializes a new instance of the <see cref="MainWindow"/> class.</summary>
     public MainWindow()
     {
@@ -153,6 +150,12 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
     private static void OnDragOver(DragEventArgs e) =>
         e.DragEffects = e.DataTransfer.Contains(DataFormat.File) || e.DataTransfer.Contains(DataFormat.Text) ? DragDropEffects.Copy : DragDropEffects.None;
 
+    /// <summary>Gets the tab a pointer event came from, read from the data context its source inherits.</summary>
+    /// <param name="e">The event.</param>
+    /// <returns>The tab, if any.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static DocumentTabViewModel? TabUnder(RoutedEventArgs e) => (e.Source as StyledElement)?.DataContext as DocumentTabViewModel;
+
     /// <summary>Gets the tab under a pointer event.</summary>
     /// <param name="strip">The tab strip.</param>
     /// <param name="e">The event.</param>
@@ -208,14 +211,14 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
                 e.Handled = true;
                 return RxVoid.Default;
             })
-            .InvokeCommand(ViewModel, static vm => vm.NextTabCommand));
+            .InvokeCommand(this, static v => v.ViewModel!.NextTabCommand));
         disposables.Add(keys.Where(static e => e.Key == Key.Tab && (e.KeyModifiers & KeyModifiers.Control) != 0 && (e.KeyModifiers & KeyModifiers.Shift) != 0)
             .Select(static e =>
             {
                 e.Handled = true;
                 return RxVoid.Default;
             })
-            .InvokeCommand(ViewModel, static vm => vm.PreviousTabCommand));
+            .InvokeCommand(this, static v => v.ViewModel!.PreviousTabCommand));
         disposables.Add(this.Events().Closing.SubscribeSafe(OnWindowClosing, OnError));
     }
 
@@ -225,13 +228,13 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
     private void BindTabStrip(MultipleDisposable disposables, ListBox tabStrip)
     {
         var pressed = tabStrip.ObserveRouted(InputElement.PointerPressedEvent, RoutingStrategies.Tunnel);
-        disposables.Add(pressed.Where(e => e.GetCurrentPoint(tabStrip).Properties.IsMiddleButtonPressed && GetTabAt(tabStrip, e) is not null)
-            .Select(e =>
+        disposables.Add(pressed.Where(static e => e.GetCurrentPoint(e.Source as Visual).Properties.IsMiddleButtonPressed && TabUnder(e) is not null)
+            .Select(static e =>
             {
                 e.Handled = true;
-                return GetTabAt(tabStrip, e);
+                return TabUnder(e);
             })
-            .InvokeCommand(ViewModel, static vm => vm.CloseTabCommand));
+            .InvokeCommand(this, static v => v.ViewModel!.CloseTabCommand));
         disposables.Add(pressed.SubscribeSafe(e => OnTabPointerPressed(tabStrip, e), OnError));
         disposables.Add(tabStrip.ObserveRouted(InputElement.PointerMovedEvent, RoutingStrategies.Tunnel).SubscribeSafe(e => OnTabPointerMoved(tabStrip, e), OnError));
         disposables.Add(tabStrip.ObserveRouted(InputElement.PointerReleasedEvent, RoutingStrategies.Tunnel).SubscribeSafe(_ => _draggedTab = null, OnError));
@@ -244,7 +247,7 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
                 e.Handled = true;
                 return (e.Source as Control)?.DataContext as DocumentTabViewModel;
             })
-            .InvokeCommand(ViewModel, static vm => vm.CloseTabCommand));
+            .InvokeCommand(this, static v => v.ViewModel!.CloseTabCommand));
         disposables.Add(tabStrip.Events().ContextRequested.SubscribeSafe(OnTabContextRequested, OnError));
     }
 
@@ -311,9 +314,10 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         if (!_closeConfirmed && viewModel.HasUnsavedTabs)
         {
             e.Cancel = true;
-            if (!_confirmingClose)
+
+            // Repeated close requests while the question is open share it.
+            if (!viewModel.IsConfirmingDiscard)
             {
-                _confirmingClose = true;
                 _ = ConfirmCloseAsync(viewModel);
             }
 
@@ -376,10 +380,6 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         catch (Exception error)
         {
             OnError(error);
-        }
-        finally
-        {
-            _confirmingClose = false;
         }
     }
 

@@ -61,6 +61,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Emits the index of each page whose content was edited.</summary>
     private readonly Signal<int> _pageEdits = new();
 
+    /// <summary>Emits text for the view to put on the clipboard.</summary>
+    private readonly Signal<string> _copyRequests = new();
+
     /// <summary>Owns the subscriptions that react to this tab's own property changes.</summary>
     private readonly MultipleDisposable _subscriptions = [];
 
@@ -114,6 +117,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         UriRequests = new(_uriRequests);
         DocumentChanges = new(_documentChanges);
         PageEdits = new(_pageEdits);
+        CopyRequests = new(_copyRequests);
 
         // The first value of each property is its current state, which needs no reaction.
         _subscriptions.Add(this.WhenChanged(static x => x.CurrentPageIndex)
@@ -169,8 +173,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the folder the file is in.</summary>
     public string Folder => Path.GetDirectoryName(Source.FilePath) ?? string.Empty;
 
-    /// <summary>Gets the page shown in the hover preview: the page the tab was last on.</summary>
-    public int PreviewPageIndex => Math.Max(0, CurrentPageIndex);
+    /// <summary>Gets the page shown in the hover preview: the page the tab was on when the preview was prepared.</summary>
+    [Reactive]
+    public partial int PreviewPageIndex { get; private set; }
 
     /// <summary>Gets the height of the hover preview, following the page's shape.</summary>
     [Reactive]
@@ -352,6 +357,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the pages whose content changed, for example after annotating, so views redraw them.</summary>
     public AsObservableSignal<int> PageEdits{ get; }
+
+    /// <summary>Gets the text the view is asked to put on the clipboard.</summary>
+    public AsObservableSignal<string> CopyRequests{ get; }
 
     /// <summary>Gets the outline.</summary>
     [Reactive(nameof(HasOutline))]
@@ -555,6 +563,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
             return;
         }
 
+        PreviewPageIndex = Math.Max(0, CurrentPageIndex);
         var page = Math.Min(PreviewPageIndex, Source.PageCount - 1);
         if (page < 0)
         {
@@ -566,7 +575,6 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         var size = Source.PageSizes[page];
         PreviewHeight = size.Width > 0 ? Math.Round(PreviewWidth * size.Height / size.Width) : PreviewWidth;
         PreviewCaption = $"Page {GetPageDisplay(page)} of {Source.PageCount}";
-        this.RaisePropertyChanged(nameof(PreviewPageIndex));
     }
 
     /// <summary>Drops every tile after layers were shown or hidden, so all pages redraw.</summary>
@@ -702,6 +710,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _uriRequests.Dispose();
         _documentChanges.Dispose();
         _pageEdits.Dispose();
+        _copyRequests.Dispose();
         RenderHub.Cache.RemoveDocument(Source.Id);
         _ = CanvasClient.Advance();
         _ = ThumbnailClient.Advance();
@@ -915,6 +924,12 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
             _ = Save(path);
         }
     }
+
+    /// <summary>Asks the view to put text on the clipboard.</summary>
+    /// <param name="text">The text.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void CopyText(string text) => _copyRequests.OnNext(text);
 
     /// <summary>Zooms in one step.</summary>
     [ReactiveCommand]

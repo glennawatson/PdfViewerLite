@@ -7,7 +7,6 @@ using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Media;
-using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Signatures;
 using ReactiveUI;
@@ -35,7 +34,10 @@ public sealed partial class SignaturesWindow : ReactiveUI.Avalonia.ReactiveWindo
         {
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Signatures, static v => v.SignatureList.ItemsSource));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Signatures — {name}"));
-            disposables.Add(CloseButton.ObserveRouted(Button.ClickEvent).SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CloseCommand, static v => v.CloseButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
+                .SwitchMap(static closed => closed)
+                .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
         });
     }
 

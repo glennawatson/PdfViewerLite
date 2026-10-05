@@ -26,10 +26,9 @@ public sealed partial class ConfirmWindow : ReactiveUI.Avalonia.ReactiveWindow<C
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.ConfirmText, static v => v.ConfirmButton.Content));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.ConfirmCommand, static v => v.ConfirmButton));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.CancelCommand, static v => v.CancelButton));
-            if (ViewModel is { } viewModel)
-            {
-                disposables.Add(viewModel.Answered.SubscribeSafe(answer => Close(answer), static error => Trace.TraceError(error.ToString())));
-            }
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.Answered)
+                .SwitchMap(static answered => answered)
+                .SubscribeSafe(answer => Close(answer), static error => Trace.TraceError(error.ToString())));
 
             _ = CancelButton.Focus();
         });

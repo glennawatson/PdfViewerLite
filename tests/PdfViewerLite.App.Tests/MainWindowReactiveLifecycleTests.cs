@@ -61,7 +61,7 @@ public sealed class MainWindowReactiveLifecycleTests
             await Assert.That(await UiWait.UntilAsync(() => window.OwnedWindows.OfType<ConfirmWindow>().Any())).IsTrue();
             var confirmation = window.OwnedWindows.OfType<ConfirmWindow>().Single();
             confirmation.Close(false);
-            await Assert.That(await UiWait.UntilAsync(() => !window.OwnedWindows.OfType<ConfirmWindow>().Any())).IsTrue();
+            await Assert.That(await UiWait.UntilAsync(() => !window.OwnedWindows.OfType<ConfirmWindow>().Any() && !main.IsConfirmingDiscard)).IsTrue();
             await Assert.That(window.IsVisible).IsTrue();
 
             window.Close();

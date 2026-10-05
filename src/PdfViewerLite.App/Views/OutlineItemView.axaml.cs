@@ -26,9 +26,11 @@ public sealed partial class OutlineItemView : ReactiveUI.Avalonia.ReactiveUserCo
             disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(vm => ToolTip.SetTip(this, vm?.Title), static error => Trace.TraceError(error.ToString())));
 
             // The tree item that hosts this view owns the expander, so the model is bound to it directly.
-            if (ViewModel is { } viewModel && this.FindAncestorOfType<TreeViewItem>() is { } container)
+            // The model writes first, so the tree item starts from its state; each direction follows the view's ViewModel.
+            if (this.FindAncestorOfType<TreeViewItem>() is { } container)
             {
-                disposables.Add(viewModel.BindTwoWay(container, static vm => vm.IsExpanded, static item => item.IsExpanded));
+                disposables.Add(this.WhenChanged(static v => v.ViewModel!.IsExpanded).BindTo(container, static item => item.IsExpanded));
+                disposables.Add(container.WhenChanged(static item => item.IsExpanded).BindTo(this, static v => v.ViewModel!.IsExpanded));
             }
         });
     }

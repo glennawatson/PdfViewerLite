@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
@@ -11,7 +10,6 @@ using PdfViewerLite.App.ViewModels;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.ObservableEvents;
 
 namespace PdfViewerLite.App.Views;
 
@@ -37,7 +35,10 @@ public sealed partial class PropertiesWindow : ReactiveUI.Avalonia.ReactiveWindo
         {
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.Title, static title => $"Properties — {title}"));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Entries, static v => v.EntryList.ItemsSource));
-            disposables.Add(ObserveClose(CloseButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CloseCommand, static v => v.CloseButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
+                .SwitchMap(static closed => closed)
+                .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
         });
     }
 
@@ -52,10 +53,4 @@ public sealed partial class PropertiesWindow : ReactiveUI.Avalonia.ReactiveWindo
         Grid.SetColumn(value, 1);
         return new Grid { ColumnDefinitions = [new(NameColumnWidth, GridUnitType.Pixel), new(1, GridUnitType.Star)], Margin = new(0, RowGap), Children = { name, value } };
     }
-
-    /// <summary>Closes the window when the button is clicked.</summary>
-    /// <param name="button">The close button; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
-    /// <returns>The subscription.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private IDisposable ObserveClose(Button button) => button.Events().Click.SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString()));
 }

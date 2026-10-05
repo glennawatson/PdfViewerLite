@@ -62,6 +62,13 @@ public sealed partial class SignaturesViewModel : ReactiveObject
         Signatures.Clear();
     }
 
+    /// <summary>Asks the signatures window to close.</summary>
+    [ReactiveCommand]
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static void Close()
+    {
+    }
+
     /// <summary>Determines whether an exception is a signing failure to tell the user about, rather than a bug.</summary>
     /// <param name="exception">The exception.</param>
     /// <returns><see langword="true"/> for a damaged file, a certificate problem, a file error or an unreachable timestamp server.</returns>

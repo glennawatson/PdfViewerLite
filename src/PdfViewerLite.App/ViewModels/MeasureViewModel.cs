@@ -166,7 +166,6 @@ public sealed partial class MeasureViewModel : ReactiveObject, IDisposable
 
         IsFinished = _points.Count >= (Mode == MeasureMode.Area ? AreaCorners : LineEnds);
         Update();
-        this.RaisePropertyChanged(nameof(CanKeep));
     }
 
     /// <summary>Clears the measurement.</summary>
@@ -178,7 +177,6 @@ public sealed partial class MeasureViewModel : ReactiveObject, IDisposable
         IsFinished = false;
         Result = string.Empty;
         this.RaisePropertyChanged(nameof(Points));
-        this.RaisePropertyChanged(nameof(CanKeep));
     }
 
     /// <inheritdoc/>

@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Forms.Scripting;
 using PdfViewerLite.Core.Geometry;
@@ -246,6 +247,12 @@ public sealed partial class FormsViewModel : ReactiveObject
 
         return FormScriptEngine.Validate(scripts.Validate, text, out var message) ? null : message;
     }
+
+    /// <summary>Picks a choice of a combo or list box.</summary>
+    /// <param name="choice">The field and option.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ChooseOption(FormChoice choice) => Choose(choice.Field, choice.Option);
 
     /// <summary>Reads every field's value by name.</summary>
     /// <param name="filler">The form.</param>

@@ -4,9 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Avalonia.Controls;
 using Avalonia.Platform.Storage;
-using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI;
 using ReactiveUI.Binding;
@@ -33,15 +31,23 @@ public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.Reactive
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.BrowseCommand, static v => v.BrowseButton));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.SignCommand, static v => v.SignButton));
             disposables.Add(this.BindInteraction(ViewModel, static vm => vm.BrowseInteraction, BrowseAsync));
-            disposables.Add(CancelButton.ObserveRouted(Button.ClickEvent).SubscribeSafe(_ => Close(false), OnError));
-            if (ViewModel is { } viewModel)
-            {
-                disposables.Add(viewModel.Confirmed.SubscribeSafe(_ => Close(true), OnError));
-            }
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CancelCommand, static v => v.CancelButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.Answered)
+                .SwitchMap(static answered => answered)
+                .SubscribeSafe(answer => Close(answer), OnError));
 
-            _ = (string.IsNullOrEmpty(ViewModel?.CertificatePath) ? CertificateBox : PasswordBox).Focus();
+            // Focus the password when a certificate is already named, otherwise the certificate box.
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.CertificatePath)
+                .Take(1)
+                .SubscribeSafe(path => FocusFirstEmpty(this, path), OnError));
         });
     }
+
+    /// <summary>Focuses the password box when a certificate is named, otherwise the certificate box.</summary>
+    /// <param name="window">The window.</param>
+    /// <param name="certificatePath">The certificate path now set.</param>
+    private static void FocusFirstEmpty(CertificateSignWindow window, string certificatePath) =>
+        _ = (string.IsNullOrEmpty(certificatePath) ? window.CertificateBox : window.PasswordBox).Focus();
 
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>

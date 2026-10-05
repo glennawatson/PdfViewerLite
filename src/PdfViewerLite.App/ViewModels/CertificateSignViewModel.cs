@@ -8,7 +8,6 @@ using System.Security.Cryptography.X509Certificates;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 using ReactiveUI.SourceGenerators;
 
@@ -21,7 +20,7 @@ namespace PdfViewerLite.App.ViewModels;
 [DebuggerDisplay("{CertificatePath}")]
 public sealed partial class CertificateSignViewModel : ReactiveObject, IDisposable
 {
-    /// <summary>Raises <see cref="Confirmed"/>.</summary>
+    /// <summary>Raises <see cref="Answered"/> with <see langword="true"/>.</summary>
     private readonly Signal<RxVoid> _confirmed = new();
 
     /// <summary>Whether a certificate file is named, so signing can start.</summary>
@@ -36,7 +35,7 @@ public sealed partial class CertificateSignViewModel : ReactiveObject, IDisposab
     {
         CertificatePath = certificatePath;
         _canSign = this.WhenChanged(static vm => vm.CertificatePath).Select(static path => !string.IsNullOrWhiteSpace(path));
-        Confirmed = new(_confirmed);
+        Answered = Signal.Merge(_confirmed.Select(static _ => true), CancelCommand);
     }
 
     /// <summary>Gets or sets the certificate file.</summary>
@@ -62,8 +61,8 @@ public sealed partial class CertificateSignViewModel : ReactiveObject, IDisposab
     /// <summary>Gets the interaction asking for a certificate file.</summary>
     public Interaction<RxVoid, string?> BrowseInteraction { get; } = new();
 
-    /// <summary>Gets the confirmations, which close the window.</summary>
-    public AsObservableSignal<RxVoid> Confirmed{ get; }
+    /// <summary>Gets the answer, which closes the window: <see langword="true"/> to sign.</summary>
+    public IObservable<bool> Answered { get; }
 
     /// <summary>Hands over the loaded certificate; the caller disposes it.</summary>
     /// <returns>The certificate, or <see langword="null"/> when none was loaded.</returns>
@@ -80,6 +79,12 @@ public sealed partial class CertificateSignViewModel : ReactiveObject, IDisposab
         _certificate?.Dispose();
         _confirmed.Dispose();
     }
+
+    /// <summary>Closes the window without signing.</summary>
+    /// <returns>Always <see langword="false"/>.</returns>
+    [ReactiveCommand]
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static bool Cancel() => false;
 
     /// <summary>Loads the certificate with the password, confirming when it can sign.</summary>
     [ReactiveCommand(CanExecute = nameof(_canSign))]

@@ -8,7 +8,6 @@ using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
-using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Printing;
 using ReactiveUI;
@@ -67,22 +66,13 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrintButton.Content, ButtonText));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.ConfirmCommand, static v => v.PrintButton));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.SystemDialogCommand, static v => v.SystemDialogButton));
-            disposables.Add(CancelButton.ObserveRouted(Button.ClickEvent).SubscribeSafe(_ => Close(false), OnError));
-            if (ViewModel is { } preview)
-            {
-                disposables.Add(preview.Confirmed.SubscribeSafe(_ => Close(true), OnError));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CancelCommand, static v => v.CancelButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.Answered)
+                .SwitchMap(static answered => answered)
+                .SubscribeSafe(answer => Close(answer), OnError));
 
-                // Ctrl+Shift+P opens the system print dialog.
-                disposables.Add(this.Events().KeyDown
-                    .Where(static e => e.Key == Key.P && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
-                    .SubscribeSafe(
-                        e =>
-                        {
-                            e.Handled = true;
-                            disposables.Add(preview.SystemDialogCommand.Execute().SubscribeSafe(static _ => { }, OnError));
-                        },
-                        OnError));
-            }
+            // Ctrl+Shift+P opens the system print dialog.
+            disposables.Add(SystemDialogShortcut().InvokeCommand(this, static v => v.ViewModel!.SystemDialogCommand));
         });
     }
 
@@ -100,4 +90,15 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Gets a request each time Ctrl+Shift+P is pressed.</summary>
+    /// <returns>The requests; the declared type matters because InvokeCommand must start from this method's result.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private IObservable<RxVoid> SystemDialogShortcut() => this.Events().KeyDown
+        .Where(static e => e.Key == Key.P && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
+        .Select(static e =>
+        {
+            e.Handled = true;
+            return RxVoid.Default;
+        });
 }

@@ -37,6 +37,9 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
     /// <summary>The index of normal speed in <see cref="SpeedValues"/>.</summary>
     private const int NormalSpeedIndex = 2;
 
+    /// <summary>How far from a click to look for the text to start reading from, in points.</summary>
+    private const float ReadFromTolerance = 24F;
+
     /// <summary>How often the word mark moves.</summary>
     private static readonly TimeSpan WordInterval = TimeSpan.FromMilliseconds(90);
 
@@ -410,6 +413,21 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
         _sentence = 0;
         Play();
     }
+
+    /// <summary>Reads aloud from the sentence nearest a point, or the top of the page when there is no text near it.</summary>
+    /// <param name="location">The page and point.</param>
+    [ReactiveCommand]
+    private void ReadFromPoint(PageLocation location)
+    {
+        var index = _owner.TryGetDocument()?.GetCharacterIndexAt(location.Page, location.Point, ReadFromTolerance) ?? -1;
+        StartAt(location.Page, Math.Max(0, index));
+    }
+
+    /// <summary>Reads aloud from a character, such as the start of the selection.</summary>
+    /// <param name="start">The character to start from.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ReadFromCharacter(PageCharacter start) => StartAt(start.Page, start.Char);
 
     /// <summary>Plays or pauses.</summary>
     [ReactiveCommand]

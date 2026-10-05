@@ -19,6 +19,7 @@ using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Theming;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Concurrency;
 using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.ObservableEvents;
 using ReactiveUI.Primitives.Signals;
@@ -54,7 +55,8 @@ public sealed class App : Application
                 // Avalonia's AT-SPI bridge waits 100 ms for the UI thread to go idle and, if it times out, finishes
                 // starting on a pool thread where it cannot read the main window, which then never reaches screen
                 // readers. Starting below its ContextIdle wait lets that wait finish first, on the UI thread.
-                Dispatcher.UIThread.Post(static state => ((App)state!).StartAndShow(), this, DispatcherPriority.ApplicationIdle);
+                _lifetime.Add(Signal.Return(this, new AvaloniaScheduler(Dispatcher.UIThread, DispatcherPriority.ApplicationIdle))
+                    .SubscribeSafe(static app => app.StartAndShow(), static error => Trace.TraceError(error.ToString())));
             }
             else
             {

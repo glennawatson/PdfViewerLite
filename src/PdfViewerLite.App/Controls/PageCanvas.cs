@@ -399,8 +399,6 @@ public sealed partial class PageCanvas : Control
         _scrollerSubscriptions?.Dispose();
         _scrollerSubscriptions = null;
         _scroller = null;
-        _menuCommands?.Dispose();
-        _menuCommands = null;
         Wire(null);
     }
 
@@ -529,7 +527,7 @@ public sealed partial class PageCanvas : Control
         ArgumentNullException.ThrowIfNull(e);
         if (e.Key == Key.C && (e.KeyModifiers & KeyModifiers.Control) != 0)
         {
-            CopySelection();
+            CopyToClipboard(GetSelectedText());
             e.Handled = true;
             return;
         }
@@ -823,10 +821,18 @@ public sealed partial class PageCanvas : Control
 
         _tabSubscriptions =
         [
-            tab.WhenChanged(static x => x.ZoomMode, static x => x.LayoutMode, static x => x.Rotation, static x => x.IsPageByPage, static (_, _, _, _) => RxVoid.Default)
+
+            // The zoom only matters to the layout in Free mode, so it is part of the key only then.
+            tab.WhenChanged(
+                    static x => x.ZoomMode,
+                    static x => x.LayoutMode,
+                    static x => x.Rotation,
+                    static x => x.IsPageByPage,
+                    static x => x.Zoom,
+                    static (mode, layout, rotation, pageByPage, zoom) => (mode, layout, rotation, pageByPage, Zoom: mode == ZoomMode.Free ? zoom : 0))
+                .DistinctUntilChanged()
                 .Skip(1)
                 .SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
-            tab.WhenChanged(static x => x.Zoom).Skip(1).Where(_ => tab.ZoomMode == ZoomMode.Free).SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
             tab.WhenChanged(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.NavigationRequests.SubscribeSafe(OnNavigationRequested, OnError),
             tab.DocumentChanges.SubscribeSafe(_ => OnDocumentChanged(), OnError),
@@ -836,6 +842,11 @@ public sealed partial class PageCanvas : Control
             tab.FocusMode.WhenChanged(static x => x.FocusBand).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.PageEdits.SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.CopyRequests.SubscribeSafe(CopyToClipboard, OnError),
+
+            // The selection belongs to the canvas, so it clears once a menu command has used it.
+            tab.Annotations.MarkSelectionCommand.Where(static marked => marked).SubscribeSafe(_ => ClearSelection(), OnError),
+            tab.ReadAloud.ReadFromCharacterCommand.SubscribeSafe(_ => ClearSelection(), OnError),
             tab.WhenChanged(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),
             tab.Annotations.WhenChanged(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];

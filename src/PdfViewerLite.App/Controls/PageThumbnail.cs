@@ -115,6 +115,15 @@ public sealed class PageThumbnail : Control
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
+    /// <summary>Redraws when new tiles arrive, until the thumbnail has its image.</summary>
+    private void InvalidateWithoutImage()
+    {
+        if (!_hasImage)
+        {
+            InvalidateVisual();
+        }
+    }
+
     /// <summary>Follows the tab while attached.</summary>
     private void Attach() =>
         _controlSubscriptions =
@@ -143,7 +152,7 @@ public sealed class PageThumbnail : Control
 
         _subscriptions =
         [
-            tab.RenderHub.TilesArrived.Where(_ => !_hasImage).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateWithoutImage(), OnError),
             tab.WhenChanged(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
     }

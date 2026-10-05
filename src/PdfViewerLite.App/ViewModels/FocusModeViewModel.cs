@@ -158,6 +158,7 @@ public sealed partial class FocusModeViewModel : ReactiveObject, IDisposable
 
     /// <summary>Starts reading aloud at a block.</summary>
     /// <param name="block">The block.</param>
+    [ReactiveCommand]
     public void ReadFromHere(FocusBlockViewModel block)
     {
         ArgumentNullException.ThrowIfNull(block);

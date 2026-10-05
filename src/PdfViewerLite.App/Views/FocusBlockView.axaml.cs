@@ -169,7 +169,7 @@ public sealed partial class FocusBlockView : ReactiveUI.Avalonia.ReactiveUserCon
             return;
         }
 
-        var item = new MenuItem { Header = "_Read Aloud from Here", Command = ReactiveCommand.Create(() => focus.ReadFromHere(block)) };
+        var item = new MenuItem { Header = "_Read Aloud from Here", Command = focus.ReadFromHereCommand, CommandParameter = block };
         new ContextMenu { ItemsSource = new[] { item } }.Open(this);
         e.Handled = true;
     }

@@ -3,13 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using Avalonia.Controls;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.ObservableEvents;
 
 namespace PdfViewerLite.App.Views;
 
@@ -50,7 +47,10 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionBox.IsVisible));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.SpeechNote.Text, DescribeSpeech));
 
-            disposables.Add(ObserveClose(CloseButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CloseCommand, static v => v.CloseButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
+                .SwitchMap(static closed => closed)
+                .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
         });
     }
 
@@ -60,10 +60,4 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
     private static string DescribeSpeech(bool azure) => azure
         ? "Each sentence read aloud is sent to your own Azure Speech resource, which bills your Azure account. The key is kept in your settings file, readable only by you."
         : "The voice runs on this computer, so nothing you read is sent anywhere. It is downloaded once, the first time you use Read Aloud.";
-
-    /// <summary>Closes the window when the button is clicked.</summary>
-    /// <param name="button">The close button; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
-    /// <returns>The subscription.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private IDisposable ObserveClose(Button button) => button.Events().Click.SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString()));
 }

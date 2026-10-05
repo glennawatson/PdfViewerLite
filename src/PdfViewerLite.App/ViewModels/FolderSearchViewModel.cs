@@ -90,9 +90,14 @@ public sealed partial class FolderSearchViewModel(AppServices services, Action<s
         _running = null;
     }
 
+    /// <summary>Stops the running search and asks the window to close.</summary>
+    [ReactiveCommand]
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    public void Close() => Stop();
+
     /// <inheritdoc/>
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    public void Dispose() => Stop();
+    public void Dispose() => Close();
 
     /// <summary>Counts matches in words: "1 match", "3 matches".</summary>
     /// <param name="count">The count.</param>

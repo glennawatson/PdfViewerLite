@@ -100,6 +100,10 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
     [Reactive]
     public partial bool HasTabs { get; private set; }
 
+    /// <summary>Gets a value indicating whether the user is being asked whether to discard unsaved edits.</summary>
+    [Reactive]
+    public partial bool IsConfirmingDiscard { get; private set; }
+
     /// <summary>Gets a value indicating whether any tab has unsaved annotations or form entries.</summary>
     public bool HasUnsavedTabs
     {
@@ -320,7 +324,15 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
             unsaved == 1 ? "Close without saving?" : $"Close {unsaved} documents without saving?",
             "Annotations and form entries you have not saved will be lost. Choose Cancel, then Save (Ctrl+S) to keep them.",
             "Close Without Saving");
-        return await ConfirmInteraction.Handle(request).ToTask().ConfigureAwait(true);
+        IsConfirmingDiscard = true;
+        try
+        {
+            return await ConfirmInteraction.Handle(request).ToTask().ConfigureAwait(true);
+        }
+        finally
+        {
+            IsConfirmingDiscard = false;
+        }
     }
 
     /// <summary>Closes a tab, asking first when it has unsaved edits.</summary>

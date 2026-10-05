@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
@@ -42,10 +43,13 @@ public sealed partial class FolderSearchWindow : ReactiveUI.Avalonia.ReactiveWin
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.StopCommand, static v => v.StopButton));
             disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ChooseFolderInteraction, ChooseFolderAsync));
 
-            disposables.Add(ObserveClose(CloseButton));
-            disposables.Add(ObserveOpens(ResultList));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CloseCommand, static v => v.CloseButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
+                .SwitchMap(static closed => closed)
+                .SubscribeSafe(_ => Close(), OnError));
+            disposables.Add(Opens(ResultList).InvokeCommand(ViewModel, static vm => vm.OpenCommand));
 
-            // The window deactivates when it closes, which ends a search still running.
+            // The window deactivates when it closes by any route (title bar, Alt+F4), which ends a search still running.
             disposables.Add(Scope.Create(this, static window => window.ViewModel?.Stop()));
             _ = QueryBox.Focus();
         });
@@ -56,32 +60,23 @@ public sealed partial class FolderSearchWindow : ReactiveUI.Avalonia.ReactiveWin
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
-    /// <summary>Closes the window when the button is clicked.</summary>
-    /// <param name="button">The close button; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
-    /// <returns>The subscription.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private IDisposable ObserveClose(Button button) => button.Events().Click.SubscribeSafe(_ => Close(), OnError);
-
-    /// <summary>Opens the selected result on a double tap or Enter.</summary>
+    /// <summary>Gets the results chosen with a double tap or Enter.</summary>
     /// <param name="results">The results list; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
-    /// <returns>The subscription.</returns>
-    private IDisposable ObserveOpens(ListBox results)
-    {
-        var opens = Signal.Merge(
-            results.Events().DoubleTapped.Select(static _ => RxVoid.Default),
-            results.Events().KeyDown.Where(static args => args.Key == Key.Enter).Select(static args =>
-            {
-                args.Handled = true;
-                return RxVoid.Default;
-            }));
-        return OpenResult(opens.Select(_ => results.SelectedItem).OfType<FolderSearchResultViewModel>());
-    }
-
-    /// <summary>Opens each chosen result.</summary>
-    /// <param name="chosen">The chosen results; the binding generator needs the declared observable type here.</param>
-    /// <returns>The subscription.</returns>
+    /// <returns>
+    /// The chosen results, read from the item the event came from. The declared type matters: the binding generator
+    /// cannot see the types Events() generates, so InvokeCommand must start from this method's result.
+    /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private IDisposable OpenResult(IObservable<FolderSearchResultViewModel> chosen) => chosen.InvokeCommand(ViewModel, static vm => vm.OpenCommand);
+    private static IObservable<FolderSearchResultViewModel> Opens(ListBox results) =>
+        Signal.Merge(
+                results.Events().DoubleTapped.Select(static args => args.Source),
+                results.Events().KeyDown.Where(static args => args.Key == Key.Enter).Select(static args =>
+                {
+                    args.Handled = true;
+                    return args.Source;
+                }))
+            .Select(static source => (source as StyledElement)?.DataContext)
+            .OfType<FolderSearchResultViewModel>();
 
     /// <summary>Asks for the folder to search.</summary>
     /// <param name="context">The interaction context.</param>

@@ -8,12 +8,13 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Media;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.ObservableEvents;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Views;
 
@@ -59,6 +60,9 @@ public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<
 
     /// <summary>The luminance above which text on the page is dark.</summary>
     private const double LightPage = 0.55;
+
+    /// <summary>How long a scroll waits for a layout pass before it carries on.</summary>
+    private static readonly TimeSpan LayoutWait = TimeSpan.FromMilliseconds(50);
 
     /// <summary>A serif typeface, with fallbacks found on each platform.</summary>
     private static readonly FontFamily SerifFamily = new("Noto Serif, Source Serif 4, DejaVu Serif, Georgia, Cambria, Times New Roman, serif");
@@ -193,7 +197,7 @@ public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<
 
         PageList.ScrollIntoView(request.PageIndex);
         await focus.Pages[request.PageIndex].LoadAsync().ConfigureAwait(true);
-        await Dispatcher.UIThread.InvokeAsync(static () => { }, DispatcherPriority.Background);
+        await NextLayout().ToTask().ConfigureAwait(true);
         if (FindPageView(request.PageIndex) is not { } pageView || FocusScroller.Content is not Visual content)
         {
             return;
@@ -213,6 +217,15 @@ public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<
             FocusScroller.Offset = new(FocusScroller.Offset.X, Math.Max(0, point.Y - ScrollMargin));
         }
     }
+
+    /// <summary>Creates a signal that fires once when the next layout pass ends.</summary>
+    /// <returns>The signal; a short timer ends it when no layout pass is pending.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private IObservable<RxVoid> NextLayout() =>
+        Signal.Merge(
+                this.Events().LayoutUpdated.Select(static _ => RxVoid.Default),
+                Signal.Timer(LayoutWait, RxSchedulers.MainThreadScheduler).Select(static _ => RxVoid.Default))
+            .Take(1);
 
     /// <summary>Finds a realised page view.</summary>
     /// <param name="pageIndex">The page.</param>

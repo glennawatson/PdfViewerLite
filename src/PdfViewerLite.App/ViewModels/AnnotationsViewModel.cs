@@ -154,7 +154,8 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
     public bool CanAnnotate => Editor is not null;
 
     /// <summary>Gets a value indicating whether there are edits to undo.</summary>
-    public bool CanUndo => _added.Count > 0;
+    [Reactive]
+    public partial bool CanUndo { get; private set; }
 
     /// <summary>Gets the document's editor, or <see langword="null"/> when the document cannot be edited.</summary>
     private IAnnotationEditor? Editor => _owner.TryGetDocument() as IAnnotationEditor;
@@ -351,6 +352,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
 
         // Indexes after the removed one shift down; forget undo entries on that page rather than remove the wrong one.
         _ = _added.RemoveAll(entry => entry.Page == annotation.PageIndex);
+        CanUndo = _added.Count > 0;
         Selected = null;
         Edited(annotation.PageIndex);
     }
@@ -490,6 +492,47 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Task EditNote(AnnotationItemViewModel? item) => EditNoteAsync(item?.Annotation ?? Selected);
 
+    /// <summary>Asks for a reply to an annotation; null replies to the selected one.</summary>
+    /// <param name="item">The sidebar item.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task Reply(AnnotationItemViewModel? item) => ReplyAsync(item?.Annotation ?? Selected);
+
+    /// <summary>Marks the selected text.</summary>
+    /// <param name="request">What to mark, and the lines it covers.</param>
+    /// <returns><see langword="true"/> when anything was marked.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool MarkSelection(MarkSelectionRequest request) => MarkText(request.Kind, request.Lines, request.Color);
+
+    /// <summary>Changes an annotation's colour.</summary>
+    /// <param name="choice">The annotation and its new colour.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RecolorAnnotation(AnnotationColorChoice choice) => Recolor(choice.Annotation, choice.Color);
+
+    /// <summary>Records a review status for a comment.</summary>
+    /// <param name="choice">The comment and its status.</param>
+    /// <returns><see langword="true"/> when recorded.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool SetAnnotationStatus(AnnotationStatusChoice choice) => SetStatus(choice.Annotation, choice.State);
+
+    /// <summary>Asks for a note and adds it where the page was clicked.</summary>
+    /// <param name="location">The page and point.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task AddNoteHere(PageLocation location) => AddNoteAsync(location.Page, location.Point);
+
+    /// <summary>Asks for text and writes it where the page was clicked.</summary>
+    /// <param name="location">The page and point.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task AddTextHere(PageLocation location) => AddTextAsync(location.Page, location.Point);
+
     /// <summary>Removes the last annotation added.</summary>
     [ReactiveCommand]
     private void Undo()
@@ -506,7 +549,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
             Edited(page);
         }
 
-        this.RaisePropertyChanged(nameof(CanUndo));
+        CanUndo = _added.Count > 0;
     }
 
     /// <summary>Chooses a colour by its name ("Yellow", "Green", "Blue" or "Red").</summary>
@@ -557,7 +600,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
         }
 
         _added.Add((page, index));
-        this.RaisePropertyChanged(nameof(CanUndo));
+        CanUndo = true;
         Edited(page);
         return true;
     }
