@@ -120,9 +120,9 @@ jobs:
           artifacts/pdfviewerlite-*.zip
         if-no-files-found: error
 
-  sign-windows:
-    name: Sign and verify Windows (${{ needs.version.outputs.semver2 }})
-    needs: [version, package-windows]
+  sign:
+    name: Sign and verify all release assets (${{ needs.version.outputs.semver2 }})
+    needs: [version, package-windows, package-linux, package-macos]
     runs-on: ubuntu-26.04
     environment:
       name: release
@@ -141,23 +141,21 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
-    - name: Download unsigned Windows packages
+    - name: Download all release packages
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: unsigned-windows
+        pattern: unsigned-*
+        merge-multiple: true
         path: signed
-    - name: Sign packages with Certum SimplySign
-      if: env.CERTUM_USER_ID != '' && env.CERTUM_OTP_URI != ''
+    - name: Sign and verify all assets with Certum SimplySign
       uses: glennawatson/actions-common/.github/actions/certum-sign@6733191524ed33a2633e0f24b9c2601e44069715 # main
       with:
-        packages-glob: 'signed/*.msi*'
-    - name: Verify installer signatures and certificate
-      if: env.CERTUM_USER_ID != '' && env.CERTUM_OTP_URI != ''
-      run: dotnet run --file tools/signing/verify-all.cs -- signed
-    - name: Upload signed Windows packages
+        packages-glob: 'signed/*'
+        signing-script: tools/signing/sign-all.cs
+    - name: Upload verified release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: signed-windows
+        name: signed-release-assets
         path: signed/*
         if-no-files-found: error
 
@@ -193,7 +191,7 @@ jobs:
     - name: Upload Linux packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: packages-${{ matrix.rid }}
+        name: unsigned-${{ matrix.rid }}
         path: |
           artifacts/PdfViewerLite-*.AppImage
           artifacts/*.deb
@@ -225,7 +223,7 @@ jobs:
     - name: Upload macOS packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: packages-macos
+        name: unsigned-macos
         path: |
           artifacts/pdfviewerlite-*.dmg
           artifacts/pdfviewerlite-*.app.zip
@@ -233,7 +231,7 @@ jobs:
 
   create-release:
     name: Create release (${{ needs.version.outputs.semver2 }})
-    needs: [version, package-windows, sign-windows, package-linux, package-macos]
+    needs: [version, sign]
     runs-on: ubuntu-26.04
     permissions:
       contents: write
@@ -249,21 +247,10 @@ jobs:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
-    - name: Download Linux packages
+    - name: Download signed release assets
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        pattern: packages-linux-*
-        merge-multiple: true
-        path: release-assets
-    - name: Download macOS packages
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        name: packages-macos
-        path: release-assets
-    - name: Download Windows packages
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        name: signed-windows
+        name: signed-release-assets
         path: release-assets
     - name: Install GitReleaseNoteGenerator
       run: dotnet tool install -g GitReleaseNoteGenerator
