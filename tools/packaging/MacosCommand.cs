@@ -28,7 +28,9 @@ internal static class MacosCommand
 
         var artifacts = Path.GetFullPath("artifacts");
         var source = Path.Combine(artifacts, rid);
-        var stage = Path.Combine(artifacts, $"macos-{rid}");
+
+        // Spotlight can hold handles on newly signed files while hdiutil copies the bundle.
+        var stage = Path.Combine(artifacts, $"macos-{rid}.noindex");
         var app = Path.Combine(stage, "Hyper PDF Viewer.app");
         if (Directory.Exists(stage))
         {
@@ -57,9 +59,14 @@ internal static class MacosCommand
             "-srcfolder",
             stage,
             "-ov",
+            "-fs",
+            "HFS+",
+            "-nospotlight",
+            "-verbose",
             "-format",
             "UDZO",
             Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.dmg"));
+        BuildTools.Run("hdiutil", "verify", Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.dmg"));
         BuildTools.Run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", app, Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.app.zip"));
         return 0;
     }
