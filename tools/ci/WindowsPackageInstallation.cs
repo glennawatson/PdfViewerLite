@@ -33,6 +33,12 @@ internal static class WindowsPackageInstallation
 #if WINDOWS
     /// <summary>The silent installer UI level.</summary>
     private const uint SilentUi = 2;
+
+    /// <summary>The Windows Installer state that removes a product.</summary>
+    private const int MsiStateAbsent = 2;
+
+    /// <summary>The installed viewer executable.</summary>
+    private const string Executable = "pdfviewerlite.exe";
 #endif
 
     /// <summary>The disposable test keystore password.</summary>
@@ -89,72 +95,158 @@ internal static class WindowsPackageInstallation
     }
 
 #if WINDOWS
-    /// <summary>Installs both replaced packages, launches their viewers and removes the fixtures.</summary>
+    /// <summary>Installs the replaced packages, upgrades an older MSI, launches each viewer and removes the fixtures, keeping the person's data.</summary>
     /// <param name="msi">The replaced MSI.</param>
+    /// <param name="previousMsi">An older MSI built from the same payload, to upgrade from.</param>
     /// <param name="msix">The replaced MSIX.</param>
     /// <param name="scratch">The test certificate directory.</param>
     /// <param name="pdf">The check PDF.</param>
     /// <returns>A task.</returns>
     /// <exception cref="InvalidOperationException">An installer or cleanup operation fails.</exception>
-    internal static async Task CheckAsync(string msi, string msix, string scratch, string pdf)
+    internal static async Task CheckAsync(string msi, string previousMsi, string msix, string scratch, string pdf)
     {
         using var certificate = X509CertificateLoader.LoadCertificateFromFile(Path.Combine(scratch, PublicCertificate));
         using var store = new X509Store(StoreName.TrustedPeople, StoreLocation.LocalMachine);
         store.Open(OpenFlags.ReadWrite);
         store.Add(certificate);
-        var manager = new PackageManager();
-        string? packageName = null;
-        var msiInstalled = false;
-        uint uninstallStatus = 0;
+        var data = UserDataCheck.Seed(Path.Combine(scratch, "user"), pdf);
+        Environment.SetEnvironmentVariable(UserDataCheck.ConfigHomeVariable, data.ConfigHome);
         try
         {
-            var result = await manager.AddPackageAsync(new(msix), null, DeploymentOptions.None).AsTask().ConfigureAwait(false);
-            if (result.ExtendedErrorCode is { } deploymentError)
-            {
-                throw new InvalidOperationException($"MSIX installation failed: {result.ErrorText}", deploymentError);
-            }
-
-            var package = FindInstalledPackage(manager);
-            packageName = package.Id.FullName;
-            await PackageLaunch.CheckAsync(Path.Combine(package.InstalledLocation.Path, "pdfviewerlite.exe"), pdf).ConfigureAwait(false);
-            _ = NativeMethods.MsiSetInternalUI(SilentUi, IntPtr.Zero);
-            var log = Path.Combine(Path.GetDirectoryName(msi)!, "msi-install.log");
-            _ = NativeMethods.MsiEnableLog(0x3fff, log, 0);
-            var installed = Path.Combine(scratch, "installed-msi");
-            var status = NativeMethods.MsiInstallProduct(msi, $"ALLUSERS=2 MSIINSTALLPERUSER=1 REBOOT=ReallySuppress INSTALLFOLDER=\"{installed}\"");
-            msiInstalled = status == 0;
-            if (!msiInstalled)
-            {
-                Console.WriteLine(await File.ReadAllTextAsync(log).ConfigureAwait(false));
-                throw new InvalidOperationException($"MSI installation failed with {status}.");
-            }
-
-            await PackageLaunch.CheckAsync(Path.Combine(installed, "pdfviewerlite.exe"), pdf).ConfigureAwait(false);
+            await CheckMsixAsync(msix, pdf).ConfigureAwait(false);
+            data.Verify("installing and removing the MSIX");
+            await CheckMsiUpgradeAsync(msi, previousMsi, Path.Combine(scratch, "installed-msi"), pdf, data).ConfigureAwait(false);
         }
         finally
         {
-            try
-            {
-                if (packageName is not null)
-                {
-                    _ = await manager.RemovePackageAsync(packageName).AsTask().ConfigureAwait(false);
-                }
-
-                if (msiInstalled)
-                {
-                    uninstallStatus = NativeMethods.MsiInstallProduct(msi, "REMOVE=ALL REBOOT=ReallySuppress");
-                }
-            }
-            finally
-            {
-                store.Remove(certificate);
-            }
+            store.Remove(certificate);
         }
 
-        if (uninstallStatus != 0)
+        data.Verify("removing the MSI");
+    }
+
+    /// <summary>Installs the MSIX, launches its viewer and removes it.</summary>
+    /// <param name="msix">The replaced MSIX.</param>
+    /// <param name="pdf">The check PDF.</param>
+    /// <returns>A task.</returns>
+    /// <exception cref="InvalidOperationException">The MSIX cannot be installed.</exception>
+    private static async Task CheckMsixAsync(string msix, string pdf)
+    {
+        var manager = new PackageManager();
+        var result = await manager.AddPackageAsync(new(msix), null, DeploymentOptions.None).AsTask().ConfigureAwait(false);
+        if (result.ExtendedErrorCode is { } deploymentError)
         {
-            throw new InvalidOperationException($"Could not uninstall the MSI fixture: {uninstallStatus}.");
+            throw new InvalidOperationException($"MSIX installation failed: {result.ErrorText}", deploymentError);
         }
+
+        var package = FindInstalledPackage(manager);
+        try
+        {
+            await PackageLaunch.CheckAsync(Path.Combine(package.InstalledLocation.Path, Executable), pdf).ConfigureAwait(false);
+        }
+        finally
+        {
+            _ = await manager.RemovePackageAsync(package.Id.FullName).AsTask().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Installs an older MSI, upgrades it to the replaced MSI and removes every fixture version.</summary>
+    /// <param name="msi">The replaced MSI.</param>
+    /// <param name="previousMsi">The older MSI.</param>
+    /// <param name="installed">The install folder.</param>
+    /// <param name="pdf">The check PDF.</param>
+    /// <param name="data">The seeded user data.</param>
+    /// <returns>A task.</returns>
+    /// <exception cref="InvalidOperationException">The upgrade or removal fails.</exception>
+    private static async Task CheckMsiUpgradeAsync(string msi, string previousMsi, string installed, string pdf, UserDataCheck data)
+    {
+        _ = NativeMethods.MsiSetInternalUI(SilentUi, IntPtr.Zero);
+        uint removal;
+        try
+        {
+            await InstallMsiAsync(previousMsi, installed).ConfigureAwait(false);
+            await PackageLaunch.CheckAsync(Path.Combine(installed, Executable), pdf).ConfigureAwait(false);
+            data.Verify("installing the older MSI");
+            await InstallMsiAsync(msi, installed).ConfigureAwait(false);
+            var products = FindInstalledMsiProducts();
+            if (products.Count != 1)
+            {
+                throw new InvalidOperationException($"The MSI upgrade left {products.Count} versions installed.");
+            }
+
+            await PackageLaunch.CheckAsync(Path.Combine(installed, Executable), pdf).ConfigureAwait(false);
+            data.Verify("upgrading the MSI");
+        }
+        finally
+        {
+            removal = RemoveMsiProducts();
+        }
+
+        if (removal != 0)
+        {
+            throw new InvalidOperationException($"Could not uninstall the MSI fixture: {removal}.");
+        }
+
+        if (FindInstalledMsiProducts().Count != 0)
+        {
+            throw new InvalidOperationException("Removing the MSI left the viewer registered.");
+        }
+    }
+
+    /// <summary>Removes every installed fixture version, including an older one that a failed upgrade left behind.</summary>
+    /// <returns>Zero, or the last Windows Installer failure code.</returns>
+    private static uint RemoveMsiProducts()
+    {
+        uint failure = 0;
+        foreach (var product in FindInstalledMsiProducts())
+        {
+            var status = NativeMethods.MsiConfigureProductEx(product, 0, MsiStateAbsent, "REBOOT=ReallySuppress");
+            failure = status == 0 ? failure : status;
+        }
+
+        return failure;
+    }
+
+    /// <summary>Installs an MSI for the current user into a fixed folder, showing the log on failure.</summary>
+    /// <param name="msi">The MSI to install.</param>
+    /// <param name="folder">The install folder.</param>
+    /// <returns>A task.</returns>
+    /// <exception cref="InvalidOperationException">Windows Installer reports a failure.</exception>
+    private static async Task InstallMsiAsync(string msi, string folder)
+    {
+        var log = Path.ChangeExtension(msi, ".log");
+        _ = NativeMethods.MsiEnableLog(0x3fff, log, 0);
+        var status = NativeMethods.MsiInstallProduct(msi, $"ALLUSERS=2 MSIINSTALLPERUSER=1 REBOOT=ReallySuppress INSTALLFOLDER=\"{folder}\"");
+        if (status == 0)
+        {
+            return;
+        }
+
+        Console.WriteLine(await File.ReadAllTextAsync(log).ConfigureAwait(false));
+        throw new InvalidOperationException($"Installing {Path.GetFileName(msi)} failed with {status}.");
+    }
+
+    /// <summary>Lists the installed products that share the viewer's upgrade code.</summary>
+    /// <returns>The product codes.</returns>
+    /// <exception cref="InvalidOperationException">Windows Installer cannot list the products.</exception>
+    private static List<string> FindInstalledMsiProducts()
+    {
+        const uint noMoreItems = 259;
+        const int productCodeLength = 38;
+        List<string> products = [];
+        Span<char> buffer = stackalloc char[productCodeLength + 1];
+        uint status;
+        while ((status = NativeMethods.MsiEnumRelatedProducts(MsiBuilder.UpgradeCode, 0, (uint)products.Count, buffer)) != noMoreItems)
+        {
+            if (status != 0)
+            {
+                throw new InvalidOperationException($"Could not list installed MSI products: {status}.");
+            }
+
+            products.Add(new(buffer[..productCodeLength]));
+        }
+
+        return products;
     }
 
     /// <summary>Finds the installed MSIX fixture.</summary>

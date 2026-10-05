@@ -86,12 +86,17 @@ internal static class CheckWindowsPackagesCommand
         WindowsPackageValidator.ValidateMsi(msi);
         MsixWriter.Replace(msix, payloads);
         WindowsPackageValidator.ValidateMsix(msix);
-        WindowsPackageInstallation.Sign(scratch, [msi, msix]);
+
+        // An older MSI with the same upgrade code proves that installing a release replaces the previous one.
+        var previousMsi = Path.Combine(scratch, "pdfviewerlite-previous.msi");
+        var rid = Path.GetFileNameWithoutExtension(package).EndsWith("win-arm64", StringComparison.Ordinal) ? "win-arm64" : "win-x64";
+        MsiBuilder.Build(extracted, previousMsi, "0.0.1", rid, Path.GetFullPath("."));
+        WindowsPackageInstallation.Sign(scratch, [msi, msix, previousMsi]);
         var pdf = Path.Combine(scratch, "installation-check.pdf");
         _ = await CreateCheckPdfCommand.RunAsync([pdf]).ConfigureAwait(false);
         await PackageLaunch.CheckAsync(Path.Combine(extracted, "pdfviewerlite.exe"), pdf).ConfigureAwait(false);
 #if WINDOWS
-        await WindowsPackageInstallation.CheckAsync(msi, msix, scratch, pdf).ConfigureAwait(false);
+        await WindowsPackageInstallation.CheckAsync(msi, previousMsi, msix, scratch, pdf).ConfigureAwait(false);
 #endif
     }
 }
