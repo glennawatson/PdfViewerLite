@@ -89,4 +89,22 @@ public static class TileGrid
         width = Math.Min(TileSize, pixelWidth - (column * TileSize));
         height = Math.Min(TileSize, pixelHeight - (row * TileSize));
     }
+
+    /// <summary>Gets the tiles of a page that cover an area, measured in device pixels from the page's top-left corner.</summary>
+    /// <param name="pixelWidth">The page width in pixels.</param>
+    /// <param name="pixelHeight">The page height in pixels.</param>
+    /// <param name="left">The area's left edge.</param>
+    /// <param name="top">The area's top edge.</param>
+    /// <param name="right">The area's right edge.</param>
+    /// <param name="bottom">The area's bottom edge.</param>
+    /// <returns>The tiles, clamped to the page.</returns>
+    public static TileWindow GetTileWindow(int pixelWidth, int pixelHeight, double left, double top, double right, double bottom)
+    {
+        GetTileCounts(pixelWidth, pixelHeight, out var columns, out var rows);
+        return new(
+            Math.Clamp((int)(left / TileSize), 0, columns - 1),
+            Math.Clamp((int)(right / TileSize), 0, columns - 1),
+            Math.Clamp((int)(top / TileSize), 0, rows - 1),
+            Math.Clamp((int)(bottom / TileSize), 0, rows - 1));
+    }
 }

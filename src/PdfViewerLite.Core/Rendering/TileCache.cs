@@ -74,6 +74,26 @@ public sealed class TileCache : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(in TileKey key) => _entries.ContainsKey(key);
 
+    /// <summary>Determines whether every tile in a window is cached, without changing recency.</summary>
+    /// <param name="page">Any tile key of the page and scale; its column and row are ignored.</param>
+    /// <param name="window">The tiles to check.</param>
+    /// <returns><see langword="true"/> when the cached tiles cover the window.</returns>
+    public bool Covers(in TileKey page, in TileWindow window)
+    {
+        for (var row = window.FirstRow; row <= window.LastRow; row++)
+        {
+            for (var column = window.FirstColumn; column <= window.LastColumn; column++)
+            {
+                if (!_entries.ContainsKey(page with { Column = (short)column, Row = (short)row }))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     /// <summary>Adds a tile, replacing and disposing any existing tile with the same key, then trims to budget.</summary>
     /// <param name="key">The key.</param>
     /// <param name="surface">The surface; the cache takes ownership.</param>

@@ -337,28 +337,6 @@ public sealed partial class PageCanvas : Control
         frame.Request(key, new(page, scale, tab.Rotation, 0, 0, RenderFlags.Annotations), width, height, visible ? RenderPriority.VisiblePreview : RenderPriority.Prefetch);
     }
 
-    /// <summary>Determines whether every tile in a window is cached, without changing cache recency.</summary>
-    /// <param name="frame">The frame.</param>
-    /// <param name="grid">The page's tile grid.</param>
-    /// <param name="window">The tiles to check.</param>
-    /// <returns><see langword="true"/> when the tiles cover the window.</returns>
-    private static bool IsCovered(in FrameContext frame, in TileRange grid, in TileWindow window)
-    {
-        var tab = frame.Tab;
-        for (var row = window.FirstRow; row <= window.LastRow; row++)
-        {
-            for (var column = window.FirstColumn; column <= window.LastColumn; column++)
-            {
-                if (!frame.Hub.Cache.Contains(new(tab.Source.Id, grid.Page, grid.ScaleKey, tab.Rotation, tab.PageTone.Id, (short)column, (short)row)))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     /// <summary>Draws one tile, or requests it when it is not cached.</summary>
     /// <param name="context">The drawing context.</param>
     /// <param name="frame">The frame.</param>
@@ -635,7 +613,8 @@ public sealed partial class PageCanvas : Control
         }
 
         var tiled = TryGetTileWindow(frame, page, rect, visible, out var grid, out var window);
-        var covered = tiled && visible && IsCovered(frame, grid, window);
+        var tab = frame.Tab;
+        var covered = tiled && visible && frame.Hub.Cache.Covers(new(tab.Source.Id, page, grid.ScaleKey, tab.Rotation, tab.PageTone.Id, 0, 0), window);
         DrawPreview(context, frame, page, rect, visible, visible && !covered);
         if (visible && tiled && !covered)
         {
@@ -689,13 +668,13 @@ public sealed partial class PageCanvas : Control
             return false;
         }
 
-        var tileSize = TileGrid.TileSize;
-        TileGrid.GetTileCounts(pixelWidth, pixelHeight, out var columns, out var rows);
-        window = new(
-            Math.Clamp((int)(((region.X * scaling) - originX) / tileSize), 0, columns - 1),
-            Math.Clamp((int)(((region.Right * scaling) - originX) / tileSize), 0, columns - 1),
-            Math.Clamp((int)(((region.Y * scaling) - originY) / tileSize), 0, rows - 1),
-            Math.Clamp((int)(((region.Bottom * scaling) - originY) / tileSize), 0, rows - 1));
+        window = TileGrid.GetTileWindow(
+            pixelWidth,
+            pixelHeight,
+            (region.X * scaling) - originX,
+            (region.Y * scaling) - originY,
+            (region.Right * scaling) - originX,
+            (region.Bottom * scaling) - originY);
         return true;
     }
 
