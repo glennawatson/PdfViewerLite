@@ -20,6 +20,7 @@ public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.Reactive
     public CertificateSignWindow()
     {
         InitializeComponent();
+        FieldLabels.Link((CertificateBox, CertificateLabel), (PasswordBox, PasswordLabel), (ReasonBox, ReasonLabel), (LocationBox, LocationLabel));
         _ = this.WhenActivated(disposables =>
         {
             disposables.Add(this.Bind(ViewModel, static vm => vm.CertificatePath, static v => v.CertificateBox.Text, static text => text, static text => text ?? string.Empty));

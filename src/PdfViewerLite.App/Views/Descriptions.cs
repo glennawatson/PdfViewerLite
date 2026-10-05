@@ -545,6 +545,9 @@ public static class Descriptions
     /// <summary>The include subfolders check box.</summary>
     public static readonly string Subfolders = "Also search the folders inside this folder.";
 
+    /// <summary>The pages, read out by screen readers only so hovering the pages shows no tooltip.</summary>
+    public static readonly string Pages = "The document's pages. Page Up and Page Down move a page at a time. F7 turns on a text cursor for the arrow keys. The value is the current page's text.";
+
     /// <summary>Joins an explanation to its shortcut.</summary>
     private const string Shortcut = " Shortcut: ";
 }

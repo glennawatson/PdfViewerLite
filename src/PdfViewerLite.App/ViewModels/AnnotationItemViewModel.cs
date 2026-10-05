@@ -62,6 +62,14 @@ public sealed record AnnotationItemViewModel(PageAnnotation Annotation, string P
     /// <summary>Gets the page caption.</summary>
     public string PageCaption => string.Create(CultureInfo.CurrentCulture, $"Page {PageLabel}");
 
+    /// <summary>Gets the colour in words, so the sidebar's colour swatch is never the only cue.</summary>
+    public string ColorName => AnnotationNames.GetColor(Annotation.Color);
+
+    /// <summary>Gets the item as a screen reader says it: kind, page, status, colour and note.</summary>
+    public string SpokenText => Annotation.Contents.Length > 0
+        ? string.Create(CultureInfo.CurrentCulture, $"{Heading}, {ColorName}: {Annotation.Contents}")
+        : string.Create(CultureInfo.CurrentCulture, $"{Heading}, {ColorName}");
+
     /// <summary>Appends one reply as "author: text"; bare status changes are left out.</summary>
     /// <param name="text">The text so far.</param>
     /// <param name="reply">The reply.</param>

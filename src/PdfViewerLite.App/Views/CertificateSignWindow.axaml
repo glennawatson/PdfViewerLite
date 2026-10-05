@@ -8,23 +8,23 @@
     <TextBlock Classes="secondary" TextWrapping="Wrap"
                Text="Signs a copy of this document with your digital certificate. People who open it can check who signed it and that it has not changed since." />
     <Grid ColumnDefinitions="110,*,Auto">
-      <TextBlock Text="Certificate" VerticalAlignment="Center" />
+      <TextBlock x:Name="CertificateLabel" Text="Certificate" VerticalAlignment="Center" />
       <TextBox x:Name="CertificateBox" views:ControlHelp.Text="{x:Static views:Descriptions.CertificateFile}" Grid.Column="1" AutomationProperties.Name="Certificate file" PlaceholderText=".p12 or .pfx file" />
       <Button x:Name="BrowseButton" views:ControlHelp.Text="{x:Static views:Descriptions.ChooseCertificate}" Grid.Column="2" Margin="8,0,0,0" AutomationProperties.Name="Choose certificate file" Content="Choose…" />
     </Grid>
     <Grid ColumnDefinitions="110,*">
-      <TextBlock Text="Password" VerticalAlignment="Center" />
+      <TextBlock x:Name="PasswordLabel" Text="Password" VerticalAlignment="Center" />
       <TextBox x:Name="PasswordBox" views:ControlHelp.Text="{x:Static views:Descriptions.CertificatePassword}" Grid.Column="1" PasswordChar="●" AutomationProperties.Name="Certificate password" />
     </Grid>
     <Grid ColumnDefinitions="110,*">
-      <TextBlock Text="Reason" VerticalAlignment="Center" />
+      <TextBlock x:Name="ReasonLabel" Text="Reason" VerticalAlignment="Center" />
       <TextBox x:Name="ReasonBox" views:ControlHelp.Text="{x:Static views:Descriptions.SigningReason}" Grid.Column="1" AutomationProperties.Name="Reason" PlaceholderText="Optional, for example Approved" />
     </Grid>
     <Grid ColumnDefinitions="110,*">
-      <TextBlock Text="Location" VerticalAlignment="Center" />
+      <TextBlock x:Name="LocationLabel" Text="Location" VerticalAlignment="Center" />
       <TextBox x:Name="LocationBox" views:ControlHelp.Text="{x:Static views:Descriptions.SigningLocation}" Grid.Column="1" AutomationProperties.Name="Location" PlaceholderText="Optional" />
     </Grid>
-    <TextBlock x:Name="ErrorText" TextWrapping="Wrap" />
+    <TextBlock x:Name="ErrorText" AutomationProperties.LiveSetting="Assertive" TextWrapping="Wrap" />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
       <Button x:Name="CancelButton" views:ControlHelp.Text="{x:Static views:Descriptions.Cancel}" Content="Cancel" IsCancel="True" />
       <Button x:Name="SignButton" views:ControlHelp.Text="{x:Static views:Descriptions.Sign}" Content="Sign…" IsDefault="True" />

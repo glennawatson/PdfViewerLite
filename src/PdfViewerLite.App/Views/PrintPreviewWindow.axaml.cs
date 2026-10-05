@@ -37,8 +37,12 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
             _ = LayoutBox.Items.Add(choice);
         }
 
+        LinkLabels();
+
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(ItemAutomation.NameItems(SheetList));
+            disposables.Add(ItemAutomation.NameItems(DestinationBox));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Print {name}"));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Summary, static v => v.SummaryText.Text));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Sheets, static v => v.SheetList.ItemsSource));
@@ -73,6 +77,9 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
 
             // Ctrl+Shift+P opens the system print dialog.
             disposables.Add(SystemDialogShortcut().InvokeCommand(this, static v => v.ViewModel!.SystemDialogCommand));
+
+            // Start on the first setting; the sheets are a preview, so the keyboard begins where choices are made.
+            _ = DestinationBox.Focus();
         });
     }
 
@@ -90,6 +97,20 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Ties each setting to the label beside it for screen readers.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void LinkLabels() =>
+        FieldLabels.Link(
+            (DestinationBox, DestinationLabel),
+            (PagesBox, PagesLabel),
+            (CustomPagesBox, PagesLabel),
+            (CopiesBox, CopiesLabel),
+            (ColourBox, ColourLabel),
+            (BindingBox, BindingLabel),
+            (LayoutBox, LayoutLabel),
+            (PagesPerSheetBox, PagesPerSheetLabel),
+            (PaperBox, PaperLabel));
 
     /// <summary>Gets a request each time Ctrl+Shift+P is pressed.</summary>
     /// <returns>The requests; the declared type matters because InvokeCommand must start from this method's result.</returns>

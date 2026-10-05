@@ -28,8 +28,10 @@ public sealed partial class FolderSearchWindow : ReactiveUI.Avalonia.ReactiveWin
     {
         InitializeComponent();
         ResultList.ItemTemplate = new FuncDataTemplate<FolderSearchResultViewModel>(static (result, _) => FolderSearchResultView.Create(result));
+        FieldLabels.Link((FolderBox, FolderLabel), (QueryBox, QueryLabel));
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(ItemAutomation.NameItems(ResultList));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Folder, static v => v.FolderBox.Text));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Query, static v => v.QueryBox.Text));
             disposables.Add(this.Bind(ViewModel, static vm => vm.MatchCase, static v => v.MatchCaseBox.IsChecked, static on => on, static value => value == true));

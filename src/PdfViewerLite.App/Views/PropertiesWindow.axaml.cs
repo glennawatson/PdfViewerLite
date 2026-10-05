@@ -39,6 +39,7 @@ public sealed partial class PropertiesWindow : ReactiveUI.Avalonia.ReactiveWindo
             disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
                 .SwitchMap(static closed => closed)
                 .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
+            _ = CloseButton.Focus();
         });
     }
 
@@ -51,6 +52,7 @@ public sealed partial class PropertiesWindow : ReactiveUI.Avalonia.ReactiveWindo
         name.Classes.Add("secondary");
         var value = new SelectableTextBlock { Text = entry?.Value, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
         Grid.SetColumn(value, 1);
+        FieldLabels.Link((value, name));
         return new Grid { ColumnDefinitions = [new(NameColumnWidth, GridUnitType.Pixel), new(1, GridUnitType.Star)], Margin = new(0, RowGap), Children = { name, value } };
     }
 }

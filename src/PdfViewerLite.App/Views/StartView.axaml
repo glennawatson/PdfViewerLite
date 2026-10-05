@@ -4,11 +4,11 @@
              x:Class="PdfViewerLite.App.Views.StartView">
   <!-- Layout only: every binding is made in code with ReactiveUI.Binding (StartView.axaml.cs). -->
   <Border Background="{DynamicResource AppCanvasBackground}">
-    <Grid RowDefinitions="Auto,*" MaxWidth="720" Margin="32">
+    <Grid RowDefinitions="Auto,*" MaxWidth="720" Margin="32" AutomationProperties.Name="Start" AutomationProperties.LandmarkType="Main">
       <StackPanel Grid.Row="0" Spacing="12" HorizontalAlignment="Center" Margin="0,24,0,24">
         <Path Classes="icon" Width="56" Height="56" StrokeThickness="1.2" Stroke="{DynamicResource AppSecondaryForeground}"
               Data="{StaticResource IconDocument}" HorizontalAlignment="Center" />
-        <TextBlock FontSize="20" HorizontalAlignment="Center" Text="Open a document to get started" />
+        <TextBlock FontSize="20" HorizontalAlignment="Center" AutomationProperties.HeadingLevel="1" Text="Open a document to get started" />
         <TextBlock Classes="secondary" HorizontalAlignment="Center" Text="Drop PDF files here, or choose them from a folder." />
         <Button AutomationProperties.Name="Open…" x:Name="OpenButton" views:ControlHelp.Text="{x:Static views:Descriptions.Open}" HorizontalAlignment="Center" Padding="16,6">
           <StackPanel Orientation="Horizontal" Spacing="8">
@@ -19,8 +19,8 @@
       </StackPanel>
 
       <DockPanel x:Name="RecentPanel" Grid.Row="1">
-        <TextBlock DockPanel.Dock="Top" Classes="secondary" FontWeight="SemiBold" Margin="4,0,0,8" Text="Recent documents" />
-        <ListBox x:Name="RecentList" Background="Transparent" />
+        <TextBlock DockPanel.Dock="Top" Classes="secondary" FontWeight="SemiBold" Margin="4,0,0,8" AutomationProperties.HeadingLevel="2" Text="Recent documents" />
+        <ListBox x:Name="RecentList" AutomationProperties.Name="Recent documents" Background="Transparent" />
       </DockPanel>
     </Grid>
   </Border>
