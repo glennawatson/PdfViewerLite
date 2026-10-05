@@ -27,6 +27,9 @@ public sealed class SingleInstanceHost : ISingleInstance
     /// <summary>Requests received from other processes.</summary>
     private readonly Signal<OpenRequest> _openRequests = new();
 
+    /// <summary>1 once disposed.</summary>
+    private int _disposed;
+
     /// <summary>Initializes a new instance of the <see cref="SingleInstanceHost"/> class.</summary>
     /// <param name="connection">The connection that owns the name.</param>
     private SingleInstanceHost(DBusConnection connection)
@@ -108,7 +111,7 @@ public sealed class SingleInstanceHost : ISingleInstance
             Debug.WriteLine($"Could not claim {AppIdentity.ApplicationId}: {ex.Message}");
         }
 
-        connection.Dispose();
+        host.Dispose();
         return null;
     }
 
@@ -123,6 +126,11 @@ public sealed class SingleInstanceHost : ISingleInstance
     /// <inheritdoc/>
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         _connection.Dispose();
         _openRequests.OnCompleted();
         _openRequests.Dispose();

@@ -24,6 +24,9 @@ public sealed class RenderHub : IDisposable
     /// <summary>The subscription draining completed tiles.</summary>
     private readonly IDisposable _drainSubscription;
 
+    /// <summary>1 once disposed.</summary>
+    private int _disposed;
+
     /// <summary>Initializes a new instance of the <see cref="RenderHub"/> class.</summary>
     /// <param name="cacheBytes">The tile cache budget in bytes.</param>
     public RenderHub(long cacheBytes)
@@ -48,6 +51,11 @@ public sealed class RenderHub : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         _drainSubscription.Dispose();
         Scheduler.Dispose();
         Cache.Dispose();

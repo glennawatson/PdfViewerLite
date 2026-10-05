@@ -46,6 +46,9 @@ public sealed class PipeSingleInstance : ISingleInstance
     /// <summary>Requests received from other launches.</summary>
     private readonly Signal<OpenRequest> _openRequests = new();
 
+    /// <summary>1 once disposed.</summary>
+    private int _disposed;
+
     /// <summary>Initializes a new instance of the <see cref="PipeSingleInstance"/> class.</summary>
     /// <param name="name">The pipe and mutex name.</param>
     /// <param name="claim">The ownership claim, already held.</param>
@@ -54,9 +57,11 @@ public sealed class PipeSingleInstance : ISingleInstance
         _name = name;
         _claim = claim;
 
-        // The first pipe exists before the claim is returned, so a launch straight after finds it.
+        // The first pipe exists before the claim is returned, so a launch straight after finds it. The token is taken
+        // here because a quick Dispose would otherwise dispose its source before the listener reads it.
         var first = CreateServer(name);
-        _ = Task.Run(() => ListenAsync(first));
+        var token = _stop.Token;
+        _ = Task.Run(() => ListenAsync(first, token));
         OpenRequests = new(_openRequests);
     }
 
@@ -179,6 +184,11 @@ public sealed class PipeSingleInstance : ISingleInstance
     /// <inheritdoc/>
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         _stop.Cancel();
         _stop.Dispose();
         _claim.Dispose();
@@ -209,12 +219,28 @@ public sealed class PipeSingleInstance : ISingleInstance
     private static NamedPipeServerStream CreateServer(string name) =>
         new(PipeNameFor(name), PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
+    /// <summary>Creates the next pipe after a failed connection.</summary>
+    /// <param name="name">The claim name.</param>
+    /// <returns>The pipe, or <see langword="null"/> when the pipe cannot be created again.</returns>
+    private static NamedPipeServerStream? TryCreateServer(string name)
+    {
+        try
+        {
+            return CreateServer(name);
+        }
+        catch (IOException ex)
+        {
+            Debug.WriteLine($"Single instance pipe could not be recreated: {ex.Message}");
+            return null;
+        }
+    }
+
     /// <summary>Accepts one connection after another until disposed.</summary>
     /// <param name="first">The first pipe, already created.</param>
+    /// <param name="token">Stops listening.</param>
     /// <returns>A task.</returns>
-    private async Task ListenAsync(NamedPipeServerStream first)
+    private async Task ListenAsync(NamedPipeServerStream first, CancellationToken token)
     {
-        var token = _stop.Token;
         var server = first;
         while (!token.IsCancellationRequested)
         {
@@ -241,7 +267,13 @@ public sealed class PipeSingleInstance : ISingleInstance
             catch (IOException ex)
             {
                 Debug.WriteLine($"Single instance pipe failed: {ex.Message}");
-                server = CreateServer(_name);
+                if (TryCreateServer(_name) is not { } replacement)
+                {
+                    // Later launches open their own window rather than reaching this one.
+                    return;
+                }
+
+                server = replacement;
             }
         }
 
