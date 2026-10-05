@@ -17,7 +17,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Lists a document's checked digital signatures in plain words.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("SignaturesWindow: {Title}")]
 public sealed partial class SignaturesWindow : ReactiveUI.Avalonia.ReactiveWindow<SignaturesViewModel>
 {
     /// <summary>The space between the lines of one signature.</summary>

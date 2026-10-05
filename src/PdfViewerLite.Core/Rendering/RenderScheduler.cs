@@ -19,7 +19,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// handed back through <see cref="TryTakeCompleted"/>, and <see cref="Completed"/> emits once per batch so the UI can
 /// drain them on its own thread.
 /// </summary>
-[DebuggerDisplay("Queue {QueueLength}")]
+[DebuggerDisplay("RenderScheduler: Queue {QueueLength}")]
 public sealed class RenderScheduler : IDisposable
 {
     /// <summary>The bit position of the priority within the queue ordering key.</summary>

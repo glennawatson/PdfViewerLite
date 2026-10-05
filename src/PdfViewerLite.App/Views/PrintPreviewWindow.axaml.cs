@@ -18,7 +18,7 @@ using ReactiveUI.Primitives.ObservableEvents;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>The print window: a preview of every sheet and the print settings. Closes with <see langword="true"/> to print.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PrintPreviewWindow: {Title}")]
 public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWindow<PrintPreviewViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="PrintPreviewWindow"/> class.</summary>

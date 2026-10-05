@@ -19,7 +19,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// are used. Ticking a language uses it at once; a language not yet downloaded is downloaded here or offered the next
 /// time text is recognised. Packs download one at a time with steady progress and can be stopped.
 /// </summary>
-[DebuggerDisplay("Downloading={IsDownloading}")]
+[DebuggerDisplay("OcrLanguagesViewModel: Downloading={IsDownloading}")]
 public sealed partial class OcrLanguagesViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The application services.</summary>

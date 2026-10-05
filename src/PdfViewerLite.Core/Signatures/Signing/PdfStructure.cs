@@ -11,7 +11,7 @@ namespace PdfViewerLite.Core.Signatures.Signing;
 /// <param name="Entries">Where each object lives, newest definition only.</param>
 /// <param name="Trailer">The newest trailer dictionary, as its own bytes.</param>
 /// <param name="StartXref">The offset of the newest cross-reference section.</param>
-[DebuggerDisplay("{Entries.Count} objects")]
+[DebuggerDisplay("PdfStructure: {Entries.Count} objects")]
 internal sealed record PdfStructure(byte[] File, Dictionary<int, XrefEntry> Entries, byte[] Trailer, long StartXref)
 {
     /// <summary>Gets the decoded object streams read so far, by object number.</summary>

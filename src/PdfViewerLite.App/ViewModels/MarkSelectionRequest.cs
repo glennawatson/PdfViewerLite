@@ -12,5 +12,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Kind">The markup kind.</param>
 /// <param name="Color">The colour.</param>
 /// <param name="Lines">The selected line rectangles by page.</param>
-[DebuggerDisplay("{Kind}")]
+[DebuggerDisplay("MarkSelectionRequest: {Kind}")]
 public readonly record struct MarkSelectionRequest(AnnotationKind Kind, uint Color, IReadOnlyDictionary<int, List<PageRect>> Lines);

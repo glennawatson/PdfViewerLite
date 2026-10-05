@@ -20,7 +20,7 @@ using ReactiveUI.Primitives.Signals;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>The Search in Folder window: every PDF in a folder searched, with the results listed as they arrive.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("FolderSearchWindow: {Title}")]
 public sealed partial class FolderSearchWindow : ReactiveUI.Avalonia.ReactiveWindow<FolderSearchViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="FolderSearchWindow"/> class.</summary>

@@ -18,7 +18,7 @@ namespace PdfViewerLite.Pdfium;
 /// so appearances regenerate exactly as in other readers. Callers hold the PDFium lock. Filling allocates nothing:
 /// text is passed pinned and strings are only built when fields are read.
 /// </summary>
-[DebuggerDisplay("Form: {HasForm}")]
+[DebuggerDisplay("PdfiumForm: Form: {HasForm}")]
 internal sealed unsafe class PdfiumForm : IDisposable
 {
     /// <summary>PDFium's keystroke additional action.</summary>

@@ -29,7 +29,7 @@ using ReactiveUI.Primitives.Signals;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>A document tab: its tool bars, sidebar and pages. Every binding is made here with ReactiveUI.Binding.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("DocumentView: {ViewModel}")]
 public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserControl<DocumentTabViewModel>
 {
     /// <summary>The smallest editor font size.</summary>

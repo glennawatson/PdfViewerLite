@@ -20,7 +20,7 @@ namespace PdfViewerLite.App.Services;
 /// <param name="FindLanguageData">Finds one folder holding every language in a setting such as <c>eng+deu</c>, given the pack folder; <see langword="null"/> when there is none.</param>
 /// <param name="CreateEngine">Creates the recogniser for a language setting, given the pack folder.</param>
 /// <param name="DownloadPacks">Downloads the missing packs into the given folder, reporting the fraction done.</param>
-[DebuggerDisplay("{LanguageDirectory}")]
+[DebuggerDisplay("OcrSetup: {LanguageDirectory}")]
 public sealed record OcrSetup(
     string LanguageDirectory,
     string? BundledLanguageDirectory,

@@ -14,7 +14,7 @@ namespace PdfViewerLite.App.Tests;
 /// folder, other languages are found only in the test's pack folder, downloads write placeholder packs there, and the
 /// recogniser reads one word on each scanned page with a chosen confidence.
 /// </summary>
-[DebuggerDisplay("Downloads={Downloads}")]
+[DebuggerDisplay("FakeOcr: Downloads={Downloads}")]
 internal sealed class FakeOcr : IOcrEngine
 {
     /// <summary>The confidence of a clearly read word.</summary>

@@ -10,7 +10,7 @@ namespace PdfViewerLite.Core.Printing;
 /// <param name="PagesPerSheet">Pages on each sheet: 1, 2, 4, 6, 9 or 16.</param>
 /// <param name="Paper">The paper used when several pages share a sheet.</param>
 /// <param name="IncludeAnnotations">Whether notes, highlights and drawings are printed; filled form fields always are.</param>
-[DebuggerDisplay("{PagesPerSheet} per sheet on {Paper}")]
+[DebuggerDisplay("SheetLayout: {PagesPerSheet} per sheet on {Paper}")]
 public readonly record struct SheetLayout(int PagesPerSheet, PaperSize Paper, bool IncludeAnnotations)
 {
     /// <summary>The sheets across (and down) a poster page when none is chosen.</summary>

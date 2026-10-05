@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Platform;
 /// <param name="Name">The queue name used to print.</param>
 /// <param name="DisplayName">The name shown to people.</param>
 /// <param name="IsDefault">Whether it is the default printer.</param>
-[DebuggerDisplay("{DisplayName}")]
+[DebuggerDisplay("PrinterInfo: {DisplayName}")]
 public sealed record PrinterInfo(string Name, string DisplayName, bool IsDefault);

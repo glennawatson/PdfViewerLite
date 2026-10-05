@@ -15,5 +15,5 @@ namespace PdfViewerLite.Core.Layout;
 /// <param name="ViewportHeight">The viewport height.</param>
 /// <param name="Spacing">The gap between pages.</param>
 /// <param name="Margin">The content margin.</param>
-[DebuggerDisplay("{ZoomMode} {ViewportWidth} x {ViewportHeight}")]
+[DebuggerDisplay("FitParameters: {ZoomMode} {ViewportWidth} x {ViewportHeight}")]
 public readonly record struct FitParameters(PageRotation Rotation, PageLayoutMode Mode, ZoomMode ZoomMode, double ViewportWidth, double ViewportHeight, double Spacing, double Margin);

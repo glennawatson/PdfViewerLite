@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Core.Documents;
 
 /// <summary>A locked 32-bit BGRA pixel buffer the engine renders into.</summary>
-[DebuggerDisplay("{Width} x {Height}")]
+[DebuggerDisplay("RenderTarget: {Width} x {Height}")]
 public readonly ref struct RenderTarget
 {
     /// <summary>The size of a BGRA pixel in bytes.</summary>

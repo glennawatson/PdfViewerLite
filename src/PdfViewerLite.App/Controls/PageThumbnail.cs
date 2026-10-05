@@ -21,7 +21,7 @@ using ReactiveUI.Primitives.ObservableEvents;
 namespace PdfViewerLite.App.Controls;
 
 /// <summary>Draws a page preview from the shared tile cache, requesting it at thumbnail priority when missing.</summary>
-[DebuggerDisplay("Page {PageIndex}")]
+[DebuggerDisplay("PageThumbnail: Page {PageIndex}")]
 public sealed class PageThumbnail : Control
 {
     /// <summary>Defines the <see cref="Tab"/> property.</summary>

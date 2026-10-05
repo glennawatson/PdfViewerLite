@@ -12,5 +12,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Text">The starting text.</param>
 /// <param name="AcceptText">The text of the button that accepts.</param>
 /// <param name="Multiline">Whether line breaks are allowed.</param>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("TextPrompt: {Title}")]
 public sealed record TextPrompt(string Title, string Label, string Text, string AcceptText, bool Multiline);

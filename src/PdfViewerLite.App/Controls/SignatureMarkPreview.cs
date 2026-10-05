@@ -15,7 +15,7 @@ using ReactiveUI.Primitives.ObservableEvents;
 namespace PdfViewerLite.App.Controls;
 
 /// <summary>Shows a signature or initials mark as it will look on the page, scaled to fit.</summary>
-[DebuggerDisplay("{Mark}")]
+[DebuggerDisplay("SignatureMarkPreview: {Mark}")]
 public sealed class SignatureMarkPreview : Control
 {
     /// <summary>The mark shown, or <see langword="null"/> for an empty preview.</summary>

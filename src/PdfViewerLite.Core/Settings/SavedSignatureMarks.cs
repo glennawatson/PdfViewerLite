@@ -8,7 +8,7 @@ using PdfViewerLite.Core.Annotations;
 namespace PdfViewerLite.Core.Settings;
 
 /// <summary>The signature and initials the user chose to remember; either may be absent.</summary>
-[DebuggerDisplay("Signature: {Signature != null}, Initials: {Initials != null}")]
+[DebuggerDisplay("SavedSignatureMarks: Signature: {Signature != null}, Initials: {Initials != null}")]
 public sealed class SavedSignatureMarks
 {
     /// <summary>Gets or sets the remembered signature, or <see langword="null"/>.</summary>

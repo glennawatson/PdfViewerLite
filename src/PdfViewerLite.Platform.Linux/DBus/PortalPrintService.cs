@@ -11,7 +11,7 @@ namespace PdfViewerLite.Platform.Linux.DBus;
 /// Prints through the XDG desktop portal (<c>org.freedesktop.portal.Print</c>), which shows the desktop's own print
 /// dialog (KDE's on Plasma) and prints the PDF it is handed. Works inside and outside sandboxes.
 /// </summary>
-[DebuggerDisplay("Print portal")]
+[DebuggerDisplay("PortalPrintService: Print portal")]
 public sealed class PortalPrintService
 {
     /// <summary>The portal service name.</summary>

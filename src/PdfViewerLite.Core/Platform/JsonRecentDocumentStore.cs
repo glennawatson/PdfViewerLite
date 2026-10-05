@@ -12,7 +12,7 @@ namespace PdfViewerLite.Core.Platform;
 /// back reliably. Windows and macOS also tell the desktop, so documents appear in the taskbar Jump List and the Dock's
 /// recent items. Missing files are skipped when the list is read.
 /// </summary>
-[DebuggerDisplay("{_filePath}")]
+[DebuggerDisplay("JsonRecentDocumentStore: {_filePath}")]
 public sealed class JsonRecentDocumentStore : IRecentDocumentStore
 {
     /// <summary>The most documents remembered.</summary>

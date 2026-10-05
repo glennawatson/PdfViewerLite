@@ -12,7 +12,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Shows the comfort preferences; each choice applies as soon as it is made.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PreferencesWindow: {Title}")]
 public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWindow<PreferencesViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="PreferencesWindow"/> class.</summary>

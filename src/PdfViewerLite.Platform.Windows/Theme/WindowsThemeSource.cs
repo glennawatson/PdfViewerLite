@@ -15,7 +15,7 @@ namespace PdfViewerLite.Platform.Windows.Theme;
 /// Follows Windows' light or dark app mode, accent colour, high contrast, animation and caret blink settings, and
 /// publishes them again whenever the personalisation settings change.
 /// </summary>
-[DebuggerDisplay("Windows colours")]
+[DebuggerDisplay("WindowsThemeSource: Windows colours")]
 public sealed class WindowsThemeSource : IDesktopThemeSource
 {
     /// <summary>The key holding the app mode.</summary>

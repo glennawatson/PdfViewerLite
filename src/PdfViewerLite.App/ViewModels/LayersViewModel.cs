@@ -18,7 +18,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// A tab's layers (optional content). The panel only appears for documents that have layers; ticking a layer shows it
 /// and clearing it hides it, changing only how the pages look.
 /// </summary>
-[DebuggerDisplay("{Items.Count} layers")]
+[DebuggerDisplay("LayersViewModel: {Items.Count} layers")]
 public sealed partial class LayersViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The owning tab.</summary>

@@ -9,5 +9,5 @@ namespace PdfViewerLite.Core.Speech;
 /// <summary>A sentence of a page's text, by character position, so it can be highlighted while it is read.</summary>
 /// <param name="Start">The first character.</param>
 /// <param name="Length">The number of characters.</param>
-[DebuggerDisplay("{Start}+{Length}")]
+[DebuggerDisplay("SpeechSentence: {Start}+{Length}")]
 public readonly record struct SpeechSentence(int Start, int Length);

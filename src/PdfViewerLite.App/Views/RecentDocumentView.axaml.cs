@@ -12,7 +12,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One recent document on the start page.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("RecentDocumentView: {ViewModel}")]
 public sealed partial class RecentDocumentView : ReactiveUI.Avalonia.ReactiveUserControl<RecentDocument>
 {
     /// <summary>Initializes a new instance of the <see cref="RecentDocumentView"/> class.</summary>

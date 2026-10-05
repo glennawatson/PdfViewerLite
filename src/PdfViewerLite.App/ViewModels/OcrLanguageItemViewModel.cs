@@ -12,7 +12,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>One language in the text recognition language list: whether it is used, whether its pack is on this computer, and buttons to download or remove it.</summary>
-[DebuggerDisplay("{Pack.Code} selected={IsSelected} downloaded={IsDownloaded}")]
+[DebuggerDisplay("OcrLanguageItemViewModel: {Pack.Code} selected={IsSelected} downloaded={IsDownloaded}")]
 public sealed partial class OcrLanguageItemViewModel : ReactiveObject
 {
     /// <summary>The list that owns this language and does the downloading.</summary>

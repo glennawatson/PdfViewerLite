@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 namespace PdfViewerLite.Http;
 
 /// <summary>Turns bytes received across several downloads into a fraction done from 0 to 1.</summary>
-[DebuggerDisplay("{_done} of {_total}")]
+[DebuggerDisplay("ByteProgress: {_done} of {_total}")]
 internal sealed class ByteProgress
 {
     /// <summary>The bytes expected in total, at least 1.</summary>

@@ -18,7 +18,7 @@ using PdfViewerLite.Pdfium.Native;
 namespace PdfViewerLite.Pdfium;
 
 /// <summary>A PDF document backed by PDFium. Every member is serialised through the process wide PDFium lock.</summary>
-[DebuggerDisplay("{FilePath} ({PageCount} pages)")]
+[DebuggerDisplay("PdfiumDocument: {FilePath} ({PageCount} pages)")]
 public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, IFormFiller, IFormScriptSource, ISignatureSource
 {
     /// <summary>The number of parsed pages kept loaded.</summary>

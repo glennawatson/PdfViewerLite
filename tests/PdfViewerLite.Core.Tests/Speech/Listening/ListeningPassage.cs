@@ -9,7 +9,7 @@ namespace PdfViewerLite.Core.Tests.Speech.Listening;
 /// <summary>A passage read aloud by the real voice.</summary>
 /// <param name="Category">What kind of writing it is, such as prose or technical.</param>
 /// <param name="Text">The passage.</param>
-[DebuggerDisplay("{Category}")]
+[DebuggerDisplay("ListeningPassage: {Category}")]
 public sealed record ListeningPassage(string Category, string Text)
 {
     /// <inheritdoc/>

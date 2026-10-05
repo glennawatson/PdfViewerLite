@@ -13,7 +13,7 @@ namespace PdfViewerLite.Core.Layout;
 /// The positions of every page in a continuous layout. Lookups are binary searches over row offsets, so locating the
 /// visible pages costs O(log n) regardless of document length.
 /// </summary>
-[DebuggerDisplay("{PageCount} pages, {ExtentWidth} x {ExtentHeight}")]
+[DebuggerDisplay("DocumentLayout: {PageCount} pages, {ExtentWidth} x {ExtentHeight}")]
 public sealed record DocumentLayout
 {
     /// <summary>The number of pages in a two page spread.</summary>

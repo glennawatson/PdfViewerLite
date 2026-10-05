@@ -17,7 +17,7 @@ namespace PdfViewerLite.Speech.Melo;
 /// voices, no account and nothing sent anywhere. Text becomes ARPAbet phones, BERT reads the sentence for its
 /// prosody, and the synthesizer turns both into 44.1 kHz audio. No Python is involved: the front end is C#.
 /// </summary>
-[DebuggerDisplay("{Name}, ready={IsReady}")]
+[DebuggerDisplay("MeloEngine: {Name}, ready={IsReady}")]
 public sealed class MeloEngine : ISpeechEngine
 {
     /// <summary>The longest piece of text read at once, in characters, as MeloTTS splits long text.</summary>

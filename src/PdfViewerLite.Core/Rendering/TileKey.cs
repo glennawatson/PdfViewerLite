@@ -15,7 +15,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// <param name="ToneId">The <see cref="PageTone.Id"/> applied to the pixels.</param>
 /// <param name="Column">The tile column.</param>
 /// <param name="Row">The tile row.</param>
-[DebuggerDisplay("Doc {DocumentId} p{PageIndex} s{ScaleKey} ({Column},{Row})")]
+[DebuggerDisplay("TileKey: Doc {DocumentId} p{PageIndex} s{ScaleKey} ({Column},{Row})")]
 public readonly record struct TileKey(int DocumentId, int PageIndex, int ScaleKey, PageRotation Rotation, int ToneId, short Column, short Row)
 {
     /// <summary>Gets a value indicating whether the key identifies a whole-page preview image.</summary>

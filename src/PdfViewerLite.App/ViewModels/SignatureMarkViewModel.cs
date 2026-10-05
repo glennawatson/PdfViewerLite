@@ -20,7 +20,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// The window that makes a signature or initials: typed, drawn or from a picture, with a preview. The user chooses
 /// whether the mark is remembered on this computer, and can forget a remembered one.
 /// </summary>
-[DebuggerDisplay("{Kind}: {Style}")]
+[DebuggerDisplay("SignatureMarkViewModel: {Kind}: {Style}")]
 public sealed partial class SignatureMarkViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The name shown for a remembered picture.</summary>

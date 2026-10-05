@@ -13,7 +13,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One outline entry; keeps the tree item's expansion in step with the view model both ways.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("OutlineItemView: {ViewModel}")]
 public sealed partial class OutlineItemView : ReactiveUI.Avalonia.ReactiveUserControl<OutlineItemViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="OutlineItemView"/> class.</summary>

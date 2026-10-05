@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Search;
 /// <param name="Snippet">The words around the match, on one line.</param>
 /// <param name="MatchStart">Where the match starts within <paramref name="Snippet"/>.</param>
 /// <param name="MatchLength">The match's length within <paramref name="Snippet"/>.</param>
-[DebuggerDisplay("Page {PageIndex}: {Snippet}")]
+[DebuggerDisplay("FolderSearchMatch: Page {PageIndex}: {Snippet}")]
 public sealed record FolderSearchMatch(int PageIndex, string Snippet, int MatchStart, int MatchLength);

@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Ocr;
 /// <param name="Text">The word.</param>
 /// <param name="Bounds">Where it is on the page, in page space (points, top-left origin).</param>
 /// <param name="Confidence">How sure the recogniser is, from 0 to 100.</param>
-[DebuggerDisplay("{Text} ({Confidence})")]
+[DebuggerDisplay("OcrWord: {Text} ({Confidence})")]
 public readonly record struct OcrWord(string Text, PageRect Bounds, float Confidence);

@@ -19,7 +19,7 @@ namespace PdfViewerLite.App.Controls;
 /// Tells assistive technology which page the reader is on, for example "Page 5 of 40", and gives it that page's text
 /// as a read-only value. Avalonia has no text pattern, so the value is how a screen reader reaches the words.
 /// </summary>
-[DebuggerDisplay("{GetName()}")]
+[DebuggerDisplay("PageCanvasAutomationPeer: {GetName()}")]
 internal sealed class PageCanvasAutomationPeer : ControlAutomationPeer, IValueProvider
 {
     /// <summary>The name when no document is shown.</summary>

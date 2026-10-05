@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Documents;
 /// <param name="Id">The layer's object number in the file.</param>
 /// <param name="Name">The layer's name.</param>
 /// <param name="IsVisible">Whether it is shown.</param>
-[DebuggerDisplay("{Name} visible={IsVisible}")]
+[DebuggerDisplay("DocumentLayer: {Name} visible={IsVisible}")]
 public sealed record DocumentLayer(int Id, string Name, bool IsVisible);

@@ -12,7 +12,7 @@ using ReactiveUI.Primitives.Signals;
 namespace PdfViewerLite.Platform.Linux.Kde;
 
 /// <summary>Supplies the KDE colour scheme from <c>kdeglobals</c>, re-reading it whenever the file changes.</summary>
-[DebuggerDisplay("{FilePath}")]
+[DebuggerDisplay("KdeThemeSource: {FilePath}")]
 public sealed class KdeThemeSource : IDesktopThemeSource
 {
     /// <summary>Initializes a new instance of the <see cref="KdeThemeSource"/> class using the user's <c>kdeglobals</c>.</summary>

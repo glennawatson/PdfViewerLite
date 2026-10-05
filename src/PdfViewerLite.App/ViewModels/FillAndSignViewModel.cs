@@ -19,7 +19,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// drawn or from a picture), previewed on the page, moved and resized with the keyboard or pointer, then placed.
 /// Escape cancels placing without changing the document. Remembering a mark is the user's choice.
 /// </summary>
-[DebuggerDisplay("Fill & Sign: {IsActive}, placing {Placement}")]
+[DebuggerDisplay("FillAndSignViewModel: Fill & Sign: {IsActive}, placing {Placement}")]
 public sealed partial class FillAndSignViewModel : ReactiveObject
 {
     /// <summary>The steps shown while a mark is being placed.</summary>

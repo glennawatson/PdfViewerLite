@@ -16,7 +16,7 @@ namespace PdfViewerLite.Ocr;
 /// Recognises text with Tesseract, loaded from the app directory or the system. When Tesseract or its language data is
 /// missing the engine reports <see cref="IsAvailable"/> as <see langword="false"/> and recognises nothing.
 /// </summary>
-[DebuggerDisplay("Tesseract {Language} available={IsAvailable}")]
+[DebuggerDisplay("TesseractEngine: Tesseract {Language} available={IsAvailable}")]
 public sealed unsafe class TesseractEngine : IOcrEngine
 {
     /// <summary>Tesseract's word level.</summary>

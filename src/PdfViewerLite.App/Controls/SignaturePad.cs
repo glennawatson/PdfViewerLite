@@ -24,7 +24,7 @@ namespace PdfViewerLite.App.Controls;
 /// <see cref="StrokeCommand"/>. When nothing has been drawn here yet it shows <see cref="Mark"/>, such as a remembered
 /// drawing.
 /// </summary>
-[DebuggerDisplay("{_drawn.Count} strokes")]
+[DebuggerDisplay("SignaturePad: {_drawn.Count} strokes")]
 public sealed class SignaturePad : Control
 {
     /// <summary>The mark shown when nothing has been drawn here; setting it to <see langword="null"/> clears the pad.</summary>

@@ -11,5 +11,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Label">The page label shown under the thumbnail.</param>
 /// <param name="Width">The thumbnail width in device independent pixels.</param>
 /// <param name="Height">The thumbnail height in device independent pixels.</param>
-[DebuggerDisplay("Page {Label}")]
+[DebuggerDisplay("ThumbnailItemViewModel: Page {Label}")]
 public sealed record ThumbnailItemViewModel(int PageIndex, string Label, double Width, double Height);

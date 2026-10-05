@@ -12,7 +12,7 @@ namespace PdfViewerLite.Core.Annotations;
 /// A signature or initials, ready to preview, place on a page and, when the user asks, remember: typed text, drawn
 /// strokes or an image. <see cref="Width"/> and <see cref="Height"/> give the mark's own shape; placing it scales it.
 /// </summary>
-[DebuggerDisplay("{Kind} {Style}, {Width} x {Height}")]
+[DebuggerDisplay("SignatureMark: {Kind} {Style}, {Width} x {Height}")]
 public sealed record SignatureMark
 {
     /// <summary>The width of a typed character, as a share of the text size.</summary>

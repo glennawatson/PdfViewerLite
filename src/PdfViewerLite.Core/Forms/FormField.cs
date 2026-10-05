@@ -20,7 +20,7 @@ namespace PdfViewerLite.Core.Forms;
 /// <param name="IsReadOnly">Whether the field cannot be changed.</param>
 /// <param name="IsRequired">Whether the field must be filled in.</param>
 /// <param name="IsMultiline">Whether a text field takes several lines.</param>
-[DebuggerDisplay("{Kind} {Name} = {Value}")]
+[DebuggerDisplay("FormField: {Kind} {Name} = {Value}")]
 public sealed record FormField(
     int PageIndex,
     int Index,

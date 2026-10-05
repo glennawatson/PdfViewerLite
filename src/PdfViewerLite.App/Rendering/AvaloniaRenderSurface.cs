@@ -12,7 +12,7 @@ using PdfViewerLite.Core.Rendering;
 namespace PdfViewerLite.App.Rendering;
 
 /// <summary>A tile backed by an Avalonia <see cref="WriteableBitmap"/>; PDFium renders straight into its pixels.</summary>
-[DebuggerDisplay("{Width} x {Height}")]
+[DebuggerDisplay("AvaloniaRenderSurface: {Width} x {Height}")]
 internal sealed class AvaloniaRenderSurface : IRenderSurface
 {
     /// <summary>The bytes per pixel.</summary>

@@ -9,7 +9,7 @@ namespace PdfViewerLite.Core.Reading;
 /// <summary>A run of characters in a page's reading text.</summary>
 /// <param name="Start">The first character, or -1 for none.</param>
 /// <param name="Length">The number of characters.</param>
-[DebuggerDisplay("{Start}+{Length}")]
+[DebuggerDisplay("TextRange: {Start}+{Length}")]
 public readonly record struct TextRange(int Start, int Length)
 {
     /// <summary>Gets the empty range.</summary>

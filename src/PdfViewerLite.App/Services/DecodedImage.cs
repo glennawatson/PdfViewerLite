@@ -11,5 +11,5 @@ namespace PdfViewerLite.App.Services;
 /// <param name="Pixels">The pixels, in rows from top to bottom.</param>
 /// <param name="Width">The width in pixels.</param>
 /// <param name="Height">The height in pixels.</param>
-[DebuggerDisplay("{Name}, {Width} x {Height}")]
+[DebuggerDisplay("DecodedImage: {Name}, {Width} x {Height}")]
 public sealed record DecodedImage(string Name, ReadOnlyMemory<byte> Pixels, int Width, int Height);

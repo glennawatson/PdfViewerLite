@@ -14,7 +14,7 @@ namespace PdfViewerLite.Core.Layout;
 /// <param name="Spacing">The gap between pages.</param>
 /// <param name="Margin">The margin around the content.</param>
 /// <param name="ViewportWidth">The viewport width, used to centre narrow content.</param>
-[DebuggerDisplay("{Mode} x{Scale}")]
+[DebuggerDisplay("LayoutOptions: {Mode} x{Scale}")]
 public readonly record struct LayoutOptions(PageRotation Rotation, PageLayoutMode Mode, double Scale, double Spacing, double Margin, double ViewportWidth)
 {
     /// <summary>

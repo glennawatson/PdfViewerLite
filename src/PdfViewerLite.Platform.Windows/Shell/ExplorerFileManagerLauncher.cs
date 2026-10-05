@@ -8,7 +8,7 @@ using PdfViewerLite.Core.Platform;
 namespace PdfViewerLite.Platform.Windows.Shell;
 
 /// <summary>Opens File Explorer at a file's folder with the file selected, as Show in Folder does in other Windows apps.</summary>
-[DebuggerDisplay("File Explorer")]
+[DebuggerDisplay("ExplorerFileManagerLauncher: File Explorer")]
 public sealed class ExplorerFileManagerLauncher : IFileManagerLauncher
 {
     /// <summary>The apartment-threaded COM model the shell expects.</summary>

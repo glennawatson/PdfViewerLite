@@ -15,7 +15,7 @@ namespace PdfViewerLite.Speech.Kokoro;
 /// sent anywhere. Text becomes phonemes (misaki), phonemes become token ids, and the model turns them and the voice's
 /// style into 24 kHz audio.
 /// </summary>
-[DebuggerDisplay("{Name}, ready={IsReady}")]
+[DebuggerDisplay("KokoroEngine: {Name}, ready={IsReady}")]
 public sealed class KokoroEngine : ISpeechEngine
 {
     /// <summary>The most phoneme tokens the model reads at once.</summary>

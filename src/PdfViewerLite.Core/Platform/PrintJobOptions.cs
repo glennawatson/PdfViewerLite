@@ -13,7 +13,7 @@ namespace PdfViewerLite.Core.Platform;
 /// <param name="Colour">Whether to print in colour rather than black and white.</param>
 /// <param name="TwoSided">Whether to print on both sides.</param>
 /// <param name="Paper">The paper.</param>
-[DebuggerDisplay("{Printer} x{Copies}")]
+[DebuggerDisplay("PrintJobOptions: {Printer} x{Copies}")]
 public readonly record struct PrintJobOptions(string Printer, int Copies, bool Colour, bool TwoSided, PaperSize Paper)
 {
     /// <summary>Gets the edge used to turn two-sided sheets.</summary>

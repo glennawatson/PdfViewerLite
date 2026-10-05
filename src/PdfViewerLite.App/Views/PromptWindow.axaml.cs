@@ -13,7 +13,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Asks for some text, for example a note; closes with the text, or <see langword="null"/> when cancelled.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PromptWindow: {Title}")]
 public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<PromptViewModel>
 {
     /// <summary>The height of a multi-line text box.</summary>

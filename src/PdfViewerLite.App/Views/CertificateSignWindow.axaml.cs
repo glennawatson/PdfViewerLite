@@ -16,7 +16,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Asks for a certificate and its password to sign with. Closes with <see langword="true"/> to sign.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("CertificateSignWindow: {Title}")]
 public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.ReactiveWindow<CertificateSignViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="CertificateSignWindow"/> class.</summary>

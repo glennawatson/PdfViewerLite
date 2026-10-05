@@ -35,7 +35,7 @@ namespace PdfViewerLite.App.Controls;
 /// viewport are drawn or requested; every frame re-requests what it is missing under a fresh render generation so work
 /// for regions that scrolled away is dropped by the scheduler before it reaches PDFium.
 /// </summary>
-[DebuggerDisplay("{Tab}")]
+[DebuggerDisplay("PageCanvas: {Tab}")]
 public sealed partial class PageCanvas : Control
 {
     /// <summary>Defines the <see cref="Tab"/> property.</summary>

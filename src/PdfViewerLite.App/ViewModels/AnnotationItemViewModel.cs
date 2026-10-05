@@ -13,7 +13,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Annotation">The annotation.</param>
 /// <param name="PageLabel">The page label shown, for example "iv" or "12".</param>
 /// <param name="Replies">The replies to it and its review status changes, oldest first.</param>
-[DebuggerDisplay("{Summary}")]
+[DebuggerDisplay("AnnotationItemViewModel: {Summary}")]
 public sealed record AnnotationItemViewModel(PageAnnotation Annotation, string PageLabel, IReadOnlyList<AnnotationReply> Replies)
 {
     /// <summary>Gets the kind in words, so colour is never the only cue.</summary>

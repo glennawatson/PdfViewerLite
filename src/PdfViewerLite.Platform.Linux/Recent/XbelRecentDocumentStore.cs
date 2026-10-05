@@ -14,7 +14,7 @@ namespace PdfViewerLite.Platform.Linux.Recent;
 /// Reads and writes the freedesktop.org <c>recently-used.xbel</c> file. KDE (Dolphin's Recent Files, the application
 /// launcher) and GTK applications share it, so documents opened here show up across the desktop.
 /// </summary>
-[DebuggerDisplay("{FilePath}")]
+[DebuggerDisplay("XbelRecentDocumentStore: {FilePath}")]
 public sealed class XbelRecentDocumentStore : IRecentDocumentStore
 {
     /// <summary>The PDF MIME type.</summary>

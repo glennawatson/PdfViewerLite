@@ -11,7 +11,7 @@ namespace PdfViewerLite.Platform.Windows.Shell;
 /// Remembers recent documents for the start page and tells Windows about each one, so it appears in the taskbar Jump
 /// List and Explorer's recent items. Windows' own list holds shortcuts to every app's files, so the app keeps its own.
 /// </summary>
-[DebuggerDisplay("Windows recent documents")]
+[DebuggerDisplay("WindowsRecentDocumentStore: Windows recent documents")]
 public sealed class WindowsRecentDocumentStore : IRecentDocumentStore
 {
     /// <summary>Tells the shell the item is a UTF-16 path (<c>SHARD_PATHW</c>).</summary>

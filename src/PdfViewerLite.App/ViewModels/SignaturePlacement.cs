@@ -12,5 +12,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Page">The zero-based page.</param>
 /// <param name="Bounds">Where the mark would go, in page space.</param>
 /// <param name="Mark">The mark.</param>
-[DebuggerDisplay("Page {Page}: {Bounds}")]
+[DebuggerDisplay("SignaturePlacement: Page {Page}: {Bounds}")]
 public sealed record SignaturePlacement(int Page, PageRect Bounds, SignatureMark Mark);

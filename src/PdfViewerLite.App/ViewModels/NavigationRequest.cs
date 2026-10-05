@@ -11,5 +11,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="PageIndex">The zero based destination page.</param>
 /// <param name="Target">An area of the page to bring into view, or <see langword="null"/> for the top of the page.</param>
 /// <param name="OffsetFraction">The vertical position within the page from 0 to 1, used when <paramref name="Target"/> is null.</param>
-[DebuggerDisplay("Page {PageIndex}")]
+[DebuggerDisplay("NavigationRequest: Page {PageIndex}")]
 public sealed record NavigationRequest(int PageIndex, PageRect? Target, double OffsetFraction);

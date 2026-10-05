@@ -20,7 +20,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// </summary>
 /// <param name="services">The services.</param>
 /// <param name="open">Opens a file at a page with the words to show.</param>
-[DebuggerDisplay("{Query} in {Folder}: {Results.Count} results")]
+[DebuggerDisplay("FolderSearchViewModel: {Query} in {Folder}: {Results.Count} results")]
 public sealed partial class FolderSearchViewModel(AppServices services, Action<string, int, string> open) : ReactiveObject, IDisposable
 {
     /// <summary>The most matches kept per file.</summary>

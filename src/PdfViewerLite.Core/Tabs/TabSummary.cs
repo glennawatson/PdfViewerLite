@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Tabs;
 /// <param name="FileName">The file name.</param>
 /// <param name="Title">The document title.</param>
 /// <param name="Folder">The folder path.</param>
-[DebuggerDisplay("{FileName}")]
+[DebuggerDisplay("TabSummary: {FileName}")]
 public readonly record struct TabSummary(string FileName, string Title, string Folder);

@@ -18,7 +18,7 @@ namespace PdfViewerLite.Platform.Windows;
 /// The Windows desktop: light or dark mode and accent colour, File Explorer, the Jump List, one window per user through
 /// a named pipe, printing through the spooler and the Windows print dialog, and sound through WASAPI.
 /// </summary>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("WindowsPlatform: {Name}")]
 public sealed class WindowsPlatform : IDesktopPlatform
 {
     /// <summary>The application name, used for the pipe and the data folder.</summary>

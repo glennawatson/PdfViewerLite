@@ -13,5 +13,5 @@ namespace PdfViewerLite.Core.Signatures;
 /// <param name="SubFilter">The signature format, for example <c>adbe.pkcs7.detached</c> or <c>ETSI.CAdES.detached</c>.</param>
 /// <param name="Reason">The reason the signer gave, or an empty string.</param>
 /// <param name="SigningTime">The signing time the file records, if any.</param>
-[DebuggerDisplay("Signature {Index} ({SubFilter})")]
+[DebuggerDisplay("RawSignature: Signature {Index} ({SubFilter})")]
 public sealed record RawSignature(int Index, byte[] Contents, long[] ByteRange, string SubFilter, string Reason, DateTimeOffset? SigningTime);

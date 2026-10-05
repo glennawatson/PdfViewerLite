@@ -16,7 +16,7 @@ namespace PdfViewerLite.Platform.MacOS;
 /// Follows macOS's light or dark appearance, accent colour and Reduce Motion setting, and publishes them again when the
 /// appearance or accent changes (macOS announces both as distributed notifications).
 /// </summary>
-[DebuggerDisplay("macOS colours")]
+[DebuggerDisplay("MacThemeSource: macOS colours")]
 public sealed unsafe class MacThemeSource : IDesktopThemeSource
 {
     /// <summary>The global preferences domain.</summary>
@@ -138,7 +138,7 @@ public sealed unsafe class MacThemeSource : IDesktopThemeSource
     }
 
     /// <summary>Listens for appearance changes on the distributed notification centre while alive.</summary>
-    [DebuggerDisplay("Appearance changes")]
+    [DebuggerDisplay("ChangeObserver: Appearance changes")]
     private sealed class ChangeObserver : IDisposable
     {
         /// <summary>Deliver notifications straight away (CFNotificationSuspensionBehaviorDeliverImmediately).</summary>

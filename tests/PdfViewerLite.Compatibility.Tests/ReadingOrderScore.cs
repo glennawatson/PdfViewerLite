@@ -16,7 +16,7 @@ namespace PdfViewerLite.Compatibility.Tests;
 /// <param name="Paragraphs">The transcript paragraphs long enough to compare.</param>
 /// <param name="Found">How many of them were found in the extracted text.</param>
 /// <param name="InOrder">How many neighbouring pairs of found paragraphs keep their order.</param>
-[DebuggerDisplay("found {Found}/{Paragraphs}, in order {InOrder}/{Pairs}")]
+[DebuggerDisplay("ReadingOrderScore: found {Found}/{Paragraphs}, in order {InOrder}/{Pairs}")]
 internal readonly record struct ReadingOrderScore(int Paragraphs, int Found, int InOrder)
 {
     /// <summary>The shortest paragraph, in letters and digits, worth comparing.</summary>

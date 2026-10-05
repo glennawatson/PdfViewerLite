@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Speech.Melo;
 
 /// <summary>What MeloTTS reads for one piece of text: phones with blanks between them, their tones and language, and the BERT tokens with how many phones each covers.</summary>
-[DebuggerDisplay("{Phones.Count} phones, {Tokens.Count} tokens")]
+[DebuggerDisplay("MeloInput: {Phones.Count} phones, {Tokens.Count} tokens")]
 internal sealed class MeloInput
 {
     /// <summary>Gets the phone symbol ids, with a blank before, between and after.</summary>

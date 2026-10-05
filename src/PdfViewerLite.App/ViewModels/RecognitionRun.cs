@@ -11,5 +11,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="AlreadyText">Pages that already had text.</param>
 /// <param name="Closed">Whether the document closed part way.</param>
 /// <param name="Unsure">Whether the first scanned page read too poorly to trust, so the run stopped before writing anything.</param>
-[DebuggerDisplay("{Recognized} recognised, {AlreadyText} had text")]
+[DebuggerDisplay("RecognitionRun: {Recognized} recognised, {AlreadyText} had text")]
 internal readonly record struct RecognitionRun(int Recognized, int AlreadyText, bool Closed, bool Unsure);

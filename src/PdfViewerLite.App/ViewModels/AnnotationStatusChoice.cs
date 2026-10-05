@@ -10,5 +10,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <summary>A review status chosen for a comment.</summary>
 /// <param name="Annotation">The comment.</param>
 /// <param name="State">The status.</param>
-[DebuggerDisplay("{Annotation} {State}")]
+[DebuggerDisplay("AnnotationStatusChoice: {Annotation} {State}")]
 public readonly record struct AnnotationStatusChoice(PageAnnotation Annotation, ReviewState State);

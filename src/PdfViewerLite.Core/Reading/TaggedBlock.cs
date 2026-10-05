@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Reading;
 /// <param name="Level">The heading level, 1 to 6, for a heading; zero otherwise.</param>
 /// <param name="Characters">The page characters the element covers, in logical order.</param>
 /// <param name="ReplacementText">The element's <c>/ActualText</c>, or a figure's <c>/Alt</c> text, read instead of its characters.</param>
-[DebuggerDisplay("{Kind} {Level}: {Characters.Length} characters")]
+[DebuggerDisplay("TaggedBlock: {Kind} {Level}: {Characters.Length} characters")]
 public sealed record TaggedBlock(ReadingBlockKind Kind, int Level, int[] Characters, string? ReplacementText);

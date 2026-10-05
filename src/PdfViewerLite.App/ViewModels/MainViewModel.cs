@@ -23,7 +23,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>The main window: the open tabs, the start page and window level commands.</summary>
-[DebuggerDisplay("{Tabs.Count} tabs")]
+[DebuggerDisplay("MainViewModel: {Tabs.Count} tabs")]
 public sealed partial class MainViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The number of recent documents shown on the start page.</summary>

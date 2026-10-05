@@ -10,5 +10,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <summary>A colour chosen for an annotation.</summary>
 /// <param name="Annotation">The annotation.</param>
 /// <param name="Color">The colour.</param>
-[DebuggerDisplay("{Annotation} {Color}")]
+[DebuggerDisplay("AnnotationColorChoice: {Annotation} {Color}")]
 public readonly record struct AnnotationColorChoice(PageAnnotation Annotation, uint Color);

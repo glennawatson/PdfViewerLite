@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Documents;
 /// <param name="Target">The navigation target.</param>
 /// <param name="Children">The child entries.</param>
 /// <param name="IsOpen">Whether the document requests the entry be expanded.</param>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("OutlineNode: {Title}")]
 public sealed record OutlineNode(string Title, LinkTarget Target, IReadOnlyList<OutlineNode> Children, bool IsOpen);

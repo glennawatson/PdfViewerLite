@@ -19,7 +19,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// The measuring tool: distances, path lengths and areas between points clicked on a page, at the scale the page
 /// declares or one the user types, such as "1 cm = 2 m".
 /// </summary>
-[DebuggerDisplay("{Mode}: {Result}")]
+[DebuggerDisplay("MeasureViewModel: {Mode}: {Result}")]
 public sealed partial class MeasureViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The points of a line: its two ends.</summary>

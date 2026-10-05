@@ -15,7 +15,7 @@ namespace PdfViewerLite.Core.Signatures;
 /// <param name="Integrity">Whether the signed content is unchanged.</param>
 /// <param name="IsTrusted">Whether the signer's certificate chains to a certificate this computer trusts.</param>
 /// <param name="Detail">A short explanation when the signature could not be checked or is not trusted.</param>
-[DebuggerDisplay("{SignerName}: {Integrity}, trusted {IsTrusted}")]
+[DebuggerDisplay("DocumentSignature: {SignerName}: {Integrity}, trusted {IsTrusted}")]
 public sealed record DocumentSignature(int Index, string SignerName, string Issuer, DateTimeOffset? SigningTime, string Reason, SignatureIntegrity Integrity, bool IsTrusted, string Detail)
 {
     /// <summary>Gets the trusted timestamp on the signature, or on the document for a document timestamp, if any.</summary>

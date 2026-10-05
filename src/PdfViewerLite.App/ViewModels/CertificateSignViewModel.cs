@@ -21,7 +21,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// and place. Signing checks the password straight away, so a mistake is shown in the window rather than later. The
 /// user chooses whether the certificate is remembered, and can forget each remembered one; the password never is.
 /// </summary>
-[DebuggerDisplay("{CertificatePath}")]
+[DebuggerDisplay("CertificateSignViewModel: {CertificatePath}")]
 public sealed partial class CertificateSignViewModel : ReactiveObject, IDisposable
 {
     /// <summary>Raises <see cref="Answered"/> with <see langword="true"/>.</summary>

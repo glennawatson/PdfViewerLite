@@ -16,7 +16,7 @@ namespace PdfViewerLite.App.Controls;
 /// Draws a signature or initials mark into a rectangle, as it will look once placed: typed text, drawn strokes or the
 /// picture. Keeps the picture's bitmap while the same mark is drawn, so redraws do not copy its pixels again.
 /// </summary>
-[DebuggerDisplay("Image cached: {_image != null}")]
+[DebuggerDisplay("SignatureMarkPainter: Image cached: {_image != null}")]
 public sealed class SignatureMarkPainter : IDisposable
 {
     /// <summary>The screen resolution bitmaps are made at.</summary>

@@ -12,5 +12,5 @@ namespace PdfViewerLite.Pdfium;
 /// <param name="Level">The heading level, 1 to 6, for a heading; zero otherwise.</param>
 /// <param name="IsGrouping">Whether the element only groups others, such as a section, list or table row.</param>
 /// <param name="IsUnknown">Whether the type is not a standard one, so it is a block only when it has no child elements.</param>
-[DebuggerDisplay("{Kind} {Level} grouping={IsGrouping} unknown={IsUnknown}")]
+[DebuggerDisplay("StructureRole: {Kind} {Level} grouping={IsGrouping} unknown={IsUnknown}")]
 internal readonly record struct StructureRole(ReadingBlockKind Kind, int Level, bool IsGrouping, bool IsUnknown);

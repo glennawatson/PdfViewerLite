@@ -8,7 +8,7 @@ namespace PdfViewerLite.Compatibility.Tests;
 
 /// <summary>A temporary PDF path, deleted on dispose.</summary>
 /// <param name="Path">The path.</param>
-[DebuggerDisplay("{Path}")]
+[DebuggerDisplay("TempFile: {Path}")]
 internal sealed record TempFile(string Path) : IDisposable
 {
     /// <inheritdoc/>

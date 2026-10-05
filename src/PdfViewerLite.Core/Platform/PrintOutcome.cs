@@ -9,5 +9,5 @@ namespace PdfViewerLite.Core.Platform;
 /// <summary>What happened to a print job.</summary>
 /// <param name="Sent">Whether the printer's queue accepted the job.</param>
 /// <param name="Detail">Why it was not sent, or an empty string.</param>
-[DebuggerDisplay("Sent={Sent} {Detail}")]
+[DebuggerDisplay("PrintOutcome: Sent={Sent} {Detail}")]
 public readonly record struct PrintOutcome(bool Sent, string Detail);

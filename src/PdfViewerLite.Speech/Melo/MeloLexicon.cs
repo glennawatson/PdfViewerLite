@@ -10,7 +10,7 @@ namespace PdfViewerLite.Speech.Melo;
 /// The CMU pronouncing dictionary as MeloTTS reads it (<c>melo-en-lexicon.txt</c>): one word per line, a tab, and its
 /// ARPAbet phones. Each word's phones are stored once as packed symbol ids and tones.
 /// </summary>
-[DebuggerDisplay("{Count} words")]
+[DebuggerDisplay("MeloLexicon: {Count} words")]
 internal sealed class MeloLexicon
 {
     /// <summary>About how many characters of the file each phone takes, for the first allocation.</summary>

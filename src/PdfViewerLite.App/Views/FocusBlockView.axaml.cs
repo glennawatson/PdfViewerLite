@@ -19,7 +19,7 @@ using ReactiveUI.Primitives.ObservableEvents;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>A block of Focus Mode text: styled by its kind, with the sentence and word being read aloud marked.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("FocusBlockView: {ViewModel}")]
 public sealed partial class FocusBlockView : ReactiveUI.Avalonia.ReactiveUserControl<FocusBlockViewModel>
 {
     /// <summary>The opacity of text dimmed by the focus band.</summary>

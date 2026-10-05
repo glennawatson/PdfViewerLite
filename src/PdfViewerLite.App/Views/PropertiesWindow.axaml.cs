@@ -14,7 +14,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Shows a document's properties. The properties do not change while it is open, so it fills itself once.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PropertiesWindow: {Title}")]
 public sealed partial class PropertiesWindow : ReactiveUI.Avalonia.ReactiveWindow<PropertiesViewModel>
 {
     /// <summary>The width of the name column.</summary>

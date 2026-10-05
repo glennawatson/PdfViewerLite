@@ -9,7 +9,7 @@ namespace PdfViewerLite.Core.Geometry;
 /// <summary>The unrotated size of a page in PDF points (1/72 inch).</summary>
 /// <param name="Width">The page width in points.</param>
 /// <param name="Height">The page height in points.</param>
-[DebuggerDisplay("{Width} x {Height}")]
+[DebuggerDisplay("PageSize: {Width} x {Height}")]
 public readonly record struct PageSize(float Width, float Height)
 {
     /// <summary>The width of US Letter paper in points.</summary>

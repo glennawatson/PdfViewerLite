@@ -11,7 +11,7 @@ namespace PdfViewerLite.Core.Documents;
 /// <see cref="Capacity"/> are open the least recently used are closed, so hundreds of tabs cost little memory. Use from
 /// the UI thread.
 /// </summary>
-[DebuggerDisplay("{OpenCount} of {Capacity} open")]
+[DebuggerDisplay("DocumentPool: {OpenCount} of {Capacity} open")]
 public sealed class DocumentPool : IDisposable
 {
     /// <summary>The default number of documents kept open.</summary>

@@ -8,7 +8,7 @@ using PdfViewerLite.Http.GitHub;
 namespace PdfViewerLite.Http;
 
 /// <summary>Checks GitHub for a newer release.</summary>
-[DebuggerDisplay("{_owner}/{_repository}")]
+[DebuggerDisplay("UpdateChecker: {_owner}/{_repository}")]
 public sealed class UpdateChecker
 {
     /// <summary>The API client.</summary>

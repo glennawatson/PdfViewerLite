@@ -15,7 +15,7 @@ namespace PdfViewerLite.Platform.MacOS.Audio;
 /// The queue starts asynchronously, so whether it is running says nothing until it has started; counting the played
 /// buffers does not depend on that.
 /// </summary>
-[DebuggerDisplay("CoreAudio")]
+[DebuggerDisplay("AudioQueueOutput: CoreAudio")]
 public sealed unsafe class AudioQueueOutput : IAudioOutput
 {
     /// <summary>The samples in each queued buffer, a quarter of a second at 24 kHz.</summary>

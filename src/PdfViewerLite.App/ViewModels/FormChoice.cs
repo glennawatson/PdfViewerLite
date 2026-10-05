@@ -10,5 +10,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <summary>An option picked for a combo or list box.</summary>
 /// <param name="Field">The field.</param>
 /// <param name="Option">The option index.</param>
-[DebuggerDisplay("{Field} option {Option}")]
+[DebuggerDisplay("FormChoice: {Field} option {Option}")]
 public readonly record struct FormChoice(FormField Field, int Option);

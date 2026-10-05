@@ -17,7 +17,7 @@ namespace PdfViewerLite.App.Controls;
 /// Keeps thumbnails still while the selected one is in full view, and otherwise brings it to the middle with a short
 /// ease. Long jumps cover most of the distance at once, so only the last stretch moves.
 /// </summary>
-[DebuggerDisplay("Selected thumbnail: {SelectedIndex}")]
+[DebuggerDisplay("ThumbnailListBox: Selected thumbnail: {SelectedIndex}")]
 public sealed class ThumbnailListBox : ListBox
 {
     /// <summary>Defines the <see cref="ReduceMotion"/> property.</summary>

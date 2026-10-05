@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Ocr;
 /// <param name="PageIndex">The zero based page index.</param>
 /// <param name="Status">What happened.</param>
 /// <param name="Words">The number of words written.</param>
-[DebuggerDisplay("Page {PageIndex}: {Status} ({Words})")]
+[DebuggerDisplay("OcrPageResult: Page {PageIndex}: {Status} ({Words})")]
 public readonly record struct OcrPageResult(int PageIndex, OcrPageStatus Status, int Words);

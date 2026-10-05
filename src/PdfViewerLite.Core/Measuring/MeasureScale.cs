@@ -16,7 +16,7 @@ namespace PdfViewerLite.Core.Measuring;
 /// <param name="PaperUnit">The unit of the length on paper, such as mm, cm, in or pt.</param>
 /// <param name="RealLength">The length it stands for.</param>
 /// <param name="RealUnit">The unit of the real length, such as mm, m, km, in, ft or mi.</param>
-[DebuggerDisplay("{ToString()}")]
+[DebuggerDisplay("MeasureScale: {ToString()}")]
 public readonly record struct MeasureScale(double PaperLength, string PaperUnit, double RealLength, string RealUnit)
 {
     /// <summary>PDF points in an inch.</summary>

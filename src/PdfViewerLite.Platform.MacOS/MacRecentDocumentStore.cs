@@ -11,7 +11,7 @@ namespace PdfViewerLite.Platform.MacOS;
 /// Remembers recent documents for the start page and tells macOS about each one through <c>NSDocumentController</c>, so
 /// they appear in the Dock menu's recent items and the Apple menu's Recent Items.
 /// </summary>
-[DebuggerDisplay("macOS recent documents")]
+[DebuggerDisplay("MacRecentDocumentStore: macOS recent documents")]
 public sealed class MacRecentDocumentStore : IRecentDocumentStore
 {
     /// <summary>The app's own list.</summary>

@@ -11,7 +11,7 @@ namespace PdfViewerLite.Core.Ocr;
 /// <param name="Name">The language's name for people, for example "German (Deutsch)".</param>
 /// <param name="Bytes">The file's size in bytes; a file of another size is downloaded again.</param>
 /// <param name="Sha256">The file's SHA-256 as lowercase hexadecimal; a download that does not match is discarded.</param>
-[DebuggerDisplay("{Code} {Name}")]
+[DebuggerDisplay("OcrLanguagePack: {Code} {Name}")]
 public sealed record OcrLanguagePack(string Code, string Name, long Bytes, string Sha256)
 {
     /// <summary>The extension Tesseract expects on a language file.</summary>

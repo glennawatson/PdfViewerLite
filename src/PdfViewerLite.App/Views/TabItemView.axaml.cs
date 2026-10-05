@@ -11,7 +11,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One tab in the tab strip, with its hover preview.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("TabItemView: {ViewModel}")]
 public sealed partial class TabItemView : ReactiveUI.Avalonia.ReactiveUserControl<DocumentTabViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="TabItemView"/> class.</summary>

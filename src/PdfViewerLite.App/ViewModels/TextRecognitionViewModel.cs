@@ -22,7 +22,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// first scanned page reads poorly, which usually means another language, nothing is written yet and the language bar
 /// asks which language the document is in; a language not on this computer downloads in the same click.
 /// </summary>
-[DebuggerDisplay("Recognizing={IsRunning}, LanguageBar={IsLanguageBarOpen}")]
+[DebuggerDisplay("TextRecognitionViewModel: Recognizing={IsRunning}, LanguageBar={IsLanguageBarOpen}")]
 public sealed partial class TextRecognitionViewModel : ReactiveObject, IDisposable
 {
     /// <summary>

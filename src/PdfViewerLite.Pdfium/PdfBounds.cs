@@ -9,7 +9,7 @@ using PdfViewerLite.Pdfium.Native;
 namespace PdfViewerLite.Pdfium;
 
 /// <summary>A growing bounding box in PDF user space (y up), built while points are converted.</summary>
-[DebuggerDisplay("{_left},{_bottom} – {_right},{_top}")]
+[DebuggerDisplay("PdfBounds: {_left},{_bottom} – {_right},{_top}")]
 internal record struct PdfBounds
 {
     /// <summary>The left edge.</summary>

@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Core.Settings;
 
 /// <summary>A tab remembered between runs.</summary>
-[DebuggerDisplay("{FilePath} p{PageIndex}")]
+[DebuggerDisplay("SessionTab: {FilePath} p{PageIndex}")]
 public sealed record SessionTab
 {
     /// <summary>Gets the file path.</summary>

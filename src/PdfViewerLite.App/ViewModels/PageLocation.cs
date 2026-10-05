@@ -10,5 +10,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <summary>A point on a page, as picked by a click.</summary>
 /// <param name="Page">The zero based page.</param>
 /// <param name="Point">The point, in page space.</param>
-[DebuggerDisplay("Page {Page} at {Point}")]
+[DebuggerDisplay("PageLocation: Page {Page} at {Point}")]
 public readonly record struct PageLocation(int Page, PagePoint Point);

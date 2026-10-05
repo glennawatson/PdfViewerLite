@@ -14,7 +14,7 @@ namespace PdfViewerLite.Speech.Melo;
 /// phones are shared out over the word's pieces so each BERT feature lines up with the phones it describes.
 /// Reuses its buffers between calls, so it is not thread safe; <see cref="MeloEngine"/> holds a lock.
 /// </summary>
-[DebuggerDisplay("{_lexicon.Count} words")]
+[DebuggerDisplay("MeloFrontEnd: {_lexicon.Count} words")]
 internal sealed class MeloFrontEnd
 {
     /// <summary>The longest word handled; longer words are cut short.</summary>

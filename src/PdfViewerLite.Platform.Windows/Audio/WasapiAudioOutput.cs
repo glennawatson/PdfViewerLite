@@ -12,7 +12,7 @@ namespace PdfViewerLite.Platform.Windows.Audio;
 /// to the device's format. The COM interfaces are called through their function tables, so nothing needs reflection.
 /// Each clip opens a client on the current default device, so a change of headphones is followed.
 /// </summary>
-[DebuggerDisplay("WASAPI")]
+[DebuggerDisplay("WasapiAudioOutput: WASAPI")]
 public sealed unsafe class WasapiAudioOutput : IAudioOutput
 {
     /// <summary>Shared mode.</summary>

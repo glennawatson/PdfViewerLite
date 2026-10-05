@@ -16,7 +16,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// Form filling for one tab. Text fields open an editor placed over the field; check boxes and radio buttons toggle on
 /// click; choices are picked from a menu. Every change goes to the document straight away.
 /// </summary>
-[DebuggerDisplay("Editing {Editing}")]
+[DebuggerDisplay("FormsViewModel: Editing {Editing}")]
 public sealed partial class FormsViewModel : ReactiveObject
 {
     /// <summary>The most passes of recalculation, so fields that depend on each other in a loop still settle.</summary>

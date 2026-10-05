@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Core.Settings;
 
 /// <summary>Loads and saves <see cref="AppSettings"/> as JSON in the user's configuration directory.</summary>
-[DebuggerDisplay("{FilePath}")]
+[DebuggerDisplay("SettingsStore: {FilePath}")]
 public sealed class SettingsStore
 {
     /// <summary>Initializes a new instance of the <see cref="SettingsStore"/> class using the default location.</summary>

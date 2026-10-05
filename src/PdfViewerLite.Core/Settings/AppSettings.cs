@@ -9,7 +9,7 @@ using PdfViewerLite.Core.Layout;
 namespace PdfViewerLite.Core.Settings;
 
 /// <summary>User preferences persisted between runs.</summary>
-[DebuggerDisplay("{ColorScheme}, {PageTone}, cache {TileCacheMegabytes} MB")]
+[DebuggerDisplay("AppSettings: {ColorScheme}, {PageTone}, cache {TileCacheMegabytes} MB")]
 public sealed class AppSettings
 {
     /// <summary>Gets or sets the colour scheme.</summary>

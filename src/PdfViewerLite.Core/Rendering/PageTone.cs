@@ -15,7 +15,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// shade in between mapped linearly per channel. A dark paper with light ink gives a night tone. The remap uses lookup
 /// tables built once, so applying a tone allocates nothing.
 /// </summary>
-[DebuggerDisplay("Paper {Paper:X6} Ink {Ink:X6}")]
+[DebuggerDisplay("PageTone: Paper {Paper:X6} Ink {Ink:X6}")]
 public sealed record PageTone : IEquatable<PageTone>
 {
     /// <summary>The values per colour channel.</summary>

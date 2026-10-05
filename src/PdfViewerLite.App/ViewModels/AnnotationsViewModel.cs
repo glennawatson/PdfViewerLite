@@ -18,7 +18,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// Annotation state for one tab: the active tool and colour, the sidebar list, undo, and the edits themselves.
 /// Edits go straight to the document; the page's tiles are dropped so it redraws.
 /// </summary>
-[DebuggerDisplay("{Tool}, {Items.Count} annotations")]
+[DebuggerDisplay("AnnotationsViewModel: {Tool}, {Items.Count} annotations")]
 public sealed partial class AnnotationsViewModel : ReactiveObject
 {
     /// <summary>The default text size in points.</summary>

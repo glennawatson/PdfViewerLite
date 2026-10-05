@@ -19,7 +19,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// The comfort settings (docs/COMFORT.md, rule 12). Each choice applies at once and is saved; the list indexes match the
 /// explicit values of the settings enums.
 /// </summary>
-[DebuggerDisplay("Preferences")]
+[DebuggerDisplay("PreferencesViewModel: Preferences")]
 public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The label of choices that follow the desktop setting.</summary>

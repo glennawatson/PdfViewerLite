@@ -13,7 +13,7 @@ namespace PdfViewerLite.Platform.Linux.Audio;
 /// Plays speech through PulseAudio's simple API, which PipeWire also provides. Audio is written in short pieces so Stop
 /// takes effect at once; one stream is kept open while the sample rate stays the same.
 /// </summary>
-[DebuggerDisplay("PulseAudio")]
+[DebuggerDisplay("PulseAudioOutput: PulseAudio")]
 public sealed unsafe class PulseAudioOutput : IAudioOutput
 {
     /// <summary>PulseAudio's 32 bit little endian float format.</summary>

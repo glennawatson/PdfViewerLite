@@ -12,7 +12,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One annotation in the sidebar: its kind, page and note, with its colour beside the name.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("AnnotationItemView: {ViewModel}")]
 public sealed partial class AnnotationItemView : ReactiveUI.Avalonia.ReactiveUserControl<AnnotationItemViewModel>
 {
     /// <summary>Opaque alpha in 0xAARRGGBB.</summary>

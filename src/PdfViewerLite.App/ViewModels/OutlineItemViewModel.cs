@@ -10,7 +10,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>An outline (bookmark) entry in the sidebar.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("OutlineItemViewModel: {Title}")]
 public sealed partial class OutlineItemViewModel : ReactiveObject
 {
     /// <summary>Initializes a new instance of the <see cref="OutlineItemViewModel"/> class.</summary>

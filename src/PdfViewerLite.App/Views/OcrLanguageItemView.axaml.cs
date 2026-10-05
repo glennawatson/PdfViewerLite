@@ -11,7 +11,7 @@ using ReactiveUI.Binding;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One text recognition language: a tick box to use it, its status, and a button to download or remove its pack.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("OcrLanguageItemView: {ViewModel}")]
 public sealed partial class OcrLanguageItemView : ReactiveUI.Avalonia.ReactiveUserControl<OcrLanguageItemViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="OcrLanguageItemView"/> class.</summary>

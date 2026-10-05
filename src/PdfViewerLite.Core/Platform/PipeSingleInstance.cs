@@ -16,7 +16,7 @@ namespace PdfViewerLite.Core.Platform;
 /// pipe (a Unix domain socket on macOS); later launches send their documents down the pipe and exit. The pipe accepts
 /// only the same user. Each message is the activation token on the first line, then one path or URI per line.
 /// </summary>
-[DebuggerDisplay("{_name}")]
+[DebuggerDisplay("PipeSingleInstance: {_name}")]
 public sealed class PipeSingleInstance : ISingleInstance
 {
     /// <summary>The longest path a Unix domain socket takes on macOS, the shortest limit of the Unix platforms.</summary>

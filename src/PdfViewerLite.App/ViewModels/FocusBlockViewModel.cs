@@ -11,7 +11,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>A block of text in Focus Mode, with the parts being read aloud marked.</summary>
-[DebuggerDisplay("{Kind}: {Text}")]
+[DebuggerDisplay("FocusBlockViewModel: {Kind}: {Text}")]
 public sealed partial class FocusBlockViewModel : ReactiveObject
 {
     /// <summary>The level given to a heading found from the layout rather than from tags.</summary>

@@ -9,5 +9,5 @@ namespace PdfViewerLite.Core.Geometry;
 /// <summary>A point in unrotated page space, in points, with the origin at the top-left corner and Y growing downwards.</summary>
 /// <param name="X">The horizontal position in points.</param>
 /// <param name="Y">The vertical position in points.</param>
-[DebuggerDisplay("({X}, {Y})")]
+[DebuggerDisplay("PagePoint: ({X}, {Y})")]
 public readonly record struct PagePoint(float X, float Y);

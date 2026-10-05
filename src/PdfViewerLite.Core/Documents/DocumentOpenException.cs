@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Core.Documents;
 
 /// <summary>Thrown when a document fails to open.</summary>
-[DebuggerDisplay("{Error}: {Message}")]
+[DebuggerDisplay("DocumentOpenException: {Error}: {Message}")]
 public sealed class DocumentOpenException : Exception
 {
     /// <summary>Initializes a new instance of the <see cref="DocumentOpenException"/> class.</summary>

@@ -8,5 +8,5 @@ namespace PdfViewerLite.Core.Tests.Speech.Listening;
 
 /// <summary>A passage read sentence by sentence.</summary>
 /// <param name="Sentences">The sentences, in order.</param>
-[DebuggerDisplay("{Sentences.Count} sentences")]
+[DebuggerDisplay("ListeningSession: {Sentences.Count} sentences")]
 internal sealed record ListeningSession(List<SpokenSentence> Sentences);

@@ -31,7 +31,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// One open document. A tab is cheap until it is first shown: the native document is opened on demand through the
 /// <see cref="DocumentPool"/> and may be closed again while the tab is in the background.
 /// </summary>
-[DebuggerDisplay("{FileName}")]
+[DebuggerDisplay("DocumentTabViewModel: {FileName}")]
 public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 {
     /// <summary>How long after saving a file change notice is taken to be our own save.</summary>

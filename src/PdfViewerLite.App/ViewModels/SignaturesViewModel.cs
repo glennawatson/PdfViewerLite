@@ -23,7 +23,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// A tab's digital signatures. Signatures are only checked when the user asks, because checking trust may look up
 /// certificate revocation online; the check runs off the UI thread.
 /// </summary>
-[DebuggerDisplay("{SignatureCount} signatures")]
+[DebuggerDisplay("SignaturesViewModel: {SignatureCount} signatures")]
 public sealed partial class SignaturesViewModel : ReactiveObject
 {
     /// <summary>The owning tab.</summary>

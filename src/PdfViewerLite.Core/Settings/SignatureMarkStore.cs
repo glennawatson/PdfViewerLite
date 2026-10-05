@@ -10,7 +10,7 @@ namespace PdfViewerLite.Core.Settings;
 /// Loads and saves the remembered signature and initials. They live in their own file beside the settings, readable
 /// only by their owner, and the file is deleted when nothing is remembered.
 /// </summary>
-[DebuggerDisplay("{FilePath}")]
+[DebuggerDisplay("SignatureMarkStore: {FilePath}")]
 public sealed class SignatureMarkStore
 {
     /// <summary>The file name beside the settings file.</summary>

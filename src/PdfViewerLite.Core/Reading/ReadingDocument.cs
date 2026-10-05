@@ -11,7 +11,7 @@ namespace PdfViewerLite.Core.Reading;
 /// A document's pages in reading order, worked out when first asked for and kept. Running headers and footers are
 /// found by sampling pages across the document for margin lines that repeat. Safe to use from any thread.
 /// </summary>
-[DebuggerDisplay("{_sizes.Length} pages")]
+[DebuggerDisplay("ReadingDocument: {_sizes.Length} pages")]
 public sealed class ReadingDocument
 {
     /// <summary>The most pages sampled for running headers and footers.</summary>

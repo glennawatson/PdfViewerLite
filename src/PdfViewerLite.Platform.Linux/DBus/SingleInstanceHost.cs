@@ -15,7 +15,7 @@ namespace PdfViewerLite.Platform.Linux.DBus;
 /// <c>org.freedesktop.Application</c>; later launches (for example from Dolphin) forward their files to it and exit,
 /// so every document opens as a tab in the existing window.
 /// </summary>
-[DebuggerDisplay("{AppIdentity.ApplicationId}")]
+[DebuggerDisplay("SingleInstanceHost: {AppIdentity.ApplicationId}")]
 public sealed class SingleInstanceHost : ISingleInstance
 {
     /// <summary>How long a forwarding launch waits for the primary instance.</summary>

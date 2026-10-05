@@ -9,5 +9,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <summary>A character on a page, such as the start of a text selection.</summary>
 /// <param name="Page">The zero based page.</param>
 /// <param name="Char">The zero based character index on the page.</param>
-[DebuggerDisplay("Page {Page}, character {Char}")]
+[DebuggerDisplay("PageCharacter: Page {Page}, character {Char}")]
 public readonly record struct PageCharacter(int Page, int Char);

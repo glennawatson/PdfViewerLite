@@ -11,7 +11,7 @@ namespace PdfViewerLite.Pdfium;
 /// The standard fonts a document uses for text written on its pages, each loaded once on first use so writing text
 /// allocates nothing after the first time. Callers hold the PDFium lock.
 /// </summary>
-[DebuggerDisplay("Fonts")]
+[DebuggerDisplay("PdfiumFonts: Fonts")]
 internal sealed unsafe class PdfiumFonts : IDisposable
 {
     /// <summary>The font for text boxes.</summary>

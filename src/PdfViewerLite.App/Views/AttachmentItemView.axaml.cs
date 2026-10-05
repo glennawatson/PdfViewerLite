@@ -12,7 +12,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One embedded file in the attachments panel: its name and size.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("AttachmentItemView: {ViewModel}")]
 public sealed partial class AttachmentItemView : ReactiveUI.Avalonia.ReactiveUserControl<DocumentAttachment>
 {
     /// <summary>Initializes a new instance of the <see cref="AttachmentItemView"/> class.</summary>

@@ -11,7 +11,7 @@ namespace PdfViewerLite.Core.Layout;
 /// <param name="Y">The top edge.</param>
 /// <param name="Width">The width.</param>
 /// <param name="Height">The height.</param>
-[DebuggerDisplay("({X}, {Y}, {Width}, {Height})")]
+[DebuggerDisplay("LayoutRect: ({X}, {Y}, {Width}, {Height})")]
 public readonly record struct LayoutRect(double X, double Y, double Width, double Height)
 {
     /// <summary>Gets the right edge.</summary>

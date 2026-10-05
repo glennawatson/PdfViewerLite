@@ -11,7 +11,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// A least-recently-used cache of rendered tiles bounded by memory. The cache owns its surfaces and disposes them on
 /// eviction. It is not thread safe and is used only from the UI thread.
 /// </summary>
-[DebuggerDisplay("{Count} tiles, {CurrentBytes} bytes")]
+[DebuggerDisplay("TileCache: {Count} tiles, {CurrentBytes} bytes")]
 public sealed class TileCache : IDisposable
 {
     /// <summary>Entries by key.</summary>

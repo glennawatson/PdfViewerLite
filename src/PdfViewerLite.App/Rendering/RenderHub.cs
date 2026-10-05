@@ -15,7 +15,7 @@ namespace PdfViewerLite.App.Rendering;
 /// Owns the process wide tile cache and render scheduler. Completed tiles are moved into the cache on the UI thread in
 /// batches, then <see cref="TilesArrived"/> lets visible controls repaint.
 /// </summary>
-[DebuggerDisplay("{Cache}")]
+[DebuggerDisplay("RenderHub: {Cache}")]
 public sealed class RenderHub : IDisposable
 {
     /// <summary>Emits on the UI thread after tiles were added to the cache.</summary>

@@ -13,5 +13,5 @@ namespace PdfViewerLite.Core.Settings;
 /// <param name="Path">The certificate file (.p12 or .pfx).</param>
 /// <param name="Subject">Who the certificate names, so the user can tell certificates apart.</param>
 /// <param name="Thumbprint">The certificate's SHA-1 fingerprint, a public value that tells two certificates apart.</param>
-[DebuggerDisplay("{Subject}")]
+[DebuggerDisplay("RememberedCertificate: {Subject}")]
 public sealed record RememberedCertificate(string Path, string Subject, string Thumbprint);

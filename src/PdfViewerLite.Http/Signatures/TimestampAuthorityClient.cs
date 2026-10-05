@@ -13,7 +13,7 @@ namespace PdfViewerLite.Http.Signatures;
 /// Gets timestamp tokens from an RFC 3161 timestamp authority over HTTP, such as a certificate authority's free
 /// service, so signatures carry a trusted signing time. Only a hash of what is stamped is sent, never the document.
 /// </summary>
-[DebuggerDisplay("{_address}")]
+[DebuggerDisplay("TimestampAuthorityClient: {_address}")]
 public sealed class TimestampAuthorityClient : ISignatureTimestamper
 {
     /// <summary>How long the authority may take to answer.</summary>

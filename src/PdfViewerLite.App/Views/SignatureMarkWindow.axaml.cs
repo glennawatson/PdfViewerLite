@@ -14,7 +14,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Makes a signature or initials: typed, drawn or from a picture. Closes with <see langword="true"/> to use it.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("SignatureMarkWindow: {Title}")]
 public sealed partial class SignatureMarkWindow : ReactiveUI.Avalonia.ReactiveWindow<SignatureMarkViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="SignatureMarkWindow"/> class.</summary>
