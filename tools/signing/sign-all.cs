@@ -6,6 +6,7 @@
 #:package System.Security.Cryptography.Pkcs
 #:include ../packaging/BuildTools.cs
 #:include WindowsPayload.cs
+#:include MsixZipHeaders.cs
 
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -13,6 +14,8 @@ using System.Security.Cryptography.Pkcs;
 
 using PdfViewerLite.Tools.Packaging;
 using PdfViewerLite.Tools.Signing;
+
+const string msixExtension = ".msix";
 
 if (!OperatingSystem.IsLinux())
 {
@@ -60,11 +63,19 @@ foreach (var payload in payloads.Values)
 
 WindowsPayload.Replace(assets, payloads, scratch);
 
+foreach (var asset in assets)
+{
+    if (asset.EndsWith(msixExtension, StringComparison.OrdinalIgnoreCase))
+    {
+        MsixZipHeaders.Normalize(asset);
+    }
+}
+
 SignWithJsign(Path.Combine(folder, "*.msi*"));
 
 BuildTools.Run("dotnet", "run", "--file", "tools/signing/verify-all.cs", "--", folder);
 
-var msix = Array.Find(assets, static asset => asset.EndsWith(".msix", StringComparison.OrdinalIgnoreCase)) ?? throw new FileNotFoundException("No MSIX signing certificate is available.");
+var msix = Array.Find(assets, static asset => asset.EndsWith(msixExtension, StringComparison.OrdinalIgnoreCase)) ?? throw new FileNotFoundException("No MSIX signing certificate is available.");
 
 using var archive = ZipFile.OpenRead(msix);
 
@@ -132,7 +143,7 @@ Environment.SetEnvironmentVariable("OPENSSL_CONF", config);
 
 foreach (var asset in assets)
 {
-    if (asset.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) || asset.EndsWith(".msix", StringComparison.OrdinalIgnoreCase))
+    if (asset.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) || asset.EndsWith(msixExtension, StringComparison.OrdinalIgnoreCase))
     {
         continue;
     }
