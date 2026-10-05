@@ -15,7 +15,11 @@ internal static class BuildTools
     /// <exception cref="InvalidOperationException">The command fails.</exception>
     internal static void Run(string executable, params IEnumerable<string> arguments)
     {
-        var result = Process.Run(executable, arguments);
+        string[] values = [.. arguments];
+
+        Console.WriteLine($"[command]{executable} {string.Join(' ', values)}");
+
+        var result = Process.Run(executable, values);
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException($"{executable} exited with {result.ExitCode}.");

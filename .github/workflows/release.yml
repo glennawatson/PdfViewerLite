@@ -53,7 +53,7 @@ jobs:
         stamp-version: 'false'
     - name: Resolve built commit SHA
       id: sourcesha
-      uses: glennawatson/actions-common/.github/actions/run-csharp@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         shared-script: resolve-built-commit-sha-c775df1621.cs
     - name: Validate version inputs
@@ -61,7 +61,7 @@ jobs:
         BUMP: ${{ inputs.bump }}
         PRE_RELEASE: ${{ inputs.preRelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         shared-script: validate-version-inputs-2aad3ac3e2.cs
     - name: Compute version and tag
@@ -79,7 +79,7 @@ jobs:
         BUMP_TAG: ${{ steps.bump.outputs.tag }}
         BUMP_PRERELEASE: ${{ steps.bump.outputs.prerelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         shared-script: resolve-release-tag-d98a6a5208.cs
     - name: Stamp version with MinVer
@@ -121,7 +121,7 @@ jobs:
         if-no-files-found: error
 
   sign-windows:
-    name: Sign Windows (${{ needs.version.outputs.semver2 }})
+    name: Sign and verify Windows (${{ needs.version.outputs.semver2 }})
     needs: [version, package-windows]
     runs-on: ubuntu-26.04
     environment:
@@ -137,6 +137,10 @@ jobs:
       CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
       CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
     steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.version.outputs.sourceSha }}
     - name: Download unsigned Windows packages
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
@@ -144,50 +148,18 @@ jobs:
         path: signed
     - name: Sign packages with Certum SimplySign
       if: env.CERTUM_USER_ID != '' && env.CERTUM_OTP_URI != ''
-      uses: glennawatson/actions-common/.github/actions/certum-sign@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/certum-sign@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         packages-glob: 'signed/*.msi*'
+    - name: Verify installer signatures and certificate
+      if: env.CERTUM_USER_ID != '' && env.CERTUM_OTP_URI != ''
+      run: dotnet run --file tools/signing/verify-all.cs -- signed
     - name: Upload signed Windows packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
         name: signed-windows
         path: signed/*
         if-no-files-found: error
-
-  verify-windows:
-    name: Verify Windows (${{ needs.version.outputs.semver2 }})
-    needs: [version, sign-windows]
-    runs-on: windows-latest
-    environment:
-      name: release
-    permissions:
-      contents: read
-    env:
-      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.version.outputs.sourceSha }}
-    - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
-      with:
-        dotnet-versions: |
-          11.0.100-rc.1.26425.128
-        stamp-version: 'false'
-    - name: Download signed Windows packages
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        name: signed-windows
-        path: signed
-    - name: Verify signatures with Windows tools
-      shell: pwsh
-      run: |
-        if ($env:CERTUM_CERT_FINGERPRINT) {
-          dotnet run --file tools/signing/verify-all.cs -- signed
-        } else {
-          Write-Host "CERTUM_CERT_FINGERPRINT is not set. Skipping signature verification."
-        }
 
   package-linux:
     name: Package ${{ matrix.rid }} (${{ needs.version.outputs.semver2 }})
@@ -261,7 +233,7 @@ jobs:
 
   create-release:
     name: Create release (${{ needs.version.outputs.semver2 }})
-    needs: [version, package-windows, sign-windows, verify-windows, package-linux, package-macos]
+    needs: [version, package-windows, sign-windows, package-linux, package-macos]
     runs-on: ubuntu-26.04
     permissions:
       contents: write
@@ -299,7 +271,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
         RELEASE_VERSION: ${{ needs.version.outputs.semver2 }}
-      run: git-release-notes --release-version "$RELEASE_VERSION" --output-file release-notes.md
+        SOURCE_SHA: ${{ needs.version.outputs.sourceSha }}
+      run: dotnet run --file tools/packaging/release-notes.cs -- "$RELEASE_VERSION" "$SOURCE_SHA" release-notes.md
     - name: Create GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}

@@ -5,6 +5,8 @@
 
 #:include ../packaging/BuildTools.cs
 
+using System.Security.Cryptography;
+
 using PdfViewerLite.Tools.Packaging;
 
 if (args is not [var folder])
@@ -18,6 +20,32 @@ var packages = Directory.GetFiles(folder, "*.msi*");
 if (packages.Length == 0)
 {
     throw new FileNotFoundException("No Windows installers were downloaded.");
+}
+
+if (OperatingSystem.IsLinux())
+{
+    var fingerprint = Environment.GetEnvironmentVariable("CERTUM_CERT_FINGERPRINT") ?? throw new InvalidOperationException("CERTUM_CERT_FINGERPRINT is required.");
+    var hash = Convert.FromHexString(fingerprint.Replace(":", string.Empty, StringComparison.Ordinal));
+
+    if (hash.Length != SHA256.HashSizeInBytes)
+    {
+        throw new InvalidDataException("CERTUM_CERT_FINGERPRINT must be a SHA-256 certificate fingerprint.");
+    }
+
+    if (!File.Exists("/usr/bin/osslsigncode"))
+    {
+        BuildTools.Run("apt-get", "update");
+        BuildTools.Run("apt-get", "install", "--yes", "--no-install-recommends", "osslsigncode");
+    }
+
+    var expectedHash = $"SHA256:{Convert.ToHexString(hash)}";
+
+    foreach (var package in packages)
+    {
+        BuildTools.Run("osslsigncode", "verify", "-in", package, "-require-leaf-hash", expectedHash);
+    }
+
+    return 0;
 }
 
 foreach (var package in packages)
