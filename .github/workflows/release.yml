@@ -89,9 +89,57 @@ jobs:
         tag-prefix: ''
         version-override: ${{ inputs.versionOverride != '' && inputs.versionOverride || steps.bump.outputs.version }}
 
+  checks:
+    name: Build and test (${{ matrix.os }})
+    needs: version
+    strategy:
+      fail-fast: true
+      matrix:
+        # The shared test action names its artifacts by OS, so one runner per OS; the Linux ARM64 package job launches the ARM64 build.
+        os: [windows-latest, ubuntu-26.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: '1'
+    steps:
+    # The shared build workflow checks out the dispatched ref, so its shared actions run here on the release source instead.
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.version.outputs.sourceSha }}
+        fetch-depth: 0
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
+      with:
+        dotnet-versions: |
+          10.0.x
+          11.0.100-rc.1.26425.128
+        stamp-version: 'false'
+    - name: Prepare tests with application
+      env:
+        PREPARATION_PROJECT: tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj
+        PREPARATION_ARGUMENTS: '["ci","prepare","test"]'
+        PREPARATION_CONFIGURATION: Release
+      uses: glennawatson/actions-common/.github/actions/run-csharp@a0753ca8958455753f3ce4841947034057717d76 # main
+      with:
+        shared-script: prepare-tests-project.cs
+    - name: Build
+      uses: glennawatson/actions-common/.github/actions/dotnet-build@a0753ca8958455753f3ce4841947034057717d76 # main
+      with:
+        src-folder: '.'
+        solution-file: PdfViewerLite.slnx
+        configuration: Release
+    - name: Test
+      uses: glennawatson/actions-common/.github/actions/dotnet-test@a0753ca8958455753f3ce4841947034057717d76 # main
+      with:
+        src-folder: '.'
+        solution-file: PdfViewerLite.slnx
+        configuration: Release
+
   package-windows:
     name: Package Windows (${{ needs.version.outputs.semver2 }})
-    needs: version
+    needs: [version, checks]
     runs-on: windows-latest
     permissions:
       contents: read
@@ -112,6 +160,8 @@ jobs:
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish win-x64 ${{ needs.version.outputs.semver2 }}
     - name: Package Windows (MSIX, MSI, ZIP)
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package windows win-x64 ${{ needs.version.outputs.semver2 }}
+    - name: Install, upgrade, launch and remove Windows packages
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-windows-packages artifacts
     - name: Upload unsigned Windows packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -175,7 +225,7 @@ jobs:
 
   package-linux:
     name: Package ${{ matrix.rid }} (${{ needs.version.outputs.semver2 }})
-    needs: version
+    needs: [version, checks]
     strategy:
       fail-fast: false
       matrix:
@@ -200,10 +250,14 @@ jobs:
         stamp-version: 'false'
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
+    - name: Prepare Linux packaging
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci prepare package
     - name: Publish Linux Native AOT
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
     - name: Package Linux (AppImage, DEB, RPM, tar.gz)
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package linux ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
+    - name: Install, upgrade, launch and remove Linux packages
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-installed-packages ${{ matrix.rid }} artifacts
     - name: Upload Linux packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -217,7 +271,7 @@ jobs:
 
   package-macos:
     name: Package macOS (${{ needs.version.outputs.semver2 }})
-    needs: version
+    needs: [version, checks]
     runs-on: macos-latest
     permissions:
       contents: read
@@ -238,6 +292,8 @@ jobs:
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish osx-arm64 ${{ needs.version.outputs.semver2 }}
     - name: Package macOS (.app, DMG, ZIP)
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package macos osx-arm64 ${{ needs.version.outputs.semver2 }}
+    - name: Install, replace, launch and remove macOS packages
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-installed-packages osx-arm64 artifacts
     - name: Upload macOS packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -272,6 +328,19 @@ jobs:
       with:
         name: signed-release-assets
         path: release-assets
+    - name: Generate AUR package files
+      env:
+        RELEASE_VERSION: ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package aur "$RELEASE_VERSION" release-assets artifacts/aur/pdfviewerlite-bin
+    - name: Upload AUR package files
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: aur-pdfviewerlite-bin
+        path: artifacts/aur/pdfviewerlite-bin
+        include-hidden-files: true
+        if-no-files-found: error
+    - name: Attach the AUR PKGBUILD
+      run: cp artifacts/aur/pdfviewerlite-bin/PKGBUILD release-assets/pdfviewerlite-bin.PKGBUILD
     - name: Generate release notes
       env:
         GITHUB_TOKEN: ${{ github.token }}
