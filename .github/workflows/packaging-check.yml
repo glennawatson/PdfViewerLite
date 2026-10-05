@@ -49,9 +49,6 @@ jobs:
         stamp-version: 'false'
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
-    - name: Diagnose published Windows package
-      if: runner.os == 'Windows'
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-windows-packages artifacts
     - name: Prepare Linux packaging
       if: runner.os == 'Linux'
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci prepare package

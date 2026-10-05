@@ -5,22 +5,18 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using PdfViewerLite.Tools.Packaging;
 using PdfViewerLite.Tools.Signing;
-using PdfViewerLite.Tools.VoiceModels;
-using Refit;
 
 namespace PdfViewerLite.Tools.Commands;
 
 /// <summary>Checks the managed installer replacement paths with Windows package APIs.</summary>
 internal static class CheckWindowsPackagesCommand
 {
-    /// <summary>The shared asset download client.</summary>
-    private static readonly HttpClient Client = new() { BaseAddress = new("https://github.com"), };
-
     /// <summary>Checks copies of the packaged installers after payload replacement.</summary>
     /// <param name="args">The artifacts directory.</param>
     /// <returns>The command exit code.</returns>
     /// <exception cref="PlatformNotSupportedException">The host is not Windows.</exception>
-    internal static async Task<int> RunAsync(string[] args)
+    /// <exception cref="FileNotFoundException">The artifacts directory has no MSI packages.</exception>
+    internal static int Run(string[] args)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -28,23 +24,17 @@ internal static class CheckWindowsPackagesCommand
         }
 
         ArgumentOutOfRangeException.ThrowIfNotEqual(args.Length, 1);
+        var packages = Directory.GetFiles(args[0], "*.msi");
+        if (packages.Length == 0)
+        {
+            throw new FileNotFoundException("No Windows installers were packaged.");
+        }
+
         var scratch = Path.Combine(Path.GetTempPath(), $"windows-packages-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(scratch);
         try
         {
-            var api = RestService.ForGenerated<IVoiceAssetApi>(Client);
-            var path = Path.Combine(scratch, "published.msix");
-            Uri address = new("https://github.com/glennawatson/PdfViewerLite/releases/download/1.0.0/pdfviewerlite-1.0.0-win-x64.msix");
-            using var response = await api.DownloadAsync(address, CancellationToken.None).ConfigureAwait(false);
-            _ = response.EnsureSuccessStatusCode();
-            await using (var destination = File.Create(path))
-            {
-                await response.Content.CopyToAsync(destination).ConfigureAwait(false);
-            }
-
-            WindowsPackageValidator.ValidateMsix(path);
-            WindowsSignatureVerifier.Verify(path);
-            foreach (var package in Directory.GetFiles(args[0], "*.msi"))
+            foreach (var package in packages)
             {
                 Check(package, scratch);
             }

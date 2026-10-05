@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Buffers;
+using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -27,6 +28,30 @@ internal sealed class MsixZipWriter : IDisposable
 
     /// <summary>The end of central directory signature.</summary>
     private const uint EndSignature = 0x06054B50;
+
+    /// <summary>The ZIP64 end of central directory signature.</summary>
+    private const uint Zip64EndSignature = 0x06064B50;
+
+    /// <summary>The ZIP64 directory locator signature.</summary>
+    private const uint Zip64LocatorSignature = 0x07064B50;
+
+    /// <summary>The ZIP64 directory version.</summary>
+    private const ushort Zip64Version = 45;
+
+    /// <summary>The ZIP64 end record size excluding its signature and length.</summary>
+    private const ulong Zip64EndLength = 44;
+
+    /// <summary>The combined ZIP64 end, locator and classic end record size.</summary>
+    private const int Zip64TrailerLength = 98;
+
+    /// <summary>The locator position within the ZIP64 trailer.</summary>
+    private const int LocatorOffset = 56;
+
+    /// <summary>The classic end record position within the ZIP64 trailer.</summary>
+    private const int EndOffset = 76;
+
+    /// <summary>The directory offset field within the classic end record.</summary>
+    private const int DirectoryOffset = 16;
 
     /// <summary>The ZIP version required for DEFLATE.</summary>
     private const ushort ZipVersion = 20;
@@ -95,15 +120,55 @@ internal sealed class MsixZipWriter : IDisposable
         }
 
         var size = checked((uint)_writer.BaseStream.Position - start);
+        var end = checked((ulong)_writer.BaseStream.Position);
+
+        // Windows signs MSIX directories in ZIP64 form, including packages smaller than 4 GB.
+        _writer.Write(Zip64EndSignature);
+        _writer.Write(Zip64EndLength);
+        _writer.Write(Zip64Version);
+        _writer.Write(Zip64Version);
+        _writer.Write(0U);
+        _writer.Write(0U);
+        _writer.Write(checked((ulong)_entries.Count));
+        _writer.Write(checked((ulong)_entries.Count));
+        _writer.Write((ulong)size);
+        _writer.Write((ulong)start);
+        _writer.Write(Zip64LocatorSignature);
+        _writer.Write(0U);
+        _writer.Write(end);
+        _writer.Write(1U);
         _writer.Write(EndSignature);
         _writer.Write((ushort)0);
         _writer.Write((ushort)0);
-        _writer.Write(checked((ushort)_entries.Count));
-        _writer.Write(checked((ushort)_entries.Count));
-        _writer.Write(size);
-        _writer.Write(start);
+        _writer.Write(ushort.MaxValue);
+        _writer.Write(ushort.MaxValue);
+        _writer.Write(uint.MaxValue);
+        _writer.Write(uint.MaxValue);
         _writer.Write((ushort)0);
         _writer.Dispose();
+    }
+
+    /// <summary>Checks that the package uses the directory form accepted by Windows signature verification.</summary>
+    /// <param name="path">The MSIX package path.</param>
+    /// <exception cref="InvalidDataException">The package does not contain ZIP64 directory records.</exception>
+    internal static void ValidateDirectory(string path)
+    {
+        using var source = File.OpenRead(path);
+        Span<byte> trailer = stackalloc byte[Zip64TrailerLength];
+        if (source.Length < trailer.Length)
+        {
+            throw new InvalidDataException($"The MSIX package has no ZIP64 directory: {path}.");
+        }
+
+        source.Position = source.Length - trailer.Length;
+        source.ReadExactly(trailer);
+        if (BinaryPrimitives.ReadUInt32LittleEndian(trailer) != Zip64EndSignature
+            || BinaryPrimitives.ReadUInt32LittleEndian(trailer[LocatorOffset..]) != Zip64LocatorSignature
+            || BinaryPrimitives.ReadUInt32LittleEndian(trailer[EndOffset..]) != EndSignature
+            || BinaryPrimitives.ReadUInt32LittleEndian(trailer[(EndOffset + DirectoryOffset)..]) != uint.MaxValue)
+        {
+            throw new InvalidDataException($"The MSIX package requires ZIP64 directory records for Windows signing: {path}.");
+        }
     }
 
     /// <summary>Writes an entry and optionally records its MSIX block hashes.</summary>

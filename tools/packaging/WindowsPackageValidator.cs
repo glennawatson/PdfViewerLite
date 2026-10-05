@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
@@ -28,7 +29,7 @@ internal static partial class WindowsPackageValidator
         /// <param name="reader">The returned reader.</param>
         /// <returns>The HRESULT.</returns>
         [PreserveSig]
-        int CreatePackageReader(IntPtr stream, out IAppxPackageReader reader);
+        int CreatePackageReader(IntPtr stream, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IAppxPackageReader>))] out IAppxPackageReader reader);
     }
 
     /// <summary>The native package reader ABI.</summary>
@@ -40,21 +41,21 @@ internal static partial class WindowsPackageValidator
         /// <param name="reader">The returned reader.</param>
         /// <returns>The HRESULT.</returns>
         [PreserveSig]
-        int GetBlockMap(out IAppxBlockMapReader reader);
+        int GetBlockMap([MarshalUsing(typeof(UniqueComInterfaceMarshaller<IAppxBlockMapReader>))] out IAppxBlockMapReader reader);
 
         /// <summary>Gets a metadata file.</summary>
         /// <param name="type">The metadata file kind.</param>
         /// <param name="file">The returned file.</param>
         /// <returns>The HRESULT.</returns>
         [PreserveSig]
-        int GetFootprintFile(int type, out IAppxFile file);
+        int GetFootprintFile(int type, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IAppxFile>))] out IAppxFile file);
 
         /// <summary>Gets a payload file.</summary>
         /// <param name="name">The package file name.</param>
         /// <param name="file">The returned file.</param>
         /// <returns>The HRESULT.</returns>
         [PreserveSig]
-        int GetPayloadFile(string name, out IAppxFile file);
+        int GetPayloadFile(string name, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IAppxFile>))] out IAppxFile file);
     }
 
     /// <summary>The native package file ABI.</summary>
@@ -103,7 +104,7 @@ internal static partial class WindowsPackageValidator
         /// <param name="file">The returned block map.</param>
         /// <returns>The HRESULT.</returns>
         [PreserveSig]
-        int GetFile(string name, out IAppxBlockMapFile file);
+        int GetFile(string name, [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IAppxBlockMapFile>))] out IAppxBlockMapFile file);
     }
 
     /// <summary>The native per-file block map ABI.</summary>
@@ -147,16 +148,19 @@ internal static partial class WindowsPackageValidator
     /// <param name="path">The package path.</param>
     internal static void ValidateMsix(string path)
     {
+        MsixZipWriter.ValidateDirectory(path);
         Marshal.ThrowExceptionForHR(NativeMethods.CoInitializeEx(IntPtr.Zero, 0));
         try
         {
             var factoryClass = new Guid("5842a140-ff9f-4166-8f5c-62f5b7b0c781");
             var factoryInterface = new Guid("beb94909-e451-438b-b5a7-d79e767b75d8");
             Marshal.ThrowExceptionForHR(NativeMethods.CoCreateInstance(in factoryClass, IntPtr.Zero, 1, in factoryInterface, out var factory));
+            using var factoryLifetime = new ComLifetime(factory);
             Marshal.ThrowExceptionForHR(NativeMethods.SHCreateStreamOnFileEx(path, 0x20, 0, 0, IntPtr.Zero, out var stream));
             try
             {
                 Marshal.ThrowExceptionForHR(factory.CreatePackageReader(stream, out var reader));
+                using var readerLifetime = new ComLifetime(reader);
                 ValidateBlocks(reader, path);
             }
             finally
@@ -194,6 +198,7 @@ internal static partial class WindowsPackageValidator
     private static void ValidateBlocks(IAppxPackageReader reader, string path)
     {
         Marshal.ThrowExceptionForHR(reader.GetBlockMap(out var map));
+        using var mapLifetime = new ComLifetime(map);
         using var archive = ZipFile.OpenRead(path);
         foreach (var entry in archive.Entries)
         {
@@ -206,10 +211,12 @@ internal static partial class WindowsPackageValidator
             Console.WriteLine($"Checking Windows MSIX block hashes: {name}");
             IAppxFile file;
             Marshal.ThrowExceptionForHR(entry.FullName == "AppxManifest.xml" ? reader.GetFootprintFile(0, out file) : reader.GetPayloadFile(name, out file));
+            using var fileLifetime = new ComLifetime(file);
             Marshal.ThrowExceptionForHR(file.GetStream(out var stream));
             try
             {
                 Marshal.ThrowExceptionForHR(map.GetFile(name, out var blocks));
+                using var blocksLifetime = new ComLifetime(blocks);
                 Marshal.ThrowExceptionForHR(blocks.ValidateFileHash(stream, out var valid));
                 if (valid == 0)
                 {
@@ -221,6 +228,15 @@ internal static partial class WindowsPackageValidator
                 _ = Marshal.Release(stream);
             }
         }
+    }
+
+    /// <summary>Releases a uniquely owned native COM wrapper.</summary>
+    /// <param name="instance">The source-generated COM wrapper.</param>
+    private readonly struct ComLifetime(object instance) : IDisposable
+    {
+        /// <summary>Releases the native interfaces before their apartment closes.</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Dispose() => ((ComObject)instance).FinalRelease();
     }
 
     /// <summary>The Windows package API imports.</summary>
@@ -242,7 +258,12 @@ internal static partial class WindowsPackageValidator
         /// <summary>Creates the Windows package factory.</summary>
         [LibraryImport("ole32.dll")]
         [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-        internal static partial int CoCreateInstance(in Guid classId, IntPtr outer, uint context, in Guid interfaceId, out IAppxFactory factory);
+        internal static partial int CoCreateInstance(
+            in Guid classId,
+            IntPtr outer,
+            uint context,
+            in Guid interfaceId,
+            [MarshalUsing(typeof(UniqueComInterfaceMarshaller<IAppxFactory>))] out IAppxFactory factory);
 
         /// <summary>Opens a package as a native stream.</summary>
         [LibraryImport("shlwapi.dll", StringMarshalling = StringMarshalling.Utf16)]

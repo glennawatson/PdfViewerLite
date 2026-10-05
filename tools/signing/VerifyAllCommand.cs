@@ -79,6 +79,10 @@ internal static class VerifyAllCommand
             {
                 MsiPayload.Validate(package);
             }
+            else if (Path.GetExtension(package).Equals(".msix", StringComparison.OrdinalIgnoreCase))
+            {
+                MsixZipWriter.ValidateDirectory(package);
+            }
         }
     }
 }

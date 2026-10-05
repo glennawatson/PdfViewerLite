@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
+using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text;
 
@@ -32,6 +33,15 @@ internal static class CabinetWriter
 
     /// <summary>The DOS timestamp resolution in seconds.</summary>
     private const int DosSecondResolution = 2;
+
+    /// <summary>The number of bits in one byte.</summary>
+    private const int ByteBits = 8;
+
+    /// <summary>The bit position of the uncompressed size in the checksum word.</summary>
+    private const int SizeShift = 16;
+
+    /// <summary>The Windows MSZIP limit including the two-byte marker.</summary>
+    private const int MaximumCompressedLength = BlockLength + 12;
 
     /// <summary>Writes files in the supplied order into an MSZIP cabinet.</summary>
     /// <param name="files">Cabinet entry names and source paths.</param>
@@ -150,10 +160,45 @@ internal static class CabinetWriter
             deflate.Write(data);
         }
 
-        // The CAB format permits a zero checksum to indicate that no checksum is supplied.
-        writer.Write(0U);
-        writer.Write(checked((ushort)compressed.Length));
-        writer.Write(checked((ushort)data.Length));
-        writer.Write(compressed.GetBuffer().AsSpan(0, checked((int)compressed.Length)));
+        if (compressed.Length > MaximumCompressedLength)
+        {
+            // A single stored DEFLATE block fits Windows' MSZIP limit for incompressible data.
+            compressed.SetLength(0);
+            using var stored = new BinaryWriter(compressed, Encoding.UTF8, true);
+            stored.Write("CK"u8);
+            stored.Write((byte)1);
+            stored.Write(checked((ushort)data.Length));
+            stored.Write(unchecked((ushort)~data.Length));
+            stored.Write(data);
+        }
+
+        var bytes = compressed.GetBuffer().AsSpan(0, checked((int)compressed.Length));
+        var compressedLength = checked((ushort)bytes.Length);
+        var plainLength = checked((ushort)data.Length);
+        writer.Write(Checksum(bytes) ^ compressedLength ^ ((uint)plainLength << SizeShift));
+        writer.Write(compressedLength);
+        writer.Write(plainLength);
+        writer.Write(bytes);
+    }
+
+    /// <summary>Computes the CAB parity checksum, reversing the final partial word.</summary>
+    /// <param name="bytes">The compressed block including its MSZIP marker.</param>
+    /// <returns>The block checksum.</returns>
+    private static uint Checksum(ReadOnlySpan<byte> bytes)
+    {
+        uint checksum = 0;
+        while (bytes.Length >= sizeof(uint))
+        {
+            checksum ^= BinaryPrimitives.ReadUInt32LittleEndian(bytes);
+            bytes = bytes[sizeof(uint)..];
+        }
+
+        uint remainder = 0;
+        foreach (var value in bytes)
+        {
+            remainder = (remainder << ByteBits) | value;
+        }
+
+        return checksum ^ remainder;
     }
 }
