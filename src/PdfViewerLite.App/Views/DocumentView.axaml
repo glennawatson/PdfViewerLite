@@ -98,6 +98,7 @@
               <MenuFlyout Placement="BottomEdgeAlignedRight">
                 <MenuItem x:Name="MeasureItem" views:ControlHelp.Text="{x:Static views:Descriptions.Measure}" Header="_Measure" InputGesture="Ctrl+Shift+M" />
                 <MenuItem x:Name="RecognizeTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.RecognizeText}" Header="Recognise _Text" />
+                <MenuItem x:Name="RecognizeLanguageItem" views:ControlHelp.Text="{x:Static views:Descriptions.RecognizeTextInLanguage}" Header="Recognise Text in Another _Language…" />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
@@ -392,6 +393,23 @@
         <Button x:Name="StopRecognitionButton" views:ControlHelp.Text="{x:Static views:Descriptions.StopRecognition}" DockPanel.Dock="Right" Content="Stop" />
         <ProgressBar x:Name="RecognitionProgress" AutomationProperties.Name="Text recognition progress" DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
         <TextBlock x:Name="RecognitionText" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="6,0" />
+      </DockPanel>
+    </Border>
+
+    <!-- Asks which language a document is in, when it matters; one button downloads it if needed and recognises. -->
+    <Border x:Name="LanguageBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="CloseLanguageBarButton" DockPanel.Dock="Right" Content="Not Now"
+                AutomationProperties.Name="Not now"
+                views:ControlHelp.Text="{x:Static views:Descriptions.CloseLanguageBar}" />
+        <ProgressBar x:Name="LanguageDownloadProgress" DockPanel.Dock="Right" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0"
+                     AutomationProperties.Name="Language download progress" />
+        <Button x:Name="LanguageActionButton" DockPanel.Dock="Right" MinWidth="220"
+                views:ControlHelp.Text="{x:Static views:Descriptions.RecognizeInLanguage}" />
+        <ComboBox x:Name="LanguageBox" DockPanel.Dock="Right" Width="200" VerticalAlignment="Center" Margin="8,0"
+                  AutomationProperties.Name="Document language"
+                  views:ControlHelp.Text="{x:Static views:Descriptions.DocumentLanguage}" />
+        <TextBlock x:Name="LanguageBarText" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
 

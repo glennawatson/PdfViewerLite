@@ -222,6 +222,41 @@
     "reason": "The page and strip pixel buffers are rented from ArrayPool<byte>.Shared. The pool allocates them the first time a page is recognised (or after it trims idle buffers on a gen 2 GC); later pages reuse them. Seen once per trace."
   },
   {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Ocr.TesseractEngine.HasLanguages(",
+    "reason": "Finding a language's data builds one path string per folder and language checked, because File.Exists takes a string. It runs once each time Recognise Text is pressed, never per page."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Ocr.TesseractEngine.FindDataDirectory(",
+    "reason": "Reading TESSDATA_PREFIX returns a new string. It runs once each time Recognise Text is pressed, never per page."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Http.VerifiedDownload.IsCurrent(",
+    "reason": "Checking a downloaded language or voice file reads its size through FileInfo and builds the path of its recorded hash. It runs when Recognise Text is pressed or a download starts, not while reading or rendering."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Http.Ocr.OcrLanguagePackDownloader.",
+    "reason": "Listing the language packs still to download builds each pack's path and returns a new list of the missing packs. It runs when Recognise Text is pressed or a download starts."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Http.Ocr.OcrLanguagePackDownloader+<DownloadAsync>",
+    "reason": "The download's copy buffer is rented from ArrayPool<byte>.Shared. The pool allocates a buffer when the download continues on a core whose cache is still empty; later downloads on that core reuse it. A download runs only when the person asks for a language."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Http.Ocr.OcrLanguagePackDownloader+<>c__DisplayClass",
+    "reason": "Starting a language download builds the Refit request and its User-Agent header inside System.Net.Http. It happens once per language downloaded."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Ocr.OcrLanguageCatalog.Parse(",
+    "reason": "Splitting the language setting, for example eng+deu, returns a new list of codes. It runs when Recognise Text is pressed or Preferences opens."
+  },
+  {
     "type": "",
     "frame": "PdfViewerLite.Ocr.",
     "reason": "Each recognised word becomes a string (the result), and Tesseract's result iterator is wrapped in one SafeHandle per page. Recognition itself takes hundreds of milliseconds in Tesseract's native code."

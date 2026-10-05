@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using Avalonia.Controls.Templates;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI;
 using ReactiveUI.Binding;
@@ -27,6 +28,7 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
         CaretBox.ItemsSource = PreferencesViewModel.CaretOptions;
         FontSizeBox.ItemsSource = PreferencesViewModel.FontSizeOptions;
         SpeechEngineBox.ItemsSource = PreferencesViewModel.SpeechEngineOptions;
+        OcrLanguageList.ItemTemplate = new FuncDataTemplate<OcrLanguageItemViewModel>(static (_, _) => new OcrLanguageItemView());
         FieldLabels.Link(
             (SchemeBox, SchemeLabel),
             (PageToneBox, PageToneLabel),
@@ -42,6 +44,12 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
             (TimestampServerBox, TimestampServerLabel));
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.Items, static v => v.OcrLanguageList.ItemsSource));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.Note, static v => v.OcrNote.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.StatusText, static v => v.OcrStatusText.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.IsDownloading, static v => v.OcrDownloadProgress.Opacity, static downloading => downloading ? 1D : 0D));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.DownloadProgress, static v => v.OcrDownloadProgress.Value));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.OcrLanguages.StopDownloadCommand, static v => v.StopLanguageDownloadButton));
             disposables.Add(this.Bind(ViewModel, static vm => vm.ColorScheme, static v => v.SchemeBox.SelectedIndex));
             disposables.Add(this.Bind(ViewModel, static vm => vm.PageTone, static v => v.PageToneBox.SelectedIndex));
             disposables.Add(this.Bind(ViewModel, static vm => vm.OpeningZoom, static v => v.OpeningZoomBox.SelectedIndex));

@@ -85,6 +85,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>The Read Aloud state, once used.</summary>
     private ReadAloudViewModel? _readAloud;
 
+    /// <summary>The text recognition state, once used.</summary>
+    private TextRecognitionViewModel? _textRecognition;
+
     /// <summary>Focus Mode, once used.</summary>
     private FocusModeViewModel? _focusMode;
 
@@ -359,7 +362,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     public SignaturesViewModel Signatures => field ??= new(this, _services);
 
     /// <summary>Gets the tab's text recognition, created on first use.</summary>
-    public TextRecognitionViewModel TextRecognition => field ??= new(this, _services);
+    public TextRecognitionViewModel TextRecognition => _textRecognition ??= new(this, _services);
 
     /// <summary>Gets Focus Mode, created when first used.</summary>
     public FocusModeViewModel FocusMode => _focusMode ??= new(this, _services);
@@ -744,6 +747,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _subscriptions.Dispose();
         _focusMode?.Dispose();
         _readAloud?.Dispose();
+        _textRecognition?.Dispose();
         _layers?.Dispose();
         _measure?.Dispose();
         _fileWatch?.Dispose();

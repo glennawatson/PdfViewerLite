@@ -7,7 +7,7 @@ arch=('x86_64' 'aarch64')
 url="https://github.com/glennawatson/PdfViewerLite"
 license=('MIT')
 depends=('fontconfig' 'libx11' 'libice' 'libsm' 'gcc-libs' 'glibc')
-optdepends=('wayland: native Wayland support' 'libxkbcommon: Wayland keyboard input' 'libegl: native Wayland rendering' 'libcups: print straight to a printer' 'tesseract: recognise text on scanned pages' 'tesseract-data-eng: English text recognition' 'libpulse: Read Aloud sound through PulseAudio or PipeWire')
+optdepends=('wayland: native Wayland support' 'libxkbcommon: Wayland keyboard input' 'libegl: native Wayland rendering' 'libcups: print straight to a printer' 'libpulse: Read Aloud sound through PulseAudio or PipeWire')
 makedepends=('dotnet-sdk>=10.0' 'clang' 'zlib')
 options=('!strip' '!debug')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
@@ -29,9 +29,12 @@ build() {
 package() {
   cd "PdfViewerLite-$pkgver"
   install -Dm755 "$srcdir/publish/pdfviewerlite" "$pkgdir/usr/lib/pdfviewerlite/pdfviewerlite"
-  for lib in "$srcdir"/publish/*.so; do
-    install -Dm644 "$lib" "$pkgdir/usr/lib/pdfviewerlite/$(basename "$lib")"
+  # Native libraries, including the shipped Tesseract and its dependencies under their soname (libjpeg.so.62 and so on).
+  for lib in "$srcdir"/publish/*.so "$srcdir"/publish/*.so.*; do
+    [ -e "$lib" ] && install -Dm644 "$lib" "$pkgdir/usr/lib/pdfviewerlite/$(basename "$lib")"
   done
+  # The English text recognition data shipped with the app.
+  install -Dm644 "$srcdir/publish/tessdata/eng.traineddata" "$pkgdir/usr/lib/pdfviewerlite/tessdata/eng.traineddata"
   install -d "$pkgdir/usr/bin"
   ln -s /usr/lib/pdfviewerlite/pdfviewerlite "$pkgdir/usr/bin/pdfviewerlite"
   install -Dm644 packaging/linux/net.glennwatson.PdfViewerLite.desktop "$pkgdir/usr/share/applications/net.glennwatson.PdfViewerLite.desktop"

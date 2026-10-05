@@ -21,4 +21,7 @@ public enum OcrPageStatus
 
     /// <summary>The recogniser or its language data is not installed.</summary>
     Unavailable = 4,
+
+    /// <summary>Words were found but read too poorly to trust, so nothing was written.</summary>
+    Unsure = 5,
 }

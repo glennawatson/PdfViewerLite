@@ -39,7 +39,10 @@ internal static class MacosCommand
 
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            var target = Path.Combine(app, "Contents/MacOS", Path.GetRelativePath(source, file));
+            // Data such as the text recognition languages belongs in Resources; Contents/MacOS holds only code to sign.
+            var relative = Path.GetRelativePath(source, file);
+            var folder = relative.StartsWith("tessdata", StringComparison.Ordinal) ? "Contents/Resources" : "Contents/MacOS";
+            var target = Path.Combine(app, folder, relative);
             _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target);
             File.SetUnixFileMode(target, File.GetUnixFileMode(file));

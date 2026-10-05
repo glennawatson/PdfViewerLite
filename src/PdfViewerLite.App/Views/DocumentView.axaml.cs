@@ -52,6 +52,8 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         LayerList.ItemTemplate = new FuncDataTemplate<LayerItemViewModel>(static (_, _) => new LayerItemView());
         VoiceBox.ItemTemplate = new FuncDataTemplate<string>(static (text, _) => new TextBlock { Text = text });
         SpeedBox.ItemTemplate = new FuncDataTemplate<string>(static (text, _) => new TextBlock { Text = text });
+        LanguageBox.ItemTemplate = new FuncDataTemplate<string>(static (text, _) => new TextBlock { Text = text });
+        LanguageBox.ItemsSource = TextRecognitionViewModel.LanguageNames;
         SingleLayoutItem.CommandParameter = "Single";
         DualLayoutItem.CommandParameter = "Dual";
         CoverLayoutItem.CommandParameter = "DualCover";
@@ -330,6 +332,15 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.IsRunning, static v => v.RecognitionBar.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.ProgressText, static v => v.RecognitionText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.Progress, static v => v.RecognitionProgress.Value));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.TextRecognition.ChooseLanguageCommand, static v => v.RecognizeLanguageItem));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.IsLanguageBarOpen, static v => v.LanguageBar.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.LanguageBarText, static v => v.LanguageBarText.Text));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.TextRecognition.LanguageIndex, static v => v.LanguageBox.SelectedIndex));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.LanguageActionText, static v => v.LanguageActionButton.Content));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.IsDownloading, static v => v.LanguageDownloadProgress.Opacity, static downloading => downloading ? 1D : 0D));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.TextRecognition.DownloadProgress, static v => v.LanguageDownloadProgress.Value));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.TextRecognition.ConfirmLanguageCommand, static v => v.LanguageActionButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.TextRecognition.CloseLanguageBarCommand, static v => v.CloseLanguageBarButton));
         BindReadAloud(bindings);
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.HasPendingReload, static v => v.ReloadBar.IsVisible));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReloadCommand, static v => v.ReloadButton));

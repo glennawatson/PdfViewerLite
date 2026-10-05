@@ -37,6 +37,22 @@
       <!-- Says where the chosen voice runs, and is read out when the voice changes. -->
       <TextBlock x:Name="SpeechNote" AutomationProperties.LiveSetting="Polite" Grid.Row="3" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" />
     </Grid>
+    <!-- Text recognition languages: tick the languages to read; each row downloads or removes its own pack. -->
+    <StackPanel Spacing="6">
+      <TextBlock Text="Text recognition languages" />
+      <TextBlock x:Name="OcrNote" Classes="secondary" TextWrapping="Wrap" />
+      <ScrollViewer MaxHeight="220" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl x:Name="OcrLanguageList" AutomationProperties.Name="Text recognition languages" />
+      </ScrollViewer>
+      <DockPanel>
+        <Button x:Name="StopLanguageDownloadButton" DockPanel.Dock="Right" Content="Stop Download"
+                AutomationProperties.Name="Stop download"
+                views:ControlHelp.Text="{x:Static views:Descriptions.StopLanguageDownload}" />
+        <ProgressBar x:Name="OcrDownloadProgress" DockPanel.Dock="Right" Width="120" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0"
+                     AutomationProperties.Name="Language pack download progress" />
+        <TextBlock x:Name="OcrStatusText" Classes="secondary" VerticalAlignment="Center" TextWrapping="Wrap" />
+      </DockPanel>
+    </StackPanel>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock x:Name="TimestampServerLabel" Grid.Row="0" VerticalAlignment="Center" Text="Timestamp server" />
       <TextBox AutomationProperties.Name="Timestamp server" x:Name="TimestampServerBox" views:ControlHelp.Text="{x:Static views:Descriptions.TimestampServer}" Grid.Row="0" Grid.Column="1" PlaceholderText="Optional, for example http://timestamp.digicert.com" />

@@ -2,7 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.Security.Cryptography;
+using System.Buffers;
 using PdfViewerLite.Core.Speech;
 
 namespace PdfViewerLite.Http.Speech;
@@ -15,12 +15,6 @@ namespace PdfViewerLite.Http.Speech;
 /// </summary>
 public static class SpeechModelDownloader
 {
-    /// <summary>The copy buffer size.</summary>
-    private const int BufferSize = 81_920;
-
-    /// <summary>The suffix of the file beside each download that records its SHA-256.</summary>
-    private const string HashSuffix = ".sha256";
-
     /// <summary>Gets the files not yet downloaded, or downloaded from an older voice release.</summary>
     /// <param name="files">The files.</param>
     /// <param name="directory">The voice folder.</param>
@@ -32,7 +26,7 @@ public static class SpeechModelDownloader
         var missing = new List<SpeechModelFile>(files.Count);
         foreach (var file in files)
         {
-            if (!IsCurrent(file, Path.Combine(directory, file.LocalName)))
+            if (!VerifiedDownload.IsCurrent(Path.Combine(directory, file.LocalName), file.Bytes, file.Sha256))
             {
                 missing.Add(file);
             }
@@ -68,71 +62,21 @@ public static class SpeechModelDownloader
     {
         ArgumentNullException.ThrowIfNull(progress);
         var missing = Missing(files, directory);
-        var total = Math.Max(1L, TotalBytes(missing));
-        var done = 0L;
-        var buffer = new byte[BufferSize];
-        foreach (var file in missing)
+        var counter = new ByteProgress(TotalBytes(missing), progress);
+        var buffer = ArrayPool<byte>.Shared.Rent(VerifiedDownload.BufferSize);
+        try
         {
-            var target = Path.GetFullPath(Path.Combine(directory, file.LocalName));
-            if (!target.StartsWith(Path.GetFullPath(directory), StringComparison.Ordinal))
+            foreach (var file in missing)
             {
-                throw new InvalidDataException($"{file.LocalName} is outside the voice folder.");
+                var target = VerifiedDownload.TargetIn(directory, file.LocalName);
+                await VerifiedDownload.DownloadAsync(RefitClients.Download, file.Source, target, file.Sha256, buffer, counter, cancellationToken).ConfigureAwait(false);
             }
-
-            _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            var partial = $"{target}.{Guid.NewGuid():N}.part";
-            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            using (var response = await RefitClients.Download(file.Source, cancellationToken).ConfigureAwait(false))
-            {
-                _ = response.EnsureSuccessStatusCode();
-                var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-                await using (source.ConfigureAwait(false))
-                {
-                    var output = File.Create(partial);
-                    await using (output.ConfigureAwait(false))
-                    {
-                        int read;
-                        while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
-                        {
-                            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-                            hash.AppendData(buffer, 0, read);
-                            done += read;
-                            progress.Report(Math.Min(1D, (double)done / total));
-                        }
-                    }
-                }
-            }
-
-            if (!string.Equals(Convert.ToHexStringLower(hash.GetHashAndReset()), file.Sha256, StringComparison.Ordinal))
-            {
-                File.Delete(partial);
-                throw new InvalidDataException($"{file.LocalName} did not download intact; try again.");
-            }
-
-            File.Move(partial, target, true);
-            await File.WriteAllTextAsync(target + HashSuffix, file.Sha256, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
 
-        progress.Report(1D);
-    }
-
-    /// <summary>
-    /// Determines whether a downloaded file is the one wanted: it exists at the expected size and, when its download
-    /// recorded a hash beside it, that hash matches. A new voice release changes the size or hash of any file it
-    /// replaces, so updated files are downloaded again without hashing hundreds of megabytes at every start.
-    /// </summary>
-    /// <param name="file">The wanted file.</param>
-    /// <param name="path">Where it is kept.</param>
-    /// <returns><see langword="true"/> when it need not be downloaded.</returns>
-    private static bool IsCurrent(SpeechModelFile file, string path)
-    {
-        var info = new FileInfo(path);
-        if (!info.Exists || info.Length != file.Bytes)
-        {
-            return false;
-        }
-
-        var recorded = path + HashSuffix;
-        return !File.Exists(recorded) || string.Equals(File.ReadAllText(recorded).Trim(), file.Sha256, StringComparison.Ordinal);
+        counter.Complete();
     }
 }

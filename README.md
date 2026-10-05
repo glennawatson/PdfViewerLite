@@ -27,7 +27,7 @@ Download a package from [GitHub releases](https://github.com/glennawatson/PdfVie
 | Review | Browse comments, reply and set review status. |
 | Fill forms | Text fields, check boxes, radio buttons and lists. Tab moves between fields. Save filled forms. Common calculations and formats are supported. |
 | Sign | Type or draw a visible signature. Sign with a protected `.p12` or `.pfx` certificate. Check signatures and timestamps. |
-| Recognise text | Add searchable text to scanned pages. Requires a text-recognition engine and language data. |
+| Recognise text | Add searchable text to scanned pages. Tesseract and English come with the app; other languages download in one click when needed. |
 | Measure | Distance, perimeter and area. Use the drawing's scale or enter your own. Keep measurements on the page. |
 | Use the desktop | Recent documents, Show in Folder and opening files in the running window. Reload changed files automatically or when asked. |
 

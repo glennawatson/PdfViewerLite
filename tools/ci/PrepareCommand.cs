@@ -28,7 +28,8 @@ internal static class PrepareCommand
         BuildTools.Run("sudo", packageManager, "update");
         if (mode == "test")
         {
-            BuildTools.Run("sudo", packageManager, "install", "-y", "libtesseract5", "tesseract-ocr-eng", "pulseaudio");
+            // No system Tesseract: the text recognition tests must pass with the copy and English data the app ships.
+            BuildTools.Run("sudo", packageManager, "install", "-y", "pulseaudio");
             BuildTools.Run("pulseaudio", "--daemonize=true", "--exit-idle-time=-1", "-n", "--load=module-null-sink sink_name=silent", "--load=module-native-protocol-unix");
         }
         else

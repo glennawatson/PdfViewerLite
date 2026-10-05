@@ -10,6 +10,9 @@ public interface IOcrEngine : IDisposable
     /// <summary>Gets a value indicating whether the engine and its language data were found.</summary>
     bool IsAvailable { get; }
 
+    /// <summary>Gets whether the engine is ready, and if not, what is missing.</summary>
+    OcrEngineStatus Status { get; }
+
     /// <summary>Recognises the words in an 8 bit greyscale image.</summary>
     /// <param name="image">The image, one byte per pixel.</param>
     /// <param name="width">The width in pixels.</param>

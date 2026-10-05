@@ -1,0 +1,63 @@
+<Project>
+  <!--
+    Text recognition ships with the app: native Tesseract and Leptonica from the Tesseract.Native.runtime.<rid> package
+    for the runtime being built, and Tesseract's English data, so Recognise Text works the first time with no setup.
+    Projects that run text recognition set UsesTesseractNative to true.
+  -->
+  <PropertyGroup>
+    <TesseractRuntimeIdentifier Condition="'$(TesseractRuntimeIdentifier)' == '' and '$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</TesseractRuntimeIdentifier>
+    <TesseractRuntimeIdentifier Condition="'$(TesseractRuntimeIdentifier)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</TesseractRuntimeIdentifier>
+
+    <!--
+      Each package holds every library up to three times (real name, soname and plain name), plus libraries Tesseract
+      never loads. Only Tesseract under its plain name, which the app loads by path, and its dependency closure under
+      the names its dependants ask for are kept.
+    -->
+    <TesseractNativeFiles Condition="'$(TesseractRuntimeIdentifier)' == 'linux-x64' or '$(TesseractRuntimeIdentifier)' == 'linux-arm64'">;libtesseract.so;libleptonica.so.6;libarchive.so.13;libcurl.so.4;libssl.so.3;libcrypto.so.3;libgif.so;libjpeg.so.62;libopenjp2.so.7;libpng16.so.16;libtiff.so.6;libwebp.so.7;libwebpmux.so.3;libsharpyuv.so.0;libz.so.1;libzstd.so.1;liblzma.so.5;libbz2.so.1.0;liblz4.so.1;</TesseractNativeFiles>
+    <TesseractNativeFiles Condition="'$(TesseractRuntimeIdentifier)' == 'osx-arm64'">;libtesseract.dylib;libleptonica.6.0.0.dylib;libarchive.13.8.7.dylib;libcurl.4.8.0.dylib;libssl.3.dylib;libcrypto.3.dylib;libgif.dylib;libjpeg.62.4.0.dylib;libopenjp2.2.5.4.dylib;libpng16.16.58.0.dylib;libtiff.6.3.0.dylib;libwebp.7.2.0.dylib;libwebpmux.3.1.2.dylib;libsharpyuv.0.1.2.dylib;libz.1.3.2.dylib;libzstd.1.5.7.dylib;liblzma.5.8.3.dylib;libbz2.1.0.8.dylib;liblz4.1.10.0.dylib;</TesseractNativeFiles>
+    <TesseractNativeFiles Condition="'$(TesseractRuntimeIdentifier)' == 'win-x64'">;tesseract.dll;leptonica-1.87.0.dll;archive.dll;libcurl.dll;libcrypto-3-x64.dll;gif.dll;jpeg62.dll;openjp2.dll;libpng16.dll;tiff.dll;libwebp.dll;libwebpmux.dll;libsharpyuv.dll;z.dll;zstd.dll;liblzma.dll;bz2.dll;lz4.dll;</TesseractNativeFiles>
+    <TesseractNativeFiles Condition="'$(TesseractRuntimeIdentifier)' == 'win-arm64'">;tesseract.dll;leptonica-1.87.0.dll;archive.dll;libcurl.dll;libcrypto-3-arm64.dll;gif.dll;jpeg62.dll;openjp2.dll;libpng16.dll;tiff.dll;libwebp.dll;libwebpmux.dll;libsharpyuv.dll;z.dll;zstd.dll;liblzma.dll;bz2.dll;lz4.dll;</TesseractNativeFiles>
+
+    <!-- tessdata_fast 4.1.0 English, pinned by SHA-256; the same file OcrLanguageCatalog offers for download. -->
+    <TesseractEnglishUrl>https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/4.1.0/eng.traineddata</TesseractEnglishUrl>
+    <TesseractEnglishSha256>7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2</TesseractEnglishSha256>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UsesTesseractNative)' == 'true' and '$(TesseractNativeFiles)' != ''">
+    <PackageReference Include="Tesseract.Native.runtime.$(TesseractRuntimeIdentifier)" />
+  </ItemGroup>
+
+  <!-- Drops the package's duplicate and unused libraries from the build and publish outputs. -->
+  <Target Name="KeepTesseractNativeClosure" AfterTargets="ResolvePackageAssets" Condition="'$(TesseractNativeFiles)' != ''">
+    <ItemGroup>
+      <_TesseractUnusedNative Include="@(RuntimeTargetsCopyLocalItems)"
+                              Condition="$([System.String]::Copy('%(RuntimeTargetsCopyLocalItems.NuGetPackageId)').StartsWith('Tesseract.Native.runtime.')) and !$(TesseractNativeFiles.Contains(';%(Filename)%(Extension);'))" />
+      <_TesseractUnusedNative Include="@(NativeCopyLocalItems)"
+                              Condition="$([System.String]::Copy('%(NativeCopyLocalItems.NuGetPackageId)').StartsWith('Tesseract.Native.runtime.')) and !$(TesseractNativeFiles.Contains(';%(Filename)%(Extension);'))" />
+      <RuntimeTargetsCopyLocalItems Remove="@(_TesseractUnusedNative)" />
+      <NativeCopyLocalItems Remove="@(_TesseractUnusedNative)" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Downloads the English data into this build's own obj folder, checks its SHA-256 and copies it to tessdata/ beside
+    the app. The folder is per target framework because multi-targeted projects build their frameworks in parallel.
+  -->
+  <Target Name="AddTesseractEnglish" BeforeTargets="AssignTargetPaths" Condition="'$(UsesTesseractNative)' == 'true'">
+    <PropertyGroup>
+      <TesseractEnglishDirectory>$(IntermediateOutputPath)tessdata/</TesseractEnglishDirectory>
+    </PropertyGroup>
+    <DownloadFile SourceUrl="$(TesseractEnglishUrl)" DestinationFolder="$(TesseractEnglishDirectory)" Retries="3"
+                  Condition="!Exists('$(TesseractEnglishDirectory)eng.traineddata')" />
+    <GetFileHash Files="$(TesseractEnglishDirectory)eng.traineddata" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_TesseractEnglishHash" />
+    </GetFileHash>
+    <Delete Files="$(TesseractEnglishDirectory)eng.traineddata" Condition="'$(_TesseractEnglishHash.ToLowerInvariant())' != '$(TesseractEnglishSha256)'" />
+    <Error Condition="'$(_TesseractEnglishHash.ToLowerInvariant())' != '$(TesseractEnglishSha256)'"
+           Text="The downloaded English text recognition data did not match its SHA-256 and was deleted. Build again to download it again." />
+    <ItemGroup>
+      <None Include="$(TesseractEnglishDirectory)eng.traineddata" Link="tessdata/eng.traineddata"
+            CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+</Project>

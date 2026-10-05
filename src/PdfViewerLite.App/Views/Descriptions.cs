@@ -140,6 +140,30 @@ public static class Descriptions
     /// <summary>The Recognise Text menu item.</summary>
     public static readonly string RecognizeText = "Find the words in scanned pages so you can search, select and hear them.";
 
+    /// <summary>The language bar's Not Now button.</summary>
+    public static readonly string CloseLanguageBar = "Hide this bar. Nothing on the pages has been changed, and any download in progress stops.";
+
+    /// <summary>The language bar's recognise button.</summary>
+    public static readonly string RecognizeInLanguage = "Find the words in this document in the chosen language. A language not on this computer downloads first and stays for next time.";
+
+    /// <summary>The language bar's language list.</summary>
+    public static readonly string DocumentLanguage = "Choose the language the scanned pages are written in.";
+
+    /// <summary>The Preferences Stop Download button.</summary>
+    public static readonly string StopLanguageDownload = "Stop the language download. Languages that already finished are kept.";
+
+    /// <summary>A language's tick box in Preferences.</summary>
+    public static readonly string UseLanguage = "Tick to find words in this language. Tick more than one for documents that mix languages.";
+
+    /// <summary>A language's Download button in Preferences.</summary>
+    public static readonly string DownloadLanguage = "Download this language and keep it on this computer, so words in it can be found.";
+
+    /// <summary>A language's Remove button in Preferences.</summary>
+    public static readonly string RemoveLanguage = "Delete this language from this computer to free space. You can download it again later.";
+
+    /// <summary>The Recognise Text in Another Language menu item.</summary>
+    public static readonly string RecognizeTextInLanguage = "Choose the language a scanned document is written in, then find its words. Other languages download in one click.";
+
     /// <summary>The Leave Read Mode button.</summary>
     public static readonly string LeaveReadMode = $"Bring back the tool bars and sidebar.{Shortcut}Esc or Ctrl+H";
 
