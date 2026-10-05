@@ -96,13 +96,13 @@ public static class Descriptions
     public static readonly string RotateRight = $"Turn the pages a quarter turn to the right.{Shortcut}Ctrl+Right";
 
     /// <summary>The single page layout menu item.</summary>
-    public static readonly string SinglePage = "Show one page across the window.";
+    public static readonly string SinglePage = "Show one page in each row. Scroll down for the next page.";
 
     /// <summary>The dual page layout menu item.</summary>
-    public static readonly string DualPage = "Show two pages side by side.";
+    public static readonly string DualPage = "Show two pages side by side: pages 1 and 2, then 3 and 4. Next page moves to the next pair.";
 
     /// <summary>The dual page with cover layout menu item.</summary>
-    public static readonly string DualPageCover = "Show two pages side by side, with the first page on its own like a book cover.";
+    public static readonly string DualPageCover = "Show the first page alone like a book cover, then pages side by side: 2 and 3, then 4 and 5.";
 
     /// <summary>The Read Mode menu item.</summary>
     public static readonly string ReadMode = $"Put the tool bars and sidebar away so the pages fill the window.{Shortcut}Ctrl+H";
@@ -114,7 +114,7 @@ public static class Descriptions
     public static readonly string CaretNavigation = $"Move through the text with the arrow keys. Hold Shift to select text.{Shortcut}F7";
 
     /// <summary>The page by page menu item.</summary>
-    public static readonly string PageByPage = "Show one page at a time instead of scrolling through all the pages.";
+    public static readonly string PageByPage = "Show one page, or one pair of pages, at a time instead of scrolling through all the pages.";
 
     /// <summary>The Document menu button.</summary>
     public static readonly string DocumentMenu = "Open the Document menu to save a copy, reload, find the file or see its details.";

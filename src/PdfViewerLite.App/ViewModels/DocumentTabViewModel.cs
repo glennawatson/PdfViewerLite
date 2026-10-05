@@ -1018,15 +1018,15 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RotateRight() => Rotation = Rotation.Clockwise;
 
-    /// <summary>Goes to the next page.</summary>
+    /// <summary>Goes to the next page, or the next pair of pages when two are shown side by side.</summary>
     [ReactiveCommand]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void NextPage() => ShowPage(CurrentPageIndex + 1);
+    private void NextPage() => ShowPage(PageRows.GetNextRowPage(CurrentPageIndex, PageCount, LayoutMode));
 
-    /// <summary>Goes to the previous page.</summary>
+    /// <summary>Goes to the previous page, or the previous pair of pages when two are shown side by side.</summary>
     [ReactiveCommand]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void PreviousPage() => ShowPage(CurrentPageIndex - 1);
+    private void PreviousPage() => ShowPage(PageRows.GetPreviousRowPage(CurrentPageIndex, LayoutMode));
 
     /// <summary>Goes to the first page.</summary>
     [ReactiveCommand]

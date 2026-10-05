@@ -72,9 +72,9 @@
                 <MenuItem x:Name="RotateLeftItem" views:ControlHelp.Text="{x:Static views:Descriptions.RotateLeft}" Header="Rotate _Left" InputGesture="Ctrl+Left" />
                 <MenuItem x:Name="RotateRightItem" views:ControlHelp.Text="{x:Static views:Descriptions.RotateRight}" Header="Rotate _Right" InputGesture="Ctrl+Right" />
                 <Separator />
-                <MenuItem x:Name="SingleLayoutItem" views:ControlHelp.Text="{x:Static views:Descriptions.SinglePage}" Header="_Single Page" />
-                <MenuItem x:Name="DualLayoutItem" views:ControlHelp.Text="{x:Static views:Descriptions.DualPage}" Header="_Dual Page" />
-                <MenuItem x:Name="CoverLayoutItem" views:ControlHelp.Text="{x:Static views:Descriptions.DualPageCover}" Header="Dual Page with _Cover" />
+                <MenuItem x:Name="SingleLayoutItem" views:ControlHelp.Text="{x:Static views:Descriptions.SinglePage}" Header="_Single Page" ToggleType="Radio" GroupName="PageLayout" />
+                <MenuItem x:Name="DualLayoutItem" views:ControlHelp.Text="{x:Static views:Descriptions.DualPage}" Header="_Two Pages" ToggleType="Radio" GroupName="PageLayout" />
+                <MenuItem x:Name="CoverLayoutItem" views:ControlHelp.Text="{x:Static views:Descriptions.DualPageCover}" Header="Two Pages with _Cover" ToggleType="Radio" GroupName="PageLayout" />
                 <MenuItem x:Name="ReadModeItem" views:ControlHelp.Text="{x:Static views:Descriptions.ReadMode}" Header="Rea_d Mode" InputGesture="Ctrl+H" />
                 <MenuItem x:Name="PresentItem" views:ControlHelp.Text="{x:Static views:Descriptions.Present}" Header="P_resent" InputGesture="Shift+F5" />
                 <MenuItem x:Name="CaretModeItem" views:ControlHelp.Text="{x:Static views:Descriptions.CaretNavigation}" Header="_Caret Navigation" InputGesture="F7" ToggleType="CheckBox" />

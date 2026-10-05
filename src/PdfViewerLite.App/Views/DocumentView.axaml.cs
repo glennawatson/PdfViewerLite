@@ -18,6 +18,7 @@ using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Attachments;
+using PdfViewerLite.Core.Layout;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
@@ -224,6 +225,9 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetLayoutCommand, static v => v.SingleLayoutItem, Parameter("Single")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetLayoutCommand, static v => v.DualLayoutItem, Parameter("Dual")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetLayoutCommand, static v => v.CoverLayoutItem, Parameter("DualCover")));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.LayoutMode, static v => v.SingleLayoutItem.IsChecked, static mode => mode == PageLayoutMode.Single));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.LayoutMode, static v => v.DualLayoutItem.IsChecked, static mode => mode == PageLayoutMode.Dual));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.LayoutMode, static v => v.CoverLayoutItem.IsChecked, static mode => mode == PageLayoutMode.DualCover));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveCommand, static v => v.SaveItem));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PrintCommand, static v => v.PrintItem));
         bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.PrintPreviewInteraction), ShowPrintPreviewAsync));
