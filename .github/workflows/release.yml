@@ -31,7 +31,7 @@ permissions:
 jobs:
   version:
     name: Resolve release version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     outputs:
@@ -123,7 +123,7 @@ jobs:
   sign-windows:
     name: Sign Windows (${{ needs.version.outputs.semver2 }})
     needs: [version, package-windows]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment:
       name: release
     permissions:
@@ -189,9 +189,17 @@ jobs:
         }
 
   package-linux:
-    name: Package Linux (${{ needs.version.outputs.semver2 }})
+    name: Package ${{ matrix.rid }} (${{ needs.version.outputs.semver2 }})
     needs: version
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - rid: linux-x64
+          runner: ubuntu-26.04
+        - rid: linux-arm64
+          runner: ubuntu-26.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
     steps:
@@ -206,13 +214,13 @@ jobs:
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
     - name: Publish Linux Native AOT
-      run: dotnet run --file tools/packaging/publish.cs -- linux-x64 ${{ needs.version.outputs.semver2 }}
+      run: dotnet run --file tools/packaging/publish.cs -- ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
     - name: Package Linux (AppImage, DEB, RPM, tar.gz)
-      run: dotnet run --file tools/packaging/linux.cs -- linux-x64 ${{ needs.version.outputs.semver2 }}
+      run: dotnet run --file tools/packaging/linux.cs -- ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
     - name: Upload Linux packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: packages-linux
+        name: packages-${{ matrix.rid }}
         path: |
           artifacts/PdfViewerLite-*.AppImage
           artifacts/*.deb
@@ -253,7 +261,7 @@ jobs:
   create-release:
     name: Create release (${{ needs.version.outputs.semver2 }})
     needs: [version, package-windows, sign-windows, verify-windows, package-linux, package-macos]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     steps:
@@ -271,7 +279,8 @@ jobs:
     - name: Download Linux packages
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: packages-linux
+        pattern: packages-linux-*
+        merge-multiple: true
         path: release-assets
     - name: Download macOS packages
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
