@@ -16,13 +16,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-26.04, ubuntu-26.04-arm, macos-latest]
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@6733191524ed33a2633e0f24b9c2601e44069715 # main
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
     with:
       runner: ${{ matrix.os }}
       srcFolder: '.'
       solutionFile: PdfViewerLite.slnx
       stampVersion: false
-      testPreparationFile: tools/ci/prepare.cs
+      testPreparationProject: tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj
+      testPreparationArguments: '["ci","prepare","test"]'
       dotnetVersions: |
         10.0.x
         11.0.100-rc.1.26425.128

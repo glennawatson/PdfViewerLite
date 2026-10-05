@@ -5,6 +5,9 @@ on:
     paths:
     - '.github/workflows/**'
     - 'tools/packaging/**'
+    - 'tools/signing/**'
+    - 'tools/PdfViewerLite.Tools/**'
+    - 'tools/Directory.Packages.props'
     - 'tools/ci/**'
     - 'packaging/**'
     - 'Directory.*.props'
@@ -39,18 +42,20 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Set up .NET
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
+    - name: Build release tools
+      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Prepare Linux packaging
       if: runner.os == 'Linux'
-      run: dotnet run --file tools/ci/prepare.cs -- package
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci prepare package
     - name: Publish Native AOT
-      run: dotnet run --file tools/packaging/publish.cs -- ${{ matrix.rid }} 1.0.0
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} 1.0.0
     - name: Build packages
-      run: dotnet run --file tools/packaging/${{ matrix.script }}.cs -- ${{ matrix.rid }} 1.0.0
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package ${{ matrix.script }} ${{ matrix.rid }} 1.0.0
     - name: Upload packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:

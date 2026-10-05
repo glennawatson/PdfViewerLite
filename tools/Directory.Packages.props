@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="../Directory.Packages.props" />
+  <ItemGroup Label="Tools">
+    <PackageVersion Include="System.CommandLine" Version="3.0.0-rc.1.26425.128" />
+    <PackageVersion Include="OpenMcdf" Version="3.3.0" />
+    <PackageVersion Update="Refit" Version="16.3.0" />
+    <PackageVersion Update="SkiaSharp" Version="$(SkiaVersion)" />
+    <PackageVersion Update="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="$(SkiaVersion)" />
+    <PackageVersion Update="System.Security.Cryptography.Pkcs" Version="10.0.12" />
+  </ItemGroup>
+</Project>

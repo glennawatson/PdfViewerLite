@@ -23,6 +23,7 @@
     <Project Path="tests/PdfViewerLite.TestAssets/PdfViewerLite.TestAssets.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj" />
     <Project Path="tools/PdfViewerLite.AllocationAudit/PdfViewerLite.AllocationAudit.csproj" />
   </Folder>
 </Solution>

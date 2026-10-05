@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks></TargetFrameworks>
+    <TargetFramework>net11.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Description>Release packaging, signing and development commands for PdfViewerLite.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../packaging/*.cs" Link="Packaging/%(Filename)%(Extension)" />
+    <Compile Include="../signing/*.cs" Link="Signing/%(Filename)%(Extension)" />
+    <Compile Include="../ci/*.cs" Link="Ci/%(Filename)%(Extension)" />
+    <Compile Include="../accessibility/*.cs" Link="Accessibility/%(Filename)%(Extension)" />
+    <Compile Include="../voice-models/*.cs" Link="VoiceModels/%(Filename)%(Extension)" />
+    <Compile Include="../../src/PdfViewerLite.Speech/Melo/MeloFrontEnd.cs" Link="Speech/MeloFrontEnd.cs" />
+    <Compile Include="../../src/PdfViewerLite.Speech/Melo/MeloInput.cs" Link="Speech/MeloInput.cs" />
+    <Compile Include="../../src/PdfViewerLite.Speech/Melo/MeloLexicon.cs" Link="Speech/MeloLexicon.cs" />
+    <Compile Include="../../src/PdfViewerLite.Speech/Melo/MeloSymbols.cs" Link="Speech/MeloSymbols.cs" />
+    <Compile Include="../../src/PdfViewerLite.Speech/Melo/SpellingToSound.cs" Link="Speech/SpellingToSound.cs" />
+    <Compile Include="../../src/PdfViewerLite.Speech/Melo/WordPieceTokenizer.cs" Link="Speech/WordPieceTokenizer.cs" />
+    <ProjectReference Include="../../src/PdfViewerLite.Speech/PdfViewerLite.Speech.csproj" />
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="OpenMcdf" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+    <PackageReference Include="Refit" />
+  </ItemGroup>
+</Project>

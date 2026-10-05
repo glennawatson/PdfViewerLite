@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Security.Cryptography;
 using System.Text.Json;
 using PdfViewerLite.Core.Speech;
@@ -65,7 +64,7 @@ internal static class MeloFiles
                 throw new InvalidDataException($"{file.LocalName} does not match its pinned SHA-256.");
             }
 
-            Console.WriteLine($"verified {file.LocalName}");
+            await Console.Out.WriteLineAsync($"verified {file.LocalName}");
         }
     }
 
