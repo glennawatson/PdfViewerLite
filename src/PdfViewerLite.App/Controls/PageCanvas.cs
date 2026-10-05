@@ -9,6 +9,7 @@ using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
@@ -410,12 +411,35 @@ public sealed partial class PageCanvas : Control
             this.WhenChanged(static x => x.Tab).SubscribeSafe(Wire, OnError),
             this.WhenChanged(static x => x.CurrentHitOutline)
                 .SubscribeSafe(outline => _currentHitPen = outline is not null ? new ImmutablePen(outline.ToImmutable(), CurrentHitOutlineWidth) : null, OnError),
-            this.Events().PointerWheelChanged.SubscribeSafe(HandlePointerWheel, OnError),
-            this.Events().PointerPressed.SubscribeSafe(HandlePointerPressed, OnError),
-            this.Events().PointerMoved.SubscribeSafe(HandlePointerMoved, OnError),
-            this.ObserveRouted(PointerReleasedEvent, handledEventsToo: true).SubscribeSafe(HandlePointerReleased, OnError),
-            this.Events().KeyDown.SubscribeSafe(HandleKeyDown, OnError),
+
+            // One failing gesture must not end the subscription, or the page would stop answering input.
+            this.Events().PointerWheelChanged.SubscribeSafe(e => Guard(HandlePointerWheel, e), OnError),
+            this.Events().PointerPressed.SubscribeSafe(e => Guard(HandlePointerPressed, e), OnError),
+            this.Events().PointerMoved.SubscribeSafe(e => Guard(HandlePointerMoved, e), OnError),
+            this.ObserveRouted(PointerReleasedEvent, handledEventsToo: true).SubscribeSafe(e => Guard(HandlePointerReleased, e), OnError),
+            this.Events().KeyDown.SubscribeSafe(e => Guard(HandleKeyDown, e), OnError),
         ];
+    }
+
+    /// <summary>Runs an input handler, reporting a failure instead of letting it end the input subscription.</summary>
+    /// <typeparam name="T">The routed event's argument type.</typeparam>
+    /// <param name="handler">The handler.</param>
+    /// <param name="args">The routed event's data.</param>
+    private void Guard<T>(Action<T> handler, T args)
+        where T : RoutedEventArgs
+    {
+        try
+        {
+            handler(args);
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // The gesture is abandoned: release any capture so the next press starts cleanly.
+            OnError(error);
+            (args as PointerEventArgs)?.Pointer.Capture(null);
+            _selecting = false;
+            InvalidateVisual();
+        }
     }
 
     /// <summary>Releases the scroll viewer, tab and input subscriptions.</summary>
