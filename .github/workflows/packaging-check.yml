@@ -39,7 +39,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Set up .NET
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@6733191524ed33a2633e0f24b9c2601e44069715 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
