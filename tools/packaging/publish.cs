@@ -24,7 +24,20 @@ if (Directory.Exists(output))
     Directory.Delete(output, true);
 }
 
-BuildTools.Run("dotnet", "publish", Path.Combine(root, "src/PdfViewerLite.App/PdfViewerLite.App.csproj"), "-c", "Release", "-f", "net10.0", "-r", rid, "-o", output, $"-p:Version={version}");
+BuildTools.Run(
+    "dotnet",
+    "publish",
+    Path.Combine(root, "src/PdfViewerLite.App/PdfViewerLite.App.csproj"),
+    "-c",
+    "Release",
+    "-f",
+    "net10.0",
+    "-r",
+    rid,
+    "-o",
+    output,
+    $"-p:Version={version}",
+    $"-p:MinVerVersionOverride={version}");
 
 _ = Directory.CreateDirectory(symbols);
 
