@@ -25,5 +25,5 @@ jobs:
       testPreparationProject: tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj
       testPreparationArguments: '["ci","prepare","test"]'
       dotnetVersions: |
-        10.0.x
-        11.0.100-rc.1.26425.128
+        10.x
+        11.x

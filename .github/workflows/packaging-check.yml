@@ -46,7 +46,7 @@ jobs:
       uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
       with:
         dotnet-versions: |
-          11.0.100-rc.1.26425.128
+          11.x
         stamp-version: 'false'
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
