@@ -4,11 +4,8 @@
 // See the LICENSE file in the project root for full license information.
 
 #:package System.Security.Cryptography.Pkcs
-#:package Refit
 #:include ../packaging/BuildTools.cs
-#:include ../packaging/IPackagingSourceApi.cs
 #:include WindowsPayload.cs
-#:include MsixSdk.cs
 
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -46,13 +43,11 @@ if (expectedHash.Length != SHA256.HashSizeInBytes)
 
 BuildTools.Run("apt-get", "update");
 
-BuildTools.Run("apt-get", "install", "--yes", "--no-install-recommends", "osslsigncode", "msitools", "gcab", "cabextract", "libengine-pkcs11-openssl", "cmake", "g++", "make", "libicu-dev");
+BuildTools.Run("apt-get", "install", "--yes", "--no-install-recommends", "osslsigncode", "msitools", "gcab", "cabextract", "libengine-pkcs11-openssl");
 
 var scratch = Path.Combine(Environment.GetEnvironmentVariable("RUNNER_TEMP")!, $"release-signing-{Guid.NewGuid():N}");
 
 _ = Directory.CreateDirectory(scratch);
-
-var packer = await MsixSdk.BuildAsync(scratch).ConfigureAwait(false);
 
 var payloads = WindowsPayload.Extract(assets, scratch);
 
@@ -63,7 +58,7 @@ foreach (var payload in payloads.Values)
     BuildTools.Run("osslsigncode", "verify", "-in", payload, "-require-leaf-hash", $"SHA256:{Convert.ToHexString(expectedHash)}");
 }
 
-WindowsPayload.Replace(assets, payloads, scratch, packer);
+WindowsPayload.Replace(assets, payloads, scratch);
 
 SignWithJsign(Path.Combine(folder, "*.msi*"));
 

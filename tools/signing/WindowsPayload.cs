@@ -6,6 +6,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
+using System.Xml.Linq;
 
 using PdfViewerLite.Tools.Packaging;
 
@@ -14,6 +16,15 @@ namespace PdfViewerLite.Tools.Signing;
 /// <summary>Updates Windows release packages with signed executable payloads.</summary>
 internal static class WindowsPayload
 {
+    /// <summary>MSIX hash block length.</summary>
+    private const int BlockLength = 65_536;
+
+    /// <summary>MSIX block map entry name.</summary>
+    private const string BlockMapName = "AppxBlockMap.xml";
+
+    /// <summary>ZIP local file header length before the filename.</summary>
+    private const int LocalHeaderLength = 30;
+
     /// <summary>Header row count in an exported MSI table.</summary>
     private const int TableHeaderRows = 3;
 
@@ -61,8 +72,7 @@ internal static class WindowsPayload
     /// <param name="assets">Release package paths.</param>
     /// <param name="payloads">Original hashes mapped to signed payload paths.</param>
     /// <param name="scratch">Temporary signing directory.</param>
-    /// <param name="packer">Microsoft MSIX packer path.</param>
-    internal static void Replace(string[] assets, Dictionary<string, string> payloads, string scratch, string packer)
+    internal static void Replace(string[] assets, Dictionary<string, string> payloads, string scratch)
     {
         foreach (var asset in assets)
         {
@@ -70,11 +80,8 @@ internal static class WindowsPayload
             {
                 ReplaceMsi(asset, payloads, scratch);
             }
-            else if (asset.EndsWith(".msix", StringComparison.OrdinalIgnoreCase))
-            {
-                ReplaceMsix(asset, payloads, scratch, packer);
-            }
-            else if (asset.Contains("-win-", StringComparison.Ordinal) && asset.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            else if (asset.EndsWith(".msix", StringComparison.OrdinalIgnoreCase)
+                || (asset.Contains("-win-", StringComparison.Ordinal) && asset.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)))
             {
                 ReplaceZip(asset, payloads);
             }
@@ -109,13 +116,21 @@ internal static class WindowsPayload
         }
     }
 
-    /// <summary>Replaces executable entries in a portable archive.</summary>
+    /// <summary>Replaces executable entries and updates the MSIX block map.</summary>
     /// <param name="asset">The archive.</param>
     /// <param name="payloads">Original hashes mapped to signed payload paths.</param>
     /// <exception cref="InvalidDataException">An executable has no matching signed payload.</exception>
     private static void ReplaceZip(string asset, Dictionary<string, string> payloads)
     {
         using var archive = ZipFile.Open(asset, ZipArchiveMode.Update);
+        XDocument? blockMap = null;
+        if (archive.GetEntry(BlockMapName) is { } mapEntry)
+        {
+            using var source = mapEntry.Open();
+            blockMap = XDocument.Load(source);
+            archive.GetEntry("AppxSignature.p7x")?.Delete();
+        }
+
         ZipArchiveEntry[] entries = [.. archive.Entries];
         foreach (var entry in entries)
         {
@@ -139,7 +154,7 @@ internal static class WindowsPayload
             var attributes = entry.ExternalAttributes;
             var modified = entry.LastWriteTime;
             entry.Delete();
-            var replacement = archive.CreateEntry(name, CompressionLevel.Optimal);
+            var replacement = archive.CreateEntry(name, blockMap is null ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
             replacement.ExternalAttributes = attributes;
             replacement.LastWriteTime = modified;
             using (var source = File.OpenRead(signed))
@@ -147,46 +162,51 @@ internal static class WindowsPayload
             {
                 source.CopyTo(target);
             }
+
+            if (blockMap is not null)
+            {
+                UpdateBlockMap(blockMap, name, signed);
+            }
+        }
+
+        if (blockMap is not null)
+        {
+            archive.GetEntry(BlockMapName)!.Delete();
+            using var target = archive.CreateEntry(BlockMapName, CompressionLevel.NoCompression).Open();
+            blockMap.Save(target);
         }
     }
 
-    /// <summary>Repacks signed MSIX payloads with Microsoft's compression and block map writer.</summary>
-    /// <param name="asset">The MSIX.</param>
-    /// <param name="payloads">Original hashes mapped to signed payload paths.</param>
-    /// <param name="scratch">Temporary signing directory.</param>
-    /// <param name="packer">Microsoft MSIX packer path.</param>
-    /// <exception cref="InvalidDataException">An executable has no matching signed payload.</exception>
-    private static void ReplaceMsix(string asset, Dictionary<string, string> payloads, string scratch, string packer)
+    /// <summary>Hashes stored MSIX entries in uncompressed 64 KiB blocks.</summary>
+    /// <param name="map">The package block map.</param>
+    /// <param name="name">Archive entry name.</param>
+    /// <param name="signed">Signed payload path.</param>
+    /// <exception cref="InvalidDataException">The entry is missing from the block map.</exception>
+    private static void UpdateBlockMap(XDocument map, string name, string signed)
     {
-        var folder = Path.Combine(scratch, Path.GetFileName(asset));
-        ZipFile.ExtractToDirectory(asset, folder);
-        foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+        var ns = map.Root!.Name.Namespace;
+        foreach (var file in map.Root.Elements(ns + "File"))
         {
-            if (!IsExecutable(file))
+            if (((string?)file.Attribute("Name"))?.Replace('\\', '/') != name)
             {
                 continue;
             }
 
-            string hash;
-            using (var source = File.OpenRead(file))
+            file.SetAttributeValue("Size", new FileInfo(signed).Length);
+            file.SetAttributeValue("LfhSize", LocalHeaderLength + Encoding.UTF8.GetByteCount(name));
+            file.RemoveNodes();
+            using var source = File.OpenRead(signed);
+            var buffer = new byte[BlockLength];
+            int count;
+            while ((count = source.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false)) > 0)
             {
-                hash = Convert.ToHexString(SHA256.HashData(source));
+                file.Add(new XElement(ns + "Block", new XAttribute("Hash", Convert.ToBase64String(SHA256.HashData(buffer.AsSpan(0, count))))));
             }
 
-            if (!payloads.TryGetValue(hash, out var signed))
-            {
-                throw new InvalidDataException($"No signed payload matches {file} in {asset}.");
-            }
-
-            File.Copy(signed, file, true);
+            return;
         }
 
-        File.Delete(Path.Combine(folder, "AppxBlockMap.xml"));
-        File.Delete(Path.Combine(folder, "[Content_Types].xml"));
-        File.Delete(Path.Combine(folder, "AppxSignature.p7x"));
-        File.Delete(asset);
-        BuildTools.Run(packer, "pack", "-d", folder, "-p", asset);
-        BuildTools.Run(packer, "unpack", "-ss", "-d", Path.Combine(scratch, $"verify-{Path.GetFileName(asset)}"), "-p", asset);
+        throw new InvalidDataException($"The MSIX block map does not contain {name}.");
     }
 
     /// <summary>Updates the embedded cabinet and file sizes without changing installer tables.</summary>
