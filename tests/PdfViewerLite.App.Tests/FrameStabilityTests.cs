@@ -57,9 +57,9 @@ public sealed class FrameStabilityTests
 
     /// <summary>
     /// The least share of the settled frame's sharp edges the first frame must already show. A frame showing only the
-    /// blurred preview keeps about 1%; the last sharp tiles stretched by a wheel notch keep over 70%.
+    /// blurred preview keeps about 1%; the last sharp tiles stretched bilinearly by a wheel notch keep over 45%.
     /// </summary>
-    private const double MinSharpness = 0.6;
+    private const double MinSharpness = 0.4;
 
     /// <summary>The zoom change of one wheel notch.</summary>
     private const double WheelStep = 1.1;

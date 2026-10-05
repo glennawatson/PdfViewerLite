@@ -74,6 +74,16 @@ public class BitmapDrawBenchmarks
     [Benchmark]
     public void DrawStretched() => _context.DrawBitmap(_tile, 1, TileRect, StretchedRect);
 
+    /// <summary>Draws a cached tile stretched by one wheel notch with bilinear sampling.</summary>
+    [Benchmark]
+    public void DrawStretchedBilinear()
+    {
+        var options = _context.RenderOptions;
+        _context.RenderOptions = options with { BitmapInterpolationMode = BitmapInterpolationMode.LowQuality };
+        _context.DrawBitmap(_tile, 1, TileRect, StretchedRect);
+        _context.RenderOptions = options;
+    }
+
     /// <summary>Writes new pixels and draws them, as when a freshly rendered tile is first shown.</summary>
     [Benchmark]
     public void WriteThenDraw()

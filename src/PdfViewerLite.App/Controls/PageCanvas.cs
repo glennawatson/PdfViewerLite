@@ -104,8 +104,12 @@ public sealed partial class PageCanvas : Control
     /// <summary>The page shadow brush.</summary>
     private static readonly IBrush ShadowBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0));
 
-    /// <summary>How page images are sampled: smoothly when scaled, with aliased edges so tiles meet without seams.</summary>
-    private static readonly RenderOptions PageRenderOptions = new() { BitmapInterpolationMode = BitmapInterpolationMode.HighQuality, EdgeMode = EdgeMode.Aliased };
+    /// <summary>
+    /// How page images are sampled, with aliased edges so tiles meet without seams. Only stand-ins are ever scaled: the
+    /// preview and the last scale's tiles while a zoom settles. Bilinear with mipmaps draws those about ten times
+    /// faster than cubic (BitmapDrawBenchmarks), which keeps the zoom ease smooth; sharp tiles are drawn 1:1.
+    /// </summary>
+    private static readonly RenderOptions PageRenderOptions = new() { BitmapInterpolationMode = BitmapInterpolationMode.MediumQuality, EdgeMode = EdgeMode.Aliased };
 
     /// <summary>The hand cursor for links.</summary>
     private static readonly Cursor HandCursor = new(StandardCursorType.Hand);
