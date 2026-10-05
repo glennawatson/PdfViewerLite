@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using PdfViewerLite.Core.Platform;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Platform.MacOS;
@@ -95,10 +96,13 @@ public sealed unsafe class MacThemeSource : IDesktopThemeSource
 
     /// <summary>Initializes a new instance of the <see cref="MacThemeSource"/> class.</summary>
     public MacThemeSource() =>
-        Palette = Signal.Defer(static () => Signal.Using(static () => new ChangeObserver(), static observer => observer.Changes).Select(static _ => Read()).StartWith(Read()).DistinctUntilChanged());
+        Palette = new(Signal.Defer(static () => Signal.Using(static () => new ChangeObserver(), static observer => observer.Changes)
+            .Select(static _ => Read())
+            .StartWith(Read())
+            .DistinctUntilChanged()));
 
     /// <inheritdoc/>
-    public IObservable<DesktopPalette?> Palette { get; }
+    public AsObservableSignal<DesktopPalette?> Palette { get; }
 
     /// <summary>Builds the palette.</summary>
     /// <param name="dark">Whether the appearance is dark.</param>
@@ -160,10 +164,12 @@ public sealed unsafe class MacThemeSource : IDesktopThemeSource
                 NativeMethods.AddObserver(center, GCHandle.ToIntPtr(_self), &OnChanged, notification, 0, DeliverImmediately);
                 NativeMethods.Release(notification);
             }
+
+            Changes = new(_changes);
         }
 
         /// <summary>Gets the changes.</summary>
-        internal IObservable<RxVoid> Changes => _changes;
+        internal AsObservableSignal<RxVoid> Changes { get; }
 
         /// <inheritdoc/>
         public void Dispose()

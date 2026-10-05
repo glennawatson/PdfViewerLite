@@ -5,12 +5,13 @@
 using System.Diagnostics;
 using PdfViewerLite.Core.Documents;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>An outline (bookmark) entry in the sidebar.</summary>
 [DebuggerDisplay("{Title}")]
-public sealed class OutlineItemViewModel : ReactiveObject
+public sealed partial class OutlineItemViewModel : ReactiveObject
 {
     /// <summary>Initializes a new instance of the <see cref="OutlineItemViewModel"/> class.</summary>
     /// <param name="node">The outline node.</param>
@@ -39,11 +40,8 @@ public sealed class OutlineItemViewModel : ReactiveObject
     public IReadOnlyList<OutlineItemViewModel> Children { get; }
 
     /// <summary>Gets or sets a value indicating whether the entry is expanded.</summary>
-    public bool IsExpanded
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsExpanded { get; set; }
 
     /// <summary>Converts outline nodes to view models.</summary>
     /// <param name="nodes">The nodes.</param>

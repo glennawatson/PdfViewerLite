@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using PdfViewerLite.Core.Platform;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 using Tmds.DBus.Protocol;
 
@@ -28,10 +29,14 @@ public sealed class SingleInstanceHost : ISingleInstance
 
     /// <summary>Initializes a new instance of the <see cref="SingleInstanceHost"/> class.</summary>
     /// <param name="connection">The connection that owns the name.</param>
-    private SingleInstanceHost(DBusConnection connection) => _connection = connection;
+    private SingleInstanceHost(DBusConnection connection)
+    {
+        _connection = connection;
+        OpenRequests = new(_openRequests);
+    }
 
     /// <summary>Gets the requests from other processes to open documents or activate the window, emitted on a D-Bus thread.</summary>
-    public IObservable<OpenRequest> OpenRequests => _openRequests;
+    public AsObservableSignal<OpenRequest> OpenRequests { get; }
 
     /// <summary>Asks a running instance to open documents.</summary>
     /// <param name="uris">Paths or URIs to open; empty to just raise the window.</param>

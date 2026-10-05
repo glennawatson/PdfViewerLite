@@ -18,8 +18,12 @@ using PdfViewerLite.Core.Reading;
 using PdfViewerLite.Core.Rendering;
 using PdfViewerLite.Core.Settings;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
+using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.Signals;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -28,7 +32,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// <see cref="DocumentPool"/> and may be closed again while the tab is in the background.
 /// </summary>
 [DebuggerDisplay("{FileName}")]
-public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
+public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 {
     /// <summary>How long after saving a file change notice is taken to be our own save.</summary>
     private const long SelfSaveWindowMilliseconds = 2000;
@@ -57,6 +61,9 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Emits the index of each page whose content was edited.</summary>
     private readonly Signal<int> _pageEdits = new();
 
+    /// <summary>Owns the subscriptions that react to this tab's own property changes.</summary>
+    private readonly MultipleDisposable _subscriptions = [];
+
     /// <summary>Whether the sidebar was shown before read mode put it away.</summary>
     private bool _sidebarBeforeReading;
 
@@ -71,6 +78,12 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Focus Mode, once used.</summary>
     private FocusModeViewModel? _focusMode;
+
+    /// <summary>The layers panel, once used.</summary>
+    private LayersViewModel? _layers;
+
+    /// <summary>The measuring tool, once used.</summary>
+    private MeasureViewModel? _measure;
 
     /// <summary>The document's pages in reading order, once asked for.</summary>
     private ReadingDocument? _reading;
@@ -97,49 +110,37 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         SidebarVisible = services.Settings.ShowSidebar;
         PageTone = services.CurrentTheme.PageTone;
 
-        ZoomInCommand = ReactiveCommand.Create(() => SetZoom(ZoomCalculator.ZoomIn(Zoom)));
-        ZoomOutCommand = ReactiveCommand.Create(() => SetZoom(ZoomCalculator.ZoomOut(Zoom)));
-        ZoomResetCommand = ReactiveCommand.Create(() => SetZoom(1));
-        SetZoomCommand = ReactiveCommand.Create<string>(SetZoomFromText);
-        FitWidthCommand = ReactiveCommand.Create(() => ZoomMode = ZoomMode.FitWidth);
-        FitPageCommand = ReactiveCommand.Create(() => ZoomMode = ZoomMode.FitPage);
-        RotateLeftCommand = ReactiveCommand.Create(() => Rotation = Rotation.CounterClockwise);
-        RotateRightCommand = ReactiveCommand.Create(() => Rotation = Rotation.Clockwise);
-        SetLayoutCommand = ReactiveCommand.Create<string>(SetLayoutFromText);
-        NextPageCommand = ReactiveCommand.Create(() => GoToPage(CurrentPageIndex + 1));
-        PreviousPageCommand = ReactiveCommand.Create(() => GoToPage(CurrentPageIndex - 1));
-        FirstPageCommand = ReactiveCommand.Create(() => GoToPage(0));
-        LastPageCommand = ReactiveCommand.Create(() => GoToPage(PageCount - 1));
-        GoBackCommand = ReactiveCommand.Create(GoBack);
-        GoForwardCommand = ReactiveCommand.Create(GoForward);
-        GoToPageEntryCommand = ReactiveCommand.Create(GoToPageEntry);
-        ToggleSidebarCommand = ReactiveCommand.Create(() => SidebarVisible = !SidebarVisible);
-        FindCommand = ReactiveCommand.Create(() => Search.Open());
-        SubmitPasswordCommand = ReactiveCommand.Create(SubmitPassword);
-        ReloadCommand = ReactiveCommand.Create(Reload);
-        DismissReloadCommand = ReactiveCommand.Create(() => HasPendingReload = false);
-        SaveCommand = ReactiveCommand.Create(() => Save(FilePath));
-        PrintCommand = ReactiveCommand.CreateFromTask(PrintAsync);
-        PrintWithSystemDialogCommand = ReactiveCommand.CreateFromTask(PrintWithSystemDialogAsync);
-        ToggleCaretModeCommand = ReactiveCommand.Create(() => { IsCaretMode = !IsCaretMode; });
-        PresentCommand = ReactiveCommand.Create(() => SetPresenting(!IsPresenting));
-        ReadModeCommand = ReactiveCommand.Create(() => SetReading(!IsReading));
-        StopPresentingCommand = ReactiveCommand.Create(() => SetPresenting(false));
-        DismissNoticeCommand = ReactiveCommand.Create(() => { Notice = null; });
-        SaveAsCommand = ReactiveCommand.CreateFromTask(SaveAsAsync);
+        NavigationRequests = new(_navigationRequests);
+        UriRequests = new(_uriRequests);
+        DocumentChanges = new(_documentChanges);
+        PageEdits = new(_pageEdits);
+
+        // The first value of each property is its current state, which needs no reaction.
+        _subscriptions.Add(this.WhenChanged(static x => x.CurrentPageIndex)
+            .Skip(1)
+            .SubscribeSafe(OnCurrentPageChanged, OnError));
+        _subscriptions.Add(this.WhenChanged(static x => x.SidebarMode)
+            .Skip(1)
+            .SubscribeSafe(OnSidebarModeChanged, OnError));
+        _subscriptions.Add(this.WhenChanged(static x => x.SelectedThumbnail)
+            .Skip(1)
+            .SubscribeSafe(OnThumbnailSelected, OnError));
+        _subscriptions.Add(this.WhenChanged(static x => x.SelectedOutlineItem)
+            .Skip(1)
+            .SubscribeSafe(OnOutlineItemSelected, OnError));
     }
 
     /// <summary>Gets the width of the hover preview of a tab.</summary>
     public static double PreviewWidth => PreviewSize;
 
     /// <summary>Gets the requests for the canvas to scroll.</summary>
-    public IObservable<NavigationRequest> NavigationRequests => _navigationRequests;
+    public AsObservableSignal<NavigationRequest> NavigationRequests{ get; }
 
     /// <summary>Gets the external links the user activated.</summary>
-    public IObservable<Uri> UriRequests => _uriRequests;
+    public AsObservableSignal<Uri> UriRequests{ get; }
 
     /// <summary>Gets notifications that the document must be laid out again (loaded or reloaded).</summary>
-    public IObservable<RxVoid> DocumentChanges => _documentChanges;
+    public AsObservableSignal<RxVoid> DocumentChanges{ get; }
 
     /// <summary>Gets the document source.</summary>
     public DocumentSource Source { get; }
@@ -172,205 +173,106 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     public int PreviewPageIndex => Math.Max(0, CurrentPageIndex);
 
     /// <summary>Gets the height of the hover preview, following the page's shape.</summary>
-    public double PreviewHeight
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial double PreviewHeight { get; private set; }
 
     /// <summary>Gets the hover preview caption, for example "Page 3 of 40".</summary>
-    public string PreviewCaption
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string PreviewCaption { get; private set; } = string.Empty;
 
     /// <summary>Gets the document title.</summary>
-    public string Title
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial string Title { get; private set; }
 
     /// <summary>Gets a value indicating whether the document has been opened at least once.</summary>
-    public bool IsLoaded
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsLoaded { get; private set; }
 
     /// <summary>Gets the error shown when the document could not be opened.</summary>
-    public string? ErrorMessage
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial string? ErrorMessage { get; private set; }
 
     /// <summary>Gets a value indicating whether a password is required.</summary>
-    public bool NeedsPassword
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool NeedsPassword { get; private set; }
 
     /// <summary>Gets or sets the password being typed.</summary>
-    public string PasswordEntry
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string PasswordEntry { get; set; } = string.Empty;
 
     /// <summary>Gets the number of pages.</summary>
-    public int PageCount
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial int PageCount { get; private set; }
 
     /// <summary>Gets the zero based page shown in the middle of the viewport.</summary>
-    public int CurrentPageIndex
-    {
-        get;
-        private set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            PageEntry = GetPageDisplay(value);
-            SelectedThumbnail = value >= 0 && value < Thumbnails.Count ? Thumbnails[value] : null;
-        }
-    }
+    [Reactive]
+    public partial int CurrentPageIndex { get; private set; }
 
     /// <summary>Gets or sets the text in the page number box.</summary>
-    public string PageEntry
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string PageEntry { get; set; } = string.Empty;
 
     /// <summary>Gets the last reported scroll position.</summary>
     public DocumentPosition Position { get; private set; }
 
     /// <summary>Gets the zoom factor, 1 being 100%.</summary>
-    public double Zoom
-    {
-        get;
-        private set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(ZoomText));
-        }
-    } = 1;
+    [Reactive(nameof(ZoomText))]
+    public partial double Zoom { get; private set; } = 1;
 
     /// <summary>Gets the zoom as display text.</summary>
     public string ZoomText => string.Create(CultureInfo.CurrentCulture, $"{Math.Round(Zoom * Percent)}%");
 
     /// <summary>Gets or sets how the zoom is chosen.</summary>
-    public ZoomMode ZoomMode
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial ZoomMode ZoomMode { get; set; }
 
     /// <summary>Gets or sets the page arrangement.</summary>
-    public PageLayoutMode LayoutMode
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial PageLayoutMode LayoutMode { get; set; }
 
     /// <summary>Gets or sets a value indicating whether a text cursor is moved through the page with the arrow keys (F7).</summary>
-    public bool IsCaretMode
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    /// <summary>Gets the command turning caret navigation on or off.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ToggleCaretModeCommand { get; }
+    [Reactive]
+    public partial bool IsCaretMode { get; set; }
 
     /// <summary>Gets or sets a value indicating whether pages are shown one at a time instead of scrolling continuously.</summary>
-    public bool IsPageByPage
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsPageByPage { get; set; }
 
     /// <summary>Gets a value indicating whether the document is being presented: full screen, one page at a time, nothing else on screen.</summary>
-    public bool IsPresenting
-    {
-        get;
-        private set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(ShowsChrome));
-        }
-    }
+    [Reactive(nameof(ShowsChrome))]
+    public partial bool IsPresenting { get; private set; }
 
     /// <summary>
     /// Gets a value indicating whether read mode is on: the tool bars and sidebar are put away so the pages fill the
     /// window. A small bar offers the way back.
     /// </summary>
-    public bool IsReading
-    {
-        get;
-        private set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(ShowsChrome));
-        }
-    }
+    [Reactive(nameof(ShowsChrome))]
+    public partial bool IsReading { get; private set; }
 
     /// <summary>Gets a value indicating whether the tool bars are shown: not while presenting or reading.</summary>
     public bool ShowsChrome => !IsPresenting && !IsReading;
 
-    /// <summary>Gets the command turning read mode on or off.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ReadModeCommand { get; }
-
-    /// <summary>Gets the command starting or ending presenting.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PresentCommand { get; }
-
-    /// <summary>Gets the command ending presenting.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> StopPresentingCommand { get; }
-
     /// <summary>Gets or sets the page rotation.</summary>
-    public PageRotation Rotation
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial PageRotation Rotation { get; set; }
 
     /// <summary>Gets or sets the paper and ink colours pages are drawn with.</summary>
-    public PageTone PageTone
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = PageTone.None;
+    [Reactive]
+    public partial PageTone PageTone { get; set; } = PageTone.None;
 
     /// <summary>Gets or sets a value indicating whether the sidebar is shown.</summary>
-    public bool SidebarVisible
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool SidebarVisible { get; set; }
 
     /// <summary>Gets or sets the sidebar panel.</summary>
-    public SidebarMode SidebarMode
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(IsThumbnailsMode));
-            this.RaisePropertyChanged(nameof(IsOutlineMode));
-            this.RaisePropertyChanged(nameof(IsSearchMode));
-            this.RaisePropertyChanged(nameof(IsAnnotationsMode));
-            this.RaisePropertyChanged(nameof(IsAttachmentsMode));
-            this.RaisePropertyChanged(nameof(IsLayersMode));
-            if (value == SidebarMode.Annotations)
-            {
-                Annotations.RefreshItems();
-            }
-        }
-    }
+    [Reactive(
+        nameof(IsThumbnailsMode),
+        nameof(IsOutlineMode),
+        nameof(IsSearchMode),
+        nameof(IsAnnotationsMode),
+        nameof(IsAttachmentsMode),
+        nameof(IsLayersMode))]
+    public partial SidebarMode SidebarMode { get; set; }
 
     /// <summary>Gets or sets a value indicating whether the thumbnails panel is shown.</summary>
     public bool IsThumbnailsMode
@@ -415,7 +317,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Gets the document's layers.</summary>
-    public LayersViewModel Layers => field ??= new(this);
+    public LayersViewModel Layers => _layers ??= new(this);
 
     /// <summary>Gets the files embedded in the document.</summary>
     public AttachmentsViewModel Attachments => field ??= new(this);
@@ -424,7 +326,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     public AnnotationsViewModel Annotations => field ??= new(this);
 
     /// <summary>Gets the measuring tool.</summary>
-    public MeasureViewModel Measure => field ??= new(this);
+    public MeasureViewModel Measure => _measure ??= new(this);
 
     /// <summary>Gets the digital signature state.</summary>
     public SignaturesViewModel Signatures => field ??= new(this, _services);
@@ -445,157 +347,44 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     public FillAndSignViewModel FillAndSign => field ??= new(this, _services);
 
     /// <summary>Gets a value indicating whether the document has annotations or form entries that are not saved.</summary>
-    public bool HasUnsavedChanges
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool HasUnsavedChanges { get; private set; }
 
     /// <summary>Gets the pages whose content changed, for example after annotating, so views redraw them.</summary>
-    public IObservable<int> PageEdits => _pageEdits;
+    public AsObservableSignal<int> PageEdits{ get; }
 
     /// <summary>Gets the outline.</summary>
-    public IReadOnlyList<OutlineItemViewModel> Outline
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = [];
+    [Reactive(nameof(HasOutline))]
+    public partial IReadOnlyList<OutlineItemViewModel> Outline { get; private set; } = [];
 
     /// <summary>Gets a value indicating whether the document has an outline.</summary>
     public bool HasOutline => Outline.Count > 0;
 
     /// <summary>Gets the page thumbnails.</summary>
-    public IReadOnlyList<ThumbnailItemViewModel> Thumbnails
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = [];
+    [Reactive]
+    public partial IReadOnlyList<ThumbnailItemViewModel> Thumbnails { get; private set; } = [];
 
     /// <summary>Gets or sets the selected thumbnail; selecting one scrolls to its page.</summary>
-    public ThumbnailItemViewModel? SelectedThumbnail
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            if (value is not null && value.PageIndex != CurrentPageIndex)
-            {
-                GoToPage(value.PageIndex);
-            }
-        }
-    }
+    [Reactive]
+    public partial ThumbnailItemViewModel? SelectedThumbnail { get; set; }
 
     /// <summary>Gets or sets the selected outline entry; selecting one navigates to it.</summary>
-    public OutlineItemViewModel? SelectedOutlineItem
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            if (value is not null)
-            {
-                Navigate(value.Target);
-            }
-        }
-    }
-
-    /// <summary>Gets the zoom in command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ZoomInCommand { get; }
-
-    /// <summary>Gets the zoom out command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ZoomOutCommand { get; }
-
-    /// <summary>Gets the command resetting the zoom to 100%.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ZoomResetCommand { get; }
-
-    /// <summary>Gets the command setting the zoom from a percentage string.</summary>
-    public ReactiveCommand<string, RxVoid> SetZoomCommand { get; }
-
-    /// <summary>Gets the fit width command.</summary>
-    public ReactiveCommand<RxVoid, ZoomMode> FitWidthCommand { get; }
-
-    /// <summary>Gets the fit page command.</summary>
-    public ReactiveCommand<RxVoid, ZoomMode> FitPageCommand { get; }
-
-    /// <summary>Gets the rotate anti-clockwise command.</summary>
-    public ReactiveCommand<RxVoid, PageRotation> RotateLeftCommand { get; }
-
-    /// <summary>Gets the rotate clockwise command.</summary>
-    public ReactiveCommand<RxVoid, PageRotation> RotateRightCommand { get; }
-
-    /// <summary>Gets the command setting the layout from its name.</summary>
-    public ReactiveCommand<string, RxVoid> SetLayoutCommand { get; }
-
-    /// <summary>Gets the next page command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> NextPageCommand { get; }
-
-    /// <summary>Gets the previous page command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PreviousPageCommand { get; }
-
-    /// <summary>Gets the first page command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> FirstPageCommand { get; }
-
-    /// <summary>Gets the last page command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> LastPageCommand { get; }
-
-    /// <summary>Gets the history back command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> GoBackCommand { get; }
-
-    /// <summary>Gets the history forward command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> GoForwardCommand { get; }
-
-    /// <summary>Gets the command jumping to the page typed in the page box.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> GoToPageEntryCommand { get; }
-
-    /// <summary>Gets the toggle sidebar command.</summary>
-    public ReactiveCommand<RxVoid, bool> ToggleSidebarCommand { get; }
-
-    /// <summary>Gets the find command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> FindCommand { get; }
-
-    /// <summary>Gets the command submitting the typed password.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SubmitPasswordCommand { get; }
-
-    /// <summary>Gets the command handing the document, with its annotations and filled fields, to the desktop's print dialog.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PrintCommand { get; }
-
-    /// <summary>Gets the command printing the whole document from the desktop's own print dialog, skipping the preview.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PrintWithSystemDialogCommand { get; }
+    [Reactive]
+    public partial OutlineItemViewModel? SelectedOutlineItem { get; set; }
 
     /// <summary>Gets the interaction showing the print preview; the output says whether to print.</summary>
     public Interaction<PrintPreviewViewModel, bool> PrintPreviewInteraction { get; } = new();
 
-    /// <summary>Gets the reload command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ReloadCommand { get; }
-
     /// <summary>Gets a message about the document that waits until dismissed, for example a failed save.</summary>
-    public string? Notice
-    {
-        get;
-        internal set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    /// <summary>Gets the command dismissing <see cref="Notice"/>.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> DismissNoticeCommand { get; }
-
-    /// <summary>Gets the command saving annotations and form entries into the file.</summary>
-    public ReactiveCommand<RxVoid, bool> SaveCommand { get; }
-
-    /// <summary>Gets the command saving a copy under a new name.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SaveAsCommand { get; }
+    [Reactive]
+    public partial string? Notice { get; internal set; }
 
     /// <summary>Gets the interaction asking where to save a copy.</summary>
     public Interaction<string, string?> SaveAsInteraction { get; } = new();
 
-    /// <summary>Gets the command dismissing the "file changed" bar without reloading.</summary>
-    public ReactiveCommand<RxVoid, bool> DismissReloadCommand { get; }
-
     /// <summary>Gets a value indicating whether the file changed on disk and the user chose to be asked before reloading.</summary>
-    public bool HasPendingReload
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool HasPendingReload { get; private set; }
 
     /// <summary>Opens the document if needed and loads its structure. Safe to call repeatedly.</summary>
     public void EnsureLoaded()
@@ -713,10 +502,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     public void ReportPosition(DocumentPosition position, int currentPage)
     {
         Position = position;
-        if (currentPage != CurrentPageIndex)
-        {
-            CurrentPageIndex = currentPage;
-        }
+        CurrentPageIndex = currentPage;
     }
 
     /// <summary>Called by the canvas when a fit mode resolves to a zoom factor.</summary>
@@ -738,6 +524,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         pageIndex >= 0 && pageIndex < Thumbnails.Count ? Thumbnails[pageIndex].Label : (pageIndex + 1).ToString(CultureInfo.CurrentCulture);
 
     /// <summary>Reloads the document from disk, keeping the current page.</summary>
+    [ReactiveCommand]
     public void Reload()
     {
         HasPendingReload = false;
@@ -904,8 +691,11 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        _subscriptions.Dispose();
         _focusMode?.Dispose();
         _readAloud?.Dispose();
+        _layers?.Dispose();
+        _measure?.Dispose();
         _fileWatch?.Dispose();
         Search.Dispose();
         _navigationRequests.Dispose();
@@ -916,6 +706,11 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         _ = CanvasClient.Advance();
         _ = ThumbnailClient.Advance();
     }
+
+    /// <summary>Traces an error from a property subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
     /// <summary>Deletes a file, ignoring failures.</summary>
     /// <param name="path">The file.</param>
@@ -945,7 +740,6 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         var title = Source.Metadata?.Title;
         Title = string.IsNullOrWhiteSpace(title) ? FileName : title;
         Outline = OutlineItemViewModel.Create(Source.Outline);
-        this.RaisePropertyChanged(nameof(HasOutline));
 
         var thumbnails = new ThumbnailItemViewModel[sizes.Length];
         for (var i = 0; i < sizes.Length; i++)
@@ -996,6 +790,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     /// the desktop's print dialog, saying what happened in the notice.
     /// </summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task PrintAsync()
     {
         using var preview = new PrintPreviewViewModel(this, _services);
@@ -1039,6 +834,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Hands the whole document, as it looks now, straight to the desktop's print dialog.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task PrintWithSystemDialogAsync()
     {
         var printer = _services.Platform.Printer;
@@ -1110,6 +906,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Asks where to save a copy and saves it there.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task SaveAsAsync()
     {
         var path = await SaveAsInteraction.Handle(FileName).ToTask().ConfigureAwait(true);
@@ -1119,7 +916,147 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
         }
     }
 
+    /// <summary>Zooms in one step.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ZoomIn() => SetZoom(ZoomCalculator.ZoomIn(Zoom));
+
+    /// <summary>Zooms out one step.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ZoomOut() => SetZoom(ZoomCalculator.ZoomOut(Zoom));
+
+    /// <summary>Resets the zoom to 100%.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ZoomReset() => SetZoom(1);
+
+    /// <summary>Fits the page width to the window.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FitWidth() => ZoomMode = ZoomMode.FitWidth;
+
+    /// <summary>Fits the whole page to the window.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FitPage() => ZoomMode = ZoomMode.FitPage;
+
+    /// <summary>Rotates the pages anti-clockwise.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RotateLeft() => Rotation = Rotation.CounterClockwise;
+
+    /// <summary>Rotates the pages clockwise.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RotateRight() => Rotation = Rotation.Clockwise;
+
+    /// <summary>Goes to the next page.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void NextPage() => GoToPage(CurrentPageIndex + 1);
+
+    /// <summary>Goes to the previous page.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void PreviousPage() => GoToPage(CurrentPageIndex - 1);
+
+    /// <summary>Goes to the first page.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FirstPage() => GoToPage(0);
+
+    /// <summary>Goes to the last page.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void LastPage() => GoToPage(PageCount - 1);
+
+    /// <summary>Shows or hides the sidebar.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ToggleSidebar() => SidebarVisible = !SidebarVisible;
+
+    /// <summary>Opens the find bar.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Find() => Search.Open();
+
+    /// <summary>Hides the "file changed" bar without reloading.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void DismissReload() => HasPendingReload = false;
+
+    /// <summary>Saves the document over its own file.</summary>
+    /// <returns><see langword="true"/> when saved.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool Save() => Save(FilePath);
+
+    /// <summary>Turns caret navigation on or off.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ToggleCaretMode() => IsCaretMode = !IsCaretMode;
+
+    /// <summary>Starts or ends presenting.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Present() => SetPresenting(!IsPresenting);
+
+    /// <summary>Turns read mode on or off.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ReadMode() => SetReading(!IsReading);
+
+    /// <summary>Ends presenting.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void StopPresenting() => SetPresenting(false);
+
+    /// <summary>Dismisses the <see cref="Notice"/>.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void DismissNotice() => Notice = null;
+
+    /// <summary>Follows the current page: updates the page box and selects the page's thumbnail.</summary>
+    /// <param name="pageIndex">The current page.</param>
+    private void OnCurrentPageChanged(int pageIndex)
+    {
+        PageEntry = GetPageDisplay(pageIndex);
+        SelectedThumbnail = pageIndex >= 0 && pageIndex < Thumbnails.Count ? Thumbnails[pageIndex] : null;
+    }
+
+    /// <summary>Refreshes the annotation list when its panel is opened.</summary>
+    /// <param name="mode">The sidebar panel.</param>
+    private void OnSidebarModeChanged(SidebarMode mode)
+    {
+        if (mode == SidebarMode.Annotations)
+        {
+            Annotations.RefreshItems();
+        }
+    }
+
+    /// <summary>Scrolls to the page of a newly selected thumbnail.</summary>
+    /// <param name="thumbnail">The selected thumbnail.</param>
+    private void OnThumbnailSelected(ThumbnailItemViewModel? thumbnail)
+    {
+        if (thumbnail is not null && thumbnail.PageIndex != CurrentPageIndex)
+        {
+            GoToPage(thumbnail.PageIndex);
+        }
+    }
+
+    /// <summary>Navigates to a newly selected outline entry.</summary>
+    /// <param name="item">The selected entry.</param>
+    private void OnOutlineItemSelected(OutlineItemViewModel? item)
+    {
+        if (item is not null)
+        {
+            Navigate(item.Target);
+        }
+    }
+
     /// <summary>Goes back in history.</summary>
+    [ReactiveCommand]
     private void GoBack()
     {
         if (History.TryGoBack(Position, out var target))
@@ -1129,6 +1066,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Goes forward in history.</summary>
+    [ReactiveCommand]
     private void GoForward()
     {
         if (History.TryGoForward(Position, out var target))
@@ -1138,6 +1076,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Jumps to the page typed in the page box, accepting page labels or numbers.</summary>
+    [ReactiveCommand]
     private void GoToPageEntry()
     {
         var entry = PageEntry.Trim();
@@ -1163,6 +1102,7 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Retries opening with the typed password.</summary>
+    [ReactiveCommand]
     private void SubmitPassword()
     {
         Source.Password = PasswordEntry;
@@ -1173,7 +1113,8 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Sets the zoom from a percentage such as "150".</summary>
     /// <param name="text">The percentage.</param>
-    private void SetZoomFromText(string text)
+    [ReactiveCommand]
+    private void SetZoom(string text)
     {
         if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var percent) && percent > 0)
         {
@@ -1183,7 +1124,8 @@ public sealed class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Sets the layout from a <see cref="PageLayoutMode"/> name.</summary>
     /// <param name="text">The name.</param>
-    private void SetLayoutFromText(string text)
+    [ReactiveCommand]
+    private void SetLayout(string text)
     {
         if (Enum.TryParse<PageLayoutMode>(text, out var mode))
         {

@@ -7,6 +7,7 @@ using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Forms.Scripting;
 using PdfViewerLite.Core.Geometry;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -15,7 +16,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// click; choices are picked from a menu. Every change goes to the document straight away.
 /// </summary>
 [DebuggerDisplay("Editing {Editing}")]
-public sealed class FormsViewModel : ReactiveObject
+public sealed partial class FormsViewModel : ReactiveObject
 {
     /// <summary>The most passes of recalculation, so fields that depend on each other in a loop still settle.</summary>
     private const int MaxCalculationPasses = 8;
@@ -40,18 +41,12 @@ public sealed class FormsViewModel : ReactiveObject
     public bool HasForm => Filler?.HasForm == true;
 
     /// <summary>Gets the text field being edited, or <see langword="null"/>.</summary>
-    public FormField? Editing
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial FormField? Editing { get; private set; }
 
     /// <summary>Gets or sets the text in the open editor.</summary>
-    public string EditText
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string EditText { get; set; } = string.Empty;
 
     /// <summary>Gets the document's form filler, or <see langword="null"/>.</summary>
     private IFormFiller? Filler => _owner.TryGetDocument() as IFormFiller;

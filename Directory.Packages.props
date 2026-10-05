@@ -34,6 +34,8 @@
   <ItemGroup Label="ReactiveUI">
     <PackageVersion Include="ReactiveUI.Avalonia" Version="12.1.6" />
     <PackageVersion Include="ReactiveUI.Primitives" Version="9.0.0" />
+    <PackageVersion Include="ReactiveUI.Primitives.ObservableEvents" Version="9.0.0" />
+    <PackageVersion Include="ReactiveUI.SourceGenerators" Version="4.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="PDF engine (PDFium, BSD-3/Apache-2.0 binaries by bblanchon)">

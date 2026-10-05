@@ -4,10 +4,14 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Measuring;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -16,13 +20,16 @@ namespace PdfViewerLite.App.ViewModels;
 /// declares or one the user types, such as "1 cm = 2 m".
 /// </summary>
 [DebuggerDisplay("{Mode}: {Result}")]
-public sealed class MeasureViewModel : ReactiveObject
+public sealed partial class MeasureViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The points of a line: its two ends.</summary>
     private const int LineEnds = 2;
 
     /// <summary>The fewest corners that enclose an area.</summary>
     private const int AreaCorners = 3;
+
+    /// <summary>Follows the tool, mode and scale; disposed with the view model.</summary>
+    private readonly MultipleDisposable _subscriptions = [];
 
     /// <summary>The tab.</summary>
     private readonly DocumentTabViewModel _owner;
@@ -39,71 +46,45 @@ public sealed class MeasureViewModel : ReactiveObject
     {
         _owner = owner;
         ScaleText = DefaultScale.ToString();
-        StartCommand = ReactiveCommand.Create(() => { IsOn = true; });
-        DoneCommand = ReactiveCommand.Create(() => { IsOn = false; });
-        ToggleCommand = ReactiveCommand.Create(() => { IsOn = !IsOn; });
-        ClearCommand = ReactiveCommand.Create(Clear);
-        KeepCommand = ReactiveCommand.Create(Keep);
-        SetModeCommand = ReactiveCommand.Create<MeasureMode>(mode => Mode = mode);
+
+        // The first value of each is the current state, so only later changes act.
+        _subscriptions.Add(this.WhenChanged(static x => x.IsOn).Skip(1).SubscribeSafe(_ => Clear(), OnError));
+        _subscriptions.Add(this.WhenChanged(static x => x.Mode).Skip(1).SubscribeSafe(_ => Clear(), OnError));
+        _subscriptions.Add(this.WhenChanged(static x => x.ScaleText).Skip(1).SubscribeSafe(_ => Update(), OnError));
     }
 
     /// <summary>Gets or sets a value indicating whether the measuring tool is out.</summary>
-    public bool IsOn
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            Clear();
-        }
-    }
+    [Reactive]
+    public partial bool IsOn { get; set; }
 
     /// <summary>Gets or sets what is measured.</summary>
-    public MeasureMode Mode
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(IsDistance));
-            this.RaisePropertyChanged(nameof(IsPerimeter));
-            this.RaisePropertyChanged(nameof(IsArea));
-            Clear();
-        }
-    }
+    [Reactive(nameof(IsDistance), nameof(IsPerimeter), nameof(IsArea))]
+    public partial MeasureMode Mode { get; set; }
 
     /// <summary>Gets or sets a value indicating whether distances are measured.</summary>
     public bool IsDistance
     {
         get => Mode == MeasureMode.Distance;
-        set => SetMode(value, MeasureMode.Distance);
+        set => SelectMode(value, MeasureMode.Distance);
     }
 
     /// <summary>Gets or sets a value indicating whether path lengths are measured.</summary>
     public bool IsPerimeter
     {
         get => Mode == MeasureMode.Perimeter;
-        set => SetMode(value, MeasureMode.Perimeter);
+        set => SelectMode(value, MeasureMode.Perimeter);
     }
 
     /// <summary>Gets or sets a value indicating whether areas are measured.</summary>
     public bool IsArea
     {
         get => Mode == MeasureMode.Area;
-        set => SetMode(value, MeasureMode.Area);
+        set => SelectMode(value, MeasureMode.Area);
     }
 
     /// <summary>Gets or sets the scale as written, such as "1 cm = 2 m" or "1:100".</summary>
-    public string ScaleText
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(IsScaleValid));
-            Update();
-        }
-    }
+    [Reactive(nameof(IsScaleValid))]
+    public partial string ScaleText { get; set; }
 
     /// <summary>Gets a value indicating whether the scale text can be read.</summary>
     public bool IsScaleValid => MeasureScale.TryParse(ScaleText, out _);
@@ -115,39 +96,15 @@ public sealed class MeasureViewModel : ReactiveObject
     public IReadOnlyList<PagePoint> Points => _points;
 
     /// <summary>Gets a value indicating whether the measurement is finished, so the next click starts a new one.</summary>
-    public bool IsFinished
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive(nameof(CanKeep))]
+    public partial bool IsFinished { get; private set; }
 
     /// <summary>Gets the measurement as shown and read out, such as "Area 6.25 m²".</summary>
-    public string Result
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive(nameof(CanKeep))]
+    public partial string Result { get; private set; } = string.Empty;
 
     /// <summary>Gets a value indicating whether the finished measurement can be kept on the page.</summary>
     public bool CanKeep => IsFinished && Result.Length > 0;
-
-    /// <summary>Gets the command that brings the tool out.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> StartCommand { get; }
-
-    /// <summary>Gets the command that puts the tool away.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> DoneCommand { get; }
-
-    /// <summary>Gets the command that brings the tool out or puts it away.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ToggleCommand { get; }
-
-    /// <summary>Gets the command that clears the measurement.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ClearCommand { get; }
-
-    /// <summary>Gets the command that keeps the finished measurement on the page as an annotation.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> KeepCommand { get; }
-
-    /// <summary>Gets the command that picks what is measured.</summary>
-    public ReactiveCommand<MeasureMode, RxVoid> SetModeCommand { get; }
 
     /// <summary>Gets the scale used when neither the page nor the user gives one: true size in millimetres or inches.</summary>
     private static MeasureScale DefaultScale => RegionInfo.CurrentRegion.IsMetric ? MeasureScale.Metric : MeasureScale.Imperial;
@@ -159,7 +116,7 @@ public sealed class MeasureViewModel : ReactiveObject
     {
         if (page != Page || IsFinished)
         {
-            Start(page);
+            BeginMeasurement(page);
         }
 
         if (_points.Count > 0)
@@ -213,6 +170,7 @@ public sealed class MeasureViewModel : ReactiveObject
     }
 
     /// <summary>Clears the measurement.</summary>
+    [ReactiveCommand]
     public void Clear()
     {
         _points.Clear();
@@ -223,13 +181,22 @@ public sealed class MeasureViewModel : ReactiveObject
         this.RaisePropertyChanged(nameof(CanKeep));
     }
 
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Dispose() => _subscriptions.Dispose();
+
     /// <summary>Gets the scale in use: the one typed, or failing that true size.</summary>
     /// <returns>The scale.</returns>
     public MeasureScale CurrentScale() => MeasureScale.TryParse(ScaleText, out var scale) ? scale : DefaultScale;
 
+    /// <summary>Traces an error from a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
     /// <summary>Starts a measurement on a page, taking the page's declared scale when it has one.</summary>
     /// <param name="page">The page.</param>
-    private void Start(int page)
+    private void BeginMeasurement(int page)
     {
         _points.Clear();
         IsFinished = false;
@@ -271,7 +238,8 @@ public sealed class MeasureViewModel : ReactiveObject
         this.RaisePropertyChanged(nameof(Points));
     }
 
-    /// <summary>Keeps the finished measurement on the page.</summary>
+    /// <summary>Keeps the finished measurement on the page as an annotation.</summary>
+    [ReactiveCommand]
     private void Keep()
     {
         if (CanKeep && _owner.Annotations.AddMeasurement(Page, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_points), Mode == MeasureMode.Area, Result))
@@ -280,10 +248,31 @@ public sealed class MeasureViewModel : ReactiveObject
         }
     }
 
+    /// <summary>Brings the tool out.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Start() => IsOn = true;
+
+    /// <summary>Puts the tool away.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Done() => IsOn = false;
+
+    /// <summary>Brings the tool out or puts it away.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Toggle() => IsOn = !IsOn;
+
+    /// <summary>Picks what is measured.</summary>
+    /// <param name="mode">The mode.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetMode(MeasureMode mode) => Mode = mode;
+
     /// <summary>Sets the mode from a toggle.</summary>
     /// <param name="on">Whether the toggle was turned on.</param>
     /// <param name="mode">The toggle's mode.</param>
-    private void SetMode(bool on, MeasureMode mode)
+    private void SelectMode(bool on, MeasureMode mode)
     {
         if (on)
         {

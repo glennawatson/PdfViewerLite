@@ -3,61 +3,35 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Interactivity;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
-/// <summary>Asks before a destructive action; closes with <see langword="true"/> only when the user goes ahead.</summary>
+/// <summary>Asks the user to confirm a destructive action; closes with <see langword="true"/> to go ahead.</summary>
 [DebuggerDisplay("{Title}")]
-public sealed partial class ConfirmWindow : ReactiveUI.Avalonia.ReactiveWindow<ConfirmRequest>
+public sealed partial class ConfirmWindow : ReactiveUI.Avalonia.ReactiveWindow<ConfirmViewModel>
 {
-    /// <summary>The button subscriptions.</summary>
-    private readonly MultipleDisposable _buttons;
-
     /// <summary>Initializes a new instance of the <see cref="ConfirmWindow"/> class.</summary>
     public ConfirmWindow()
     {
         InitializeComponent();
-        _buttons =
-        [
-            ConfirmButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(true), static error => Trace.TraceError(error.ToString())),
-            CancelButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(false), static error => Trace.TraceError(error.ToString())),
-        ];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        ArgumentNullException.ThrowIfNull(change);
-        base.OnPropertyChanged(change);
-        if (change.Property != ViewModelProperty || ViewModel is not { } request)
+        _ = this.WhenActivated(disposables =>
         {
-            return;
-        }
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.Title));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.TitleText.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Message, static v => v.MessageText.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.ConfirmText, static v => v.ConfirmButton.Content));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.ConfirmCommand, static v => v.ConfirmButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CancelCommand, static v => v.CancelButton));
+            if (ViewModel is { } viewModel)
+            {
+                disposables.Add(viewModel.Answered.SubscribeSafe(answer => Close(answer), static error => Trace.TraceError(error.ToString())));
+            }
 
-        // The request is immutable, so it is shown once rather than bound.
-        Title = request.Title;
-        TitleText.Text = request.Title;
-        MessageText.Text = request.Message;
-        ConfirmButton.Content = request.ConfirmText;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        _ = CancelButton.Focus();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _buttons.Dispose();
+            _ = CancelButton.Focus();
+        });
     }
 }

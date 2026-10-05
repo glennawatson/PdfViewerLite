@@ -3,11 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -18,27 +18,14 @@ public sealed partial class AnnotationItemView : ReactiveUI.Avalonia.ReactiveUse
     /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
     private const uint OpaqueAlpha = 0xFF000000U;
 
-    /// <summary>The bindings made while attached.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="AnnotationItemView"/> class.</summary>
-    public AnnotationItemView() => InitializeComponent();
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
+    public AnnotationItemView()
     {
-        base.OnLoaded(e);
+        InitializeComponent();
 
-        // An annotation item is a snapshot, replaced when the annotation changes, so the view follows which one it shows.
-        _bindings = [this.WhenAnyValue(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString()))];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
+        // An annotation item is an immutable snapshot with no change notification, so OneWayBind cannot observe it.
+        // The view follows which item it shows instead.
+        _ = this.WhenActivated(disposables => disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString()))));
     }
 
     /// <summary>Shows an annotation item.</summary>

@@ -4,24 +4,20 @@
 
 using System.Diagnostics;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>A layer in the layers panel, with a check box showing or hiding it.</summary>
 [DebuggerDisplay("{Name} visible={IsVisible}")]
-public sealed class LayerItemViewModel : ReactiveObject
+public sealed partial class LayerItemViewModel : ReactiveObject
 {
-    /// <summary>The panel, told when the box is ticked or cleared.</summary>
-    private readonly LayersViewModel _owner;
-
     /// <summary>Initializes a new instance of the <see cref="LayerItemViewModel"/> class.</summary>
-    /// <param name="owner">The panel.</param>
     /// <param name="id">The layer's id.</param>
     /// <param name="name">The layer's name.</param>
     /// <param name="visible">Whether it is shown.</param>
-    public LayerItemViewModel(LayersViewModel owner, int id, string name, bool visible)
+    public LayerItemViewModel(int id, string name, bool visible)
     {
-        _owner = owner;
         Id = id;
         Name = name;
         IsVisible = visible;
@@ -34,18 +30,6 @@ public sealed class LayerItemViewModel : ReactiveObject
     public string Name { get; }
 
     /// <summary>Gets or sets a value indicating whether the layer is shown.</summary>
-    public bool IsVisible
-    {
-        get;
-        set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            _owner.SetVisible(this, value);
-        }
-    }
+    [Reactive]
+    public partial bool IsVisible { get; set; }
 }

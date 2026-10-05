@@ -7,13 +7,13 @@ using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -72,9 +72,6 @@ public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<
         (Colors.White, Color.FromRgb(0x1A, 0x1A, 0x1A)),
     ];
 
-    /// <summary>The bindings made while loaded.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="FocusView"/> class.</summary>
     public FocusView()
     {
@@ -84,6 +81,33 @@ public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<
         ColourBox.ItemTemplate = new FuncDataTemplate<string>(static (text, _) => new TextBlock { Text = text });
         FontBox.ItemTemplate = new FuncDataTemplate<string>(static (text, _) => new TextBlock { Text = text });
         PageList.ItemTemplate = new FuncDataTemplate<FocusPageViewModel>((_, _) => new FocusPageView { FocusMode = ViewModel });
+        _ = this.WhenActivated(disposables =>
+        {
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Pages, static v => v.PageList.ItemsSource));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.SmallerCommand, static v => v.SmallerButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.LargerCommand, static v => v.LargerButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.ToggleCommand, static v => v.BackToPagesButton));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.FontSize, static v => v.SizeSlider.Value));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.LineSpacing, static v => v.LineSlider.Value));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.ParagraphSpacing, static v => v.ParagraphSlider.Value));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.TextWidth, static v => v.WidthSlider.Value));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.PageColour, static v => v.ColourBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Font, static v => v.FontBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.FocusBand, static v => v.BandCheck.IsChecked, static on => on, static on => on == true));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.WordHighlight, static v => v.WordCheck.IsChecked, static on => on, static on => on == true));
+            disposables.Add(this.WhenChanged(
+                    static v => v.ViewModel!.FontSize,
+                    static v => v.ViewModel!.LineSpacing,
+                    static v => v.ViewModel!.ParagraphSpacing,
+                    static v => v.ViewModel!.TextWidth,
+                    static v => v.ViewModel!.PageColour,
+                    static v => v.ViewModel!.Font,
+                    static (_, _, _, _, _, _) => RxVoid.Default)
+                .SubscribeSafe(_ => ApplySettings(), OnError));
+            disposables.Add(this.GetResourceObservable("AppPaperBrush").SubscribeSafe(_ => ApplySettings(), OnError));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.ScrollRequests).SwitchMap(static stream => stream).SubscribeSafe(request => _ = ScrollToAsync(request), OnError));
+            disposables.Add(this.WhenChanged(static v => v.FocusScroller.Offset).SubscribeSafe(_ => ReportTop(), OnError));
+        });
     }
 
     /// <summary>Gets the page views currently realised, top to bottom.</summary>
@@ -100,47 +124,6 @@ public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<
         }
 
         return views;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-        _bindings =
-        [
-            this.OneWayBind(ViewModel, static vm => vm.Pages, static v => v.PageList.ItemsSource),
-            this.BindCommand(ViewModel, static vm => vm.SmallerCommand, static v => v.SmallerButton),
-            this.BindCommand(ViewModel, static vm => vm.LargerCommand, static v => v.LargerButton),
-            this.BindCommand(ViewModel, static vm => vm.ToggleCommand, static v => v.BackToPagesButton),
-            this.Bind(ViewModel, static vm => vm.FontSize, static v => v.SizeSlider.Value),
-            this.Bind(ViewModel, static vm => vm.LineSpacing, static v => v.LineSlider.Value),
-            this.Bind(ViewModel, static vm => vm.ParagraphSpacing, static v => v.ParagraphSlider.Value),
-            this.Bind(ViewModel, static vm => vm.TextWidth, static v => v.WidthSlider.Value),
-            this.Bind(ViewModel, static vm => vm.PageColour, static v => v.ColourBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.Font, static v => v.FontBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.FocusBand, static v => v.BandCheck.IsChecked, static on => on, static on => on == true),
-            this.Bind(ViewModel, static vm => vm.WordHighlight, static v => v.WordCheck.IsChecked, static on => on, static on => on == true),
-            this.WhenAnyValue(
-                    static v => v.ViewModel!.FontSize,
-                    static v => v.ViewModel!.LineSpacing,
-                    static v => v.ViewModel!.ParagraphSpacing,
-                    static v => v.ViewModel!.TextWidth,
-                    static v => v.ViewModel!.PageColour,
-                    static v => v.ViewModel!.Font,
-                    static (_, _, _, _, _, _) => RxVoid.Default)
-                .SubscribeSafe(_ => ApplySettings(), OnError),
-            this.GetResourceObservable("AppPaperBrush").SubscribeSafe(_ => ApplySettings(), OnError),
-            this.WhenAnyObservable(static v => v.ViewModel!.ScrollRequests).SubscribeSafe(request => _ = ScrollToAsync(request), OnError),
-            FocusScroller.GetObservable(ScrollViewer.OffsetProperty).SubscribeSafe(_ => ReportTop(), OnError),
-        ];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
     }
 
     /// <summary>Reports a binding failure.</summary>

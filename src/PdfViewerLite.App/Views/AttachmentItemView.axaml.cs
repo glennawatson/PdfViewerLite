@@ -3,11 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using Avalonia.Interactivity;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Attachments;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -15,27 +15,14 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{ViewModel}")]
 public sealed partial class AttachmentItemView : ReactiveUI.Avalonia.ReactiveUserControl<DocumentAttachment>
 {
-    /// <summary>The bindings made while loaded.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="AttachmentItemView"/> class.</summary>
-    public AttachmentItemView() => InitializeComponent();
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
+    public AttachmentItemView()
     {
-        base.OnLoaded(e);
+        InitializeComponent();
 
-        // An attachment is an immutable record, so the view follows which one it shows.
-        _bindings = [this.WhenAnyValue(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString()))];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
+        // An attachment is an immutable record with no change notification, so OneWayBind cannot observe it.
+        // The view follows which one it shows instead.
+        _ = this.WhenActivated(disposables => disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString()))));
     }
 
     /// <summary>Shows an attachment.</summary>

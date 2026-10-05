@@ -5,14 +5,18 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Printing;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.Signals;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -22,7 +26,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// picks the printer; Save as PDF writes it where the user chooses.
 /// </summary>
 [DebuggerDisplay("{Summary}")]
-public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
+public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The booklet's place in <see cref="LayoutChoices"/>.</summary>
     private const int BookletLayout = 1;
@@ -54,6 +58,9 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <summary>Raises <see cref="Confirmed"/>.</summary>
     private readonly Signal<RxVoid> _confirmed = new();
 
+    /// <summary>Whether the settings are valid and no build is running, so the print can be confirmed.</summary>
+    private readonly IObservable<bool> _ready;
+
     /// <summary>The pages chosen, reused between rebuilds.</summary>
     private readonly List<int> _chosen = [];
 
@@ -70,18 +77,17 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     {
         _tab = tab;
         _services = services;
-        var ready = this.WhenAnyValue(static vm => vm.IsValid, static vm => vm.IsBuilding, static (valid, building) => valid && !building);
-        ConfirmCommand = ReactiveCommand.Create(() => _confirmed.OnNext(RxVoid.Default), ready);
-        SystemDialogCommand = ReactiveCommand.Create(() =>
-        {
-            SelectedTarget = SystemDialogTarget;
-            _confirmed.OnNext(RxVoid.Default);
-        });
+        _ready = this.WhenChanged(static vm => vm.IsValid, static vm => vm.IsBuilding, static (valid, building) => valid && !building);
         SelectedTarget = SystemDialogTarget;
         _ = LoadPrintersAsync();
         _subscriptions =
         [
-            this.WhenAnyValue(
+
+            // Keeps the copies within range; the first value is the current one.
+            this.WhenChanged(static vm => vm.Copies)
+                .Skip(1)
+                .SubscribeSafe(ClampCopies, static error => Trace.TraceError(error.ToString())),
+            this.WhenChanged(
                     static vm => vm.PageChoice,
                     static vm => vm.CustomPages,
                     static vm => vm.PagesPerSheetIndex,
@@ -92,6 +98,7 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
                     static (_, _, _, _, _, _, _) => RxVoid.Default)
                 .SubscribeSafe(OnSettingsChanged, static error => Trace.TraceError(error.ToString())),
         ];
+        Confirmed = new(_confirmed);
     }
 
     /// <summary>Gets the layout choices: pages in order, a booklet, or posters of 2, 3 or 4 sheets across.</summary>
@@ -111,16 +118,8 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     public ObservableCollection<PrintTarget> Targets { get; } = [SaveAsPdfTarget, SystemDialogTarget];
 
     /// <summary>Gets or sets the chosen destination.</summary>
-    public PrintTarget? SelectedTarget
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(Destination));
-            this.RaisePropertyChanged(nameof(ShowsPaper));
-        }
-    }
+    [Reactive(nameof(Destination), nameof(ShowsPaper))]
+    public partial PrintTarget? SelectedTarget { get; set; }
 
     /// <summary>Gets where the print goes.</summary>
     public PrintDestination Destination => SelectedTarget?.Kind ?? PrintDestination.SaveAsPdf;
@@ -129,68 +128,36 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     public PrintJobOptions JobOptions => new(SelectedTarget?.Name ?? string.Empty, Copies, Colour, TwoSided, Paper) { Binding = Binding };
 
     /// <summary>Gets or sets the number of copies sent to a printer.</summary>
-    public int Copies
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, Math.Clamp(value, 1, MaxCopies));
-    } = 1;
+    [Reactive]
+    public partial int Copies { get; set; } = 1;
 
     /// <summary>Gets or sets a value indicating whether a printer prints in colour rather than black and white.</summary>
-    public bool Colour
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = true;
+    [Reactive]
+    public partial bool Colour { get; set; } = true;
 
     /// <summary>Gets or sets a value indicating whether a printer prints on both sides of the paper.</summary>
-    public bool TwoSided
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool TwoSided { get; set; }
 
     /// <summary>Gets or sets the edge used to turn sheets printed on both sides.</summary>
-    public DuplexBinding Binding
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial DuplexBinding Binding { get; set; }
 
     /// <summary>Gets or sets which pages print.</summary>
-    public PrintPageChoice PageChoice
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial PrintPageChoice PageChoice { get; set; }
 
     /// <summary>Gets or sets the typed page ranges, used when <see cref="PageChoice"/> is custom.</summary>
-    public string CustomPages
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string CustomPages { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the index into <see cref="PagesPerSheetChoices"/>.</summary>
-    public int PagesPerSheetIndex
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(ShowsPaper));
-        }
-    }
+    [Reactive(nameof(ShowsPaper))]
+    public partial int PagesPerSheetIndex { get; set; }
 
     /// <summary>Gets or sets the index into <see cref="LayoutChoices"/>.</summary>
-    public int LayoutIndex
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(ShowsPaper));
-        }
-    }
+    [Reactive(nameof(ShowsPaper))]
+    public partial int LayoutIndex { get; set; }
 
     /// <summary>Gets a value indicating whether the paper size matters: for a printer, several pages per sheet, a booklet or a poster.</summary>
     public bool ShowsPaper => PagesPerSheetIndex > 0 || LayoutIndex > 0 || Destination == PrintDestination.Printer;
@@ -199,39 +166,24 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     public IReadOnlyList<int> PagesPerSheetChoices => SheetGrid.Choices;
 
     /// <summary>Gets or sets the paper used when several pages share a sheet.</summary>
-    public PaperSize Paper
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial PaperSize Paper { get; set; }
 
     /// <summary>Gets or sets a value indicating whether notes, highlights and drawings print.</summary>
-    public bool IncludeAnnotations
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = true;
+    [Reactive]
+    public partial bool IncludeAnnotations { get; set; } = true;
 
     /// <summary>Gets a value indicating whether the settings name pages to print.</summary>
-    public bool IsValid
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsValid { get; private set; }
 
     /// <summary>Gets a value indicating whether the preview is being built.</summary>
-    public bool IsBuilding
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsBuilding { get; private set; }
 
     /// <summary>Gets the sheet count, or what to fix, for the top of the settings panel.</summary>
-    public string Summary
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Summary { get; private set; } = string.Empty;
 
     /// <summary>Gets the sheets that will print.</summary>
     public ObservableCollection<PrintPreviewPage> Sheets { get; } = [];
@@ -239,14 +191,8 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the file that will print, once built.</summary>
     public string? PreviewPath { get; private set; }
 
-    /// <summary>Gets the command confirming the print.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ConfirmCommand { get; }
-
-    /// <summary>Gets the command skipping these settings and printing the whole document from the desktop's own dialog.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SystemDialogCommand { get; }
-
     /// <summary>Gets the confirmations, which close the window.</summary>
-    public IObservable<RxVoid> Confirmed => _confirmed;
+    public AsObservableSignal<RxVoid> Confirmed{ get; }
 
     /// <summary>Describes a sheet count.</summary>
     /// <param name="sheets">The sheets.</param>
@@ -355,6 +301,30 @@ public sealed class PrintPreviewViewModel : ReactiveObject, IDisposable
         else if (printers.Count == 0 && !printer.IsAvailable)
         {
             SelectedTarget = SaveAsPdfTarget;
+        }
+    }
+
+    /// <summary>Confirms the print.</summary>
+    [ReactiveCommand(CanExecute = nameof(_ready))]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Confirm() => _confirmed.OnNext(RxVoid.Default);
+
+    /// <summary>Skips these settings and prints the whole document from the desktop's own dialog.</summary>
+    [ReactiveCommand]
+    private void SystemDialog()
+    {
+        SelectedTarget = SystemDialogTarget;
+        _confirmed.OnNext(RxVoid.Default);
+    }
+
+    /// <summary>Keeps the number of copies between one and the most offered.</summary>
+    /// <param name="copies">The copies now set.</param>
+    private void ClampCopies(int copies)
+    {
+        var clamped = Math.Clamp(copies, 1, MaxCopies);
+        if (clamped != copies)
+        {
+            Copies = clamped;
         }
     }
 

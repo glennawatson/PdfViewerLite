@@ -5,11 +5,12 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -17,39 +18,29 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{Title}")]
 public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.ReactiveWindow<CertificateSignViewModel>
 {
-    /// <summary>The bindings made while open.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="CertificateSignWindow"/> class.</summary>
-    public CertificateSignWindow() => InitializeComponent();
-
-    /// <inheritdoc/>
-    protected override void OnOpened(EventArgs e)
+    public CertificateSignWindow()
     {
-        base.OnOpened(e);
-        _bindings =
-        [
-            this.Bind(ViewModel, static vm => vm.CertificatePath, static v => v.CertificateBox.Text, static text => text, static text => text ?? string.Empty),
-            this.Bind(ViewModel, static vm => vm.Password, static v => v.PasswordBox.Text, static text => text, static text => text ?? string.Empty),
-            this.Bind(ViewModel, static vm => vm.Reason, static v => v.ReasonBox.Text, static text => text, static text => text ?? string.Empty),
-            this.Bind(ViewModel, static vm => vm.Location, static v => v.LocationBox.Text, static text => text, static text => text ?? string.Empty),
-            this.OneWayBind(ViewModel, static vm => vm.Error, static v => v.ErrorText.Text),
-            this.OneWayBind(ViewModel, static vm => vm.Error, static v => v.ErrorText.IsVisible, static error => error is not null),
-            this.BindCommand(ViewModel, static vm => vm.BrowseCommand, static v => v.BrowseButton),
-            this.BindCommand(ViewModel, static vm => vm.SignCommand, static v => v.SignButton),
-            this.BindInteraction(ViewModel, static vm => vm.BrowseInteraction, BrowseAsync),
-            this.WhenAnyObservable(static v => v.ViewModel!.Confirmed).SubscribeSafe(_ => Close(true), OnError),
-            CancelButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(false), OnError),
-        ];
-        _ = (string.IsNullOrEmpty(ViewModel?.CertificatePath) ? CertificateBox : PasswordBox).Focus();
-    }
+        InitializeComponent();
+        _ = this.WhenActivated(disposables =>
+        {
+            disposables.Add(this.Bind(ViewModel, static vm => vm.CertificatePath, static v => v.CertificateBox.Text, static text => text, static text => text ?? string.Empty));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Password, static v => v.PasswordBox.Text, static text => text, static text => text ?? string.Empty));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Reason, static v => v.ReasonBox.Text, static text => text, static text => text ?? string.Empty));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Location, static v => v.LocationBox.Text, static text => text, static text => text ?? string.Empty));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Error, static v => v.ErrorText.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Error, static v => v.ErrorText.IsVisible, static error => error is not null));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.BrowseCommand, static v => v.BrowseButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.SignCommand, static v => v.SignButton));
+            disposables.Add(this.BindInteraction(ViewModel, static vm => vm.BrowseInteraction, BrowseAsync));
+            disposables.Add(CancelButton.ObserveRouted(Button.ClickEvent).SubscribeSafe(_ => Close(false), OnError));
+            if (ViewModel is { } viewModel)
+            {
+                disposables.Add(viewModel.Confirmed.SubscribeSafe(_ => Close(true), OnError));
+            }
 
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _bindings?.Dispose();
-        _bindings = null;
+            _ = (string.IsNullOrEmpty(ViewModel?.CertificatePath) ? CertificateBox : PasswordBox).Focus();
+        });
     }
 
     /// <summary>Reports a failure in a subscription.</summary>

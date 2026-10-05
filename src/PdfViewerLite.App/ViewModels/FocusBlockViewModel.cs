@@ -6,12 +6,13 @@ using System.Diagnostics;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Reading;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>A block of text in Focus Mode, with the parts being read aloud marked.</summary>
 [DebuggerDisplay("{Kind}: {Text}")]
-public sealed class FocusBlockViewModel : ReactiveObject
+public sealed partial class FocusBlockViewModel : ReactiveObject
 {
     /// <summary>The level given to a heading found from the layout rather than from tags.</summary>
     private const int LayoutHeadingLevel = 2;
@@ -63,25 +64,16 @@ public sealed class FocusBlockViewModel : ReactiveObject
     public int Offset { get; }
 
     /// <summary>Gets the part of the block being read aloud, relative to the block.</summary>
-    public TextRange Spoken
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = TextRange.None;
+    [Reactive]
+    public partial TextRange Spoken { get; private set; } = TextRange.None;
 
     /// <summary>Gets the word being read aloud, relative to the block.</summary>
-    public TextRange Word
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = TextRange.None;
+    [Reactive]
+    public partial TextRange Word { get; private set; } = TextRange.None;
 
     /// <summary>Gets a value indicating whether the block is dimmed by the focus band.</summary>
-    public bool IsDimmed
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsDimmed { get; private set; }
 
     /// <summary>Clips a range of the page's reading text to this block.</summary>
     /// <param name="range">The range.</param>

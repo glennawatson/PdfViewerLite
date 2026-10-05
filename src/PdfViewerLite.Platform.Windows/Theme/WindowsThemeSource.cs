@@ -6,6 +6,7 @@ using System.Diagnostics;
 using Microsoft.Win32;
 using PdfViewerLite.Core.Platform;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Platform.Windows.Theme;
@@ -100,10 +101,10 @@ public sealed class WindowsThemeSource : IDesktopThemeSource
 
     /// <summary>Initializes a new instance of the <see cref="WindowsThemeSource"/> class.</summary>
     public WindowsThemeSource() =>
-        Palette = Signal.Defer(static () => WatchChanges().Select(static _ => Read()).StartWith(Read()).DistinctUntilChanged());
+        Palette = new(Signal.Defer(static () => WatchChanges().Select(static _ => Read()).StartWith(Read()).DistinctUntilChanged()));
 
     /// <inheritdoc/>
-    public IObservable<DesktopPalette?> Palette { get; }
+    public AsObservableSignal<DesktopPalette?> Palette { get; }
 
     /// <summary>Builds the palette for light or dark app mode with an accent.</summary>
     /// <param name="dark">Whether apps use dark mode.</param>
@@ -152,6 +153,6 @@ public sealed class WindowsThemeSource : IDesktopThemeSource
     /// <summary>Signals each change to the personalisation settings, on a background thread, while subscribed.</summary>
     /// <returns>The changes.</returns>
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    private static IObservable<RxVoid> WatchChanges() =>
-        Signal.Using(static () => new RegistryWatcher([(ThemesKey, true), (AccentKey, false)]), static watcher => watcher.Changes);
+    private static AsObservableSignal<RxVoid> WatchChanges() =>
+        new(Signal.Using(static () => new RegistryWatcher([(ThemesKey, true), (AccentKey, false)]), static watcher => watcher.Changes));
 }

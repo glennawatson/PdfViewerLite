@@ -3,11 +3,13 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
 
 namespace PdfViewerLite.App.Views;
 
@@ -15,9 +17,6 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{Title}")]
 public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWindow<PreferencesViewModel>
 {
-    /// <summary>The bindings made while open.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="PreferencesWindow"/> class.</summary>
     public PreferencesWindow()
     {
@@ -31,41 +30,28 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
         CaretBox.ItemsSource = PreferencesViewModel.CaretOptions;
         FontSizeBox.ItemsSource = PreferencesViewModel.FontSizeOptions;
         SpeechEngineBox.ItemsSource = PreferencesViewModel.SpeechEngineOptions;
-    }
+        _ = this.WhenActivated(disposables =>
+        {
+            disposables.Add(this.Bind(ViewModel, static vm => vm.ColorScheme, static v => v.SchemeBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.PageTone, static v => v.PageToneBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.OpeningZoom, static v => v.OpeningZoomBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Toolbar, static v => v.ToolbarBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.FileChange, static v => v.FileChangeBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Motion, static v => v.MotionBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Caret, static v => v.CaretBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.FontSize, static v => v.FontSizeBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.SpeechEngine, static v => v.SpeechEngineBox.SelectedIndex));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.AzureKey, static v => v.AzureKeyBox.Text));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.AzureRegion, static v => v.AzureRegionBox.Text));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.TimestampServer, static v => v.TimestampServerBox.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyLabel.IsVisible));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyBox.IsVisible));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionLabel.IsVisible));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionBox.IsVisible));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.SpeechNote.Text, DescribeSpeech));
 
-    /// <inheritdoc/>
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        _bindings =
-        [
-            this.Bind(ViewModel, static vm => vm.ColorScheme, static v => v.SchemeBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.PageTone, static v => v.PageToneBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.OpeningZoom, static v => v.OpeningZoomBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.Toolbar, static v => v.ToolbarBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.FileChange, static v => v.FileChangeBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.Motion, static v => v.MotionBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.Caret, static v => v.CaretBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.FontSize, static v => v.FontSizeBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.SpeechEngine, static v => v.SpeechEngineBox.SelectedIndex),
-            this.Bind(ViewModel, static vm => vm.AzureKey, static v => v.AzureKeyBox.Text),
-            this.Bind(ViewModel, static vm => vm.AzureRegion, static v => v.AzureRegionBox.Text),
-            this.Bind(ViewModel, static vm => vm.TimestampServer, static v => v.TimestampServerBox.Text),
-            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyLabel.IsVisible),
-            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyBox.IsVisible),
-            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionLabel.IsVisible),
-            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionBox.IsVisible),
-            this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.SpeechNote.Text, DescribeSpeech),
-            CloseButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())),
-        ];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _bindings?.Dispose();
-        _bindings = null;
+            disposables.Add(ObserveClose(CloseButton));
+        });
     }
 
     /// <summary>Explains where the chosen voice runs.</summary>
@@ -74,4 +60,10 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
     private static string DescribeSpeech(bool azure) => azure
         ? "Each sentence read aloud is sent to your own Azure Speech resource, which bills your Azure account. The key is kept in your settings file, readable only by you."
         : "The voice runs on this computer, so nothing you read is sent anywhere. It is downloaded once, the first time you use Read Aloud.";
+
+    /// <summary>Closes the window when the button is clicked.</summary>
+    /// <param name="button">The close button; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
+    /// <returns>The subscription.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private IDisposable ObserveClose(Button button) => button.Events().Click.SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString()));
 }

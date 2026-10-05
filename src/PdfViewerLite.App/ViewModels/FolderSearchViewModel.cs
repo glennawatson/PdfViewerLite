@@ -10,6 +10,7 @@ using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Search;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -17,33 +18,16 @@ namespace PdfViewerLite.App.ViewModels;
 /// Search every PDF in a folder: results arrive file by file while the search runs off the UI thread, and opening one
 /// shows its page with the words found.
 /// </summary>
+/// <param name="services">The services.</param>
+/// <param name="open">Opens a file at a page with the words to show.</param>
 [DebuggerDisplay("{Query} in {Folder}: {Results.Count} results")]
-public sealed class FolderSearchViewModel : ReactiveObject, IDisposable
+public sealed partial class FolderSearchViewModel(AppServices services, Action<string, int, string> open) : ReactiveObject, IDisposable
 {
     /// <summary>The most matches kept per file.</summary>
     private const int MaxMatchesPerFile = 200;
 
-    /// <summary>The services.</summary>
-    private readonly AppServices _services;
-
-    /// <summary>Opens a result.</summary>
-    private readonly Action<string, int, string> _open;
-
     /// <summary>Cancels the running search.</summary>
     private CancellationTokenSource? _running;
-
-    /// <summary>Initializes a new instance of the <see cref="FolderSearchViewModel"/> class.</summary>
-    /// <param name="services">The services.</param>
-    /// <param name="open">Opens a file at a page with the words to show.</param>
-    public FolderSearchViewModel(AppServices services, Action<string, int, string> open)
-    {
-        _services = services;
-        _open = open;
-        ChooseFolderCommand = ReactiveCommand.CreateFromTask(ChooseFolderAsync);
-        SearchCommand = ReactiveCommand.CreateFromTask(SearchAsync);
-        StopCommand = ReactiveCommand.Create(Stop);
-        OpenCommand = ReactiveCommand.Create<FolderSearchResultViewModel?>(Open);
-    }
 
     /// <summary>Gets the interaction that asks for a folder.</summary>
     public Interaction<RxVoid, string?> ChooseFolderInteraction { get; } = new();
@@ -52,68 +36,36 @@ public sealed class FolderSearchViewModel : ReactiveObject, IDisposable
     public ObservableCollection<FolderSearchResultViewModel> Results { get; } = [];
 
     /// <summary>Gets or sets the folder searched.</summary>
-    public string Folder
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Folder { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the words to find.</summary>
-    public string Query
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Query { get; set; } = string.Empty;
 
     /// <summary>Gets or sets a value indicating whether case must match.</summary>
-    public bool MatchCase
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool MatchCase { get; set; }
 
     /// <summary>Gets or sets a value indicating whether only whole words match.</summary>
-    public bool WholeWord
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool WholeWord { get; set; }
 
     /// <summary>Gets or sets a value indicating whether subfolders are searched too.</summary>
-    public bool IncludeSubfolders
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = true;
+    [Reactive]
+    public partial bool IncludeSubfolders { get; set; } = true;
 
     /// <summary>Gets a value indicating whether a search is running.</summary>
-    public bool IsSearching
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsSearching { get; private set; }
 
     /// <summary>Gets what the search is doing or found, such as "12 matches in 3 of 40 files".</summary>
-    public string Status
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = "Choose a folder and the words to find.";
-
-    /// <summary>Gets the command that asks for a folder.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ChooseFolderCommand { get; }
-
-    /// <summary>Gets the command that starts the search.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SearchCommand { get; }
-
-    /// <summary>Gets the command that stops the search.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> StopCommand { get; }
-
-    /// <summary>Gets the command that opens a result.</summary>
-    public ReactiveCommand<FolderSearchResultViewModel?, RxVoid> OpenCommand { get; }
+    [Reactive]
+    public partial string Status { get; private set; } = "Choose a folder and the words to find.";
 
     /// <summary>Runs a search to the end, for tests and callers that wait.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     public Task SearchAsync()
     {
         Stop();
@@ -130,6 +82,7 @@ public sealed class FolderSearchViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Stops the running search; the results so far stay.</summary>
+    [ReactiveCommand]
     public void Stop()
     {
         _running?.Cancel();
@@ -173,7 +126,7 @@ public sealed class FolderSearchViewModel : ReactiveObject, IDisposable
             for (var i = 0; i < files.Count && !token.IsCancellationRequested; i++)
             {
                 var path = files[i];
-                var found = await Task.Run(() => FolderSearch.SearchFile(_services.Engine, path, query, options, MaxMatchesPerFile, token), token).ConfigureAwait(true);
+                var found = await Task.Run(() => FolderSearch.SearchFile(services.Engine, path, query, options, MaxMatchesPerFile, token), token).ConfigureAwait(true);
                 Add(found);
                 matches += found.Matches.Count;
                 withMatches += found.Matches.Count > 0 ? 1 : 0;
@@ -221,6 +174,7 @@ public sealed class FolderSearchViewModel : ReactiveObject, IDisposable
 
     /// <summary>Asks for a folder.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task ChooseFolderAsync()
     {
         var folder = await ChooseFolderInteraction.Handle(RxVoid.Default).ToTask().ConfigureAwait(true);
@@ -232,11 +186,12 @@ public sealed class FolderSearchViewModel : ReactiveObject, IDisposable
 
     /// <summary>Opens a result at its page.</summary>
     /// <param name="result">The result.</param>
+    [ReactiveCommand]
     private void Open(FolderSearchResultViewModel? result)
     {
         if (result is { IsMatch: true })
         {
-            _open(result.Path, result.PageIndex, Query.Trim());
+            open(result.Path, result.PageIndex, Query.Trim());
         }
     }
 }

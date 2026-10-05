@@ -11,8 +11,12 @@ using PdfViewerLite.Core.Reading;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Speech;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
+using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.Signals;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -22,7 +26,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// keeps the place; Previous and Next move a sentence at a time.
 /// </summary>
 [DebuggerDisplay("Open={IsOpen}, Playing={IsPlaying}, Page={SpokenPage}")]
-public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
+public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
 {
     /// <summary>Bytes in a megabyte.</summary>
     private const double BytesPerMegabyte = 1024 * 1024;
@@ -47,6 +51,12 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
 
     /// <summary>Signals each change to what is being read.</summary>
     private readonly Signal<RxVoid> _marks = new();
+
+    /// <summary>The subscriptions.</summary>
+    private readonly MultipleDisposable _subscriptions = [];
+
+    /// <summary>Emits whether the voice is not downloading; enables Download Voice.</summary>
+    private readonly IObservable<bool> _canDownloadVoice;
 
     /// <summary>The sentences of the page being read.</summary>
     private readonly List<SpeechSentence> _sentences = [];
@@ -93,210 +103,87 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         SpeedIndex = NearestSpeed(services.Settings.SpeechSpeed);
         _listing = false;
 
-        PlayPauseCommand = ReactiveCommand.Create(PlayPause);
-        NextCommand = ReactiveCommand.Create(() => Step(1));
-        PreviousCommand = ReactiveCommand.Create(() => Step(-1));
-        CloseCommand = ReactiveCommand.Create(Close);
-        ToggleCommand = ReactiveCommand.Create(() => IsOpen = !IsOpen);
-        DownloadVoiceCommand = ReactiveCommand.CreateFromTask(DownloadVoiceAsync, this.WhenAnyValue(static vm => vm.IsDownloading).Select(static busy => !busy));
+        MarksChanged = new(_marks);
+        _canDownloadVoice = this.WhenChanged(static vm => vm.IsDownloading).Select(static busy => !busy);
+        _playPauseTextHelper = this.WhenChanged(static vm => vm.IsPlaying).Select(static playing => playing ? "Pause" : "Play").ToProperty(this, static vm => vm.PlayPauseText);
+
+        _subscriptions.Add(this.WhenChanged(static vm => vm.IsOpen).Skip(1).SubscribeSafe(OnIsOpenChanged, OnError));
+        _subscriptions.Add(this.WhenChanged(static vm => vm.VoiceIndex).Skip(1).SubscribeSafe(_ => OnChoiceChanged(), OnError));
+        _subscriptions.Add(this.WhenChanged(static vm => vm.SpeedIndex).Skip(1).SubscribeSafe(_ => OnChoiceChanged(), OnError));
+        _subscriptions.Add(this.WhenChanged(static vm => vm.SpokenPage).Skip(1).SubscribeSafe(_ => _marks.OnNext(RxVoid.Default), OnError));
+        _subscriptions.Add(this.WhenChanged(static vm => vm.SpokenRange).Skip(1).SubscribeSafe(_ => _marks.OnNext(RxVoid.Default), OnError));
+        _subscriptions.Add(this.WhenChanged(static vm => vm.SpokenWord).Skip(1).SubscribeSafe(_ => _marks.OnNext(RxVoid.Default), OnError));
     }
 
     /// <summary>Gets or sets a value indicating whether the Read Aloud bar is shown. Opening starts reading from the current page.</summary>
-    public bool IsOpen
-    {
-        get;
-        set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            if (value)
-            {
-                Begin();
-            }
-            else
-            {
-                Stop();
-            }
-        }
-    }
+    [Reactive]
+    public partial bool IsOpen { get; set; }
 
     /// <summary>Gets a value indicating whether audio is being read.</summary>
-    public bool IsPlaying
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsPlaying { get; private set; }
 
     /// <summary>Gets a value indicating whether the voice must be downloaded or set up before reading.</summary>
-    public bool NeedsVoice
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool NeedsVoice { get; private set; }
 
     /// <summary>Gets a value indicating whether the on-device voice can be downloaded from the bar.</summary>
-    public bool CanDownloadVoice
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool CanDownloadVoice { get; private set; }
 
     /// <summary>Gets a value indicating whether the voice is downloading.</summary>
-    public bool IsDownloading
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsDownloading { get; private set; }
 
     /// <summary>Gets the download progress from 0 to 1.</summary>
-    public double DownloadProgress
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial double DownloadProgress { get; private set; }
 
     /// <summary>Gets the steady status, for example "Reading page 3 of 12" or "Paused".</summary>
-    public string StatusText
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string StatusText { get; private set; } = string.Empty;
 
     /// <summary>Gets the label of the play button: "Pause" while reading, otherwise "Play".</summary>
-    public string PlayPauseText
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = "Play";
+    [ObservableAsProperty]
+    public partial string PlayPauseText { get; }
 
     /// <summary>Gets the voices' names and descriptions, for example "Heart, American English, warm".</summary>
-    public IReadOnlyList<string> VoiceNames
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = [];
+    [Reactive]
+    public partial IReadOnlyList<string> VoiceNames { get; private set; } = [];
 
     /// <summary>Gets or sets the chosen voice's index in <see cref="VoiceNames"/>.</summary>
-    public int VoiceIndex
-    {
-        get;
-        set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            OnChoiceChanged();
-        }
-    }
+    [Reactive]
+    public partial int VoiceIndex { get; set; }
 
     /// <summary>Gets the speeds' names.</summary>
     public IReadOnlyList<string> SpeedNames { get; }
 
     /// <summary>Gets or sets the chosen speed's index in <see cref="SpeedNames"/>.</summary>
-    public int SpeedIndex
-    {
-        get;
-        set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            OnChoiceChanged();
-        }
-    }
+    [Reactive]
+    public partial int SpeedIndex { get; set; }
 
     /// <summary>Gets the page of the sentence being read, or -1.</summary>
-    public int SpokenPage
-    {
-        get;
-        private set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            _marks.OnNext(RxVoid.Default);
-        }
-    } = -1;
+    [Reactive]
+    public partial int SpokenPage { get; private set; } = -1;
 
     /// <summary>Gets a notification each time the page, sentence or word being read changes.</summary>
-    public IObservable<RxVoid> MarksChanged => _marks;
+    public AsObservableSignal<RxVoid> MarksChanged { get; }
 
     /// <summary>Gets the sentence being read, as a range of the page's reading text, for Focus Mode.</summary>
-    public TextRange SpokenRange
-    {
-        get;
-        private set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            _marks.OnNext(RxVoid.Default);
-        }
-    } = TextRange.None;
+    [Reactive]
+    public partial TextRange SpokenRange { get; private set; } = TextRange.None;
 
     /// <summary>Gets the word being read, roughly, when word highlighting is on.</summary>
-    public TextRange SpokenWord
-    {
-        get;
-        private set
-        {
-            if (field == value)
-            {
-                return;
-            }
-
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            _marks.OnNext(RxVoid.Default);
-        }
-    } = TextRange.None;
+    [Reactive]
+    public partial TextRange SpokenWord { get; private set; } = TextRange.None;
 
     /// <summary>Gets the rectangles of the word being read, in page space.</summary>
-    public IReadOnlyList<PageRect> SpokenWordBounds
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = [];
+    [Reactive]
+    public partial IReadOnlyList<PageRect> SpokenWordBounds { get; private set; } = [];
 
     /// <summary>Gets the rectangles of the sentence being read, in page space.</summary>
-    public IReadOnlyList<PageRect> SpokenBounds
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = [];
-
-    /// <summary>Gets the command that pauses or carries on reading.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PlayPauseCommand { get; }
-
-    /// <summary>Gets the command that moves to the next sentence.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> NextCommand { get; }
-
-    /// <summary>Gets the command that moves back a sentence.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PreviousCommand { get; }
-
-    /// <summary>Gets the command that stops reading and closes the bar.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
-
-    /// <summary>Gets the command that opens or closes Read Aloud (Ctrl+Shift+Y).</summary>
-    public ReactiveCommand<RxVoid, bool> ToggleCommand { get; }
-
-    /// <summary>Gets the command that downloads the on-device voice, once, with the person's go-ahead.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> DownloadVoiceCommand { get; }
+    [Reactive]
+    public partial IReadOnlyList<PageRect> SpokenBounds { get; private set; } = [];
 
     /// <summary>Gets the speed chosen.</summary>
     private float Speed => (float)SpeedValues[Math.Clamp(SpeedIndex, 0, SpeedValues.Length - 1)];
@@ -323,7 +210,6 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     {
         CancelWork();
         IsPlaying = false;
-        PlayPauseText = "Play";
         _services.SaveSettings();
         if (IsOpen && !NeedsVoice)
         {
@@ -334,6 +220,8 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        _subscriptions.Dispose();
+        _playPauseTextHelper?.Dispose();
         _work?.Cancel();
         _work?.Dispose();
         _work = null;
@@ -471,6 +359,11 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     private static void ObservePrepared(Task<SpeechAudio>? prepared) =>
         prepared?.ContinueWith(static task => _ = task.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The failure.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
     /// <summary>Forgets documents that have gone; if that is not enough, starts the list afresh.</summary>
     /// <param name="positions">The remembered positions.</param>
     private static void Prune(Dictionary<string, ReadingPosition> positions)
@@ -519,6 +412,7 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Plays or pauses.</summary>
+    [ReactiveCommand]
     private void PlayPause()
     {
         if (IsPlaying)
@@ -528,6 +422,36 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
         else
         {
             Play();
+        }
+    }
+
+    /// <summary>Moves to the next sentence.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Next() => Step(1);
+
+    /// <summary>Moves back a sentence.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Previous() => Step(-1);
+
+    /// <summary>Opens or closes Read Aloud.</summary>
+    /// <returns>Whether the bar is now open.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool Toggle() => IsOpen = !IsOpen;
+
+    /// <summary>Starts reading when the bar opens and stops when it closes.</summary>
+    /// <param name="open">Whether the bar is open.</param>
+    private void OnIsOpenChanged(bool open)
+    {
+        if (open)
+        {
+            Begin();
+        }
+        else
+        {
+            Stop();
         }
     }
 
@@ -570,7 +494,6 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     {
         CancelWork();
         IsPlaying = false;
-        PlayPauseText = "Play";
         SpokenBounds = [];
         SpokenRange = TextRange.None;
         SpokenPage = -1;
@@ -580,6 +503,8 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Closes the bar.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Close() => IsOpen = false;
 
     /// <summary>Starts the reading loop from the current place.</summary>
@@ -831,11 +756,8 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
 
     /// <summary>Shows whether reading is under way.</summary>
     /// <param name="playing">Whether reading.</param>
-    private void SetPlaying(bool playing)
-    {
-        IsPlaying = playing;
-        PlayPauseText = playing ? "Pause" : "Play";
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetPlaying(bool playing) => IsPlaying = playing;
 
     /// <summary>Loads the sentences of <see cref="SpokenPage"/>, moving past pages without text.</summary>
     /// <param name="document">The document.</param>
@@ -910,6 +832,7 @@ public sealed class ReadAloudViewModel : ReactiveObject, IDisposable
 
     /// <summary>Downloads the on-device voice, then starts reading.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand(CanExecute = nameof(_canDownloadVoice))]
     private async Task DownloadVoiceAsync()
     {
         CancelWork();

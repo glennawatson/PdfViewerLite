@@ -2,8 +2,11 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using PdfViewerLite.Http;
+using PdfViewerLite.Http.Remote;
 
 namespace PdfViewerLite.Compatibility.Tests;
 
@@ -22,8 +25,8 @@ internal static class RealWorldPdfCache
     /// <summary>The longest a single download may take.</summary>
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(5);
 
-    /// <summary>The client for every download.</summary>
-    private static readonly HttpClient Client = new() { Timeout = DownloadTimeout };
+    /// <summary>The Refit download clients, one per host because Refit resolves paths against the base address.</summary>
+    private static readonly Dictionary<string, IRemoteDocumentApi> Clients = [with(StringComparer.OrdinalIgnoreCase)];
 
     /// <summary>Downloads one file at a time, so parallel tests share each download.</summary>
     private static readonly SemaphoreSlim Gate = new(1, 1);
@@ -79,7 +82,9 @@ internal static class RealWorldPdfCache
             }
 
             _ = System.IO.Directory.CreateDirectory(Directory);
-            var bytes = await Client.GetByteArrayAsync(url);
+            using var response = await GetClient(url).DownloadAsync(url.PathAndQuery.TrimStart('/'), CancellationToken.None);
+            _ = response.EnsureSuccessStatusCode();
+            var bytes = await response.Content.ReadAsByteArrayAsync();
             if (sha256 is not null && !string.Equals(Convert.ToHexStringLower(SHA256.HashData(bytes)), sha256, StringComparison.Ordinal))
             {
                 throw new InvalidDataException($"{url} does not match its SHA-256 in the manifest.");
@@ -94,6 +99,17 @@ internal static class RealWorldPdfCache
         {
             _ = Gate.Release();
         }
+    }
+
+    /// <summary>Gets the download client for a file's host; only called while holding the download gate.</summary>
+    /// <param name="url">The file's address.</param>
+    /// <returns>The client.</returns>
+    private static IRemoteDocumentApi GetClient(Uri url)
+    {
+        var authority = url.GetLeftPart(UriPartial.Authority);
+        ref var client = ref CollectionsMarshal.GetValueRefOrAddDefault(Clients, authority, out _);
+        client ??= RefitClients.CreateRemoteDocumentApi(new() { BaseAddress = new(authority), Timeout = DownloadTimeout });
+        return client;
     }
 
     /// <summary>Reads the manifest copied next to the tests.</summary>

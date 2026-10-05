@@ -3,10 +3,15 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Layout;
 using PdfViewerLite.Core.Settings;
 using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -15,7 +20,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// explicit values of the settings enums.
 /// </summary>
 [DebuggerDisplay("Preferences")]
-public sealed class PreferencesViewModel : ReactiveObject
+public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The label of choices that follow the desktop setting.</summary>
     private const string FollowDesktop = "Follow the desktop";
@@ -29,12 +34,17 @@ public sealed class PreferencesViewModel : ReactiveObject
     /// <summary>The services.</summary>
     private readonly AppServices _services;
 
+    /// <summary>Subscriptions writing each choice to the settings.</summary>
+    private readonly MultipleDisposable _subscriptions = [];
+
     /// <summary>Initializes a new instance of the <see cref="PreferencesViewModel"/> class.</summary>
     /// <param name="services">The application services.</param>
     public PreferencesViewModel(AppServices services)
     {
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
+        Load();
+        Follow();
     }
 
     /// <summary>Gets the colour scheme choices.</summary>
@@ -70,118 +80,155 @@ public sealed class PreferencesViewModel : ReactiveObject
     ];
 
     /// <summary>Gets or sets the Read Aloud engine index.</summary>
-    public int SpeechEngine
-    {
-        get => Math.Max(0, Array.IndexOf(SpeechEngineChoices, _services.Settings.SpeechEngine));
-        set => Update(
-            () => _services.Settings.SpeechEngine = SpeechEngineChoices[Math.Clamp(value, 0, SpeechEngineChoices.Length - 1)],
-            nameof(SpeechEngine),
-            nameof(UsesAzure));
-    }
+    [Reactive(nameof(UsesAzure))]
+    public partial int SpeechEngine { get; set; }
 
     /// <summary>Gets a value indicating whether Azure AI Speech is chosen, which shows its key and region.</summary>
     public bool UsesAzure => _services.Settings.SpeechEngine == SpeechEngineChoice.Azure;
 
     /// <summary>Gets or sets the Azure Speech key.</summary>
-    public string AzureKey
-    {
-        get => _services.Settings.AzureSpeechKey;
-        set => Update(() => _services.Settings.AzureSpeechKey = value?.Trim() ?? string.Empty, nameof(AzureKey));
-    }
+    [Reactive]
+    public partial string AzureKey { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the timestamp server used when signing with a certificate; empty for none.</summary>
-    public string TimestampServer
-    {
-        get => _services.Settings.TimestampServer;
-        set => Update(() => _services.Settings.TimestampServer = value?.Trim() ?? string.Empty, nameof(TimestampServer));
-    }
+    [Reactive]
+    public partial string TimestampServer { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the Azure Speech region.</summary>
-    public string AzureRegion
-    {
-        get => _services.Settings.AzureSpeechRegion;
-        set => Update(() => _services.Settings.AzureSpeechRegion = value?.Trim().ToLowerInvariant() ?? string.Empty, nameof(AzureRegion));
-    }
+    [Reactive]
+    public partial string AzureRegion { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the colour scheme index.</summary>
-    public int ColorScheme
-    {
-        get => (int)_services.Settings.ColorScheme;
-        set => Update(() => _services.Settings.ColorScheme = (ColorSchemeChoice)value, nameof(ColorScheme));
-    }
+    [Reactive]
+    public partial int ColorScheme { get; set; }
 
     /// <summary>Gets or sets the page colour index.</summary>
-    public int PageTone
-    {
-        get => (int)_services.Settings.PageTone;
-        set => Update(
-            () =>
-            {
-                _services.Settings.PageTone = (PageToneChoice)value;
-                _services.Settings.PageToneEnabled = true;
-            },
-            nameof(PageTone));
-    }
+    [Reactive]
+    public partial int PageTone { get; set; }
 
     /// <summary>Gets or sets the tool bar style index.</summary>
-    public int Toolbar
-    {
-        get => (int)_services.Settings.ToolbarStyle;
-        set => Update(() => _services.Settings.ToolbarStyle = (ToolbarStyle)value, nameof(Toolbar));
-    }
+    [Reactive]
+    public partial int Toolbar { get; set; }
 
     /// <summary>Gets or sets the zoom mode used for newly opened documents.</summary>
-    public int OpeningZoom
-    {
-        get => (int)_services.Settings.DefaultZoomMode;
-        set => Update(() => _services.Settings.DefaultZoomMode = (ZoomMode)Math.Clamp(value, 0, OpeningZoomOptions.Count - 1), nameof(OpeningZoom));
-    }
+    [Reactive]
+    public partial int OpeningZoom { get; set; }
 
     /// <summary>Gets or sets the file change action index.</summary>
-    public int FileChange
-    {
-        get => (int)_services.Settings.FileChangeAction;
-        set => Update(() => _services.Settings.FileChangeAction = (FileChangeAction)value, nameof(FileChange));
-    }
+    [Reactive]
+    public partial int FileChange { get; set; }
 
     /// <summary>Gets or sets the motion index.</summary>
-    public int Motion
-    {
-        get => (int)_services.Settings.Motion;
-        set => Update(() => _services.Settings.Motion = (MotionPreference)value, nameof(Motion));
-    }
+    [Reactive]
+    public partial int Motion { get; set; }
 
     /// <summary>Gets or sets the text cursor index.</summary>
-    public int Caret
-    {
-        get => (int)_services.Settings.Caret;
-        set => Update(() => _services.Settings.Caret = (CaretPreference)value, nameof(Caret));
-    }
+    [Reactive]
+    public partial int Caret { get; set; }
 
     /// <summary>Gets or sets the interface text size index.</summary>
-    public int FontSize
+    [Reactive]
+    public partial int FontSize { get; set; }
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Dispose() => _subscriptions.Dispose();
+
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Loads each choice from the settings.</summary>
+    private void Load()
     {
-        get => _services.Settings.InterfaceFontSizePoints is { } points ? Math.Max(0, Array.IndexOf(FontSizes, points)) : 0;
-        set => Update(() => _services.Settings.InterfaceFontSizePoints = value > 0 && value < FontSizes.Length ? FontSizes[value] : null, nameof(FontSize));
+        var settings = _services.Settings;
+        SpeechEngine = Math.Max(0, Array.IndexOf(SpeechEngineChoices, settings.SpeechEngine));
+        AzureKey = settings.AzureSpeechKey;
+        TimestampServer = settings.TimestampServer;
+        AzureRegion = settings.AzureSpeechRegion;
+        ColorScheme = (int)settings.ColorScheme;
+        PageTone = (int)settings.PageTone;
+        Toolbar = (int)settings.ToolbarStyle;
+        OpeningZoom = (int)settings.DefaultZoomMode;
+        FileChange = (int)settings.FileChangeAction;
+        Motion = (int)settings.Motion;
+        Caret = (int)settings.Caret;
+        FontSize = settings.InterfaceFontSizePoints is { } points ? Math.Max(0, Array.IndexOf(FontSizes, points)) : 0;
     }
 
-    /// <summary>Applies a change that affects more than one property, re-themes and saves.</summary>
-    /// <param name="change">The change.</param>
-    /// <param name="propertyName">The property that changed.</param>
-    /// <param name="otherPropertyName">Another property that follows from it.</param>
-    private void Update(Action change, string propertyName, string otherPropertyName)
+    /// <summary>Writes each later change of a choice to the settings, re-themes and saves.</summary>
+    private void Follow()
     {
-        Update(change, propertyName);
-        this.RaisePropertyChanged(otherPropertyName);
+        var settings = _services.Settings;
+        Follow(this.WhenChanged(static x => x.SpeechEngine), index =>
+        {
+            var clamped = Math.Clamp(index, 0, SpeechEngineChoices.Length - 1);
+            settings.SpeechEngine = SpeechEngineChoices[clamped];
+            if (clamped != index)
+            {
+                SpeechEngine = clamped;
+            }
+        });
+        Follow(this.WhenChanged(static x => x.AzureKey), key =>
+        {
+            var trimmed = key.Trim();
+            settings.AzureSpeechKey = trimmed;
+            AzureKey = trimmed;
+        });
+        Follow(this.WhenChanged(static x => x.TimestampServer), server =>
+        {
+            var trimmed = server.Trim();
+            settings.TimestampServer = trimmed;
+            TimestampServer = trimmed;
+        });
+        Follow(this.WhenChanged(static x => x.AzureRegion), region =>
+        {
+            var trimmed = region.Trim().ToLowerInvariant();
+            settings.AzureSpeechRegion = trimmed;
+            AzureRegion = trimmed;
+        });
+        Follow(this.WhenChanged(static x => x.ColorScheme), index => settings.ColorScheme = (ColorSchemeChoice)index);
+        Follow(this.WhenChanged(static x => x.PageTone), index =>
+        {
+            settings.PageTone = (PageToneChoice)index;
+            settings.PageToneEnabled = true;
+        });
+        Follow(this.WhenChanged(static x => x.Toolbar), index => settings.ToolbarStyle = (ToolbarStyle)index);
+        Follow(this.WhenChanged(static x => x.OpeningZoom), index =>
+        {
+            var clamped = Math.Clamp(index, 0, OpeningZoomOptions.Count - 1);
+            settings.DefaultZoomMode = (ZoomMode)clamped;
+            if (clamped != index)
+            {
+                OpeningZoom = clamped;
+            }
+        });
+        Follow(this.WhenChanged(static x => x.FileChange), index => settings.FileChangeAction = (FileChangeAction)index);
+        Follow(this.WhenChanged(static x => x.Motion), index => settings.Motion = (MotionPreference)index);
+        Follow(this.WhenChanged(static x => x.Caret), index => settings.Caret = (CaretPreference)index);
+        Follow(this.WhenChanged(static x => x.FontSize), index =>
+        {
+            var known = index > 0 && index < FontSizes.Length;
+            settings.InterfaceFontSizePoints = known ? FontSizes[index] : null;
+            if (!known && index != 0)
+            {
+                FontSize = 0;
+            }
+        });
     }
 
-    /// <summary>Applies a change, re-themes and saves.</summary>
-    /// <param name="change">The change.</param>
-    /// <param name="propertyName">The property that changed.</param>
-    private void Update(Action change, string propertyName)
-    {
-        change();
-        this.RaisePropertyChanged(propertyName);
-        _services.ApplySettings();
-    }
+    /// <summary>Applies each later value of a choice, then re-themes and saves.</summary>
+    /// <typeparam name="T">The value type.</typeparam>
+    /// <param name="source">The choice's changes; the first value is the loaded one and is skipped.</param>
+    /// <param name="change">Writes the value to the settings.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Follow<T>(IObservable<T> source, Action<T> change) =>
+        _subscriptions.Add(source.Skip(1).SubscribeSafe(
+            value =>
+            {
+                change(value);
+                _services.ApplySettings();
+            },
+            OnError));
 }

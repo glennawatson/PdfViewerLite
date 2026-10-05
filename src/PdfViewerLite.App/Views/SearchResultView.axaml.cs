@@ -4,10 +4,10 @@
 
 using System.Diagnostics;
 using System.Globalization;
-using Avalonia.Interactivity;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -15,27 +15,14 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{ViewModel}")]
 public sealed partial class SearchResultView : ReactiveUI.Avalonia.ReactiveUserControl<SearchResultItemViewModel>
 {
-    /// <summary>The bindings made while attached.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="SearchResultView"/> class.</summary>
-    public SearchResultView() => InitializeComponent();
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
+    public SearchResultView()
     {
-        base.OnLoaded(e);
+        InitializeComponent();
 
-        // A search result is immutable, so the view follows only which one it shows.
-        _bindings = [this.WhenAnyValue(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString()))];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
+        // A search result is an immutable record with no change notification, so OneWayBind cannot observe it.
+        // The view follows which one it shows instead.
+        _ = this.WhenActivated(disposables => disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString()))));
     }
 
     /// <summary>Shows a search result.</summary>

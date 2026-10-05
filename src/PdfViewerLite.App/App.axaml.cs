@@ -20,6 +20,7 @@ using PdfViewerLite.Core.Theming;
 using ReactiveUI;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App;
@@ -73,20 +74,6 @@ public sealed class App : Application
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
-    /// <summary>Hands a desktop palette to the services on the UI thread.</summary>
-    /// <param name="services">The services.</param>
-    /// <param name="palette">The palette.</param>
-    private static void OnPalette(AppServices services, DesktopPalette? palette)
-    {
-        if (Dispatcher.UIThread.CheckAccess())
-        {
-            services.SetDesktopPalette(palette);
-            return;
-        }
-
-        Dispatcher.UIThread.Post(static state => ((PaletteUpdate)state!).Apply(), new PaletteUpdate(services, palette));
-    }
-
     /// <summary>Starts once the lifetime is already running, so the main window is shown here.</summary>
     private void StartAndShow()
     {
@@ -119,7 +106,7 @@ public sealed class App : Application
         _lifetime.Add(services.Theme.SubscribeSafe(ApplyTheme, OnError));
         if (services.ThemeSource is { } themeSource)
         {
-            _lifetime.Add(themeSource.Palette.SubscribeSafe(palette => OnPalette(services, palette), OnError));
+            _lifetime.Add(themeSource.Palette.ObserveOn(RxSchedulers.MainThreadScheduler).SubscribeSafe(services.SetDesktopPalette, OnError));
         }
 
         if (Program.InstanceHost is { } host)
@@ -130,11 +117,7 @@ public sealed class App : Application
         // Documents opened from the Finder (or another app) on macOS arrive as activation events.
         if (TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime activatable)
         {
-            _lifetime.Add(Signal.FromEvent<EventHandler<ActivatedEventArgs>, ActivatedEventArgs>(
-                    static handler => (_, e) => handler(e),
-                    handler => activatable.Activated += handler,
-                    handler => activatable.Activated -= handler)
-                .SubscribeSafe(OnActivated, OnError));
+            _lifetime.Add(activatable.Events().Activated.SubscribeSafe(OnActivated, OnError));
         }
 
         if (!OperatingSystem.IsWindows())
@@ -143,7 +126,7 @@ public sealed class App : Application
             _lifetime.Add(PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
             {
                 context.Cancel = true;
-                Dispatcher.UIThread.Post(static state => ((IClassicDesktopStyleApplicationLifetime)state!).Shutdown(), desktop);
+                _lifetime.Add(Signal.Return(RxVoid.Default).ObserveOn(RxSchedulers.MainThreadScheduler).SubscribeSafe(_ => desktop.Shutdown(), OnError));
             }));
         }
 
@@ -195,15 +178,5 @@ public sealed class App : Application
 
         viewModel.Open(request.Uris);
         _window.BringToFront();
-    }
-
-    /// <summary>A desktop palette on its way to the UI thread.</summary>
-    /// <param name="Services">The services.</param>
-    /// <param name="Palette">The palette.</param>
-    private sealed record PaletteUpdate(AppServices Services, DesktopPalette? Palette)
-    {
-        /// <summary>Hands the palette to the services.</summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Apply() => Services.SetDesktopPalette(Palette);
     }
 }

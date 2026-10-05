@@ -6,12 +6,13 @@ using System.Diagnostics;
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using Avalonia.Interactivity;
 using Avalonia.Media;
+using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Signatures;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -25,34 +26,17 @@ public sealed partial class SignaturesWindow : ReactiveUI.Avalonia.ReactiveWindo
     /// <summary>The space below each signature.</summary>
     private const double EntryGap = 12;
 
-    /// <summary>The bindings made while open.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="SignaturesWindow"/> class.</summary>
     public SignaturesWindow()
     {
         InitializeComponent();
         SignatureList.ItemTemplate = new FuncDataTemplate<DocumentSignature>(static (signature, _) => CreateEntry(signature));
-    }
-
-    /// <inheritdoc/>
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        _bindings =
-        [
-            this.OneWayBind(ViewModel, static vm => vm.Signatures, static v => v.SignatureList.ItemsSource),
-            this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Signatures — {name}"),
-            CloseButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())),
-        ];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _bindings?.Dispose();
-        _bindings = null;
+        _ = this.WhenActivated(disposables =>
+        {
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Signatures, static v => v.SignatureList.ItemsSource));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Signatures — {name}"));
+            disposables.Add(CloseButton.ObserveRouted(Button.ClickEvent).SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
+        });
     }
 
     /// <summary>Creates the entry of one signature: who, when, why, and what the check found.</summary>

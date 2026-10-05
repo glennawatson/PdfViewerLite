@@ -7,7 +7,9 @@ using System.Diagnostics;
 using System.Globalization;
 using PdfViewerLite.Core.Attachments;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -16,7 +18,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// user picks, and never opened automatically, so nothing runs that the user did not choose to run.
 /// </summary>
 [DebuggerDisplay("{Items.Count} attachments")]
-public sealed class AttachmentsViewModel : ReactiveObject
+public sealed partial class AttachmentsViewModel : ReactiveObject
 {
     /// <summary>Bytes in a kilobyte.</summary>
     private const double Kilobyte = 1024;
@@ -27,36 +29,30 @@ public sealed class AttachmentsViewModel : ReactiveObject
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
 
+    /// <summary>Whether a file is selected, so it can be saved.</summary>
+    private readonly IObservable<bool> _canSave;
+
     /// <summary>Initializes a new instance of the <see cref="AttachmentsViewModel"/> class.</summary>
     /// <param name="owner">The owning tab.</param>
     public AttachmentsViewModel(DocumentTabViewModel owner)
     {
         _owner = owner;
-        SaveCommand = ReactiveCommand.CreateFromTask(SaveAsync, this.WhenAnyValue(static vm => vm.Selected).Select(static item => item is not null));
+        _canSave = this.WhenChanged(static vm => vm.Selected).Select(static item => item is not null);
     }
 
     /// <summary>Gets the embedded files.</summary>
     public ObservableCollection<DocumentAttachment> Items { get; } = [];
 
     /// <summary>Gets a value indicating whether the document has embedded files.</summary>
-    public bool HasAttachments
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool HasAttachments { get; private set; }
 
     /// <summary>Gets or sets the selected file.</summary>
-    public DocumentAttachment? Selected
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial DocumentAttachment? Selected { get; set; }
 
     /// <summary>Gets the interaction asking where to save a file; the input is the suggested name.</summary>
     public Interaction<string, string?> SaveInteraction { get; } = new();
-
-    /// <summary>Gets the command saving the selected file.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SaveCommand { get; }
 
     /// <summary>Describes a file size in words, for example "12 KB".</summary>
     /// <param name="bytes">The size in bytes.</param>
@@ -126,6 +122,7 @@ public sealed class AttachmentsViewModel : ReactiveObject
 
     /// <summary>Asks where to save the selected file, then saves it.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand(CanExecute = nameof(_canSave))]
     private async Task SaveAsync()
     {
         if (Selected is not { } attachment)

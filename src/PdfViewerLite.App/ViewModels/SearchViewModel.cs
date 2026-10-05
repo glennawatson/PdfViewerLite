@@ -8,14 +8,18 @@ using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Search;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
+using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.Signals;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>Find-in-document state: the query, incremental results and the current hit.</summary>
 [DebuggerDisplay("{Query}: {Results.Count}")]
-public sealed class SearchViewModel : ReactiveObject, IDisposable
+public sealed partial class SearchViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The number of characters of context shown on each side of a hit.</summary>
     private const int ContextLength = 32;
@@ -26,8 +30,8 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
 
-    /// <summary>The query subscription.</summary>
-    private readonly IDisposable _querySubscription;
+    /// <summary>Subscriptions following the query settings.</summary>
+    private readonly MultipleDisposable _subscriptions;
 
     /// <summary>Hits grouped by page, for highlighting.</summary>
     private readonly Dictionary<int, List<SearchHit>> _hitsByPage = [];
@@ -43,94 +47,58 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     public SearchViewModel(DocumentTabViewModel owner)
     {
         _owner = owner;
-        NextCommand = ReactiveCommand.Create(Next);
-        PreviousCommand = ReactiveCommand.Create(Previous);
-        CloseCommand = ReactiveCommand.Create(Close);
-        _querySubscription = this.WhenAnyValue(static x => x.Query, static x => x.MatchCase, static x => x.WholeWord)
-            .Throttle(TypingDelay, RxSchedulers.MainThreadScheduler)
-            .SubscribeSafe(_ => StartSearch(), OnSearchError);
+        HighlightChanges = new(_highlightChanges);
+        _subscriptions =
+        [
+            this.WhenChanged(static x => x.Query, static x => x.MatchCase, static x => x.WholeWord)
+                .Throttle(TypingDelay, RxSchedulers.MainThreadScheduler)
+                .SubscribeSafe(_ => StartSearch(), OnSearchError),
+            this.WhenChanged(static x => x.SelectedResult)
+                .Skip(1)
+                .SubscribeSafe(SelectResult, OnSearchError),
+        ];
     }
 
     /// <summary>Gets notifications that the highlights changed, so the canvas can repaint.</summary>
-    public IObservable<RxVoid> HighlightChanges => _highlightChanges;
+    public AsObservableSignal<RxVoid> HighlightChanges { get; }
 
     /// <summary>Gets or sets the query.</summary>
-    public string Query
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Query { get; set; } = string.Empty;
 
     /// <summary>Gets or sets a value indicating whether letter case must match.</summary>
-    public bool MatchCase
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool MatchCase { get; set; }
 
     /// <summary>Gets or sets a value indicating whether only whole words match.</summary>
-    public bool WholeWord
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool WholeWord { get; set; }
 
     /// <summary>Gets or sets a value indicating whether the search bar is open.</summary>
-    public bool IsOpen
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsOpen { get; set; }
 
     /// <summary>Gets a value indicating whether a search is running.</summary>
-    public bool IsSearching
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsSearching { get; private set; }
 
     /// <summary>Gets the status text, for example "3 of 12".</summary>
-    public string Status
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Status { get; private set; } = string.Empty;
 
     /// <summary>Gets the index of the current hit, or -1.</summary>
-    public int CurrentIndex
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = -1;
+    [Reactive]
+    public partial int CurrentIndex { get; private set; } = -1;
 
     /// <summary>Gets or sets the selected result in the sidebar list.</summary>
-    public SearchResultItemViewModel? SelectedResult
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            if (value is not null && value.Index != CurrentIndex)
-            {
-                MoveTo(value.Index);
-            }
-        }
-    }
+    [Reactive]
+    public partial SearchResultItemViewModel? SelectedResult { get; set; }
 
     /// <summary>Gets the results in search order.</summary>
     public ObservableCollection<SearchResultItemViewModel> Results { get; } = [];
 
     /// <summary>Gets the current hit, if any.</summary>
     public SearchHit? CurrentHit => CurrentIndex >= 0 && CurrentIndex < Results.Count ? Results[CurrentIndex].Hit : null;
-
-    /// <summary>Gets the command that moves to the next hit.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> NextCommand { get; }
-
-    /// <summary>Gets the command that moves to the previous hit.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PreviousCommand { get; }
-
-    /// <summary>Gets the command that closes the search bar.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> CloseCommand { get; }
 
     /// <summary>Gets the hits on a page.</summary>
     /// <param name="pageIndex">The page.</param>
@@ -143,6 +111,7 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     public void Open() => IsOpen = true;
 
     /// <summary>Closes the search bar and clears highlights.</summary>
+    [ReactiveCommand]
     public void Close()
     {
         IsOpen = false;
@@ -152,6 +121,7 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Moves to the next hit.</summary>
+    [ReactiveCommand]
     public void Next()
     {
         if (Results.Count > 0)
@@ -161,6 +131,7 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Moves to the previous hit.</summary>
+    [ReactiveCommand]
     public void Previous()
     {
         if (Results.Count > 0)
@@ -172,11 +143,8 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        _querySubscription.Dispose();
+        _subscriptions.Dispose();
         Cancel();
-        NextCommand.Dispose();
-        PreviousCommand.Dispose();
-        CloseCommand.Dispose();
         _highlightChanges.OnCompleted();
         _highlightChanges.Dispose();
     }
@@ -200,6 +168,16 @@ public sealed class SearchViewModel : ReactiveObject, IDisposable
         var end = Math.Min(document.GetCharacterCount(match.PageIndex), match.Start + match.Length + ContextLength);
         var text = document.GetText(match.PageIndex, start, end - start);
         return text.ReplaceLineEndings(" ").Trim();
+    }
+
+    /// <summary>Moves to the hit of a result the user picked in the sidebar list.</summary>
+    /// <param name="result">The selected result, or <see langword="null"/>.</param>
+    private void SelectResult(SearchResultItemViewModel? result)
+    {
+        if (result is not null && result.Index != CurrentIndex)
+        {
+            MoveTo(result.Index);
+        }
     }
 
     /// <summary>Selects a hit and scrolls to it.</summary>

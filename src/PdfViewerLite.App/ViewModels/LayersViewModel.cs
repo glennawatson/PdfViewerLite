@@ -4,8 +4,13 @@
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Documents;
 using ReactiveUI;
+using ReactiveUI.Binding;
+using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -14,13 +19,13 @@ namespace PdfViewerLite.App.ViewModels;
 /// and clearing it hides it, changing only how the pages look.
 /// </summary>
 [DebuggerDisplay("{Items.Count} layers")]
-public sealed class LayersViewModel : ReactiveObject
+public sealed partial class LayersViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
 
-    /// <summary>Set while the list is being filled, so filling it does not count as the user changing layers.</summary>
-    private bool _refreshing;
+    /// <summary>Follows each listed layer's check box; replaced when the list is refilled.</summary>
+    private readonly SingleReplaceableDisposable _itemChanges = new();
 
     /// <summary>Initializes a new instance of the <see cref="LayersViewModel"/> class.</summary>
     /// <param name="owner">The owning tab.</param>
@@ -30,32 +35,29 @@ public sealed class LayersViewModel : ReactiveObject
     public ObservableCollection<LayerItemViewModel> Items { get; } = [];
 
     /// <summary>Gets a value indicating whether the document has layers.</summary>
-    public bool HasLayers
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool HasLayers { get; private set; }
 
     /// <summary>Lists the document's layers; called when the document loads.</summary>
     public void Refresh()
     {
-        _refreshing = true;
-        try
+        Items.Clear();
+        MultipleDisposable itemChanges = [];
+        if (_owner.TryGetDocument() is ILayerSource source)
         {
-            Items.Clear();
-            if (_owner.TryGetDocument() is ILayerSource source)
+            foreach (var layer in source.GetLayers())
             {
-                foreach (var layer in source.GetLayers())
-                {
-                    Items.Add(new(this, layer.Id, layer.Name, layer.IsVisible));
-                }
+                var item = new LayerItemViewModel(layer.Id, layer.Name, layer.IsVisible);
+                Items.Add(item);
+
+                // The first value is the layer's current state, which the document already has.
+                itemChanges.Add(item.WhenChanged(static x => x.IsVisible)
+                    .Skip(1)
+                    .SubscribeSafe(visible => SetVisible(item, visible), static error => Trace.TraceError(error.ToString())));
             }
         }
-        finally
-        {
-            _refreshing = false;
-        }
 
+        _itemChanges.Create(itemChanges);
         HasLayers = Items.Count > 0;
         if (!HasLayers && _owner.IsLayersMode)
         {
@@ -63,17 +65,16 @@ public sealed class LayersViewModel : ReactiveObject
         }
     }
 
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Dispose() => _itemChanges.Dispose();
+
     /// <summary>Shows or hides a layer and redraws the pages.</summary>
     /// <param name="item">The layer.</param>
     /// <param name="visible">Whether to show it.</param>
-    internal void SetVisible(LayerItemViewModel item, bool visible)
+    private void SetVisible(LayerItemViewModel item, bool visible)
     {
-        if (_refreshing || _owner.TryGetDocument() is not ILayerSource source)
-        {
-            return;
-        }
-
-        if (source.SetLayerVisible(item.Id, visible))
+        if (_owner.TryGetDocument() is ILayerSource source && source.SetLayerVisible(item.Id, visible))
         {
             _owner.OnLayersChanged();
         }

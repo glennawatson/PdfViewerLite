@@ -13,13 +13,15 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Attachments;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Views;
@@ -37,9 +39,6 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
     private const uint OpaqueAlpha = 0xFF000000U;
 
-    /// <summary>The bindings made while attached.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="DocumentView"/> class.</summary>
     public DocumentView()
     {
@@ -55,6 +54,18 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         SingleLayoutItem.CommandParameter = "Single";
         DualLayoutItem.CommandParameter = "Dual";
         CoverLayoutItem.CommandParameter = "DualCover";
+        _ = this.WhenActivated(disposables =>
+        {
+            BindToolBar(disposables);
+            BindAnnotationTools(disposables);
+            BindBars(disposables);
+            BindFind(disposables);
+            BindSidebar(disposables);
+            BindPages(disposables);
+            BindWindowCommands(disposables);
+            BindFieldEditor(disposables);
+            disposables.Add(OnMainThread().SubscribeSafe(_ => FocusCanvas(), OnError));
+        });
     }
 
     /// <summary>Focuses the page box.</summary>
@@ -69,54 +80,15 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string GetSelectedText() => Canvas.GetSelectedText();
 
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-        BindViewModel();
-        Dispatcher.UIThread.Post(FocusControl, Canvas, DispatcherPriority.Loaded);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        base.OnPropertyChanged(change);
-        if (change.Property == ViewModelProperty && IsLoaded)
-        {
-            BindViewModel();
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
-    }
-
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
-    /// <summary>Focuses a control passed as dispatcher state.</summary>
-    /// <param name="state">The control.</param>
+    /// <summary>Creates a signal that fires once, later on the main thread, after the current UI work.</summary>
+    /// <returns>The signal.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void FocusControl(object? state) => (state as Control)?.Focus();
-
-    /// <summary>Focuses a text box passed as dispatcher state and selects its text.</summary>
-    /// <param name="state">The text box.</param>
-    private static void FocusAndSelect(object? state)
-    {
-        if (state is not TextBox box)
-        {
-            return;
-        }
-
-        _ = box.Focus();
-        box.SelectAll();
-    }
+    private static IObservable<RxVoid> OnMainThread() => Signal.Return(RxVoid.Default).ObserveOn(RxSchedulers.MainThreadScheduler);
 
     /// <summary>Converts a nullable toggle state to a plain flag.</summary>
     /// <param name="value">The toggle state.</param>
@@ -143,21 +115,39 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <returns>The presses.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static IObservable<RxVoid> KeyPresses(Control control, Key key, KeyModifiers modifiers) =>
-        control.GetObservable(KeyDownEvent, RoutingStrategies.Bubble).Where(args => args.Key == key && args.KeyModifiers == modifiers).Select(static _ => RxVoid.Default);
+        control.Events().KeyDown.Where(args => args.Key == key && args.KeyModifiers == modifiers).Select(static _ => RxVoid.Default);
 
-    /// <summary>Registers commands and interactions for the tab shown by the recycled document view.</summary>
-    private void BindViewModel()
+    /// <summary>Creates a stream of the selections made in a list box.</summary>
+    /// <param name="list">The list box.</param>
+    /// <returns>The list box, each time its selection changes.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<ListBox> Selections(ListBox list) => list.Events().SelectionChanged.Select(_ => list);
+
+    /// <summary>Creates a stream of the context menu requests in a control.</summary>
+    /// <param name="control">The control.</param>
+    /// <returns>The requests.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<ContextRequestedEventArgs> ContextRequests(Control control) => control.Events().ContextRequested;
+
+    /// <summary>Creates a stream that fires when a control loses focus.</summary>
+    /// <param name="control">The control.</param>
+    /// <returns>The events.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<RoutedEventArgs> FocusLosses(Control control) => control.Events().LostFocus;
+
+    /// <summary>Focuses the page canvas.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FocusCanvas() => _ = Canvas.Focus();
+
+    /// <summary>Focuses the find box.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FocusSearchBox() => _ = SearchBox.Focus();
+
+    /// <summary>Focuses the form field editor and selects its text.</summary>
+    private void FocusFieldEditor()
     {
-        _bindings?.Dispose();
-        _bindings = [];
-        BindToolBar(_bindings);
-        BindAnnotationTools(_bindings);
-        BindBars(_bindings);
-        BindFind(_bindings);
-        BindSidebar(_bindings);
-        BindPages(_bindings);
-        BindWindowCommands(_bindings);
-        BindFieldEditor(_bindings);
+        _ = FieldEditor.Focus();
+        FieldEditor.SelectAll();
     }
 
     /// <summary>Binds the main tool bar.</summary>
@@ -335,9 +325,10 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(KeyPresses(SearchBox, Key.Enter, KeyModifiers.None).InvokeCommand(ViewModel, static vm => vm.Search.NextCommand));
         bindings.Add(KeyPresses(SearchBox, Key.Enter, KeyModifiers.Shift).InvokeCommand(ViewModel, static vm => vm.Search.PreviousCommand));
         bindings.Add(KeyPresses(SearchBox, Key.Escape, KeyModifiers.None).InvokeCommand(ViewModel, static vm => vm.Search.CloseCommand));
-        bindings.Add(this.WhenAnyValue(static v => v.ViewModel!.Search.IsOpen)
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Search.IsOpen)
             .Where(static open => open)
-            .SubscribeSafe(_ => Dispatcher.UIThread.Post(FocusControl, SearchBox, DispatcherPriority.Loaded), OnError));
+            .SelectMany(static _ => OnMainThread())
+            .SubscribeSafe(_ => FocusSearchBox(), OnError));
     }
 
     /// <summary>Binds the sidebar panels.</summary>
@@ -374,12 +365,18 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsSearchMode, static v => v.SearchResultList.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Search.Results, static v => v.SearchResultList.ItemsSource));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Search.SelectedResult, static v => v.SearchResultList.SelectedItem, static item => item, static item => item as SearchResultItemViewModel));
-        bindings.Add(AnnotationList.GetObservable(SelectingItemsControl.SelectionChangedEvent, RoutingStrategies.Bubble)
-            .Select(_ => AnnotationList.SelectedItem as AnnotationItemViewModel)
-            .Where(static item => item is not null)
-            .InvokeCommand(ViewModel, static vm => vm.Annotations.GoToCommand));
-        bindings.Add(AnnotationList.GetObservable(ContextRequestedEvent, RoutingStrategies.Bubble).SubscribeSafe(OnAnnotationContextRequested, OnError));
-        bindings.Add(ThumbnailList.GetObservable(ScrollViewer.ScrollChangedEvent, RoutingStrategies.Bubble)
+
+        // Events() cannot see the controls the XAML name generator declares, so the streams come from typed parameters.
+        if (ViewModel is { } tab)
+        {
+            bindings.Add(Selections(AnnotationList)
+                .Select(static list => list.SelectedItem as AnnotationItemViewModel)
+                .Where(static item => item is not null)
+                .InvokeCommand(tab.Annotations.GoToCommand));
+        }
+
+        bindings.Add(ContextRequests(AnnotationList).SubscribeSafe(OnAnnotationContextRequested, OnError));
+        bindings.Add(ThumbnailList.ObserveRouted(ScrollViewer.ScrollChangedEvent, RoutingStrategies.Bubble, handledEventsToo: true)
             .Where(static args => args.OffsetDelta.Y != 0)
             .SubscribeSafe(_ => OnThumbnailsScrolled(), OnError));
     }
@@ -388,8 +385,8 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <param name="bindings">The bindings.</param>
     private void BindPages(MultipleDisposable bindings)
     {
-        bindings.Add(this.WhenAnyValue(static v => v.ViewModel).BindTo(this, static v => v.Canvas.Tab));
-        bindings.Add(this.WhenAnyObservable(static v => v.ViewModel!.UriRequests).SubscribeSafe(OpenUri, OnError));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel).BindTo(this, static v => v.Canvas.Tab));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.UriRequests).SwitchTo().SubscribeSafe(OpenUri, OnError));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ErrorMessage, static v => v.ErrorText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ErrorMessage, static v => v.ErrorPanel.IsVisible, static message => message is not null));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.NeedsPassword, static v => v.PasswordPanel.IsVisible));
@@ -407,13 +404,9 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
             return;
         }
 
-        bindings.Add(window.WhenAnyValue(static w => w.ViewModel).SubscribeSafe(
-            main =>
-            {
-                ShowInFolderItem.Command = main?.ShowInFolderCommand;
-                PropertiesItem.Command = main?.PropertiesCommand;
-            },
-            OnError));
+        // The commands belong to the window's view model, not this view's, so OneWayBind cannot express them.
+        bindings.Add(window.WhenChanged(static w => w.ViewModel!.ShowInFolderCommand).BindTo(this, static v => v.ShowInFolderItem.Command));
+        bindings.Add(window.WhenChanged(static w => w.ViewModel!.PropertiesCommand).BindTo(this, static v => v.PropertiesItem.Command));
     }
 
     /// <summary>Binds the editor placed over the text field being filled in.</summary>
@@ -421,13 +414,13 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     private void BindFieldEditor(MultipleDisposable bindings)
     {
         bindings.Add(this.Bind(ViewModel, static vm => vm.Forms.EditText, static v => v.FieldEditor.Text, static text => text, static text => text ?? string.Empty));
-        bindings.Add(this.WhenAnyValue(static v => v.ViewModel!.Forms.Editing).SubscribeSafe(ShowFieldEditor, OnError));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Forms.Editing).SubscribeSafe(ShowFieldEditor, OnError));
         bindings.Add(KeyPresses(FieldEditor, Key.Escape, KeyModifiers.None).SubscribeSafe(_ => ViewModel?.Forms.Cancel(), OnError));
-        bindings.Add(FieldEditor.GetObservable(KeyDownEvent, RoutingStrategies.Tunnel).Where(static args => args.Key == Key.Tab).SubscribeSafe(OnFieldTab, OnError));
+        bindings.Add(FieldEditor.ObserveRouted(InputElement.KeyDownEvent, RoutingStrategies.Tunnel).Where(static args => args.Key == Key.Tab).SubscribeSafe(OnFieldTab, OnError));
         bindings.Add(KeyPresses(FieldEditor, Key.Enter, KeyModifiers.None)
             .Where(_ => ViewModel?.Forms.Editing is { IsMultiline: false })
             .SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
-        bindings.Add(FieldEditor.GetObservable(LostFocusEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
+        bindings.Add(FocusLosses(FieldEditor).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
     }
 
     /// <summary>Places the editor over a field and focuses it, or hides it.</summary>
@@ -450,7 +443,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         Avalonia.Automation.AutomationProperties.SetName(FieldEditor, string.IsNullOrWhiteSpace(field.Name) ? "Form field" : field.Name);
         FieldEditor.FontSize = Math.Max(MinFieldFontSize, rect.Height * FieldFontShare);
         FieldEditor.IsVisible = true;
-        Dispatcher.UIThread.Post(FocusAndSelect, FieldEditor, DispatcherPriority.Loaded);
+        _ = OnMainThread().SubscribeSafe(_ => FocusFieldEditor(), OnError);
     }
 
     /// <summary>Moves to the next text field on Tab.</summary>
@@ -485,7 +478,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
             return;
         }
 
-        context.SetOutput(await new PromptWindow { ViewModel = context.Input }.ShowDialog<string?>(owner));
+        context.SetOutput(await new PromptWindow { ViewModel = new(context.Input) }.ShowDialog<string?>(owner));
     }
 
     /// <summary>Asks where to save a copy, through the desktop's save dialog.</summary>

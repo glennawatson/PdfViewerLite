@@ -3,18 +3,18 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Interactivity;
+using System.Runtime.CompilerServices;
+using Avalonia.Media;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Asks for some text, for example a note; closes with the text, or <see langword="null"/> when cancelled.</summary>
 [DebuggerDisplay("{Title}")]
-public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<TextPrompt>
+public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<PromptViewModel>
 {
     /// <summary>The height of a multi-line text box.</summary>
     private const double MultilineHeight = 96;
@@ -22,53 +22,47 @@ public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<Te
     /// <summary>The height of a single line text box.</summary>
     private const double SingleLineHeight = 32;
 
-    /// <summary>The button subscriptions.</summary>
-    private readonly MultipleDisposable _buttons;
-
     /// <summary>Initializes a new instance of the <see cref="PromptWindow"/> class.</summary>
     public PromptWindow()
     {
         InitializeComponent();
-        _buttons =
-        [
-            ConfirmButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(InputBox.Text ?? string.Empty), static error => Trace.TraceError(error.ToString())),
-            CancelButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(null), static error => Trace.TraceError(error.ToString())),
-        ];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        ArgumentNullException.ThrowIfNull(change);
-        base.OnPropertyChanged(change);
-        if (change.Property != ViewModelProperty || ViewModel is not { } request)
+        _ = this.WhenActivated(disposables =>
         {
-            return;
-        }
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.Title));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Label, static v => v.LabelText.Text));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Text, static v => v.InputBox.Text, static text => text, static text => text ?? string.Empty));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Multiline, static v => v.InputBox.AcceptsReturn));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Multiline, static v => v.InputBox.TextWrapping, Wrapping));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Multiline, static v => v.InputBox.MinHeight, BoxHeight));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.AcceptText, static v => v.ConfirmButton.Content));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Multiline, static v => v.ConfirmButton.IsDefault, IsSingleLine));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.AcceptCommand, static v => v.ConfirmButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CancelCommand, static v => v.CancelButton));
+            if (ViewModel is { } viewModel)
+            {
+                disposables.Add(viewModel.Answered.SubscribeSafe(Close, static error => Trace.TraceError(error.ToString())));
+            }
 
-        // The request is immutable, so it is shown once rather than bound.
-        Title = request.Title;
-        LabelText.Text = request.Label;
-        InputBox.Text = request.Text;
-        InputBox.AcceptsReturn = request.Multiline;
-        InputBox.TextWrapping = request.Multiline ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap;
-        InputBox.MinHeight = request.Multiline ? MultilineHeight : SingleLineHeight;
-        ConfirmButton.Content = request.AcceptText;
-        ConfirmButton.IsDefault = !request.Multiline;
+            _ = InputBox.Focus();
+            InputBox.SelectAll();
+        });
     }
 
-    /// <inheritdoc/>
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        _ = InputBox.Focus();
-        InputBox.SelectAll();
-    }
+    /// <summary>Gets the text wrapping for a text box.</summary>
+    /// <param name="multiline">Whether line breaks are allowed.</param>
+    /// <returns>Wrapping for multi-line boxes, none otherwise.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static TextWrapping Wrapping(bool multiline) => multiline ? TextWrapping.Wrap : TextWrapping.NoWrap;
 
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _buttons.Dispose();
-    }
+    /// <summary>Gets the minimum height of the text box.</summary>
+    /// <param name="multiline">Whether line breaks are allowed.</param>
+    /// <returns>The height.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static double BoxHeight(bool multiline) => multiline ? MultilineHeight : SingleLineHeight;
+
+    /// <summary>Inverts the multi-line flag.</summary>
+    /// <param name="multiline">Whether line breaks are allowed.</param>
+    /// <returns><see langword="true"/> when the box is single line.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsSingleLine(bool multiline) => !multiline;
 }

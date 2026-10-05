@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using PdfViewerLite.Core.Documents;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Core.Rendering;
@@ -69,6 +70,7 @@ public sealed class RenderScheduler : IDisposable
         _surfaceFactory = surfaceFactory;
         _thread = new(Run) { IsBackground = true, Name = "PdfViewerLite render" };
         _thread.Start();
+        Completed = new(_completed);
     }
 
     /// <summary>
@@ -76,7 +78,7 @@ public sealed class RenderScheduler : IDisposable
     /// <see cref="TryTakeCompleted"/>. Bursts are coalesced: one notification covers every tile finished before the next
     /// drain starts.
     /// </summary>
-    public IObservable<RxVoid> Completed => _completed;
+    public AsObservableSignal<RxVoid> Completed { get; }
 
     /// <summary>Gets the number of queued requests, including stale ones not yet discarded.</summary>
     public int QueueLength
