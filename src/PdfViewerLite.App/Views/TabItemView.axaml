@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:PdfViewerLite.App.Views"
              xmlns:controls="using:PdfViewerLite.App.Controls"
              x:Class="PdfViewerLite.App.Views.TabItemView"
              ToolTip.ShowDelay="600" ToolTip.Placement="Bottom">
@@ -13,7 +14,7 @@
     </StackPanel>
   </ToolTip.Tip>
   <DockPanel Background="Transparent">
-    <Button AutomationProperties.Name="Close tab" x:Name="CloseButton" DockPanel.Dock="Right" Classes="tabclose" ToolTip.Tip="Close (Ctrl+W)">
+    <Button AutomationProperties.Name="Close tab" x:Name="CloseButton" views:ControlHelp.Text="{x:Static views:Descriptions.CloseTab}" DockPanel.Dock="Right" Classes="tabclose">
       <Path Classes="icon remove" Data="{StaticResource IconClose}" />
     </Button>
     <!-- A steady dot marks unsaved annotations or form entries; it never blinks. -->

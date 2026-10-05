@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:PdfViewerLite.App.Views"
         x:Class="PdfViewerLite.App.Views.PreferencesWindow"
         Title="Preferences"
         Width="520" SizeToContent="Height" CanResize="False" WindowStartupLocation="CenterOwner"
@@ -10,36 +11,36 @@
                Text="Changes apply straight away and are kept for next time." />
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Colour scheme" />
-      <ComboBox AutomationProperties.Name="Colour scheme" x:Name="SchemeBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Colour scheme" x:Name="SchemeBox" views:ControlHelp.Text="{x:Static views:Descriptions.ColourScheme}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="PDF page colour" />
-      <ComboBox AutomationProperties.Name="PDF page colour" x:Name="PageToneBox" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" ToolTip.Tip="Changes the pages on screen. Printed pages keep their document colours." />
+      <ComboBox AutomationProperties.Name="PDF page colour" x:Name="PageToneBox" views:ControlHelp.Text="{x:Static views:Descriptions.PageColour}" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Tool bar" />
-      <ComboBox AutomationProperties.Name="Tool bar" x:Name="ToolbarBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Tool bar" x:Name="ToolbarBox" views:ControlHelp.Text="{x:Static views:Descriptions.ToolbarStyle}" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="When a file changes on disk" />
-      <ComboBox AutomationProperties.Name="When a file changes on disk" x:Name="FileChangeBox" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="When a file changes on disk" x:Name="FileChangeBox" views:ControlHelp.Text="{x:Static views:Descriptions.FileChange}" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Motion" />
-      <ComboBox AutomationProperties.Name="Motion" x:Name="MotionBox" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Motion" x:Name="MotionBox" views:ControlHelp.Text="{x:Static views:Descriptions.Motion}" Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Text cursor" />
-      <ComboBox AutomationProperties.Name="Text cursor" x:Name="CaretBox" Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Text cursor" x:Name="CaretBox" views:ControlHelp.Text="{x:Static views:Descriptions.TextCursor}" Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Interface text size" />
-      <ComboBox AutomationProperties.Name="Interface text size" x:Name="FontSizeBox" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Interface text size" x:Name="FontSizeBox" views:ControlHelp.Text="{x:Static views:Descriptions.InterfaceTextSize}" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock Grid.Row="7" VerticalAlignment="Center" Text="Opening zoom" />
-      <ComboBox AutomationProperties.Name="Opening zoom" x:Name="OpeningZoomBox" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Stretch" ToolTip.Tip="Used for new documents. Fit page shows the whole page. Fit width fills the available width." />
+      <ComboBox AutomationProperties.Name="Opening zoom" x:Name="OpeningZoomBox" views:ControlHelp.Text="{x:Static views:Descriptions.OpeningZoom}" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Stretch" />
     </Grid>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Read Aloud voice" />
-      <ComboBox AutomationProperties.Name="Read Aloud voice" x:Name="SpeechEngineBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <ComboBox AutomationProperties.Name="Read Aloud voice" x:Name="SpeechEngineBox" views:ControlHelp.Text="{x:Static views:Descriptions.SpeechEngine}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock x:Name="AzureKeyLabel" Grid.Row="1" VerticalAlignment="Center" Text="Azure Speech key" />
-      <TextBox AutomationProperties.Name="Azure Speech key" x:Name="AzureKeyBox" Grid.Row="1" Grid.Column="1" PasswordChar="•" PlaceholderText="Key 1 or Key 2 from your Speech resource" />
+      <TextBox AutomationProperties.Name="Azure Speech key" x:Name="AzureKeyBox" views:ControlHelp.Text="{x:Static views:Descriptions.AzureKey}" Grid.Row="1" Grid.Column="1" PasswordChar="•" PlaceholderText="Key 1 or Key 2 from your Speech resource" />
       <TextBlock x:Name="AzureRegionLabel" Grid.Row="2" VerticalAlignment="Center" Text="Azure region" />
-      <TextBox AutomationProperties.Name="Azure region" x:Name="AzureRegionBox" Grid.Row="2" Grid.Column="1" PlaceholderText="For example uksouth or eastus" />
+      <TextBox AutomationProperties.Name="Azure region" x:Name="AzureRegionBox" views:ControlHelp.Text="{x:Static views:Descriptions.AzureRegion}" Grid.Row="2" Grid.Column="1" PlaceholderText="For example uksouth or eastus" />
       <TextBlock x:Name="SpeechNote" Grid.Row="3" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" />
     </Grid>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Timestamp server" />
-      <TextBox AutomationProperties.Name="Timestamp server" x:Name="TimestampServerBox" Grid.Row="0" Grid.Column="1" PlaceholderText="Optional, for example http://timestamp.digicert.com" />
+      <TextBox AutomationProperties.Name="Timestamp server" x:Name="TimestampServerBox" views:ControlHelp.Text="{x:Static views:Descriptions.TimestampServer}" Grid.Row="0" Grid.Column="1" PlaceholderText="Optional, for example http://timestamp.digicert.com" />
       <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" Text="When signing with a certificate, a timestamp server records a trusted signing time, so the signature stays valid after the certificate expires. Only a fingerprint of the signature is sent." />
     </Grid>
-    <Button x:Name="CloseButton" HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" />
+    <Button x:Name="CloseButton" views:ControlHelp.Text="{x:Static views:Descriptions.ClosePreferences}" HorizontalAlignment="Right" Content="Close" IsDefault="True" IsCancel="True" />
   </StackPanel>
 </Window>
