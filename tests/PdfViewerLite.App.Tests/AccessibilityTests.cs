@@ -151,6 +151,10 @@ public sealed class AccessibilityTests
         try
         {
             var view = await FindDocumentViewAsync(window);
+
+            // Back is only enabled, and so only reachable, once there is a jump to return from.
+            main.SelectedTab!.GoToPage(1);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             var visited = new List<Avalonia.Input.IInputElement>();
             for (var step = 0; step < MaxTabStops; step++)
             {
