@@ -74,6 +74,15 @@
       "automerge": true
     },
     {
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["glennawatson/actions-common"],
+      "groupName": "shared actions",
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "platformAutomerge": false
+    },
+    {
       "matchDatasources": ["docker"],
       "matchPackageNames": ["/^ghcr\\.io\\/reactiveui\\//"],
       "matchUpdateTypes": ["digest", "pin", "pinDigest"],
