@@ -238,53 +238,39 @@ internal static partial class MsiBuilder
         }
 
         _ = Directory.CreateDirectory(cabStaging);
-
         var allFiles = Directory.GetFiles(source, "*", SearchOption.AllDirectories);
         Array.Sort(allFiles, StringComparer.OrdinalIgnoreCase);
-
         var licenseFile = Path.Combine(root, LicenseFileName);
         var hasLicense = File.Exists(licenseFile);
-
-        var ddfPath = Path.Combine(cabStaging, "files.ddf");
-        var ddf = new StringBuilder();
-        _ = ddf.AppendLine(".OPTION EXPLICIT");
-        _ = ddf.AppendLine($".Set DiskDirectoryTemplate={cabStaging}\\");
-        _ = ddf.AppendLine(".Set CabinetNameTemplate=app.cab");
-        _ = ddf.AppendLine(".Set MaxDiskSize=CDROM");
-        _ = ddf.AppendLine(".Set Cabinet=on");
-        _ = ddf.AppendLine(".Set Compress=on");
-
         var entries = new List<(string FileKey, string SourcePath, string RelativePath, string FileName, long FileSize)>();
         const string exeFileKey = "fil_pdfviewerlite.exe";
-
         for (var index = 0; index < allFiles.Length; index++)
         {
             var filePath = allFiles[index];
             var relativePath = Path.GetRelativePath(source, filePath);
             var fileName = Path.GetFileName(filePath);
-            var fileKey = string.Equals(fileName, "pdfviewerlite.exe", StringComparison.OrdinalIgnoreCase)
-                ? exeFileKey
-                : $"fil_{index}";
-
+            var fileKey = string.Equals(fileName, "pdfviewerlite.exe", StringComparison.OrdinalIgnoreCase) ? exeFileKey : $"fil_{index}";
             var info = new FileInfo(filePath);
             entries.Add((fileKey, filePath, relativePath, fileName, info.Length));
-            _ = ddf.AppendLine($"\"{filePath}\" \"{fileKey}\"");
         }
 
         if (hasLicense)
         {
             var info = new FileInfo(licenseFile);
             entries.Add(("fil_license", licenseFile, LicenseFileName, LicenseFileName, info.Length));
-            _ = ddf.AppendLine($"\"{licenseFile}\" \"fil_license\"");
         }
 
-        File.WriteAllText(ddfPath, ddf.ToString(), Encoding.ASCII);
-        BuildTools.Run("makecab.exe", "/F", ddfPath);
+        var cabinetFiles = new List<(string Name, string Path)>(entries.Count);
+        foreach (var entry in entries)
+        {
+            cabinetFiles.Add((entry.FileKey, entry.SourcePath));
+        }
 
+        CabinetWriter.Build(cabinetFiles, Path.Combine(cabStaging, "app.cab"));
         var cabPath = Path.Combine(cabStaging, "app.cab");
         if (!File.Exists(cabPath))
         {
-            throw new FileNotFoundException("makecab failed to produce app.cab.");
+            throw new FileNotFoundException("The cabinet writer did not produce app.cab.");
         }
 
         return (entries, cabPath);

@@ -46,14 +46,14 @@ jobs:
         ref: ${{ inputs.sourceRef }}
         fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
     - name: Resolve built commit SHA
       id: sourcesha
-      uses: glennawatson/actions-common/.github/actions/run-csharp@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         shared-script: resolve-built-commit-sha-c775df1621.cs
     - name: Validate version inputs
@@ -61,13 +61,13 @@ jobs:
         BUMP: ${{ inputs.bump }}
         PRE_RELEASE: ${{ inputs.preRelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         shared-script: validate-version-inputs-2aad3ac3e2.cs
     - name: Compute version and tag
       if: inputs.bump != '(pick one)' && inputs.versionOverride == ''
       id: bump
-      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         bump: ${{ inputs.bump }}
         tag-prefix: ''
@@ -79,12 +79,12 @@ jobs:
         BUMP_TAG: ${{ steps.bump.outputs.tag }}
         BUMP_PRERELEASE: ${{ steps.bump.outputs.prerelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         shared-script: resolve-release-tag-d98a6a5208.cs
     - name: Stamp version with MinVer
       id: minver
-      uses: glennawatson/actions-common/.github/actions/minver@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/minver@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         tag-prefix: ''
         version-override: ${{ inputs.versionOverride != '' && inputs.versionOverride || steps.bump.outputs.version }}
@@ -101,15 +101,17 @@ jobs:
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
+    - name: Build release tools
+      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Publish Windows Native AOT
-      run: dotnet run --file tools/packaging/publish.cs -- win-x64 ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish win-x64 ${{ needs.version.outputs.semver2 }}
     - name: Package Windows (MSIX, MSI, ZIP)
-      run: dotnet run --file tools/packaging/windows.cs -- win-x64 ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package windows win-x64 ${{ needs.version.outputs.semver2 }}
     - name: Upload unsigned Windows packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -133,6 +135,7 @@ jobs:
       image: ghcr.io/reactiveui/certum-signer:latest@sha256:a609cf99c5bdb673fa7b1e48c2dd6c3b0a559377a0278f673889f3b2f4ebe6ce
       options: --volume /home/runner/work/_actions:/home/runner/work/_actions:ro
     env:
+      PKCS11_PROVIDER: /usr/lib/x86_64-linux-gnu/ossl-modules/pkcs11prov.so
       CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
       CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
       CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
@@ -141,17 +144,28 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
+    - name: Build release tools
+      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Download all release packages
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
         pattern: unsigned-*
         merge-multiple: true
         path: signed
-    - name: Sign and verify all assets with Certum SimplySign
-      uses: glennawatson/actions-common/.github/actions/certum-sign@6733191524ed33a2633e0f24b9c2601e44069715 # main
+    - name: Connect SimplySign
+      uses: glennawatson/actions-common/.github/actions/certum-connect@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+    - name: Sign and verify Windows payloads and installers
+      id: authenticode
+      uses: glennawatson/actions-common/.github/actions/sign-authenticode@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
+        tools-assembly: artifacts/tools/PdfViewerLite.Tools.dll
         packages-glob: 'signed/*'
-        signing-script: tools/signing/sign-all.cs
+    - name: Sign and verify detached archive signatures
+      uses: glennawatson/actions-common/.github/actions/sign-detached@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      with:
+        tools-assembly: artifacts/tools/PdfViewerLite.Tools.dll
+        packages-glob: 'signed/*'
+        certificate-source: ${{ steps.authenticode.outputs.certificate-source }}
     - name: Upload verified release assets
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -179,15 +193,17 @@ jobs:
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
+    - name: Build release tools
+      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Publish Linux Native AOT
-      run: dotnet run --file tools/packaging/publish.cs -- ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
     - name: Package Linux (AppImage, DEB, RPM, tar.gz)
-      run: dotnet run --file tools/packaging/linux.cs -- ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package linux ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
     - name: Upload Linux packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -211,15 +227,17 @@ jobs:
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
+    - name: Build release tools
+      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Publish macOS Native AOT
-      run: dotnet run --file tools/packaging/publish.cs -- osx-arm64 ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish osx-arm64 ${{ needs.version.outputs.semver2 }}
     - name: Package macOS (.app, DMG, ZIP)
-      run: dotnet run --file tools/packaging/macos.cs -- osx-arm64 ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package macos osx-arm64 ${{ needs.version.outputs.semver2 }}
     - name: Upload macOS packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -242,24 +260,24 @@ jobs:
         ref: ${{ needs.version.outputs.sourceSha }}
         fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@6733191524ed33a2633e0f24b9c2601e44069715 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
+    - name: Build release tools
+      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Download signed release assets
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
         name: signed-release-assets
         path: release-assets
-    - name: Install GitReleaseNoteGenerator
-      run: dotnet tool install -g GitReleaseNoteGenerator
     - name: Generate release notes
       env:
         GITHUB_TOKEN: ${{ github.token }}
         RELEASE_VERSION: ${{ needs.version.outputs.semver2 }}
         SOURCE_SHA: ${{ needs.version.outputs.sourceSha }}
-      run: dotnet run --file tools/packaging/release-notes.cs -- "$RELEASE_VERSION" "$SOURCE_SHA" release-notes.md
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll release-notes "$RELEASE_VERSION" "$SOURCE_SHA" release-notes.md
     - name: Create GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}

@@ -17,7 +17,7 @@ fi
 app=$(realpath "$1")
 minimum=${2:-25}
 here=$(cd "$(dirname "$0")" && pwd)
-tools="$here/../tools/accessibility"
+tools="$here/../tools/PdfViewerLite.Tools"
 work=$(mktemp -d)
 pids=()
 cleanup() {
@@ -55,8 +55,8 @@ export XDG_CONFIG_HOME="$work/config" XDG_DATA_HOME="$work/data" XDG_STATE_HOME=
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
 
 # Build the walker before starting the timed accessibility check.
-dotnet build "$tools/atspi-walk.cs" --nologo
-dotnet run --file "$tools/create-check-pdf.cs" -- "$work/check.pdf"
+dotnet publish "$tools/PdfViewerLite.Tools.csproj" -c Release --self-contained false -o "$work/tools"
+dotnet "$work/tools/PdfViewerLite.Tools.dll" accessibility create-check-pdf "$work/check.pdf"
 
 launcher=$(command -v at-spi-bus-launcher || echo /usr/libexec/at-spi-bus-launcher)
 "$launcher" --launch-immediately &
@@ -77,7 +77,7 @@ pids+=($!)
 for _ in $(seq 30); do
   sleep 1
   name=$(busctl --address="$address" list --no-pager 2>/dev/null | awk '$3 == "pdfviewerlite" { print $1; exit }')
-  if [[ -n "$name" ]] && dotnet run --no-build --file "$tools/atspi-walk.cs" -- "$address" "$name" "$minimum" >"$work/walk.txt" 2>&1; then
+  if [[ -n "$name" ]] && dotnet "$work/tools/PdfViewerLite.Tools.dll" accessibility atspi-walk "$address" "$name" "$minimum" >"$work/walk.txt" 2>&1; then
     cat "$work/walk.txt"
     exit 0
   fi

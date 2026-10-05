@@ -1,12 +1,8 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
-using System.Diagnostics;
-using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
-
 using PdfViewerLite.Tools.Packaging;
 
 namespace PdfViewerLite.Tools.Signing;
@@ -14,21 +10,6 @@ namespace PdfViewerLite.Tools.Signing;
 /// <summary>Updates Windows release packages with signed executable payloads.</summary>
 internal static class WindowsPayload
 {
-    /// <summary>Header row count in an exported MSI table.</summary>
-    private const int TableHeaderRows = 3;
-
-    /// <summary>File identifier column in the MSI File table.</summary>
-    private const int FileKeyColumn = 0;
-
-    /// <summary>File size column in the MSI File table.</summary>
-    private const int FileSizeColumn = 3;
-
-    /// <summary>File name column in the MSI File table.</summary>
-    private const int FileNameColumn = 2;
-
-    /// <summary>Cabinet sequence column in the MSI File table.</summary>
-    private const int SequenceColumn = 7;
-
     /// <summary>Extracts executable payloads from Windows portable archives.</summary>
     /// <param name="assets">Release package paths.</param>
     /// <param name="scratch">Temporary signing directory.</param>
@@ -67,11 +48,15 @@ internal static class WindowsPayload
         {
             if (asset.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
             {
-                ReplaceMsi(asset, payloads, scratch);
+                MsiPayload.Replace(asset, payloads, scratch);
             }
-            else if (asset.EndsWith(".msix", StringComparison.OrdinalIgnoreCase))
+        }
+
+        foreach (var asset in assets)
+        {
+            if (asset.EndsWith(".msix", StringComparison.OrdinalIgnoreCase))
             {
-                MsixCompression.Replace(asset, payloads);
+                MsixWriter.Replace(asset, payloads);
             }
             else if (asset.Contains("-win-", StringComparison.Ordinal) && asset.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
@@ -146,91 +131,6 @@ internal static class WindowsPayload
             {
                 source.CopyTo(target);
             }
-        }
-    }
-
-    /// <summary>Updates the embedded cabinet and file sizes without changing installer tables.</summary>
-    /// <param name="asset">The MSI.</param>
-    /// <param name="payloads">Original hashes mapped to signed payload paths.</param>
-    /// <param name="scratch">Temporary signing directory.</param>
-    /// <exception cref="InvalidOperationException">The MSI extraction command could not start.</exception>
-    /// <exception cref="InvalidDataException">The MSI cabinet could not be extracted or rebuilt.</exception>
-    private static void ReplaceMsi(string asset, Dictionary<string, string> payloads, string scratch)
-    {
-        var folder = Path.Combine(scratch, Path.GetFileName(asset));
-        _ = Directory.CreateDirectory(folder);
-        var cabinet = Path.Combine(folder, "original.cab");
-        ExtractCabinet(asset, cabinet);
-        var extracted = Path.Combine(folder, "cabinet");
-        _ = Directory.CreateDirectory(extracted);
-        BuildTools.Run("cabextract", "-q", "-d", extracted, cabinet);
-        Console.WriteLine($"[command]msiinfo export {asset} File");
-        var table = Process.RunAndCaptureText("msiinfo", ["export", asset, "File"]);
-        if (table.ExitStatus.ExitCode != 0)
-        {
-            throw new InvalidDataException(table.StandardError);
-        }
-
-        var rows = table.StandardOutput.Replace("\r", string.Empty, StringComparison.Ordinal).TrimEnd('\n').Split('\n');
-        var files = new List<(string Name, int Sequence)>();
-        for (var index = TableHeaderRows; index < rows.Length; index++)
-        {
-            var columns = rows[index].Split('\t');
-            var path = Path.Combine(extracted, columns[FileKeyColumn]);
-            string hash;
-            using (var source = File.OpenRead(path))
-            {
-                hash = Convert.ToHexString(SHA256.HashData(source));
-            }
-
-            if (payloads.TryGetValue(hash, out var signed))
-            {
-                File.Copy(signed, path, true);
-                columns[FileSizeColumn] = new FileInfo(path).Length.ToString(CultureInfo.InvariantCulture);
-                rows[index] = string.Join('\t', columns);
-            }
-            else if (IsExecutable(columns[FileNameColumn]))
-            {
-                throw new InvalidDataException($"No signed payload matches {columns[FileNameColumn]} in {asset}.");
-            }
-
-            files.Add((columns[FileKeyColumn], int.Parse(columns[SequenceColumn], CultureInfo.InvariantCulture)));
-        }
-
-        files.Sort(static (left, right) => left.Sequence.CompareTo(right.Sequence));
-        var updatedCabinet = Path.Combine(folder, "signed.cab");
-        var arguments = new List<string> { "-c", "-z", updatedCabinet };
-        foreach (var file in files)
-        {
-            arguments.Add(file.Name);
-        }
-
-        Console.WriteLine($"[command]gcab {string.Join(' ', arguments)}");
-        if (Process.Run(new ProcessStartInfo("gcab", arguments) { WorkingDirectory = extracted }).ExitCode != 0)
-        {
-            throw new InvalidDataException("Could not rebuild the MSI cabinet.");
-        }
-
-        var idt = Path.Combine(folder, "File.idt");
-        File.WriteAllText(idt, $"{string.Join("\r\n", rows)}\r\n");
-        BuildTools.Run("msibuild", asset, "-a", "app.cab", updatedCabinet, "-i", idt);
-    }
-
-    /// <summary>Copies the embedded MSI cabinet stream without logging binary output.</summary>
-    /// <param name="asset">The MSI.</param>
-    /// <param name="cabinet">The extracted cabinet path.</param>
-    /// <exception cref="InvalidOperationException">The extraction command could not start.</exception>
-    /// <exception cref="InvalidDataException">The cabinet could not be extracted.</exception>
-    private static void ExtractCabinet(string asset, string cabinet)
-    {
-        Console.WriteLine($"[command]msiinfo extract {asset} app.cab");
-        var start = new ProcessStartInfo("msiinfo", ["extract", asset, "app.cab"]) { RedirectStandardOutput = true };
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start msiinfo.");
-        using var target = File.Create(cabinet);
-        process.StandardOutput.BaseStream.CopyTo(target);
-        if (process.WaitForExitStatus().ExitCode != 0)
-        {
-            throw new InvalidDataException("Could not extract the MSI cabinet.");
         }
     }
 

@@ -59,6 +59,16 @@ internal static class IconBuilder
         ("ic13", Pixels256),
     ];
 
+    /// <summary>Writes a square PNG logo.</summary>
+    /// <param name="sourcePath">The source image.</param>
+    /// <param name="outputPath">The output PNG path.</param>
+    /// <param name="size">The width and height in pixels.</param>
+    internal static void WritePng(string sourcePath, string outputPath, int size)
+    {
+        using var source = SKBitmap.Decode(sourcePath);
+        File.WriteAllBytes(outputPath, EncodePng(source, size));
+    }
+
     /// <summary>Writes freedesktop hicolor PNG icons at every standard size.</summary>
     /// <param name="sourcePath">The square source image.</param>
     /// <param name="directory">The icon theme root, for example packaging/linux/icons/hicolor.</param>

@@ -66,8 +66,6 @@
 
   <ItemGroup Label="Packaging tools">
     <PackageVersion Include="MinVer" Version="8.0.0" />
-    <PackageVersion Include="SharpCompress" Version="0.50.3" />
-    <PackageVersion Include="System.Drawing.Common" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup Label="Analyzers">
