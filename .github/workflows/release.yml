@@ -31,7 +31,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -39,7 +39,7 @@ jobs:
           11.x
     - name: Compute version and tag
       id: bump
-      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         bump: ${{ inputs.bump }}
         tag-prefix: ''
@@ -52,7 +52,7 @@ jobs:
     permissions:
       contents: read
       actions: write
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
     with:
       srcFolder: '.'
       solutionFile: PdfViewerLite.slnx
@@ -84,7 +84,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -125,7 +125,7 @@ jobs:
         mv signed/app-win-x64/pdfviewerlite.exe signed/pdfviewerlite-win-x64.exe
         mv signed/app-win-arm64/pdfviewerlite.exe signed/pdfviewerlite-win-arm64.exe
     - name: Sign the executables with jsign
-      uses: glennawatson/actions-common/.github/actions/certum-sign@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/certum-sign@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         packages-glob: 'signed/pdfviewerlite-*.exe'
         target-type: authenticode
@@ -168,7 +168,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -190,7 +190,7 @@ jobs:
         cp packaging/linux/icons/hicolor/256x256/apps/net.glennwatson.PdfViewerLite.png "artifacts/msix-$RID/Assets/Square150x150Logo.png"
         cp packaging/linux/icons/hicolor/48x48/apps/net.glennwatson.PdfViewerLite.png "artifacts/msix-$RID/Assets/StoreLogo.png"
     - name: Build the MSIX
-      uses: glennawatson/actions-common/.github/actions/msix-build@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/msix-build@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         source: artifacts/msix-${{ matrix.rid }}
         output: artifacts/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msix
@@ -210,7 +210,7 @@ jobs:
         file-types: .pdf
         file-type-name: PDF document
     - name: Build the MSI
-      uses: glennawatson/actions-common/.github/actions/msi-build@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/msi-build@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         source: artifacts/${{ matrix.rid }}
         output: artifacts/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msi
@@ -257,7 +257,7 @@ jobs:
         merge-multiple: true
         path: signed
     - name: Sign the MSI and MSIX files with jsign
-      uses: glennawatson/actions-common/.github/actions/certum-sign@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/certum-sign@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         packages-glob: 'signed/*.msi*'
         target-type: authenticode
@@ -292,7 +292,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -328,7 +328,7 @@ jobs:
     - name: Stage the AppDir metadata
       run: cp packaging/linux/net.glennwatson.PdfViewerLite.metainfo.xml artifacts/appdir/usr/share/metainfo/net.glennwatson.PdfViewerLite.appdata.xml
     - name: Build the RPM
-      uses: glennawatson/actions-common/.github/actions/rpm-build@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/rpm-build@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         source: artifacts/stage
         output: artifacts/pdfviewerlite-${{ needs.version.outputs.version }}-1.${{ matrix.rpm-architecture }}.rpm
@@ -357,7 +357,7 @@ jobs:
           /usr/lib/pdfviewerlite
           /usr/share/licenses/pdfviewerlite
     - name: Build the DEB
-      uses: glennawatson/actions-common/.github/actions/deb-build@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/deb-build@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         source: artifacts/stage
         output: artifacts/pdfviewerlite_${{ needs.version.outputs.version }}_${{ matrix.deb-architecture }}.deb
@@ -383,7 +383,7 @@ jobs:
           libcups2
           libpulse0
     - name: Build the AppImage
-      uses: glennawatson/actions-common/.github/actions/appimage-build@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/appimage-build@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         appdir: artifacts/appdir
         architecture: ${{ matrix.rpm-architecture }}
@@ -420,7 +420,7 @@ jobs:
         merge-multiple: true
         path: signed
     - name: Sign the files in each RPM
-      uses: glennawatson/actions-common/.github/actions/certum-rpm-sign@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/certum-rpm-sign@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         packages-glob: 'signed/*.rpm'
     - name: Upload the Linux packages
@@ -447,7 +447,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -458,7 +458,7 @@ jobs:
       run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
     # The .noindex folder stops Spotlight holding files open while the image is built.
     - name: Lay out the app bundle
-      uses: glennawatson/actions-common/.github/actions/macos-app-bundle@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/macos-app-bundle@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         source: artifacts/${{ matrix.rid }}
         output: artifacts/macos-${{ matrix.rid }}.noindex/Hyper PDF Viewer.app
@@ -479,7 +479,7 @@ jobs:
     - name: Check the app bundle signature
       run: codesign --verify --deep --strict "$APP"
     - name: Build the DMG
-      uses: glennawatson/actions-common/.github/actions/dmg-build@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dmg-build@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         source: artifacts/macos-${{ matrix.rid }}.noindex
         volume-name: Hyper PDF Viewer
@@ -501,7 +501,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         stamp-version: 'false'
         dotnet-versions: |
@@ -512,7 +512,7 @@ jobs:
         name: release-linux
         path: linux
     - name: Write the AUR PKGBUILD and .SRCINFO
-      uses: glennawatson/actions-common/.github/actions/aur-build@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/aur-build@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         debs: linux
         name: pdfviewerlite-bin
@@ -563,7 +563,7 @@ jobs:
         merge-multiple: true
         path: release
     - name: Write and sign SHA256SUMS
-      uses: glennawatson/actions-common/.github/actions/certum-checksums-sign@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/certum-checksums-sign@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         files-glob: 'release/*'
         certificate-from: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-x64.msi
@@ -598,7 +598,7 @@ jobs:
         name: release-linux
         path: packages
     - name: Verify the DEB
-      uses: glennawatson/actions-common/.github/actions/deb-verify@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/deb-verify@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         package: packages/pdfviewerlite_${{ needs.version.outputs.version }}_${{ matrix.deb-architecture }}.deb
         name: pdfviewerlite
@@ -608,7 +608,7 @@ jobs:
           /usr/share/applications/net.glennwatson.PdfViewerLite.desktop
           /usr/share/metainfo/net.glennwatson.PdfViewerLite.metainfo.xml
     - name: Verify the AppImage
-      uses: glennawatson/actions-common/.github/actions/appimage-verify@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/appimage-verify@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         package: packages/PdfViewerLite-${{ needs.version.outputs.version }}-${{ matrix.architecture }}.AppImage
 
@@ -634,7 +634,7 @@ jobs:
         name: release-linux
         path: packages
     - name: Verify the RPM
-      uses: glennawatson/actions-common/.github/actions/rpm-verify@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/rpm-verify@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-1.${{ matrix.architecture }}.rpm
         name: pdfviewerlite
@@ -663,13 +663,13 @@ jobs:
         name: release-windows
         path: packages
     - name: Verify the MSI
-      uses: glennawatson/actions-common/.github/actions/msi-verify@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/msi-verify@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msi
         expect-files: |
           %ProgramFiles%\Glenn Watson\Hyper PDF Viewer\pdfviewerlite.exe
     - name: Verify the MSIX
-      uses: glennawatson/actions-common/.github/actions/msix-verify@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/msix-verify@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msix
         identity-name: net.glennwatson.PdfViewerLite
@@ -690,7 +690,7 @@ jobs:
         name: release-macos-${{ matrix.rid }}
         path: packages
     - name: Verify the DMG
-      uses: glennawatson/actions-common/.github/actions/dmg-verify@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+      uses: glennawatson/actions-common/.github/actions/dmg-verify@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.dmg
         app: Hyper PDF Viewer.app
@@ -701,7 +701,7 @@ jobs:
     needs: [version, checksums, verify-linux, verify-rpm, verify-windows, verify-macos]
     permissions:
       contents: write
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-create-release.yml@42a51961108cbfe0b325af8ee49fb35ff6ce6269 # main
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-create-release.yml@a15b2796f6fb164bad05c5e8b330d8c9675233b3 # main
     with:
       version: ${{ needs.version.outputs.version }}
       tag: ${{ needs.version.outputs.tag }}
