@@ -12,16 +12,19 @@ namespace PdfViewerLite.Tools.Packaging;
 /// <summary>Generates a Windows Installer database using native Windows APIs.</summary>
 internal static partial class MsiBuilder
 {
+    /// <summary>The upgrade code shared by every release, so a newer MSI replaces an older one.</summary>
+    internal const string UpgradeCode = "{0C547842-7023-455E-9807-E4C0CA332DA8}";
+
     /// <summary>Bit flag indicating a 64-bit component.</summary>
     private const int ComponentAttribute64Bit = 256;
 
     /// <summary>Bit flag indicating feature files are installed locally.</summary>
     private const int FeatureAttributeFavorLocal = 2;
 
-    /// <summary>Upgrade attribute matching up to maximum version inclusive.</summary>
+    /// <summary>Upgrade attributes that migrate features from versions below the maximum.</summary>
     private const int UpgradeAttributeVersionMaxInclusive = 257;
 
-    /// <summary>Upgrade attribute matching from minimum version inclusive.</summary>
+    /// <summary>Upgrade attributes that only detect the same or a newer version.</summary>
     private const int UpgradeAttributeVersionMinInclusive = 258;
 
     /// <summary>Default feature display hierarchy level.</summary>
@@ -135,8 +138,8 @@ internal static partial class MsiBuilder
     /// <summary>Sequence number for UnpublishFeatures action.</summary>
     private const int SeqUnpublishFeatures = 1800;
 
-    /// <summary>Sequence number for RemovePreviousVersions action.</summary>
-    private const int SeqRemovePreviousVersions = 1900;
+    /// <summary>Sequence number for RemoveExistingProducts, between InstallValidate and InstallInitialize.</summary>
+    private const int SeqRemoveExistingProducts = 1450;
 
     /// <summary>Sequence number for RemoveShortcuts action.</summary>
     private const int SeqRemoveShortcuts = 3200;
@@ -176,9 +179,6 @@ internal static partial class MsiBuilder
 
     /// <summary>CostFinalize standard action name.</summary>
     private const string ActionCostFinalize = "CostFinalize";
-
-    /// <summary>Fixed product upgrade code.</summary>
-    private const string UpgradeCode = "{0C547842-7023-455E-9807-E4C0CA332DA8}";
 
     /// <summary>MSI database open mode for direct creation.</summary>
     private static readonly IntPtr MsiOpenDatabaseModeCreateDirect = (IntPtr)4;
@@ -537,10 +537,12 @@ internal static partial class MsiBuilder
             (ActionFileCost, string.Empty, SeqFileCost),
             (ActionCostFinalize, string.Empty, SeqCostFinalize),
             ("InstallValidate", string.Empty, SeqInstallValidate),
+
+            // Windows Installer has no RemovePreviousVersions action; only this standard action removes the older product during an upgrade.
+            ("RemoveExistingProducts", "PREVIOUSVERSIONSINSTALLED", SeqRemoveExistingProducts),
             ("InstallInitialize", string.Empty, SeqInstallInitialize),
             ("ProcessComponents", string.Empty, SeqProcessComponents),
             ("UnpublishFeatures", string.Empty, SeqUnpublishFeatures),
-            ("RemovePreviousVersions", "PREVIOUSVERSIONSINSTALLED", SeqRemovePreviousVersions),
             ("RemoveShortcuts", string.Empty, SeqRemoveShortcuts),
             ("RemoveFiles", string.Empty, SeqRemoveFiles),
             ("InstallFiles", string.Empty, SeqInstallFiles),
