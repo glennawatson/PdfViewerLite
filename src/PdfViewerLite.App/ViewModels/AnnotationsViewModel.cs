@@ -197,7 +197,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
     /// <param name="location">The stamp's top-left corner.</param>
     /// <returns><see langword="true"/> when placed.</returns>
     public bool AddStamp(int page, PagePoint location) =>
-        Editor is { } editor && Added(page, editor.AddStamp(page, location, StampLabel, AnnotationColors.Deep(Color)));
+        !string.IsNullOrWhiteSpace(StampLabel) && Editor is { } editor && Added(page, editor.AddStamp(page, location, StampLabel, AnnotationColors.Deep(Color)));
 
     /// <summary>Marks the given lines of text on each page.</summary>
     /// <param name="kind">The markup kind.</param>
@@ -455,11 +455,15 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
     private void SetTool(AnnotationTool tool) => Tool = Tool == tool ? AnnotationTool.Select : tool;
 
     /// <summary>Chooses a stamp and the stamp tool.</summary>
-    /// <param name="label">The stamp's word.</param>
+    /// <param name="label">The stamp's word; a blank word keeps the current stamp.</param>
     [ReactiveCommand]
-    private void SetStamp(string label)
+    private void SetStamp(string? label)
     {
-        StampLabel = label;
+        if (!string.IsNullOrWhiteSpace(label))
+        {
+            StampLabel = label;
+        }
+
         Tool = AnnotationTool.Stamp;
     }
 
