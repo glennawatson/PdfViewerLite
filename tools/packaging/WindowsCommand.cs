@@ -39,8 +39,10 @@ internal static class WindowsCommand
         var staging = Stage(source, artifacts, root, rid, version);
         var package = Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.msix");
         MsixWriter.Build(staging, package);
+        WindowsPackageValidator.ValidateMsix(package);
         var msi = Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.msi");
         MsiBuilder.Build(source, msi, version, rid, root);
+        WindowsPackageValidator.ValidateMsi(msi);
         var portable = Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.zip");
         File.Delete(portable);
         ZipFile.CreateFromDirectory(source, portable);
