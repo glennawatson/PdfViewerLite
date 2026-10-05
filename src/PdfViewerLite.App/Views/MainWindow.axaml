@@ -19,7 +19,7 @@
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
         </ListBox>
-        <Button AutomationProperties.Name="Find an open tab" x:Name="TabFinderButton" Grid.Column="1" Classes="tool" ToolTip.Tip="Find an open tab (Ctrl+Shift+A)">
+        <Button AutomationProperties.Name="Find an open tab" x:Name="TabFinderButton" views:ControlHelp.Text="{x:Static views:Descriptions.TabFinder}" Grid.Column="1" Classes="tool">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon nav" Data="{StaticResource IconSearch}" />
             <TextBlock x:Name="TabCountText" Classes="label" />
@@ -27,30 +27,29 @@
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedRight">
               <DockPanel Width="380" Height="420">
-                <TextBox x:Name="TabFinderBox" DockPanel.Dock="Top" Margin="0,0,0,6" PlaceholderText="Type part of a name, title or folder" />
+                <TextBox x:Name="TabFinderBox" views:ControlHelp.Text="{x:Static views:Descriptions.TabFinderBox}" AutomationProperties.Name="Find an open tab" DockPanel.Dock="Top" Margin="0,0,0,6" PlaceholderText="Type part of a name, title or folder" />
                 <ListBox x:Name="TabFinderList" Background="Transparent" />
               </DockPanel>
             </Flyout>
           </Button.Flyout>
         </Button>
-        <Button AutomationProperties.Name="Open" x:Name="OpenButton" Grid.Column="2" Classes="tool" ToolTip.Tip="Ctrl+O">
+        <Button AutomationProperties.Name="Open" x:Name="OpenButton" views:ControlHelp.Text="{x:Static views:Descriptions.Open}" Grid.Column="2" Classes="tool">
           <StackPanel Orientation="Horizontal">
             <Path Classes="icon add" Data="{StaticResource IconAdd}" />
             <TextBlock Classes="label" Text="Open" />
           </StackPanel>
         </Button>
-        <Button AutomationProperties.Name="Tabs and settings" Grid.Column="3" Classes="tool" Content="Tabs &amp; settings ▾"
-                ToolTip.Tip="Preferences, page colour, closed tabs" Margin="0,0,4,0">
+        <Button AutomationProperties.Name="Tabs and settings" x:Name="TabsMenuButton" views:ControlHelp.Text="{x:Static views:Descriptions.TabsMenu}" Grid.Column="3" Classes="tool" Content="Tabs &amp; settings ▾" Margin="0,0,4,0">
           <Button.Flyout>
             <MenuFlyout Placement="BottomEdgeAlignedRight">
-              <MenuItem x:Name="OpenMenuItem" Header="_Open…" InputGesture="Ctrl+O" />
-              <MenuItem x:Name="ReopenMenuItem" Header="_Reopen Closed Tabs" InputGesture="Ctrl+Shift+T" />
-              <MenuItem x:Name="SearchFolderMenuItem" Header="_Search in Folder…" InputGesture="Ctrl+Shift+F" />
+              <MenuItem x:Name="OpenMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.Open}" Header="_Open…" InputGesture="Ctrl+O" />
+              <MenuItem x:Name="ReopenMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.ReopenClosedTabs}" Header="_Reopen Closed Tabs" InputGesture="Ctrl+Shift+T" />
+              <MenuItem x:Name="SearchFolderMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.SearchFolder}" Header="_Search in Folder…" InputGesture="Ctrl+Shift+F" />
               <Separator />
-              <MenuItem x:Name="PageToneMenuItem" Header="_Comfort Page Colour" InputGesture="Ctrl+I" ToggleType="CheckBox" />
-              <MenuItem x:Name="PreferencesMenuItem" Header="_Preferences…" InputGesture="Ctrl+OemComma" />
+              <MenuItem x:Name="PageToneMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.ComfortPageColour}" Header="_Comfort Page Colour" InputGesture="Ctrl+I" ToggleType="CheckBox" />
+              <MenuItem x:Name="PreferencesMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.Preferences}" Header="_Preferences…" InputGesture="Ctrl+OemComma" />
               <Separator />
-              <MenuItem x:Name="CloseAllMenuItem" Header="Close _All Tabs" />
+              <MenuItem x:Name="CloseAllMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.CloseAllTabs}" Header="Close _All Tabs" />
             </MenuFlyout>
           </Button.Flyout>
         </Button>
@@ -59,7 +58,7 @@
 
     <Border x:Name="StatusBar" DockPanel.Dock="Bottom" Classes="toolbar" BorderThickness="0,1,0,0">
       <DockPanel>
-        <Button x:Name="DismissStatusButton" DockPanel.Dock="Right" Content="Dismiss" />
+        <Button x:Name="DismissStatusButton" views:ControlHelp.Text="{x:Static views:Descriptions.DismissMessage}" DockPanel.Dock="Right" Content="Dismiss" />
         <TextBlock x:Name="StatusText" Margin="6,2" VerticalAlignment="Center" />
       </DockPanel>
     </Border>
