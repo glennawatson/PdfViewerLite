@@ -16,7 +16,7 @@ internal static class CheckWindowsPackagesCommand
     /// <returns>The command exit code.</returns>
     /// <exception cref="PlatformNotSupportedException">The host is not Windows.</exception>
     /// <exception cref="FileNotFoundException">The artifacts directory has no MSI packages.</exception>
-    internal static int Run(string[] args)
+    internal static async Task<int> RunAsync(string[] args)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -34,9 +34,10 @@ internal static class CheckWindowsPackagesCommand
         _ = Directory.CreateDirectory(scratch);
         try
         {
+            await WindowsPackageInstallation.PrepareAsync(scratch).ConfigureAwait(false);
             foreach (var package in packages)
             {
-                Check(package, scratch);
+                await CheckAsync(package, scratch).ConfigureAwait(false);
             }
         }
         finally
@@ -50,7 +51,8 @@ internal static class CheckWindowsPackagesCommand
     /// <summary>Replaces installer payloads with copies of the portable executables.</summary>
     /// <param name="package">The MSI path.</param>
     /// <param name="scratch">The temporary directory.</param>
-    private static void Check(string package, string scratch)
+    /// <returns>A task.</returns>
+    private static async Task CheckAsync(string package, string scratch)
     {
         var msi = Path.Combine(scratch, Path.GetFileName(package));
         var portable = Path.ChangeExtension(msi, ".zip");
@@ -58,8 +60,11 @@ internal static class CheckWindowsPackagesCommand
         File.Copy(package, msi);
         File.Copy(Path.ChangeExtension(package, ".zip"), portable);
         File.Copy(Path.ChangeExtension(package, ".msix"), msix);
+        WindowsPackageInstallation.SetTestIdentity(msix, scratch);
+        var extracted = Path.Combine(scratch, "portable");
+        await ZipFile.ExtractToDirectoryAsync(portable, extracted).ConfigureAwait(false);
         var payloads = new Dictionary<string, string>(StringComparer.Ordinal);
-        using (var archive = ZipFile.OpenRead(portable))
+        await using (var archive = await ZipFile.OpenReadAsync(portable).ConfigureAwait(false))
         {
             foreach (var entry in archive.Entries)
             {
@@ -68,20 +73,25 @@ internal static class CheckWindowsPackagesCommand
                     continue;
                 }
 
-                using var source = entry.Open();
-                var hash = Convert.ToHexString(SHA256.HashData(source));
-                var target = Path.Combine(scratch, hash);
-                if (payloads.TryAdd(hash, target))
-                {
-                    entry.ExtractToFile(target);
-                }
+                await using var source = await entry.OpenAsync().ConfigureAwait(false);
+                var hash = Convert.ToHexString(await SHA256.HashDataAsync(source).ConfigureAwait(false));
+                var target = Path.Combine(extracted, entry.FullName);
+                _ = payloads.TryAdd(hash, target);
             }
         }
 
+        WindowsPackageInstallation.Sign(scratch, payloads.Values);
         MsiPayload.Replace(msi, payloads, scratch);
         MsiPayload.Validate(msi);
         WindowsPackageValidator.ValidateMsi(msi);
         MsixWriter.Replace(msix, payloads);
         WindowsPackageValidator.ValidateMsix(msix);
+        WindowsPackageInstallation.Sign(scratch, [msi, msix]);
+        var pdf = Path.Combine(scratch, "installation-check.pdf");
+        _ = await CreateCheckPdfCommand.RunAsync([pdf]).ConfigureAwait(false);
+        await PackageLaunch.CheckAsync(Path.Combine(extracted, "pdfviewerlite.exe"), pdf).ConfigureAwait(false);
+#if WINDOWS
+        await WindowsPackageInstallation.CheckAsync(msi, msix, scratch, pdf).ConfigureAwait(false);
+#endif
     }
 }

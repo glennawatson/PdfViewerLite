@@ -67,7 +67,8 @@ internal static class Program
     {
         CommandFactory.Create("prepare", "Install platform prerequisites.", PrepareCommand.Run, "mode"),
         CommandFactory.Create("build-tools", "Build repository tools.", BuildToolsCommand.Run),
-        CommandFactory.Create("check-windows-packages", "Check installer formats after payload replacement.", CheckWindowsPackagesCommand.Run, FolderArgument),
+        CommandFactory.Create("check-windows-packages", "Install and launch Windows packages after payload replacement.", CheckWindowsPackagesCommand.RunAsync, FolderArgument),
+        CommandFactory.Create("check-installed-packages", "Install and launch Linux and macOS packages.", CheckInstalledPackagesCommand.RunAsync, "rid", FolderArgument),
     };
 
     /// <summary>Creates accessibility commands.</summary>

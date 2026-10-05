@@ -73,16 +73,18 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
-        _bindings = [];
-        BindToolBar(_bindings);
-        BindAnnotationTools(_bindings);
-        BindBars(_bindings);
-        BindFind(_bindings);
-        BindSidebar(_bindings);
-        BindPages(_bindings);
-        BindWindowCommands(_bindings);
-        BindFieldEditor(_bindings);
+        BindViewModel();
         Dispatcher.UIThread.Post(FocusControl, Canvas, DispatcherPriority.Loaded);
+    }
+
+    /// <inheritdoc/>
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ViewModelProperty && IsLoaded)
+        {
+            BindViewModel();
+        }
     }
 
     /// <inheritdoc/>
@@ -142,6 +144,21 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static IObservable<RxVoid> KeyPresses(Control control, Key key, KeyModifiers modifiers) =>
         control.GetObservable(KeyDownEvent, RoutingStrategies.Bubble).Where(args => args.Key == key && args.KeyModifiers == modifiers).Select(static _ => RxVoid.Default);
+
+    /// <summary>Registers commands and interactions for the tab shown by the recycled document view.</summary>
+    private void BindViewModel()
+    {
+        _bindings?.Dispose();
+        _bindings = [];
+        BindToolBar(_bindings);
+        BindAnnotationTools(_bindings);
+        BindBars(_bindings);
+        BindFind(_bindings);
+        BindSidebar(_bindings);
+        BindPages(_bindings);
+        BindWindowCommands(_bindings);
+        BindFieldEditor(_bindings);
+    }
 
     /// <summary>Binds the main tool bar.</summary>
     /// <param name="bindings">The bindings.</param>
