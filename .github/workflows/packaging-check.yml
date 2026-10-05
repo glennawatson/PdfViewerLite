@@ -4,13 +4,10 @@ on:
     branches: [main]
     paths:
     - '.github/workflows/**'
-    - 'tools/packaging/**'
-    - 'tools/signing/**'
-    - 'tools/PdfViewerLite.Tools/**'
-    - 'tools/Directory.Packages.props'
-    - 'tools/ci/**'
+    - 'tools/**'
     - 'packaging/**'
     - 'Directory.*.props'
+    - 'Directory.Build.targets'
     - 'global.json'
     - 'src/**'
   workflow_dispatch:
@@ -33,36 +30,31 @@ jobs:
           runner: macos-latest
           script: macos
         - rid: linux-x64
-          runner: ubuntu-26.04
+          runner: ubuntu-latest
           script: linux
         - rid: linux-arm64
-          runner: ubuntu-26.04-arm
+          runner: ubuntu-24.04-arm
           script: linux
     runs-on: ${{ matrix.runner }}
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-    - name: Set up .NET
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
-        dotnet-versions: |
-          11.x
+        src-folder: '.'
         stamp-version: 'false'
+        dotnet-versions: |
+          10.x
+          11.x
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
-    - name: Prepare Linux packaging
-      if: runner.os == 'Linux'
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci prepare package
     - name: Publish Native AOT
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} 1.0.0
     - name: Build packages
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package ${{ matrix.script }} ${{ matrix.rid }} 1.0.0
-    - name: Install and launch Windows packages after payload replacement
-      if: runner.os == 'Windows'
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-windows-packages artifacts
-    - name: Install and launch native packages
-      if: runner.os != 'Windows'
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-installed-packages ${{ matrix.rid }} artifacts
+    - name: Inspect packages
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci inspect-packages ${{ matrix.rid }} artifacts
     - name: Upload packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:

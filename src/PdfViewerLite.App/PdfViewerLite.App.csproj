@@ -52,4 +52,28 @@
   <ItemGroup>
     <InternalsVisibleTo Include="PdfViewerLite.App.Tests" />
   </ItemGroup>
+
+  <!-- The shipped Tesseract needs the Visual C++ runtime, which Windows does not always have, so it is deployed beside the app. -->
+  <Target Name="CopyVisualCppRuntime" AfterTargets="Publish" Condition="$(RuntimeIdentifier.StartsWith('win-'))">
+    <PropertyGroup>
+      <_VcArchitecture>$(RuntimeIdentifier.Substring(4))</_VcArchitecture>
+    </PropertyGroup>
+    <ItemGroup>
+      <_VcRuntime Include="$(ProgramFiles)\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\$(_VcArchitecture)\Microsoft.VC14*.CRT\msvcp140.dll;$(ProgramFiles)\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\$(_VcArchitecture)\Microsoft.VC14*.CRT\vcruntime140.dll;$(ProgramFiles)\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\$(_VcArchitecture)\Microsoft.VC14*.CRT\vcruntime140_1.dll" />
+    </ItemGroup>
+    <Error Condition="'@(_VcRuntime)' == ''" Text="The Visual C++ runtime for $(_VcArchitecture) was not found under Visual Studio's VC\Redist folder; the shipped Tesseract needs it." />
+    <Copy SourceFiles="@(_VcRuntime)" DestinationFolder="$(PublishDir)" />
+  </Target>
+
+  <!-- Debug symbols stay out of the packaged app, in a symbols folder beside it; Native AOT copies them in after Publish. -->
+  <Target Name="MoveSymbolsOutOfPublish" AfterTargets="_CopyAotSymbols">
+    <ItemGroup>
+      <_PublishedSymbols Include="$(PublishDir)*.pdb;$(PublishDir)*.dbg" />
+      <_PublishedSymbolBundleFiles Include="$(PublishDir)*.dSYM\**" />
+      <_PublishedSymbolBundles Include="$([System.IO.Directory]::GetDirectories('$(PublishDir)', '*.dSYM'))" />
+    </ItemGroup>
+    <Move SourceFiles="@(_PublishedSymbols)" DestinationFolder="$(PublishDir)..\symbols" />
+    <Copy SourceFiles="@(_PublishedSymbolBundleFiles)" DestinationFiles="@(_PublishedSymbolBundleFiles->'$(PublishDir)..\symbols\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <RemoveDir Directories="@(_PublishedSymbolBundles)" />
+  </Target>
 </Project>

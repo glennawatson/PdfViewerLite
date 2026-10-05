@@ -3,26 +3,15 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: 'Release level for the new tag. Pick one, unless versionOverride is set.'
+        description: 'Release level for the new tag.'
         required: true
         type: choice
         options:
-        - '(pick one)'
         - major
         - minor
         - patch
       preRelease:
-        description: 'Pre-release channel (e.g. beta, rc). The version becomes <bumped-core>-<channel>.<N>. Empty = stable release.'
-        required: false
-        type: string
-        default: ''
-      versionOverride:
-        description: 'Exact version to release (e.g. 1.0.0), bypassing the bump from the latest tag. Leave bump at "(pick one)".'
-        required: false
-        type: string
-        default: ''
-      sourceRef:
-        description: 'Git ref (tag, branch or SHA) to release from. Empty = the ref this run was started on.'
+        description: 'Pre-release channel (e.g. beta, rc). Empty = stable release.'
         required: false
         type: string
         default: ''
@@ -31,237 +20,193 @@ permissions:
 jobs:
   version:
     name: Resolve release version
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
+    runs-on: ubuntu-latest
     outputs:
-      semver2: ${{ steps.minver.outputs.SemVer2 }}
-      tag: ${{ steps.tagname.outputs.tag }}
-      prerelease: ${{ steps.tagname.outputs.prerelease }}
-      sourceSha: ${{ steps.sourcesha.outputs.sha }}
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      prerelease: ${{ steps.bump.outputs.prerelease }}
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
-        ref: ${{ inputs.sourceRef }}
         fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
-        dotnet-versions: |
-          11.x
+        src-folder: '.'
         stamp-version: 'false'
-    - name: Resolve built commit SHA
-      id: sourcesha
-      uses: glennawatson/actions-common/.github/actions/run-csharp@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        shared-script: resolve-built-commit-sha-c775df1621.cs
-    - name: Validate version inputs
-      env:
-        BUMP: ${{ inputs.bump }}
-        PRE_RELEASE: ${{ inputs.preRelease }}
-        VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        shared-script: validate-version-inputs-2aad3ac3e2.cs
     - name: Compute version and tag
-      if: inputs.bump != '(pick one)' && inputs.versionOverride == ''
       id: bump
-      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@a0753ca8958455753f3ce4841947034057717d76 # main
+      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
         bump: ${{ inputs.bump }}
         tag-prefix: ''
         pre-release-id: ${{ inputs.preRelease }}
         push-tag: 'false'
-    - name: Resolve release tag
-      id: tagname
-      env:
-        BUMP_TAG: ${{ steps.bump.outputs.tag }}
-        BUMP_PRERELEASE: ${{ steps.bump.outputs.prerelease }}
-        VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        shared-script: resolve-release-tag-d98a6a5208.cs
-    - name: Stamp version with MinVer
-      id: minver
-      uses: glennawatson/actions-common/.github/actions/minver@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        tag-prefix: ''
-        version-override: ${{ inputs.versionOverride != '' && inputs.versionOverride || steps.bump.outputs.version }}
 
-  checks:
-    name: Build and test (${{ matrix.os }})
+  build:
+    name: Build and test
     needs: version
-    strategy:
-      fail-fast: true
-      matrix:
-        # The shared test action names its artifacts by OS, so one runner per OS; the Linux ARM64 package job launches the ARM64 build.
-        os: [windows-latest, ubuntu-26.04, macos-latest]
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-    env:
-      DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE: '1'
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
+    with:
+      srcFolder: '.'
+      solutionFile: PdfViewerLite.slnx
+      minverTagPrefix: ''
+      uploadCodecov: false
+      dotnetVersions: |
+        10.x
+        11.x
+
+  publish-windows:
+    name: Publish Windows (${{ needs.version.outputs.version }})
+    needs: [version, build]
+    runs-on: windows-latest
     steps:
-    # The shared build workflow checks out the dispatched ref, so its shared actions run here on the release source instead.
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.version.outputs.sourceSha }}
-        fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
+        src-folder: '.'
+        stamp-version: 'false'
         dotnet-versions: |
           10.x
           11.x
-        stamp-version: 'false'
-    - name: Prepare tests with application
-      env:
-        PREPARATION_PROJECT: tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj
-        PREPARATION_ARGUMENTS: '["ci","prepare","test"]'
-        PREPARATION_CONFIGURATION: Release
-      uses: glennawatson/actions-common/.github/actions/run-csharp@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        shared-script: prepare-tests-project.cs
-    - name: Build
-      uses: glennawatson/actions-common/.github/actions/dotnet-build@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        src-folder: '.'
-        solution-file: PdfViewerLite.slnx
-        configuration: Release
-    - name: Test
-      uses: glennawatson/actions-common/.github/actions/dotnet-test@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        src-folder: '.'
-        solution-file: PdfViewerLite.slnx
-        configuration: Release
-
-  package-windows:
-    name: Package Windows (${{ needs.version.outputs.semver2 }})
-    needs: [version, checks]
-    runs-on: windows-latest
-    permissions:
-      contents: read
-    steps:
-    - name: Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.version.outputs.sourceSha }}
-    - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        dotnet-versions: |
-          11.x
-        stamp-version: 'false'
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Publish Windows Native AOT
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish win-x64 ${{ needs.version.outputs.semver2 }}
-    - name: Package Windows (MSIX, MSI, ZIP)
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package windows win-x64 ${{ needs.version.outputs.semver2 }}
-    - name: Install, upgrade, launch and remove Windows packages
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-windows-packages artifacts
-    - name: Upload unsigned Windows packages
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish win-x64 ${{ needs.version.outputs.version }}
+    - name: Upload the published app
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: unsigned-windows
+        name: windows-app
+        path: artifacts/win-x64
+        if-no-files-found: error
+
+  sign-windows-app:
+    name: Sign the Windows app
+    needs: publish-windows
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    container:
+      image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
+    env:
+      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
+      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
+      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
+    steps:
+    - name: Download the published app
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: windows-app
+        path: signed
+    - name: Sign the executable with jsign
+      uses: glennawatson/actions-common/.github/actions/certum-sign@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
+      with:
+        packages-glob: 'signed/pdfviewerlite.exe'
+        target-type: authenticode
+    - name: Upload the signed app
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: windows-app-signed
+        path: signed
+        if-no-files-found: error
+
+  package-windows:
+    name: Package Windows (${{ needs.version.outputs.version }})
+    needs: [version, sign-windows-app]
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
+      with:
+        src-folder: '.'
+        stamp-version: 'false'
+    - name: Build release tools
+      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
+    - name: Download the signed app
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: windows-app-signed
+        path: artifacts/win-x64
+    - name: Package Windows (MSIX, MSI, ZIP)
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package windows win-x64 ${{ needs.version.outputs.version }}
+    - name: Upload Windows packages
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: windows-packages
         path: |
           artifacts/pdfviewerlite-*.msix
           artifacts/pdfviewerlite-*.msi
           artifacts/pdfviewerlite-*.zip
         if-no-files-found: error
 
-  sign:
-    name: Sign and verify all release assets (${{ needs.version.outputs.semver2 }})
-    needs: [version, package-windows, package-linux, package-macos]
-    runs-on: ubuntu-26.04
+  sign-windows-installers:
+    name: Sign the Windows installers
+    needs: package-windows
+    runs-on: ubuntu-latest
     environment:
       name: release
-    permissions:
-      contents: read
-      packages: read
     container:
       image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
-      options: --volume /home/runner/work/_actions:/home/runner/work/_actions:ro
     env:
-      PKCS11_PROVIDER: /usr/lib/x86_64-linux-gnu/ossl-modules/pkcs11prov.so
       CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
       CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
       CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.version.outputs.sourceSha }}
-    - name: Build release tools
-      run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
-    - name: Download all release packages
+    - name: Download the Windows packages
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        pattern: unsigned-*
-        merge-multiple: true
+        name: windows-packages
         path: signed
-    - name: Connect SimplySign
-      uses: glennawatson/actions-common/.github/actions/certum-connect@a0753ca8958455753f3ce4841947034057717d76 # main
-    - name: Sign and verify Windows payloads and installers
-      id: authenticode
-      uses: glennawatson/actions-common/.github/actions/sign-authenticode@a0753ca8958455753f3ce4841947034057717d76 # main
+    - name: Sign the MSI and MSIX with jsign
+      uses: glennawatson/actions-common/.github/actions/certum-sign@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
-        tools-assembly: artifacts/tools/PdfViewerLite.Tools.dll
-        packages-glob: 'signed/*'
-    - name: Sign and verify detached archive signatures
-      uses: glennawatson/actions-common/.github/actions/sign-detached@a0753ca8958455753f3ce4841947034057717d76 # main
-      with:
-        tools-assembly: artifacts/tools/PdfViewerLite.Tools.dll
-        packages-glob: 'signed/*'
-        certificate-source: ${{ steps.authenticode.outputs.certificate-source }}
-    - name: Upload verified release assets
+        packages-glob: 'signed/*.msi*'
+        target-type: authenticode
+    - name: Upload the signed Windows packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: signed-release-assets
+        name: release-windows
         path: signed/*
         if-no-files-found: error
 
   package-linux:
-    name: Package ${{ matrix.rid }} (${{ needs.version.outputs.semver2 }})
-    needs: [version, checks]
+    name: Package ${{ matrix.rid }} (${{ needs.version.outputs.version }})
+    needs: [version, build]
     strategy:
       fail-fast: false
       matrix:
         include:
         - rid: linux-x64
-          runner: ubuntu-26.04
+          runner: ubuntu-latest
         - rid: linux-arm64
-          runner: ubuntu-26.04-arm
+          runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    permissions:
-      contents: read
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
-        dotnet-versions: |
-          11.x
+        src-folder: '.'
         stamp-version: 'false'
+        dotnet-versions: |
+          10.x
+          11.x
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
-    - name: Prepare Linux packaging
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci prepare package
     - name: Publish Linux Native AOT
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} ${{ needs.version.outputs.version }}
     - name: Package Linux (AppImage, DEB, RPM, tar.gz)
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package linux ${{ matrix.rid }} ${{ needs.version.outputs.semver2 }}
-    - name: Install, upgrade, launch and remove Linux packages
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-installed-packages ${{ matrix.rid }} artifacts
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package linux ${{ matrix.rid }} ${{ needs.version.outputs.version }}
     - name: Upload Linux packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: unsigned-${{ matrix.rid }}
+        name: linux-${{ matrix.rid }}
         path: |
           artifacts/PdfViewerLite-*.AppImage
           artifacts/*.deb
@@ -269,102 +214,117 @@ jobs:
           artifacts/pdfviewerlite-*.tar.gz
         if-no-files-found: error
 
+  sign-linux:
+    name: Sign the RPM files
+    needs: package-linux
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    container:
+      image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
+    env:
+      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
+      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
+    steps:
+    - name: Download the Linux packages
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        pattern: linux-*
+        merge-multiple: true
+        path: signed
+    - name: Sign the files in each RPM
+      uses: glennawatson/actions-common/.github/actions/certum-rpm-sign@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
+      with:
+        packages-glob: 'signed/*.rpm'
+    - name: Upload the Linux packages
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-linux
+        path: signed/*
+        if-no-files-found: error
+
   package-macos:
-    name: Package macOS (${{ needs.version.outputs.semver2 }})
-    needs: [version, checks]
+    name: Package macOS (${{ needs.version.outputs.version }})
+    needs: [version, build]
     runs-on: macos-latest
-    permissions:
-      contents: read
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
-        dotnet-versions: |
-          11.x
+        src-folder: '.'
         stamp-version: 'false'
+        dotnet-versions: |
+          10.x
+          11.x
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
     - name: Publish macOS Native AOT
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish osx-arm64 ${{ needs.version.outputs.semver2 }}
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish osx-arm64 ${{ needs.version.outputs.version }}
     - name: Package macOS (.app, DMG, ZIP)
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package macos osx-arm64 ${{ needs.version.outputs.semver2 }}
-    - name: Install, replace, launch and remove macOS packages
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-installed-packages osx-arm64 artifacts
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package macos osx-arm64 ${{ needs.version.outputs.version }}
     - name: Upload macOS packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: unsigned-macos
+        name: release-macos
         path: |
           artifacts/pdfviewerlite-*.dmg
           artifacts/pdfviewerlite-*.app.zip
         if-no-files-found: error
 
-  create-release:
-    name: Create release (${{ needs.version.outputs.semver2 }})
-    needs: [version, sign]
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: write
+  aur:
+    name: Write the AUR package files
+    needs: [version, sign-linux]
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      with:
-        ref: ${{ needs.version.outputs.sourceSha }}
-        fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@a0753ca8958455753f3ce4841947034057717d76 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
       with:
-        dotnet-versions: |
-          11.x
+        src-folder: '.'
         stamp-version: 'false'
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
-    - name: Download signed release assets
+    - name: Download the Linux packages
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: signed-release-assets
-        path: release-assets
-    - name: Generate AUR package files
-      env:
-        RELEASE_VERSION: ${{ needs.version.outputs.semver2 }}
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package aur "$RELEASE_VERSION" release-assets artifacts/aur/pdfviewerlite-bin
-    - name: Upload AUR package files
+        name: release-linux
+        path: linux
+    - name: Write the AUR PKGBUILD and .SRCINFO
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package aur ${{ needs.version.outputs.version }} linux artifacts/aur
+    - name: Upload the AUR package files
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: aur-pdfviewerlite-bin
-        path: artifacts/aur/pdfviewerlite-bin
+        name: release-aur
+        path: artifacts/aur
         include-hidden-files: true
         if-no-files-found: error
-    - name: Attach the AUR PKGBUILD
-      run: cp artifacts/aur/pdfviewerlite-bin/PKGBUILD release-assets/pdfviewerlite-bin.PKGBUILD
-    - name: Generate release notes
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-        RELEASE_VERSION: ${{ needs.version.outputs.semver2 }}
-        SOURCE_SHA: ${{ needs.version.outputs.sourceSha }}
-      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll release-notes "$RELEASE_VERSION" "$SOURCE_SHA" release-notes.md
-    - name: Create GitHub Release
-      env:
-        GH_TOKEN: ${{ github.token }}
-        REPO: ${{ github.repository }}
-        TAG: ${{ needs.version.outputs.tag }}
-        TARGET: ${{ needs.version.outputs.sourceSha }}
-        TITLE: ${{ needs.version.outputs.semver2 }}
-        PRERELEASE: ${{ needs.version.outputs.prerelease }}
-      shell: bash
-      run: |
-        flags=()
-        if [ "$PRERELEASE" = "true" ]; then
-          flags+=(--prerelease)
-        fi
-        gh release create "$TAG" \
-          --repo "$REPO" \
-          --target "$TARGET" \
-          --title "$TITLE" \
-          --notes-file release-notes.md \
-          "${flags[@]}" \
-          release-assets/*
+
+  collect:
+    name: Collect the release files
+    needs: [sign-windows-installers, sign-linux, package-macos, aur]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+    - name: Merge the release files into one artifact
+      uses: actions/upload-artifact/merge@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: release-assets
+        pattern: release-*
+        include-hidden-files: true
+
+  release:
+    name: Create release (${{ needs.version.outputs.version }})
+    needs: [version, collect]
+    permissions:
+      contents: write
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-create-release.yml@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
+    with:
+      version: ${{ needs.version.outputs.version }}
+      tag: ${{ needs.version.outputs.tag }}
+      artifactName: release-assets
+      assetGlob: '*'
+      prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
