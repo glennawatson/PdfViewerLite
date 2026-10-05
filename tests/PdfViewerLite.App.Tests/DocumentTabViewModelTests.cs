@@ -62,6 +62,38 @@ public sealed class DocumentTabViewModelTests
         await Assert.That(requests[2].PageIndex).IsEqualTo(1);
     }
 
+    /// <summary>Verifies Back and Forward return across jumps, ignore page steps, and are only enabled when they can move.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task GoesBackAndForwardAcrossJumps()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument(DocumentName, Pages)]);
+        var tab = main.SelectedTab!;
+        var requests = new List<NavigationRequest>();
+        using var navigation = tab.NavigationRequests.SubscribeSafe(requests.Add, static _ => { });
+        var canGoBack = false;
+        using var back = tab.GoBackCommand.CanExecute.SubscribeSafe(can => canGoBack = can, static _ => { });
+        const int jumpPage = 4;
+
+        var enabledAtStart = canGoBack;
+        _ = await tab.NextPageCommand.Execute().ToTask();
+        var enabledAfterStep = canGoBack;
+        tab.ReportPosition(new(1, 0), 1);
+        tab.GoToPage(jumpPage);
+        tab.ReportPosition(new(jumpPage, 0), jumpPage);
+        var enabledAfterJump = canGoBack;
+        _ = await tab.GoBackCommand.Execute().ToTask();
+
+        await Assert.That(enabledAtStart).IsFalse();
+        await Assert.That(enabledAfterStep).IsFalse();
+        await Assert.That(enabledAfterJump).IsTrue();
+        await Assert.That(requests[^1].PageIndex).IsEqualTo(1);
+        await Assert.That(tab.CanGoBack).IsFalse();
+        await Assert.That(tab.CanGoForward).IsTrue();
+    }
+
     /// <summary>Verifies zoom and rotation commands.</summary>
     /// <returns>A task.</returns>
     [Test]

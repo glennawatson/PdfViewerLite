@@ -808,7 +808,7 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
             _startChar = 0;
             if (_sentences.Count > 0 && page != _owner.CurrentPageIndex)
             {
-                _owner.GoToPage(page);
+                _owner.ShowPage(page);
             }
         }
 
