@@ -138,8 +138,8 @@ internal static partial class MsiBuilder
     /// <summary>Sequence number for UnpublishFeatures action.</summary>
     private const int SeqUnpublishFeatures = 1800;
 
-    /// <summary>Sequence number for RemoveExistingProducts, between InstallValidate and InstallInitialize.</summary>
-    private const int SeqRemoveExistingProducts = 1450;
+    /// <summary>Sequence number for RemoveExistingProducts, after InstallFinalize.</summary>
+    private const int SeqRemoveExistingProducts = 6700;
 
     /// <summary>Sequence number for RemoveShortcuts action.</summary>
     private const int SeqRemoveShortcuts = 3200;
@@ -537,9 +537,6 @@ internal static partial class MsiBuilder
             (ActionFileCost, string.Empty, SeqFileCost),
             (ActionCostFinalize, string.Empty, SeqCostFinalize),
             ("InstallValidate", string.Empty, SeqInstallValidate),
-
-            // Windows Installer has no RemovePreviousVersions action; only this standard action removes the older product during an upgrade.
-            ("RemoveExistingProducts", "PREVIOUSVERSIONSINSTALLED", SeqRemoveExistingProducts),
             ("InstallInitialize", string.Empty, SeqInstallInitialize),
             ("ProcessComponents", string.Empty, SeqProcessComponents),
             ("UnpublishFeatures", string.Empty, SeqUnpublishFeatures),
@@ -552,6 +549,12 @@ internal static partial class MsiBuilder
             ("PublishFeatures", string.Empty, SeqPublishFeatures),
             ("PublishProduct", string.Empty, SeqPublishProduct),
             ("InstallFinalize", string.Empty, SeqInstallFinalize),
+
+            // Windows Installer has no RemovePreviousVersions action; only this standard action removes the older product.
+            // It runs after the new product is installed: costing has already skipped files the old product holds at the
+            // same version, so removing the old product first would delete them. Component IDs are stable per file path,
+            // so the shared components keep their files and only files the new version dropped are removed.
+            ("RemoveExistingProducts", "PREVIOUSVERSIONSINSTALLED", SeqRemoveExistingProducts),
         ];
 
         foreach (var (action, condition, seq) in executeSequence)
