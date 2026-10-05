@@ -9,6 +9,9 @@ namespace PdfViewerLite.Tools;
 /// <summary>Runs packaging, signing and development commands.</summary>
 internal static class Program
 {
+    /// <summary>The artifacts directory argument name.</summary>
+    private const string FolderArgument = "folder";
+
     /// <summary>The manifest argument name.</summary>
     private const string ManifestArgument = "manifest";
 
@@ -53,7 +56,7 @@ internal static class Program
     {
         CommandFactory.Create("authenticode", "Sign and verify Windows payloads and installers.", SignAuthenticodeCommand.RunAsync),
         CommandFactory.Create("detached", "Sign and verify detached CMS signatures.", SignDetachedCommand.Run, "certificate-source"),
-        CommandFactory.Create("verify", "Verify installer signatures and certificate pins.", VerifyAllCommand.RunAsync, "folder"),
+        CommandFactory.Create("verify", "Verify installer signatures and certificate pins.", VerifyAllCommand.RunAsync, FolderArgument),
         CommandFactory.Create("verify-msix", "Verify an MSIX package.", VerifyMsixCommand.RunAsync, PackageArgument),
         CommandFactory.Create("verify-msi", "Verify an MSI package.", VerifyMsiCommand.Run, PackageArgument),
     };
@@ -64,6 +67,7 @@ internal static class Program
     {
         CommandFactory.Create("prepare", "Install platform prerequisites.", PrepareCommand.Run, "mode"),
         CommandFactory.Create("build-tools", "Build repository tools.", BuildToolsCommand.Run),
+        CommandFactory.Create("check-windows-packages", "Check installer formats after payload replacement.", CheckWindowsPackagesCommand.RunAsync, FolderArgument),
     };
 
     /// <summary>Creates accessibility commands.</summary>

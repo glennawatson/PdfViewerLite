@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 using System.Security.Cryptography;
 using PdfViewerLite.Tools.Packaging;
+using PdfViewerLite.Tools.Signing;
 
 namespace PdfViewerLite.Tools.Commands;
 
@@ -24,6 +25,8 @@ internal static class VerifyAllCommand
         {
             throw new FileNotFoundException("No Windows installers were downloaded.");
         }
+
+        ValidateInstallerMetadata(packages);
 
         if (OperatingSystem.IsLinux())
         {
@@ -64,5 +67,18 @@ internal static class VerifyAllCommand
         }
 
         return 0;
+    }
+
+    /// <summary>Checks installer storage metadata before verifying signatures.</summary>
+    /// <param name="packages">The installer paths.</param>
+    private static void ValidateInstallerMetadata(string[] packages)
+    {
+        foreach (var package in packages)
+        {
+            if (Path.GetExtension(package).Equals(".msi", StringComparison.OrdinalIgnoreCase))
+            {
+                MsiPayload.Validate(package);
+            }
+        }
     }
 }

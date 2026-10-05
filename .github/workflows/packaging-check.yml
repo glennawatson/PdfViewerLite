@@ -49,6 +49,9 @@ jobs:
         stamp-version: 'false'
     - name: Build release tools
       run: dotnet publish tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj -c Release --self-contained false -o artifacts/tools
+    - name: Diagnose published Windows package
+      if: runner.os == 'Windows'
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-windows-packages artifacts
     - name: Prepare Linux packaging
       if: runner.os == 'Linux'
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci prepare package
@@ -56,6 +59,9 @@ jobs:
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} 1.0.0
     - name: Build packages
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package ${{ matrix.script }} ${{ matrix.rid }} 1.0.0
+    - name: Check Windows installer formats after payload replacement
+      if: runner.os == 'Windows'
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-windows-packages artifacts
     - name: Upload packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:

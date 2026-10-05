@@ -13,12 +13,25 @@ namespace PdfViewerLite.Tools.Signing;
 /// <summary>Updates the generated MSI's file sizes and embedded cabinet in managed code.</summary>
 internal static class MsiPayload
 {
+    /// <summary>Checks the storage identifier required by Windows Installer.</summary>
+    /// <param name="asset">The installer path.</param>
+    /// <exception cref="InvalidDataException">The compound file is not an installer database.</exception>
+    internal static void Validate(string asset)
+    {
+        using var root = RootStorage.OpenRead(asset);
+        if (root.CLSID != new Guid("000c1084-0000-0000-c000-000000000046"))
+        {
+            throw new InvalidDataException($"The MSI installer storage class is invalid: {asset}.");
+        }
+    }
+
     /// <summary>Reads and updates the generated MSI without changing its installer schema.</summary>
     /// <param name="asset">The installer path.</param>
     /// <param name="payloads">Original hashes mapped to signed executables.</param>
     /// <param name="scratch">The temporary signing directory.</param>
     internal static void Replace(string asset, Dictionary<string, string> payloads, string scratch)
     {
+        Validate(asset);
         var folder = Path.Combine(scratch, $"cabinet-{Path.GetFileName(asset)}");
         _ = Directory.CreateDirectory(folder);
         using var archive = ZipFile.OpenRead(Path.ChangeExtension(asset, ".zip"));
