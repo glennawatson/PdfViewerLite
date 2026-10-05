@@ -40,6 +40,165 @@
   </Target>
 
   <!--
+    The shipped libcurl needs OpenSSL 3.2, but Ubuntu 24.04 and Debian 12 have 3.0. Once .NET loads the system OpenSSL,
+    the loader would hand that copy to libcurl and Tesseract would fail to load. Giving the shipped OpenSSL its own
+    sonames (same length, so the ELF layout is unchanged) keeps the two copies apart.
+  -->
+  <Target Name="RenameTesseractOpenSsl" AfterTargets="KeepTesseractNativeClosure"
+          Condition="'$(TesseractRuntimeIdentifier)' == 'linux-x64' or '$(TesseractRuntimeIdentifier)' == 'linux-arm64'">
+    <PropertyGroup>
+      <_TesseractOpenSslRenames>libssl.so.3=libpvs.so.3;libcrypto.so.3=libpvcryp.so.3</_TesseractOpenSslRenames>
+    </PropertyGroup>
+    <ItemGroup>
+      <_TesseractRuntimeTargetsElf Include="@(RuntimeTargetsCopyLocalItems)" Condition="$([System.String]::Copy('%(RuntimeTargetsCopyLocalItems.NuGetPackageId)').StartsWith('Tesseract.Native.runtime.'))" />
+      <_TesseractNativeElf Include="@(NativeCopyLocalItems)" Condition="$([System.String]::Copy('%(NativeCopyLocalItems.NuGetPackageId)').StartsWith('Tesseract.Native.runtime.'))" />
+    </ItemGroup>
+    <RenameElfDependencies Libraries="@(_TesseractRuntimeTargetsElf)" OutputDirectory="$(IntermediateOutputPath)tesseract-native/" Renames="$(_TesseractOpenSslRenames)"
+                           Condition="'@(_TesseractRuntimeTargetsElf)' != ''">
+      <Output TaskParameter="Results" ItemName="_TesseractRuntimeTargetsRenamed" />
+    </RenameElfDependencies>
+    <RenameElfDependencies Libraries="@(_TesseractNativeElf)" OutputDirectory="$(IntermediateOutputPath)tesseract-native/" Renames="$(_TesseractOpenSslRenames)"
+                           Condition="'@(_TesseractNativeElf)' != ''">
+      <Output TaskParameter="Results" ItemName="_TesseractNativeRenamed" />
+    </RenameElfDependencies>
+    <ItemGroup>
+      <RuntimeTargetsCopyLocalItems Remove="@(_TesseractRuntimeTargetsElf)" />
+      <RuntimeTargetsCopyLocalItems Include="@(_TesseractRuntimeTargetsRenamed)" />
+      <NativeCopyLocalItems Remove="@(_TesseractNativeElf)" />
+      <NativeCopyLocalItems Include="@(_TesseractNativeRenamed)" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Copies ELF libraries into OutputDirectory, renaming each library named on the left of Renames and rewriting the
+    dependency and soname strings in .dynstr that name it. Each new name must be as long as the old one.
+  -->
+  <UsingTask TaskName="RenameElfDependencies" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Libraries ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OutputDirectory ParameterType="System.String" Required="true" />
+      <Renames ParameterType="System.String" Required="true" />
+      <Results ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+var renames = new List<KeyValuePair<byte[], byte[]>>();
+var fileNames = new Dictionary<string, string>(StringComparer.Ordinal);
+foreach (var pair in Renames.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+{
+    var parts = pair.Split('=');
+    if (parts.Length != 2 || parts[0].Length != parts[1].Length)
+    {
+        Log.LogError("RenameElfDependencies: '{0}' must be old=new with names of equal length.", pair);
+        return false;
+    }
+
+    renames.Add(new KeyValuePair<byte[], byte[]>(Encoding.ASCII.GetBytes(parts[0] + "\0"), Encoding.ASCII.GetBytes(parts[1] + "\0")));
+    fileNames[parts[0]] = parts[1];
+}
+
+Directory.CreateDirectory(OutputDirectory);
+var results = new List<Microsoft.Build.Framework.ITaskItem>();
+foreach (var library in Libraries)
+{
+    var source = library.ItemSpec;
+    var name = Path.GetFileName(source);
+    var bytes = File.ReadAllBytes(source);
+
+    // ELF64 little-endian (x64 and arm64): find .dynstr through the section headers.
+    if (bytes.Length < 64 || bytes[0] != 0x7F || bytes[1] != (byte)'E' || bytes[2] != (byte)'L' || bytes[3] != (byte)'F' || bytes[4] != 2 || bytes[5] != 1)
+    {
+        results.Add(library);
+        continue;
+    }
+
+    // Fields are little-endian, as are the x64 and arm64 machines that build the app.
+    var sectionTable = (int)BitConverter.ToUInt64(bytes, 0x28);
+    int entrySize = BitConverter.ToUInt16(bytes, 0x3A);
+    int count = BitConverter.ToUInt16(bytes, 0x3C);
+    int namesIndex = BitConverter.ToUInt16(bytes, 0x3E);
+    var namesOffset = (int)BitConverter.ToUInt64(bytes, sectionTable + (namesIndex * entrySize) + 0x18);
+    var dynstr = Encoding.ASCII.GetBytes(".dynstr\0");
+    var changed = false;
+    for (var section = 0; section < count; section++)
+    {
+        var header = sectionTable + (section * entrySize);
+        if (!Matches(bytes, namesOffset + (int)BitConverter.ToUInt32(bytes, header), dynstr))
+        {
+            continue;
+        }
+
+        var start = (int)BitConverter.ToUInt64(bytes, header + 0x18);
+        var end = start + (int)BitConverter.ToUInt64(bytes, header + 0x20);
+        foreach (var rename in renames)
+        {
+            // Only whole strings: a match must start a string, not end a longer one.
+            for (var at = start; at + rename.Key.Length <= end; at++)
+            {
+                if ((at == start || bytes[at - 1] == 0) && Matches(bytes, at, rename.Key))
+                {
+                    Buffer.BlockCopy(rename.Value, 0, bytes, at, rename.Value.Length);
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    string newName;
+    var renamed = fileNames.TryGetValue(name, out newName);
+    if (!changed && !renamed)
+    {
+        results.Add(library);
+        continue;
+    }
+
+    var target = Path.Combine(OutputDirectory, renamed ? newName : name);
+    // Rewriting only on a change keeps the timestamp, so incremental builds skip the copy.
+    var existing = File.Exists(target) ? File.ReadAllBytes(target) : null;
+    if (existing == null || existing.Length != bytes.Length || !Matches(existing, 0, bytes))
+    {
+        File.WriteAllBytes(target, bytes);
+    }
+
+    var item = new Microsoft.Build.Utilities.TaskItem(target);
+    library.CopyMetadataTo(item);
+    var destination = library.GetMetadata("DestinationSubPath");
+    if (renamed && destination.Length > 0)
+    {
+        item.SetMetadata("DestinationSubPath", destination.Substring(0, destination.Length - name.Length) + newName);
+    }
+
+    results.Add(item);
+}
+
+Results = results.ToArray();
+
+static bool Matches(byte[] haystack, int offset, byte[] needle)
+{
+    if (offset < 0 || offset + needle.Length > haystack.Length)
+    {
+        return false;
+    }
+
+    for (var i = 0; i < needle.Length; i++)
+    {
+        if (haystack[offset + i] != needle[i])
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!--
     Downloads the English data into this build's own obj folder, checks its SHA-256 and copies it to tessdata/ beside
     the app. The folder is per target framework because multi-targeted projects build their frameworks in parallel.
   -->

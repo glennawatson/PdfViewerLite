@@ -146,7 +146,6 @@ internal static class TesseractLibraryResolver
             return 0;
         }
 
-        PreferSystemOpenSsl();
         if (!NativeLibrary.TryLoad(path, out var handle))
         {
             return 0;
@@ -172,21 +171,5 @@ internal static class TesseractLibraryResolver
         }
 
         return 0;
-    }
-
-    /// <summary>
-    /// Loads the system's OpenSSL 3 before the shipped libcurl asks for it. The loader reuses a library already loaded
-    /// under the same name, so .NET's own TLS keeps the system OpenSSL and its certificate store. The shipped copy is
-    /// used only when the system has none.
-    /// </summary>
-    private static void PreferSystemOpenSsl()
-    {
-        if (!OperatingSystem.IsLinux())
-        {
-            return;
-        }
-
-        _ = NativeLibrary.TryLoad("libcrypto.so.3", out _);
-        _ = NativeLibrary.TryLoad("libssl.so.3", out _);
     }
 }
