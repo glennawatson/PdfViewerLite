@@ -4,9 +4,10 @@
 // See the LICENSE file in the project root for full license information.
 
 #:package System.Security.Cryptography.Pkcs
+#:package SharpCompress
 #:include ../packaging/BuildTools.cs
 #:include WindowsPayload.cs
-#:include MsixZipHeaders.cs
+#:include MsixCompression.cs
 
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -62,14 +63,6 @@ foreach (var payload in payloads.Values)
 }
 
 WindowsPayload.Replace(assets, payloads, scratch);
-
-foreach (var asset in assets)
-{
-    if (asset.EndsWith(msixExtension, StringComparison.OrdinalIgnoreCase))
-    {
-        MsixZipHeaders.Normalize(asset);
-    }
-}
 
 SignWithJsign(Path.Combine(folder, "*.msi*"));
 
