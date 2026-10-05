@@ -205,6 +205,26 @@ public sealed record PageTone : IEquatable<PageTone>
         return Vector256.Create(blue, green, red, alpha, blue, green, red, alpha, blue, green, red, alpha, blue, green, red, alpha);
     }
 
+    /// <summary>Tones two pixels held as eight 16 bit B, G, R, A lanes; the 128 bit form of <see cref="Blend(Vector256{ushort})"/>.</summary>
+    /// <param name="value">The channel values.</param>
+    /// <param name="inkLanes">The ink weight of each lane.</param>
+    /// <param name="paperLanes">The paper weight of each lane.</param>
+    /// <returns>The toned values.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector128<ushort> Blend(Vector128<ushort> value, Vector128<ushort> inkLanes, Vector128<ushort> paperLanes)
+    {
+        var weighted = (value * TwoPixelWeights).AsUInt64();
+        var total = (weighted + (weighted >>> FirstLane) + (weighted >>> SecondLane) + (weighted >>> ThirdLane)) & LowLane.GetLower();
+        var low = total >>> DivideShift;
+        var luma = (low | (low << FirstLane) | (low << SecondLane) | (low << ThirdLane)).AsUInt16();
+
+        var max = Vector128.Create((ushort)ChannelMax);
+        var sum = (inkLanes * (max - luma)) + (paperLanes * luma) + Vector128.Create(DivideBias);
+        var toned = (sum + (sum >>> DivideShift)) >>> DivideShift;
+        var shifted = Vector128.Min(Vector128.Max(toned.AsInt16() + value.AsInt16() - luma.AsInt16(), Vector128<short>.Zero), max.AsInt16()).AsUInt16();
+        return Vector128.ConditionalSelect(AlphaLanes.GetLower(), value, shifted);
+    }
+
     /// <summary>
     /// Tones eight pixels at a time. Each pixel's brightness <c>L</c> is mapped along the ink to paper ramp as
     /// <c>(ink * (255 - L) + paper * L) / 255</c>, rounded, and each channel's offset from <c>L</c> is added back so
@@ -233,6 +253,34 @@ public sealed record PageTone : IEquatable<PageTone>
                 var (lower, upper) = Vector256.Widen(source);
                 Vector256.Narrow(Blend(lower), Blend(upper)).StoreUnsafe(ref start, (nuint)processed);
             }
+        }
+
+        // ARM64 has 128 bit vectors only, and x64 finishes a row's last four to seven pixels here.
+        return Vector128.IsHardwareAccelerated ? ApplyVectorized128(pixels, processed) : processed;
+    }
+
+    /// <summary>Tones four pixels at a time with 128 bit vectors, using the same arithmetic as the 256 bit path.</summary>
+    /// <param name="pixels">The pixels.</param>
+    /// <param name="processed">The bytes already toned.</param>
+    /// <returns>The number of bytes processed; the rest is left for the scalar loop.</returns>
+    private int ApplyVectorized128(Span<byte> pixels, int processed)
+    {
+        ref var start = ref MemoryMarshal.GetReference(pixels);
+        var white = Vector128<byte>.AllBitsSet;
+        var paper = _paperBlock.GetLower();
+        var ink = _inkLanes.GetLower();
+        var paperLanes = _paperLanes.GetLower();
+        for (; processed + Vector128<byte>.Count <= pixels.Length; processed += Vector128<byte>.Count)
+        {
+            var source = Vector128.LoadUnsafe(ref start, (nuint)processed);
+            if (source == white)
+            {
+                paper.StoreUnsafe(ref start, (nuint)processed);
+                continue;
+            }
+
+            var (lower, upper) = Vector128.Widen(source);
+            Vector128.Narrow(Blend(lower, ink, paperLanes), Blend(upper, ink, paperLanes)).StoreUnsafe(ref start, (nuint)processed);
         }
 
         return processed;
