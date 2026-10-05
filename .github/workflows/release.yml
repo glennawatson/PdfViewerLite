@@ -1,0 +1,306 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Release level for the new tag. Pick one, unless versionOverride is set.'
+        required: true
+        type: choice
+        options:
+        - '(pick one)'
+        - major
+        - minor
+        - patch
+      preRelease:
+        description: 'Pre-release channel (e.g. beta, rc). The version becomes <bumped-core>-<channel>.<N>. Empty = stable release.'
+        required: false
+        type: string
+        default: ''
+      versionOverride:
+        description: 'Exact version to release (e.g. 1.0.0), bypassing the bump from the latest tag. Leave bump at "(pick one)".'
+        required: false
+        type: string
+        default: ''
+      sourceRef:
+        description: 'Git ref (tag, branch or SHA) to release from. Empty = the ref this run was started on.'
+        required: false
+        type: string
+        default: ''
+permissions:
+  contents: read
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      semver2: ${{ steps.minver.outputs.SemVer2 }}
+      tag: ${{ steps.tagname.outputs.tag }}
+      prerelease: ${{ steps.tagname.outputs.prerelease }}
+      sourceSha: ${{ steps.sourcesha.outputs.sha }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ inputs.sourceRef }}
+        fetch-depth: 0
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@main
+      with:
+        dotnet-versions: |
+          11.0.100-rc.1.26425.128
+        stamp-version: 'false'
+    - name: Resolve built commit SHA
+      id: sourcesha
+      uses: glennawatson/actions-common/.github/actions/run-csharp@main
+      with:
+        shared-script: resolve-built-commit-sha-c775df1621.cs
+    - name: Validate version inputs
+      env:
+        BUMP: ${{ inputs.bump }}
+        PRE_RELEASE: ${{ inputs.preRelease }}
+        VERSION_OVERRIDE: ${{ inputs.versionOverride }}
+      uses: glennawatson/actions-common/.github/actions/run-csharp@main
+      with:
+        shared-script: validate-version-inputs-2aad3ac3e2.cs
+    - name: Compute version and tag
+      if: inputs.bump != '(pick one)' && inputs.versionOverride == ''
+      id: bump
+      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@main
+      with:
+        bump: ${{ inputs.bump }}
+        tag-prefix: ''
+        pre-release-id: ${{ inputs.preRelease }}
+        push-tag: 'false'
+    - name: Resolve release tag
+      id: tagname
+      env:
+        BUMP_TAG: ${{ steps.bump.outputs.tag }}
+        BUMP_PRERELEASE: ${{ steps.bump.outputs.prerelease }}
+        VERSION_OVERRIDE: ${{ inputs.versionOverride }}
+      uses: glennawatson/actions-common/.github/actions/run-csharp@main
+      with:
+        shared-script: resolve-release-tag-d98a6a5208.cs
+    - name: Stamp version with MinVer
+      id: minver
+      uses: glennawatson/actions-common/.github/actions/minver@main
+      with:
+        tag-prefix: ''
+        version-override: ${{ inputs.versionOverride != '' && inputs.versionOverride || steps.bump.outputs.version }}
+
+  package-windows:
+    needs: version
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.version.outputs.sourceSha }}
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@main
+      with:
+        dotnet-versions: |
+          11.0.100-rc.1.26425.128
+        stamp-version: 'false'
+    - name: Publish Windows Native AOT
+      run: dotnet run --file tools/packaging/publish.cs -- win-x64 ${{ needs.version.outputs.semver2 }}
+    - name: Package Windows (MSIX, MSI, ZIP)
+      run: dotnet run --file tools/packaging/windows.cs -- win-x64 ${{ needs.version.outputs.semver2 }}
+    - name: Upload unsigned Windows packages
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: unsigned-windows
+        path: |
+          artifacts/pdfviewerlite-*.msix
+          artifacts/pdfviewerlite-*.msi
+          artifacts/pdfviewerlite-*.zip
+        if-no-files-found: error
+
+  sign-windows:
+    needs: [version, package-windows]
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ghcr.io/reactiveui/certum-signer:latest@sha256:a609cf99c5bdb673fa7b1e48c2dd6c3b0a559377a0278f673889f3b2f4ebe6ce
+    env:
+      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
+      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
+      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
+    steps:
+    - name: Download unsigned Windows packages
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: unsigned-windows
+        path: signed
+    - name: Sign packages with Certum SimplySign
+      if: env.CERTUM_USER_ID != '' && env.CERTUM_OTP_URI != ''
+      uses: glennawatson/actions-common/.github/actions/certum-sign@main
+      with:
+        packages-glob: 'signed/*.msi*'
+    - name: Upload signed Windows packages
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: signed-windows
+        path: signed/*
+        if-no-files-found: error
+
+  verify-windows:
+    needs: [version, sign-windows]
+    runs-on: windows-latest
+    environment:
+      name: release
+    permissions:
+      contents: read
+    env:
+      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.version.outputs.sourceSha }}
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@main
+      with:
+        dotnet-versions: |
+          11.0.100-rc.1.26425.128
+        stamp-version: 'false'
+    - name: Download signed Windows packages
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: signed-windows
+        path: signed
+    - name: Verify signatures with Windows tools
+      shell: pwsh
+      run: |
+        if ($env:CERTUM_CERT_FINGERPRINT) {
+          dotnet run --file tools/signing/verify-all.cs -- signed
+        } else {
+          Write-Host "CERTUM_CERT_FINGERPRINT is not set. Skipping signature verification."
+        }
+
+  package-linux:
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.version.outputs.sourceSha }}
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@main
+      with:
+        dotnet-versions: |
+          11.0.100-rc.1.26425.128
+        stamp-version: 'false'
+    - name: Publish Linux Native AOT
+      run: dotnet run --file tools/packaging/publish.cs -- linux-x64 ${{ needs.version.outputs.semver2 }}
+    - name: Package Linux (AppImage, DEB, RPM, tar.gz)
+      run: dotnet run --file tools/packaging/linux.cs -- linux-x64 ${{ needs.version.outputs.semver2 }}
+    - name: Upload Linux packages
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: packages-linux
+        path: |
+          artifacts/PdfViewerLite-*.AppImage
+          artifacts/*.deb
+          artifacts/*.rpm
+          artifacts/pdfviewerlite-*.tar.gz
+        if-no-files-found: error
+
+  package-macos:
+    needs: version
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.version.outputs.sourceSha }}
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@main
+      with:
+        dotnet-versions: |
+          11.0.100-rc.1.26425.128
+        stamp-version: 'false'
+    - name: Publish macOS Native AOT
+      run: dotnet run --file tools/packaging/publish.cs -- osx-arm64 ${{ needs.version.outputs.semver2 }}
+    - name: Package macOS (.app, DMG, ZIP)
+      run: dotnet run --file tools/packaging/macos.cs -- osx-arm64 ${{ needs.version.outputs.semver2 }}
+    - name: Upload macOS packages
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      with:
+        name: packages-macos
+        path: |
+          artifacts/pdfviewerlite-*.dmg
+          artifacts/pdfviewerlite-*.app.zip
+        if-no-files-found: error
+
+  create-release:
+    needs: [version, package-windows, sign-windows, verify-windows, package-linux, package-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        ref: ${{ needs.version.outputs.sourceSha }}
+        fetch-depth: 0
+    - name: Setup .NET Environment
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@main
+      with:
+        dotnet-versions: |
+          11.0.100-rc.1.26425.128
+        stamp-version: 'false'
+    - name: Download Linux packages
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: packages-linux
+        path: release-assets
+    - name: Download macOS packages
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: packages-macos
+        path: release-assets
+    - name: Download Windows packages
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        name: signed-windows
+        path: release-assets
+    - name: Install GitReleaseNoteGenerator
+      run: dotnet tool install -g GitReleaseNoteGenerator
+    - name: Generate release notes
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        RELEASE_VERSION: ${{ needs.version.outputs.semver2 }}
+      run: git-release-notes --release-version "$RELEASE_VERSION" --output-file release-notes.md
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        TAG: ${{ needs.version.outputs.tag }}
+        TARGET: ${{ needs.version.outputs.sourceSha }}
+        TITLE: ${{ needs.version.outputs.semver2 }}
+        PRERELEASE: ${{ needs.version.outputs.prerelease }}
+      shell: bash
+      run: |
+        flags=()
+        if [ "$PRERELEASE" = "true" ]; then
+          flags+=(--prerelease)
+        fi
+        gh release create "$TAG" \
+          --repo "$REPO" \
+          --target "$TARGET" \
+          --title "$TITLE" \
+          --notes-file release-notes.md \
+          "${flags[@]}" \
+          release-assets/*

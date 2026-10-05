@@ -145,7 +145,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Gets the window title.</summary>
-    public string WindowTitle => SelectedTab is { } tab ? $"{tab.Title} — PdfViewerLite" : "PdfViewerLite";
+    public string WindowTitle => SelectedTab is { } tab ? $"{tab.Title} — Hyper PDF Viewer" : "Hyper PDF Viewer";
 
     /// <summary>Gets or sets a value indicating whether pages are drawn in the comfort page colour rather than plain white.</summary>
     public bool PageToneEnabled

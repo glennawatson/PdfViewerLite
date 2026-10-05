@@ -1,3 +1,5 @@
 [*.cs]
 # Command-line tools print their results to the console.
 dotnet_diagnostic.SST1449.severity = none
+# Package metadata lists are plain arrays in these tools.
+dotnet_diagnostic.SST1499.severity = none

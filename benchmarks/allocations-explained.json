@@ -1,4 +1,34 @@
 [
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Skia.Rendering.DrawingContextImpl.DrawRectangle(",
+    "reason": "One 48-byte string was sampled during the rounded-fill trace, with no allocating callee resolved below DrawRectangle. This isolated tick does not establish a per-draw cost. Allocation-counter tests measured zero managed bytes across 1,000 warmed solid and rounded fills, including small gradients."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Skia.Rendering.DrawingContextImpl.DrawGlyphRun(",
+    "reason": "One 48-byte string was sampled with no allocating callee resolved below DrawGlyphRun. This isolated tick does not establish a per-draw cost. A separate allocation-counter test checks warmed repeated glyph draws."
+  },
+  {
+    "type": "Avalonia.Media.TextFormatting.ShapedBuffer",
+    "frame": "PdfViewerLite.Skia.Fonts.HarfBuzzTextShaper.ShapeText(",
+    "reason": "Avalonia's shaping contract returns an owned layout buffer. Each shaping request creates this wrapper; retained glyph runs reuse the result for drawing."
+  },
+  {
+    "type": "PooledArray`1[Avalonia.Media.TextFormatting.GlyphInfo]",
+    "frame": "PdfViewerLite.Skia.Fonts.HarfBuzzTextShaper.ShapeText(",
+    "reason": "The shaped layout owns a wrapper around pooled glyph storage. The wrapper is created during shaping, while the glyph array is reused from Avalonia's pool."
+  },
+  {
+    "type": "Ref`1[Avalonia.Media.TextFormatting.ShapedBuffer+PooledArray`1[Avalonia.Media.TextFormatting.GlyphInfo]]",
+    "frame": "PdfViewerLite.Skia.Fonts.HarfBuzzTextShaper.ShapeText(",
+    "reason": "Avalonia retains the shaped glyph storage through a reference wrapper so layout slices can share its lifetime. This runs during shaping, not each retained draw."
+  },
+  {
+    "type": "RefCounter",
+    "frame": "PdfViewerLite.Skia.Fonts.HarfBuzzTextShaper.ShapeText(",
+    "reason": "The layout buffer's reference counter releases its pooled glyph storage when the final layout slice is disposed."
+  },
   // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
   // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
   {

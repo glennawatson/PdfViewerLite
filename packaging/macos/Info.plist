@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>PdfViewerLite</string>
+  <string>Hyper PDF Viewer</string>
   <key>CFBundleDisplayName</key>
-  <string>PdfViewerLite</string>
+  <string>Hyper PDF Viewer</string>
   <key>CFBundleIdentifier</key>
   <string>net.glennwatson.PdfViewerLite</string>
   <key>CFBundleExecutable</key>

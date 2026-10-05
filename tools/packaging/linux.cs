@@ -6,14 +6,18 @@
 #:package Refit
 #:include BuildTools.cs
 #:include IPackagingSourceApi.cs
+#:include PayloadKind.cs
+#:include PayloadEntry.cs
+#:include LinuxPayload.cs
+#:include DebBuilder.cs
+#:include RpmBuilder.cs
+#:include SquashfsWriter.cs
+#:include AppImageBuilder.cs
 
+using System.Formats.Tar;
+using System.IO.Compression;
 using PdfViewerLite.Tools.Packaging;
 using Refit;
-
-if (!OperatingSystem.IsLinux())
-{
-    throw new PlatformNotSupportedException("Run Linux packaging on Linux.");
-}
 
 const string x64Rid = "linux-x64";
 
@@ -23,90 +27,39 @@ if (args is not [var rid, var version] || rid is not (x64Rid or "linux-arm64"))
     return 1;
 }
 
-const string appId = "net.glennwatson.PdfViewerLite";
+var isX64 = rid == x64Rid;
 
-const UnixFileMode executableMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
-    | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
-
-var architecture = rid == x64Rid ? "x86_64" : "aarch64";
+var architecture = isX64 ? "x86_64" : "aarch64";
 
 var artifacts = Path.GetFullPath("artifacts");
 
 var source = Path.Combine(artifacts, rid);
 
-var stage = Path.Combine(artifacts, $"AppDir-{architecture}");
-
-if (Directory.Exists(stage))
-{
-    Directory.Delete(stage, true);
-}
-
-foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
-{
-    var target = Path.Combine(stage, "usr/bin", Path.GetRelativePath(source, file));
-    _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-    File.Copy(file, target);
-    File.SetUnixFileMode(target, File.GetUnixFileMode(file));
-}
-
-(string From, string To)[] resources =
-[
-    ($"packaging/linux/{appId}.desktop", $"usr/share/applications/{appId}.desktop"),
-    ($"packaging/linux/{appId}.desktop", $"{appId}.desktop"),
-    ($"packaging/linux/{appId}.metainfo.xml", $"usr/share/metainfo/{appId}.appdata.xml"),
-    ($"packaging/linux/icons/{appId}.svg", $"usr/share/icons/hicolor/scalable/apps/{appId}.svg"),
-    ($"packaging/linux/icons/{appId}.svg", $"{appId}.svg"),
-];
-
-foreach (var (from, to) in resources)
-{
-    var target = Path.Combine(stage, to);
-    _ = Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-    File.Copy(from, target);
-}
-
-_ = File.CreateSymbolicLink(Path.Combine(stage, "AppRun"), "usr/bin/pdfviewerlite");
-
-_ = File.CreateSymbolicLink(Path.Combine(stage, ".DirIcon"), $"{appId}.svg");
-
-var tool = Path.Combine(artifacts, $"appimagetool-{architecture}.AppImage");
+var runtime = Path.Combine(artifacts, $"appimage-runtime-{architecture}");
 
 using (var client = new HttpClient { BaseAddress = new("https://github.com") })
 {
     var api = RestService.ForGenerated<IPackagingSourceApi>(client);
-    var address = new Uri($"https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-{architecture}.AppImage");
+    var address = new Uri($"https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-{architecture}");
     using var response = await api.DownloadAsync(address, CancellationToken.None).ConfigureAwait(false);
     _ = response.EnsureSuccessStatusCode();
     using var input = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-    using var output = File.Create(tool);
+    using var output = File.Create(runtime);
     await input.CopyToAsync(output).ConfigureAwait(false);
 }
 
-File.SetUnixFileMode(tool, executableMode);
+AppImageBuilder.Build(runtime, LinuxPayload.CreateAppDirectory(source), Path.Combine(artifacts, $"PdfViewerLite-{version}-{architecture}.AppImage"));
 
-Environment.SetEnvironmentVariable("APPIMAGE_EXTRACT_AND_RUN", "1");
+var installed = LinuxPayload.CreateInstalled(source);
 
-Environment.SetEnvironmentVariable("ARCH", architecture);
+DebBuilder.Build(installed, version, isX64 ? "amd64" : "arm64", Path.Combine(artifacts, $"pdfviewerlite_{DebBuilder.ToDebianVersion(version)}_{(isX64 ? "amd64" : "arm64")}.deb"));
 
-BuildTools.Run(tool, "--no-appstream", stage, Path.Combine(artifacts, $"PdfViewerLite-{version}-{architecture}.AppImage"));
+RpmBuilder.Build(installed, version, architecture, Path.Combine(artifacts, $"pdfviewerlite-{RpmBuilder.ToRpmVersion(version)}-{RpmBuilder.Release}.{architecture}.rpm"));
 
-Environment.SetEnvironmentVariable("VERSION", version);
-
-Environment.SetEnvironmentVariable("NFPM_ARCH", rid == x64Rid ? "amd64" : "arm64");
-
-Environment.SetEnvironmentVariable("PUBLISH_DIR", source);
-
-Environment.SetEnvironmentVariable("MAINTAINER", "Glenn Watson");
-
-Environment.SetEnvironmentVariable("GOBIN", Path.Combine(artifacts, "packaging-tools"));
-
-BuildTools.Run("go", "install", "github.com/goreleaser/nfpm/v2/cmd/nfpm@latest");
-
-foreach (var packager in new[] { "deb", "rpm" })
+using (var archive = File.Create(Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.tar.gz")))
+using (var gzip = new GZipStream(archive, CompressionLevel.SmallestSize))
 {
-    BuildTools.Run(Path.Combine(artifacts, "packaging-tools", "nfpm"), "package", "-f", "packaging/linux/nfpm.yaml", "-p", packager, "-t", artifacts);
+    TarFile.CreateFromDirectory(source, gzip, true);
 }
-
-BuildTools.Run("tar", "-C", artifacts, "-czf", Path.Combine(artifacts, $"pdfviewerlite-{version}-{rid}.tar.gz"), rid);
 
 return 0;

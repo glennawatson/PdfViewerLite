@@ -8,7 +8,7 @@
             Publisher="CN=Glenn Andrew Watson, O=Glenn Andrew Watson, L=Mooroolbark, S=Victoria, C=AU"
             Version="0.1.0.0" ProcessorArchitecture="x64" />
   <Properties>
-    <DisplayName>PdfViewerLite</DisplayName>
+    <DisplayName>Hyper PDF Viewer</DisplayName>
     <PublisherDisplayName>Glenn Watson</PublisherDisplayName>
     <Description>A calm PDF viewer</Description>
     <Logo>Assets\StoreLogo.png</Logo>
@@ -19,7 +19,7 @@
   </Dependencies>
   <Applications>
     <Application Id="PdfViewerLite" Executable="pdfviewerlite.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="PdfViewerLite" Description="A calm PDF viewer"
+      <uap:VisualElements DisplayName="Hyper PDF Viewer" Description="A calm PDF viewer"
                           BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png" />
       <Extensions>

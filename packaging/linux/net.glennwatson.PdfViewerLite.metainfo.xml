@@ -3,11 +3,11 @@
   <id>net.glennwatson.PdfViewerLite</id>
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
-  <name>PdfViewerLite</name>
+  <name>Hyper PDF Viewer</name>
   <summary>Fast, tabbed PDF viewer</summary>
   <description>
     <p>
-      PdfViewerLite is a fast PDF viewer that opens every document as a tab in one window. It renders with PDFium,
+      Hyper PDF Viewer is a fast PDF viewer that opens every document as a tab in one window. It renders with PDFium,
       follows your KDE colour scheme and integrates with Dolphin: opening files from the file manager adds tabs to
       the running window and opened documents appear in Recent Files.
     </p>
