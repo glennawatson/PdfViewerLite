@@ -149,8 +149,12 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
                 return _image;
             }
 
+            ObjectDisposedException.ThrowIf(_bitmap.Handle == IntPtr.Zero, this);
             _image?.Dispose();
-            _image = SKImage.FromBitmap(_bitmap);
+
+            // Wrapping the pixels shares them; FromBitmap copies a mutable bitmap, doubling each tile's memory. Writers
+            // finish before a bitmap is shown, as Avalonia's own backend also assumes, and each unlock replaces the snapshot.
+            _image = SKImage.FromPixels(_bitmap.Info, _bitmap.GetPixels(), _bitmap.RowBytes);
             _imageValid = true;
             return _image;
         }
