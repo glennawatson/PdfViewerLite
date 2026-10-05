@@ -51,6 +51,9 @@ public sealed class KokoroEngine : ISpeechEngine
     /// <summary>The ONNX session, loaded on first use.</summary>
     private InferenceSession? _session;
 
+    /// <summary>1 once disposed.</summary>
+    private int _disposed;
+
     /// <summary>Initializes a new instance of the <see cref="KokoroEngine"/> class.</summary>
     /// <param name="directory">The folder holding the model, voices and dictionaries.</param>
     public KokoroEngine(string directory)
@@ -85,10 +88,19 @@ public sealed class KokoroEngine : ISpeechEngine
     /// <inheritdoc/>
     public void Dispose()
     {
-        lock (_gate)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0 || !_gate.TryEnter())
         {
-            _session?.Dispose();
-            _session = null;
+            // A synthesis holds the gate; it sees the flag and releases the session when it finishes.
+            return;
+        }
+
+        try
+        {
+            ReleaseSession();
+        }
+        finally
+        {
+            _gate.Exit();
         }
     }
 
@@ -148,26 +160,45 @@ public sealed class KokoroEngine : ISpeechEngine
     {
         lock (_gate)
         {
-            var british = KokoroModel.IsBritish(voiceId);
-            var phonemes = GetPhonemizer(british).Phonemize(TextNormalizer.Normalize(text, british));
-            KokoroVocabulary.Tokenize(phonemes, _tokens);
-            if (_tokens.Count == 0)
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            try
             {
-                return new([], KokoroModel.SampleRate);
-            }
+                var british = KokoroModel.IsBritish(voiceId);
+                var phonemes = GetPhonemizer(british).Phonemize(TextNormalizer.Normalize(text, british));
+                KokoroVocabulary.Tokenize(phonemes, _tokens);
+                if (_tokens.Count == 0)
+                {
+                    return new([], KokoroModel.SampleRate);
+                }
 
-            var session = GetSession();
-            var style = GetStyle(voiceId);
-            var samples = new List<float>();
-            var tokens = CollectionsMarshal.AsSpan(_tokens);
-            for (var start = 0; start < tokens.Length; start += MaxTokens)
+                var session = GetSession();
+                var style = GetStyle(voiceId);
+                var samples = new List<float>();
+                var tokens = CollectionsMarshal.AsSpan(_tokens);
+                for (var start = 0; start < tokens.Length; start += MaxTokens)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Infer(session, tokens.Slice(start, Math.Min(MaxTokens, tokens.Length - start)), style, speed, samples);
+                }
+
+                return new([.. samples], KokoroModel.SampleRate);
+            }
+            finally
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                Infer(session, tokens.Slice(start, Math.Min(MaxTokens, tokens.Length - start)), style, speed, samples);
+                // Dispose did not wait for this synthesis, so the last holder of the gate frees the model.
+                if (Volatile.Read(ref _disposed) != 0)
+                {
+                    ReleaseSession();
+                }
             }
-
-            return new([.. samples], KokoroModel.SampleRate);
         }
+    }
+
+    /// <summary>Frees the ONNX session. Callers hold the gate.</summary>
+    private void ReleaseSession()
+    {
+        _session?.Dispose();
+        _session = null;
     }
 
     /// <summary>Gets the phonemizer for an accent, loading its dictionaries on first use. Callers hold the gate.</summary>

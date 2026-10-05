@@ -86,6 +86,9 @@ public sealed class MeloEngine : ISpeechEngine
     /// <summary>The BERT session, loaded on first use.</summary>
     private InferenceSession? _bert;
 
+    /// <summary>1 once disposed.</summary>
+    private int _disposed;
+
     /// <summary>Initializes a new instance of the <see cref="MeloEngine"/> class.</summary>
     /// <param name="directory">The folder holding the model files.</param>
     public MeloEngine(string directory)
@@ -120,12 +123,19 @@ public sealed class MeloEngine : ISpeechEngine
     /// <inheritdoc/>
     public void Dispose()
     {
-        lock (_gate)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0 || !_gate.TryEnter())
         {
-            _synthesizer?.Dispose();
-            _synthesizer = null;
-            _bert?.Dispose();
-            _bert = null;
+            // A synthesis holds the gate; it sees the flag and releases the sessions when it finishes.
+            return;
+        }
+
+        try
+        {
+            ReleaseSessions();
+        }
+        finally
+        {
+            _gate.Exit();
         }
     }
 
@@ -267,29 +277,50 @@ public sealed class MeloEngine : ISpeechEngine
     {
         lock (_gate)
         {
-            var frontEnd = GetFrontEnd();
-            var symbols = frontEnd.Symbols;
-            if (!symbols.Speakers.TryGetValue(voiceId, out var speaker))
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            try
             {
-                speaker = symbols.Speakers[MeloModel.Voices[0].Id];
-            }
-
-            var prepared = Normalize(text, MeloModel.IsBritish(voiceId));
-            var samples = new List<float>();
-            for (var start = 0; start < prepared.Length;)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var length = NextPiece(prepared, start);
-                frontEnd.Prepare(prepared[start..(start + length)], _input);
-                start += length;
-                if (_input.Phones.Count >= MinPhones)
+                var frontEnd = GetFrontEnd();
+                var symbols = frontEnd.Symbols;
+                if (!symbols.Speakers.TryGetValue(voiceId, out var speaker))
                 {
-                    Infer(speaker, speed, samples);
+                    speaker = symbols.Speakers[MeloModel.Voices[0].Id];
+                }
+
+                var prepared = Normalize(text, MeloModel.IsBritish(voiceId));
+                var samples = new List<float>();
+                for (var start = 0; start < prepared.Length;)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var length = NextPiece(prepared, start);
+                    frontEnd.Prepare(prepared[start..(start + length)], _input);
+                    start += length;
+                    if (_input.Phones.Count >= MinPhones)
+                    {
+                        Infer(speaker, speed, samples);
+                    }
+                }
+
+                return new(CollectionsMarshal.AsSpan(samples)[..Trimmed(samples, symbols.SampleRate)].ToArray(), symbols.SampleRate);
+            }
+            finally
+            {
+                // Dispose did not wait for this synthesis, so the last holder of the gate frees the models.
+                if (Volatile.Read(ref _disposed) != 0)
+                {
+                    ReleaseSessions();
                 }
             }
-
-            return new(CollectionsMarshal.AsSpan(samples)[..Trimmed(samples, symbols.SampleRate)].ToArray(), symbols.SampleRate);
         }
+    }
+
+    /// <summary>Frees the ONNX sessions. Callers hold the gate.</summary>
+    private void ReleaseSessions()
+    {
+        _synthesizer?.Dispose();
+        _synthesizer = null;
+        _bert?.Dispose();
+        _bert = null;
     }
 
     /// <summary>Runs BERT and the synthesizer on the prepared input. Callers hold the gate.</summary>
