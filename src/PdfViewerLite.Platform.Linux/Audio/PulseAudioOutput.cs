@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Speech;
 
@@ -42,8 +43,14 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
     /// <summary>The libpulse-simple file names.</summary>
     private static readonly string[] Candidates = ["libpulse-simple.so.0", "libpulse-simple.so"];
 
+    /// <summary>Whether libpulse-simple loads, worked out on first use.</summary>
+    private static readonly Lazy<bool> Loaded = new(LoadLibrary);
+
     /// <summary>Serialises playback.</summary>
     private readonly Lock _gate = new();
+
+    /// <summary>1 once disposed.</summary>
+    private int _disposed;
 
     /// <summary>The open stream.</summary>
     private PulseStreamHandle? _stream;
@@ -61,9 +68,19 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
                 return false;
             }
 
-            lock (_gate)
+            // Busy means a clip is playing through an open stream; waiting for it would stall the caller.
+            if (!_gate.TryEnter())
+            {
+                return true;
+            }
+
+            try
             {
                 return Open(_rate > 0 ? _rate : DefaultRate) is not null;
+            }
+            finally
+            {
+                _gate.Exit();
             }
         }
     }
@@ -71,10 +88,19 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
     /// <inheritdoc/>
     public void Dispose()
     {
-        lock (_gate)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0 || !_gate.TryEnter())
         {
-            _stream?.Dispose();
-            _stream = null;
+            // A clip holds the gate; it sees the flag and closes the stream when it stops.
+            return;
+        }
+
+        try
+        {
+            CloseStream();
+        }
+        finally
+        {
+            _gate.Exit();
         }
     }
 
@@ -82,7 +108,18 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
     public Task PlayAsync(SpeechAudio audio, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(audio);
-        return Task.Run(() => Play(audio, cancellationToken), CancellationToken.None);
+
+        // Playback waits for the clip to be heard, so it gets its own thread rather than holding a pool thread.
+        return Task.Factory.StartNew(
+            static state =>
+            {
+                var (output, clip, token) = ((PulseAudioOutput, SpeechAudio, CancellationToken))state!;
+                output.Play(clip, token);
+            },
+            (this, audio, cancellationToken),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
     }
 
     /// <summary>
@@ -109,7 +146,12 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
 
     /// <summary>Determines whether libpulse-simple can be loaded.</summary>
     /// <returns><see langword="true"/> when found.</returns>
-    private static bool LibraryLoads()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool LibraryLoads() => Loaded.Value;
+
+    /// <summary>Registers and loads libpulse-simple, once.</summary>
+    /// <returns><see langword="true"/> when found.</returns>
+    private static bool LoadLibrary()
     {
         NativeLibraries.Register(typeof(PulseAudioOutput).Assembly, NativeMethods.Library, Candidates);
         return NativeLibraries.TryLoad(typeof(PulseAudioOutput).Assembly, NativeMethods.Library);
@@ -122,33 +164,58 @@ public sealed unsafe class PulseAudioOutput : IAudioOutput
     {
         lock (_gate)
         {
-            var stream = Open(audio.SampleRate);
-            if (stream is null)
+            try
             {
+                PlayLocked(audio, cancellationToken);
+            }
+            finally
+            {
+                // Dispose did not wait for this clip, so the stream is closed here.
+                if (Volatile.Read(ref _disposed) != 0)
+                {
+                    CloseStream();
+                }
+            }
+        }
+    }
+
+    /// <summary>Closes the open stream. Callers hold the gate.</summary>
+    private void CloseStream()
+    {
+        _stream?.Dispose();
+        _stream = null;
+    }
+
+    /// <summary>Writes the audio and waits for it. Callers hold the gate.</summary>
+    /// <param name="audio">The audio.</param>
+    /// <param name="cancellationToken">Stops at once, discarding what is buffered.</param>
+    private void PlayLocked(SpeechAudio audio, CancellationToken cancellationToken)
+    {
+        if (Volatile.Read(ref _disposed) != 0 || Open(audio.SampleRate) is not { } stream)
+        {
+            return;
+        }
+
+        var samples = audio.Samples;
+        var started = Stopwatch.GetTimestamp();
+        for (var start = 0; start < samples.Length; start += Chunk)
+        {
+            // Stay a little ahead of what has been heard, so a write never blocks for long and Stop is immediate.
+            var ahead = TimeSpan.FromSeconds((double)start / audio.SampleRate) - Stopwatch.GetElapsedTime(started) - MaxAhead;
+            if ((ahead > TimeSpan.Zero && cancellationToken.WaitHandle.WaitOne(ahead)) || cancellationToken.IsCancellationRequested)
+            {
+                _ = NativeMethods.PaSimpleFlush(stream, out _);
                 return;
             }
 
-            var samples = audio.Samples;
-            var started = Stopwatch.GetTimestamp();
-            for (var start = 0; start < samples.Length; start += Chunk)
+            var count = Math.Min(Chunk, samples.Length - start);
+            fixed (float* data = &samples[start])
             {
-                // Stay a little ahead of what has been heard, so a write never blocks for long and Stop is immediate.
-                var ahead = TimeSpan.FromSeconds((double)start / audio.SampleRate) - Stopwatch.GetElapsedTime(started) - MaxAhead;
-                if ((ahead > TimeSpan.Zero && cancellationToken.WaitHandle.WaitOne(ahead)) || cancellationToken.IsCancellationRequested)
-                {
-                    _ = NativeMethods.PaSimpleFlush(stream, out _);
-                    return;
-                }
-
-                var count = Math.Min(Chunk, samples.Length - start);
-                fixed (float* data = &samples[start])
-                {
-                    _ = NativeMethods.PaSimpleWrite(stream, data, (nuint)(count * sizeof(float)), out _);
-                }
+                _ = NativeMethods.PaSimpleWrite(stream, data, (nuint)(count * sizeof(float)), out _);
             }
-
-            WaitUntilPlayed(stream, cancellationToken);
         }
+
+        WaitUntilPlayed(stream, cancellationToken);
     }
 
     /// <summary>Opens a stream at a sample rate, keeping one already open at that rate. Callers hold the gate.</summary>
