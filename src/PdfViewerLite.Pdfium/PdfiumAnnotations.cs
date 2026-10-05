@@ -86,6 +86,9 @@ internal static unsafe partial class PdfiumAnnotations
     /// <summary>Points converted on the stack before a pooled buffer is used.</summary>
     private const int StackPoints = 128;
 
+    /// <summary>PDFium's round line cap and round line join, so ink strokes keep soft ends and corners.</summary>
+    private const int RoundLine = 1;
+
     /// <summary>Characters copied on the stack before a pooled buffer is used.</summary>
     private const int StackChars = 256;
 
@@ -216,6 +219,7 @@ internal static unsafe partial class PdfiumAnnotations
         try
         {
             PdfBounds bounds = default;
+            nint path = 0;
             var offset = 0;
             foreach (var length in strokeLengths)
             {
@@ -224,12 +228,13 @@ internal static unsafe partial class PdfiumAnnotations
                     break;
                 }
 
-                AddStroke(page, annotation, points.Slice(offset, length), ref bounds);
+                AddStroke(page, annotation, points.Slice(offset, length), ref bounds, ref path);
                 offset += length;
             }
 
             _ = NativeMethods.FPDFAnnot_SetBorder(annotation, 0, 0, width);
             Finish(annotation, bounds.ToRect(width), color, string.Empty, kind == AnnotationKind.Signature ? SignatureSubject : null);
+            AppendInkAppearance(annotation, path, color, width);
             return NativeMethods.FPDFPage_GetAnnotIndex(page.Handle, annotation);
         }
         finally
@@ -302,9 +307,18 @@ internal static unsafe partial class PdfiumAnnotations
 
         try
         {
-            if (NativeMethods.FPDFAnnot_GetSubtype(annotation) == SubtypeStamp)
+            var subtype = NativeMethods.FPDFAnnot_GetSubtype(annotation);
+            if (subtype == SubtypeStamp)
             {
                 return RecolorObjects(annotation, color);
+            }
+
+            // Ink made here keeps its strokes as an appearance path, so recolour the path rather than drop it, or the
+            // ink would no longer print.
+            if (subtype == SubtypeInk && NativeMethods.FPDFAnnot_GetObjectCount(annotation) > 0)
+            {
+                var recoloured = RecolorObjects(annotation, color);
+                return SetAnnotationColor(annotation, color) || recoloured;
             }
 
             // PDFium only regenerates the appearance of supported subtypes once the old one is cleared.
@@ -482,12 +496,16 @@ internal static unsafe partial class PdfiumAnnotations
         return new((float)x1, (float)y1, (float)x2, (float)y2, (float)x3, (float)y3, (float)x4, (float)y4);
     }
 
-    /// <summary>Converts one stroke to PDF space and adds it to an ink annotation.</summary>
+    /// <summary>
+    /// Converts one stroke to PDF space, adds it to an ink annotation, and draws it into the path that becomes the
+    /// annotation's appearance.
+    /// </summary>
     /// <param name="page">The page.</param>
     /// <param name="annotation">The ink annotation.</param>
     /// <param name="stroke">The stroke in page space.</param>
     /// <param name="bounds">The bounds so far.</param>
-    private static void AddStroke(PdfiumPage page, nint annotation, ReadOnlySpan<PagePoint> stroke, ref PdfBounds bounds)
+    /// <param name="path">The appearance path, created by the first stroke.</param>
+    private static void AddStroke(PdfiumPage page, nint annotation, ReadOnlySpan<PagePoint> stroke, ref PdfBounds bounds, ref nint path)
     {
         FsPointF[]? rented = null;
         var converted = stroke.Length <= StackPoints ? stackalloc FsPointF[StackPoints] : (rented = ArrayPool<FsPointF>.Shared.Rent(stroke.Length));
@@ -504,6 +522,8 @@ internal static unsafe partial class PdfiumAnnotations
             {
                 _ = NativeMethods.FPDFAnnot_AddInkStroke(annotation, points, (nuint)stroke.Length);
             }
+
+            DrawStroke(converted[..stroke.Length], ref path);
         }
         finally
         {
@@ -511,6 +531,67 @@ internal static unsafe partial class PdfiumAnnotations
             {
                 ArrayPool<FsPointF>.Shared.Return(rented);
             }
+        }
+    }
+
+    /// <summary>Adds one stroke to the appearance path as joined lines; a single point draws a dot with the round cap.</summary>
+    /// <param name="points">The stroke in PDF space.</param>
+    /// <param name="path">The appearance path, created by the first stroke.</param>
+    private static void DrawStroke(ReadOnlySpan<FsPointF> points, ref nint path)
+    {
+        if (points.IsEmpty)
+        {
+            return;
+        }
+
+        if (path == 0)
+        {
+            path = NativeMethods.FPDFPageObj_CreateNewPath(points[0].X, points[0].Y);
+            if (path == 0)
+            {
+                return;
+            }
+        }
+        else
+        {
+            _ = NativeMethods.FPDFPath_MoveTo(path, points[0].X, points[0].Y);
+        }
+
+        if (points.Length == 1)
+        {
+            _ = NativeMethods.FPDFPath_LineTo(path, points[0].X, points[0].Y);
+            return;
+        }
+
+        for (var i = 1; i < points.Length; i++)
+        {
+            _ = NativeMethods.FPDFPath_LineTo(path, points[i].X, points[i].Y);
+        }
+    }
+
+    /// <summary>
+    /// Gives an ink annotation an appearance stream from its strokes, so it prints and flattens like it shows: PDFium
+    /// draws ink without one on screen, but flattening for print and other readers need the stream.
+    /// </summary>
+    /// <param name="annotation">The ink annotation, with its rectangle set.</param>
+    /// <param name="path">The strokes as a path, or 0 when there were none; ownership passes to the annotation.</param>
+    /// <param name="color">The colour.</param>
+    /// <param name="width">The line width.</param>
+    private static void AppendInkAppearance(nint annotation, nint path, uint color, float width)
+    {
+        if (path == 0)
+        {
+            return;
+        }
+
+        _ = NativeMethods.FPDFPath_SetDrawMode(path, 0, 1);
+        _ = NativeMethods.FPDFPageObj_SetStrokeWidth(path, width);
+        _ = NativeMethods.FPDFPageObj_SetLineCap(path, RoundLine);
+        _ = NativeMethods.FPDFPageObj_SetLineJoin(path, RoundLine);
+        _ = NativeMethods.FPDFPageObj_SetStrokeColor(path, (color >> RedShift) & ChannelMask, (color >> GreenShift) & ChannelMask, color & ChannelMask, Opaque);
+        if (NativeMethods.FPDFAnnot_AppendObject(annotation, path) == 0)
+        {
+            NativeMethods.FPDFPageObj_Destroy(path);
         }
     }
 

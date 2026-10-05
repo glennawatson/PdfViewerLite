@@ -50,7 +50,7 @@ public sealed partial class PageCanvas
     /// <summary>The page a click tool was pressed on, or -1.</summary>
     private int _clickPage = -1;
 
-    /// <summary>Runs a click tool: adds a note, text, a signature or a stamp where the page was clicked.</summary>
+    /// <summary>Runs a click tool: adds a note, text or a stamp where the page was clicked.</summary>
     /// <param name="tab">The tab.</param>
     /// <param name="clicked">The page.</param>
     /// <param name="point">The point, in page space.</param>
@@ -67,12 +67,6 @@ public sealed partial class PageCanvas
             case AnnotationTool.Text:
             {
                 _ = tab.Annotations.AddTextAsync(clicked, point);
-                break;
-            }
-
-            case AnnotationTool.PlaceSignature:
-            {
-                tab.FillAndSign.PlaceSignature(clicked, point);
                 break;
             }
 
@@ -192,14 +186,14 @@ public sealed partial class PageCanvas
 
         var annotations = tab.Annotations;
         var page = _layout.HitTest(position.X, position.Y);
-        if (BeginShape(tab, page, position, e))
+        if (PressPlacement(tab, page, position) || BeginShape(tab, page, position, e))
         {
             return true;
         }
 
         switch (annotations.Tool)
         {
-            case AnnotationTool.Draw or AnnotationTool.DrawSignature when page >= 0:
+            case AnnotationTool.Draw when page >= 0:
             {
                 _stroke.Clear();
                 _strokePage = page;
@@ -208,7 +202,7 @@ public sealed partial class PageCanvas
                 return true;
             }
 
-            case AnnotationTool.Note or AnnotationTool.Text or AnnotationTool.PlaceSignature or AnnotationTool.Stamp when page >= 0:
+            case AnnotationTool.Note or AnnotationTool.Text or AnnotationTool.Stamp when page >= 0:
             {
                 _clickPage = page;
                 return true;
@@ -280,9 +274,8 @@ public sealed partial class PageCanvas
             _strokePage = -1;
             if (_stroke.Count > 1)
             {
-                var kind = annotations.Tool == AnnotationTool.DrawSignature ? AnnotationKind.Signature : AnnotationKind.Ink;
                 ReadOnlySpan<int> lengths = [_stroke.Count];
-                _ = annotations.AddInk(page, CollectionsMarshal.AsSpan(_stroke), lengths, kind);
+                _ = annotations.AddInk(page, CollectionsMarshal.AsSpan(_stroke), lengths, AnnotationKind.Ink);
             }
 
             _stroke.Clear();
@@ -457,6 +450,7 @@ public sealed partial class PageCanvas
     private void DrawAnnotationOverlay(DrawingContext context, DocumentTabViewModel tab)
     {
         DrawShapePreview(context, tab);
+        DrawPlacement(context, tab);
         if (_strokePage >= 0 && _stroke.Count > 1)
         {
             var transform = new PageTransform(_layout.GetPageBounds(_strokePage), _sizes[_strokePage], tab.Rotation, _layout.Options.Scale);

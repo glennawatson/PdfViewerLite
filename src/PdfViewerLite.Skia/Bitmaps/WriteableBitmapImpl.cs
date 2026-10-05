@@ -60,7 +60,7 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
     {
         using var managedStream = new SKManagedStream(stream);
         using var data = SKData.Create(managedStream);
-        _bitmap = SKBitmap.Decode(data) ?? throw new ArgumentException("Unable to decode bitmap.", nameof(stream));
+        _bitmap = Lockable(SKBitmap.Decode(data) ?? throw new ArgumentException("Unable to decode bitmap.", nameof(stream)));
         PixelSize = new(_bitmap.Width, _bitmap.Height);
         Dpi = SkiaPlatform.DefaultDpi;
     }
@@ -78,7 +78,7 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
         var scale = isWidth ? ((float)targetDimension / codec.Info.Width) : ((float)targetDimension / codec.Info.Height);
         var scaled = codec.GetScaledDimensions(scale);
         var nearest = new SKImageInfo(scaled.Width, scaled.Height);
-        using var decoded = SKBitmap.Decode(codec, nearest);
+        using var decoded = Lockable(SKBitmap.Decode(codec, nearest));
         var finalWidth = isWidth ? targetDimension : (int)Math.Round(decoded.Width * ((double)targetDimension / decoded.Height));
         var finalHeight = isWidth ? (int)Math.Round(decoded.Height * ((double)targetDimension / decoded.Width)) : targetDimension;
         var info = new SKImageInfo(finalWidth, finalHeight, decoded.ColorType, decoded.AlphaType);
@@ -138,6 +138,26 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
             _image?.Dispose();
             _image = null;
             _bitmap.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Converts a decoded bitmap that Avalonia cannot lock, such as a greyscale scan, to the platform's colour type, so
+    /// every decoded writeable bitmap can be read and written.
+    /// </summary>
+    /// <param name="decoded">The decoded bitmap; disposed when it is replaced.</param>
+    /// <returns>A bitmap in a lockable pixel format.</returns>
+    /// <exception cref="InvalidOperationException">The pixels could not be converted.</exception>
+    private static SKBitmap Lockable(SKBitmap decoded)
+    {
+        if (decoded.ColorType.ToAvalonia() is not null)
+        {
+            return decoded;
+        }
+
+        using (decoded)
+        {
+            return decoded.Copy(SKImageInfo.PlatformColorType) ?? throw new InvalidOperationException($"Unable to convert {decoded.ColorType} pixels.");
         }
     }
 

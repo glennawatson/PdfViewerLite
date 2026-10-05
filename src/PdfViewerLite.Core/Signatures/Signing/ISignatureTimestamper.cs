@@ -12,6 +12,7 @@ public interface ISignatureTimestamper
 {
     /// <summary>Gets a timestamp token over some data; the authority signs a SHA-256 hash of it with the time.</summary>
     /// <param name="data">The data to stamp.</param>
+    /// <param name="cancellationToken">Stops waiting for the authority.</param>
     /// <returns>The DER-encoded timestamp token.</returns>
-    byte[] Timestamp(byte[] data);
+    ValueTask<byte[]> TimestampAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken);
 }

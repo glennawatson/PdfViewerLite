@@ -343,7 +343,10 @@
       </DockPanel>
     </Border>
 
-    <!-- Fill & Sign tools: form fields are filled by clicking them; signatures are drawn or typed, then placed. -->
+    <!--
+      Fill & Sign tools: form fields are filled by clicking them. A signature or initials is typed, drawn or taken from a
+      picture, previewed on the page, then placed. While placing, the same row shows the placing steps and buttons.
+    -->
     <Border x:Name="FillSignBar" DockPanel.Dock="Top" Classes="toolbar subbar" AutomationProperties.Name="Fill and Sign tools" AutomationProperties.ControlTypeOverride="ToolBar">
       <DockPanel>
         <Button AutomationProperties.Name="Done" x:Name="FillSignDoneButton" views:ControlHelp.Text="{x:Static views:Descriptions.FillSignDone}" DockPanel.Dock="Right" Classes="tool">
@@ -352,26 +355,68 @@
             <TextBlock Classes="label" Text="Done" />
           </StackPanel>
         </Button>
-        <StackPanel Orientation="Horizontal">
-          <Button AutomationProperties.Name="Draw Signature" x:Name="DrawSignatureButton" views:ControlHelp.Text="{x:Static views:Descriptions.DrawSignature}" Classes="tool">
-            <StackPanel Orientation="Horizontal">
-              <Path Classes="icon edit" Data="{StaticResource IconDraw}" />
-              <TextBlock Classes="label" Text="Draw Signature" />
+        <StackPanel>
+          <WrapPanel>
+            <Button AutomationProperties.Name="Signature…" x:Name="SignatureButton" views:ControlHelp.Text="{x:Static views:Descriptions.SignatureMark}" Classes="tool">
+              <StackPanel Orientation="Horizontal">
+                <Path Classes="icon edit" Data="{StaticResource IconSignature}" />
+                <TextBlock Classes="label" Text="Signature…" />
+              </StackPanel>
+            </Button>
+            <Button AutomationProperties.Name="Initials…" x:Name="InitialsButton" views:ControlHelp.Text="{x:Static views:Descriptions.InitialsMark}" Classes="tool">
+              <StackPanel Orientation="Horizontal">
+                <Path Classes="icon edit" Data="{StaticResource IconText}" />
+                <TextBlock Classes="label" Text="Initials…" />
+              </StackPanel>
+            </Button>
+            <Button AutomationProperties.Name="Sign with Certificate…" x:Name="CertificateSignButton" views:ControlHelp.Text="{x:Static views:Descriptions.CertificateSign}" Classes="tool">
+              <StackPanel Orientation="Horizontal">
+                <Path Classes="icon edit" Data="{StaticResource IconCertificate}" />
+                <TextBlock Classes="label" Text="Sign with Certificate…" />
+              </StackPanel>
+            </Button>
+            <StackPanel x:Name="PlacingTools" Orientation="Horizontal">
+              <Button AutomationProperties.Name="Place" x:Name="PlaceMarkButton" views:ControlHelp.Text="{x:Static views:Descriptions.PlaceMark}" Classes="tool">
+                <StackPanel Orientation="Horizontal">
+                  <Path Classes="icon add" Data="{StaticResource IconDone}" />
+                  <TextBlock Classes="label" Text="Place" />
+                </StackPanel>
+              </Button>
+              <Button AutomationProperties.Name="Bigger" x:Name="BiggerMarkButton" views:ControlHelp.Text="{x:Static views:Descriptions.BiggerMark}" Classes="tool">
+                <StackPanel Orientation="Horizontal">
+                  <Path Classes="icon edit" Data="{StaticResource IconZoomIn}" />
+                  <TextBlock Classes="label" Text="Bigger" />
+                </StackPanel>
+              </Button>
+              <Button AutomationProperties.Name="Smaller" x:Name="SmallerMarkButton" views:ControlHelp.Text="{x:Static views:Descriptions.SmallerMark}" Classes="tool">
+                <StackPanel Orientation="Horizontal">
+                  <Path Classes="icon edit" Data="{StaticResource IconZoomOut}" />
+                  <TextBlock Classes="label" Text="Smaller" />
+                </StackPanel>
+              </Button>
+              <Button AutomationProperties.Name="Cancel Placing" x:Name="CancelPlacementButton" views:ControlHelp.Text="{x:Static views:Descriptions.CancelPlacement}" Classes="tool">
+                <StackPanel Orientation="Horizontal">
+                  <Path Classes="icon remove" Data="{StaticResource IconClose}" />
+                  <TextBlock Classes="label" Text="Cancel" />
+                </StackPanel>
+              </Button>
             </StackPanel>
-          </Button>
-          <Button AutomationProperties.Name="Type Signature" x:Name="TypeSignatureButton" views:ControlHelp.Text="{x:Static views:Descriptions.TypeSignature}" Classes="tool">
-            <StackPanel Orientation="Horizontal">
-              <Path Classes="icon edit" Data="{StaticResource IconSignature}" />
-              <TextBlock Classes="label" Text="Type Signature" />
+            <StackPanel x:Name="PlacedTools" Orientation="Horizontal">
+              <Button AutomationProperties.Name="Adjust Mark" x:Name="AdjustMarkButton" views:ControlHelp.Text="{x:Static views:Descriptions.AdjustMark}" Classes="tool">
+                <StackPanel Orientation="Horizontal">
+                  <Path Classes="icon edit" Data="{StaticResource IconCursor}" />
+                  <TextBlock Classes="label" Text="Adjust" />
+                </StackPanel>
+              </Button>
+              <Button AutomationProperties.Name="Remove Mark" x:Name="RemoveMarkButton" views:ControlHelp.Text="{x:Static views:Descriptions.RemoveMark}" Classes="tool">
+                <StackPanel Orientation="Horizontal">
+                  <Path Classes="icon remove" Data="{StaticResource IconClose}" />
+                  <TextBlock Classes="label" Text="Remove" />
+                </StackPanel>
+              </Button>
             </StackPanel>
-          </Button>
-          <Button AutomationProperties.Name="Sign with Certificate…" x:Name="CertificateSignButton" views:ControlHelp.Text="{x:Static views:Descriptions.CertificateSign}" Classes="tool">
-            <StackPanel Orientation="Horizontal">
-              <Path Classes="icon edit" Data="{StaticResource IconCertificate}" />
-              <TextBlock Classes="label" Text="Sign with Certificate…" />
-            </StackPanel>
-          </Button>
-          <TextBlock x:Name="FillSignHint" Classes="secondary" VerticalAlignment="Center" Margin="12,0" Text="Click a form field to fill it in." />
+          </WrapPanel>
+          <TextBlock x:Name="FillSignHint" Classes="secondary" TextWrapping="Wrap" Margin="8,0,8,4" />
         </StackPanel>
       </DockPanel>
     </Border>

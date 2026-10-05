@@ -65,6 +65,8 @@ public sealed class AppServices : IDisposable
         Platform = platform;
         SettingsStore = settingsStore;
         Settings = settingsStore.Load();
+        SignatureMarkStore = SignatureMarkStore.Beside(settingsStore);
+        SignatureMarks = SignatureMarkStore.Load();
         Engine = engine;
         Pool = new(engine, Math.Max(1, Settings.MaxOpenDocuments));
         RenderHub = new(Math.Max(MinCacheMegabytes, Settings.TileCacheMegabytes) * BytesPerMegabyte);
@@ -81,6 +83,12 @@ public sealed class AppServices : IDisposable
 
     /// <summary>Gets the user settings.</summary>
     public AppSettings Settings { get; }
+
+    /// <summary>Gets the store for the remembered signature and initials.</summary>
+    public SignatureMarkStore SignatureMarkStore { get; }
+
+    /// <summary>Gets the signature and initials the user chose to remember.</summary>
+    public SavedSignatureMarks SignatureMarks { get; }
 
     /// <summary>Gets the document engine, for documents outside the pool such as print previews.</summary>
     public IDocumentEngine Engine { get; }
@@ -200,6 +208,23 @@ public sealed class AppServices : IDisposable
         catch (UnauthorizedAccessException ex)
         {
             Debug.WriteLine($"Could not save settings: {ex.Message}");
+        }
+    }
+
+    /// <summary>Saves the remembered signature and initials, ignoring IO failures.</summary>
+    public void SaveSignatureMarks()
+    {
+        try
+        {
+            SignatureMarkStore.Save(SignatureMarks);
+        }
+        catch (IOException ex)
+        {
+            Debug.WriteLine($"Could not save signatures: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Debug.WriteLine($"Could not save signatures: {ex.Message}");
         }
     }
 

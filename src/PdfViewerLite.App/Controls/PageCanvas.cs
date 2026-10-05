@@ -429,6 +429,8 @@ public sealed partial class PageCanvas : Control
     {
         _controlSubscriptions?.Dispose();
         _controlSubscriptions = null;
+        _markPainter?.Dispose();
+        _markPainter = null;
         _scrollerSubscriptions?.Dispose();
         _scrollerSubscriptions = null;
         _scroller = null;
@@ -564,7 +566,7 @@ public sealed partial class PageCanvas : Control
             return;
         }
 
-        if (!HandleMeasureKey(e.Key) && !HandleAnnotationKey(e.Key) && !HandleCaretKey(e) && !HandlePageByPageKey(e))
+        if (!HandlePlacementKey(e) && !HandleMeasureKey(e.Key) && !HandleAnnotationKey(e.Key) && !HandleCaretKey(e) && !HandlePageByPageKey(e))
         {
             return;
         }
@@ -986,6 +988,7 @@ public sealed partial class PageCanvas : Control
             tab.ReadAloud.ReadFromCharacterCommand.SubscribeSafe(_ => ClearSelection(), OnError),
             tab.WhenChanged(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),
             tab.Annotations.WhenChanged(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.FillAndSign.WhenChanged(static x => x.Placement).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
         tab.EnsureLoaded();
         var position = tab.Position;

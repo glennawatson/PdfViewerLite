@@ -309,14 +309,44 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.GreenItem, Parameter("Green")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.BlueItem, Parameter("Blue")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetColorCommand, static v => v.RedItem, Parameter("Red")));
-        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FillAndSign.IsActive, static v => v.FillSignBar.IsVisible));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DoneCommand, static v => v.FillSignDoneButton));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DrawSignatureCommand, static v => v.DrawSignatureButton));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.TypeSignatureCommand, static v => v.TypeSignatureButton));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Signatures.SignWithCertificateCommand, static v => v.CertificateSignButton));
-        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Signatures.CertificateSignInteraction), ShowCertificateSignAsync));
         bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Annotations.PromptInteraction), PromptAsync));
         bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.SaveAsInteraction), SaveAsAsync));
+        BindFillAndSign(bindings);
+    }
+
+    /// <summary>Binds the Fill &amp; Sign tools: making, placing and adjusting a signature, and certificate signing.</summary>
+    /// <param name="bindings">The bindings.</param>
+    private void BindFillAndSign(MultipleDisposable bindings)
+    {
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FillAndSign.IsActive, static v => v.FillSignBar.IsVisible));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DoneCommand, static v => v.FillSignDoneButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.SignatureCommand, static v => v.SignatureButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.InitialsCommand, static v => v.InitialsButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.PlaceCommand, static v => v.PlaceMarkButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.BiggerCommand, static v => v.BiggerMarkButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.SmallerCommand, static v => v.SmallerMarkButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.CancelPlacementCommand, static v => v.CancelPlacementButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.AdjustCommand, static v => v.AdjustMarkButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.RemoveMarkCommand, static v => v.RemoveMarkButton));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FillAndSign.Placement, static v => v.PlacingTools.IsVisible, static placement => placement is not null));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FillAndSign.HasPlacedMark, static v => v.PlacedTools.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FillAndSign.Hint, static v => v.FillSignHint.Text));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.FillAndSign.MarkInteraction), ShowSignatureMarkAsync));
+
+        // Escape cancels placing wherever the keyboard is, for example on the Place button.
+        bindings.Add(EscapePresses(this).InvokeCommand(this, static v => v.ViewModel!.FillAndSign.CancelPlacementCommand));
+
+        // Arrow keys move the mark being placed, so the pages take the keyboard as soon as placing starts.
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.FillAndSign.Placement)
+            .Select(static placement => placement is not null)
+            .DistinctUntilChanged()
+            .Where(static placing => placing)
+
+            // After the signature window has closed and handed focus back.
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .SubscribeSafe(_ => FocusCanvas(), OnError));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Signatures.SignWithCertificateCommand, static v => v.CertificateSignButton));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Signatures.CertificateSignInteraction), ShowCertificateSignAsync));
     }
 
     /// <summary>Binds the signed, notice and reload bars.</summary>
@@ -534,6 +564,20 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     {
         e.Handled = true;
         _ = ViewModel?.Forms.CommitAndMoveNext();
+    }
+
+    /// <summary>Shows the window that makes a signature or initials.</summary>
+    /// <param name="context">The interaction context.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowSignatureMarkAsync(IInteractionContext<SignatureMarkViewModel, bool> context)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            context.SetOutput(false);
+            return;
+        }
+
+        context.SetOutput(await new SignatureMarkWindow { ViewModel = context.Input }.ShowDialog<bool>(owner));
     }
 
     /// <summary>Shows the checked signatures.</summary>
