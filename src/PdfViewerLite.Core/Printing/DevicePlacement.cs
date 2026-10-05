@@ -17,7 +17,7 @@ namespace PdfViewerLite.Core.Printing;
 /// <param name="DeviceHeight">The printed height in device pixels.</param>
 /// <param name="Left">The left edge on the printable area.</param>
 /// <param name="Top">The top edge on the printable area.</param>
-[DebuggerDisplay("{Width} x {DeviceHeight} at ({Left}, {Top})")]
+[DebuggerDisplay("DevicePlacement: {Width} x {DeviceHeight} at ({Left}, {Top})")]
 public readonly record struct DevicePlacement(float Scale, int Width, int Height, int DeviceHeight, int Left, int Top)
 {
     /// <summary>Divides the spare space either side when centring.</summary>

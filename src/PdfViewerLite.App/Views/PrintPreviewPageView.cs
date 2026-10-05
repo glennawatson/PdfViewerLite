@@ -21,7 +21,7 @@ using ReactiveUI.Primitives.Disposables;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One sheet in the print preview: the page on white paper with its caption beneath.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("PrintPreviewPageView: {ViewModel}")]
 public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserControl<PrintPreviewPage>, IDisposable
 {
     /// <summary>The longest side of a sheet on screen.</summary>

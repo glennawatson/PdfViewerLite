@@ -18,7 +18,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>Find-in-document state: the query, incremental results and the current hit.</summary>
-[DebuggerDisplay("{Query}: {Results.Count}")]
+[DebuggerDisplay("SearchViewModel: {Query}: {Results.Count}")]
 public sealed partial class SearchViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The number of characters of context shown on each side of a hit.</summary>

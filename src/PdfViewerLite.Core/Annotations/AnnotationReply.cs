@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Annotations;
 /// <param name="Contents">The reply's text; empty for a bare status change.</param>
 /// <param name="Author">Who wrote it.</param>
 /// <param name="State">The review status it sets, or <see cref="ReviewState.None"/> for a plain reply.</param>
-[DebuggerDisplay("{Author}: {Contents} ({State})")]
+[DebuggerDisplay("AnnotationReply: {Author}: {Contents} ({State})")]
 public sealed record AnnotationReply(int Index, string Contents, string Author, ReviewState State);

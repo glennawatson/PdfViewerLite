@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 namespace PdfViewerLite.Core.Navigation;
 
 /// <summary>Back and forward history for jumps within a document (links, outline, search results, go to page).</summary>
-[DebuggerDisplay("Back {BackCount}, Forward {ForwardCount}")]
+[DebuggerDisplay("NavigationHistory: Back {BackCount}, Forward {ForwardCount}")]
 public sealed class NavigationHistory
 {
     /// <summary>The maximum number of remembered positions in each direction.</summary>

@@ -11,7 +11,7 @@ namespace PdfViewerLite.Pdfium;
 /// A copy of the document, held in memory, whose default layer visibility shows the layers the user chose. Pages are
 /// drawn from it while any layer differs from the document's own setting. Callers hold the PDFium lock.
 /// </summary>
-[DebuggerDisplay("Layer view, {_pages.Count} pages loaded")]
+[DebuggerDisplay("PdfiumLayerView: Layer view, {_pages.Count} pages loaded")]
 internal sealed class PdfiumLayerView : IDisposable
 {
     /// <summary>The number of pages kept loaded.</summary>

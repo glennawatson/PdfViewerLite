@@ -13,7 +13,7 @@ namespace PdfViewerLite.Core.Reading;
 /// <param name="CharIndices">The page character index of each character of <paramref name="Text"/>; -1 for joining spaces.</param>
 /// <param name="Bounds">The block's box on the page.</param>
 /// <param name="FontSize">The block's main font size in points.</param>
-[DebuggerDisplay("{Kind}: {Text}")]
+[DebuggerDisplay("ReadingBlock: {Kind}: {Text}")]
 public sealed record ReadingBlock(ReadingBlockKind Kind, string Text, int[] CharIndices, PageRect Bounds, float FontSize)
 {
     /// <summary>Gets the heading level, 1 to 6, for a heading; zero otherwise.</summary>

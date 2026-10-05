@@ -29,11 +29,35 @@ internal sealed class TestServices : IDisposable
     /// <param name="platform">The desktop integration.</param>
     /// <param name="speech">The fake voice and sound output.</param>
     internal TestServices(PdfViewerLite.Core.Platform.IDesktopPlatform platform, FakeSpeech speech)
+        : this(platform, speech, null)
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="TestServices"/> class with a fake text recogniser.</summary>
+    /// <param name="ocr">The fake recogniser and language packs.</param>
+    internal TestServices(FakeOcr ocr)
+        : this(new FallbackPlatform(), new FakeSpeech(true, false), ocr)
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="TestServices"/> class.</summary>
+    /// <param name="platform">The desktop integration.</param>
+    /// <param name="speech">The fake voice and sound output.</param>
+    /// <param name="ocr">
+    /// The fake recogniser, or <see langword="null"/> for the Tesseract and English data shipped with the app, with an
+    /// empty pack folder in the test folder and downloads never fetched from the network.
+    /// </param>
+    private TestServices(PdfViewerLite.Core.Platform.IDesktopPlatform platform, FakeSpeech speech, FakeOcr? ocr)
     {
         Speech = speech;
         Directory = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-app-{Guid.NewGuid():N}");
         _ = System.IO.Directory.CreateDirectory(Directory);
-        Services = new(new SettingsStore(Path.Combine(Directory, "settings.json")), new PdfiumEngine(), platform) { Speech = speech.CreateSetup(Directory) };
+        var packs = Path.Combine(Directory, "tessdata");
+        Services = new(new SettingsStore(Path.Combine(Directory, "settings.json")), new PdfiumEngine(), platform)
+        {
+            Speech = speech.CreateSetup(Directory),
+            Ocr = ocr?.CreateSetup(packs) ?? OcrSetup.CreateDefault() with { LanguageDirectory = packs, DownloadPacks = new FakeOcr(true).DownloadAsync },
+        };
     }
 
     /// <summary>Gets the working directory.</summary>

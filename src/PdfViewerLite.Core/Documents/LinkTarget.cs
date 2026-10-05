@@ -12,7 +12,7 @@ namespace PdfViewerLite.Core.Documents;
 /// <param name="PageIndex">The zero based destination page, or -1.</param>
 /// <param name="Location">The destination point within the page, when specified.</param>
 /// <param name="Uri">The external URI, when <paramref name="Kind"/> is <see cref="LinkTargetKind.Uri"/>.</param>
-[DebuggerDisplay("{Kind} {PageIndex} {Uri}")]
+[DebuggerDisplay("LinkTarget: {Kind} {PageIndex} {Uri}")]
 public readonly record struct LinkTarget(LinkTargetKind Kind, int PageIndex, PagePoint? Location, string? Uri)
 {
     /// <summary>Gets a target that leads nowhere.</summary>

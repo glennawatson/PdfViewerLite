@@ -18,7 +18,7 @@ namespace PdfViewerLite.Platform.Windows.Printing;
 /// resolution and sent to the printer's device context. Jobs go straight to a chosen printer with the copies, colour,
 /// two-sided and paper settings applied to its DEVMODE, or through the Windows print dialog.
 /// </summary>
-[DebuggerDisplay("Windows printing")]
+[DebuggerDisplay("WindowsPrintService: Windows printing")]
 public sealed class WindowsPrintService : IPrintService
 {
     /// <summary>Local and network printers.</summary>

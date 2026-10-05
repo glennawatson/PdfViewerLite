@@ -17,7 +17,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// <param name="Client">The requesting client.</param>
 /// <param name="Generation">The client generation when requested.</param>
 /// <param name="Tone">The page tone applied after rendering.</param>
-[DebuggerDisplay("{Key} {Priority}")]
+[DebuggerDisplay("RenderRequest: {Key} {Priority}")]
 public readonly record struct RenderRequest(
     TileKey Key,
     IDocument Document,

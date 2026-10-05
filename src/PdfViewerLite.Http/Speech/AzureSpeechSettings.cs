@@ -9,7 +9,7 @@ namespace PdfViewerLite.Http.Speech;
 /// <summary>The person's own Azure Speech resource.</summary>
 /// <param name="Key">The subscription key.</param>
 /// <param name="Region">The region, for example <c>uksouth</c>.</param>
-[DebuggerDisplay("{Region}")]
+[DebuggerDisplay("AzureSpeechSettings: {Region}")]
 public sealed record AzureSpeechSettings(string Key, string Region)
 {
     /// <summary>Gets a value indicating whether a key and a valid region are set.</summary>

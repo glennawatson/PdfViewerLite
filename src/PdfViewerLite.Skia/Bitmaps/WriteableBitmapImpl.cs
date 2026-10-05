@@ -30,6 +30,9 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
     /// <summary>The pixel content version.</summary>
     private int _version = 1;
 
+    /// <summary>The unlock callback, created once rather than on every lock.</summary>
+    private Action? _onUnlock;
+
     /// <summary>Initializes a new instance of the <see cref = "WriteableBitmapImpl"/> class.</summary>
     /// <param name = "size">The pixel dimensions.</param>
     /// <param name = "dpi">The DPI.</param>
@@ -57,7 +60,7 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
     {
         using var managedStream = new SKManagedStream(stream);
         using var data = SKData.Create(managedStream);
-        _bitmap = SKBitmap.Decode(data) ?? throw new ArgumentException("Unable to decode bitmap.", nameof(stream));
+        _bitmap = Lockable(SKBitmap.Decode(data) ?? throw new ArgumentException("Unable to decode bitmap.", nameof(stream)));
         PixelSize = new(_bitmap.Width, _bitmap.Height);
         Dpi = SkiaPlatform.DefaultDpi;
     }
@@ -75,7 +78,7 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
         var scale = isWidth ? ((float)targetDimension / codec.Info.Width) : ((float)targetDimension / codec.Info.Height);
         var scaled = codec.GetScaledDimensions(scale);
         var nearest = new SKImageInfo(scaled.Width, scaled.Height);
-        using var decoded = SKBitmap.Decode(codec, nearest);
+        using var decoded = Lockable(SKBitmap.Decode(codec, nearest));
         var finalWidth = isWidth ? targetDimension : (int)Math.Round(decoded.Width * ((double)targetDimension / decoded.Height));
         var finalHeight = isWidth ? (int)Math.Round(decoded.Height * ((double)targetDimension / decoded.Width)) : targetDimension;
         var info = new SKImageInfo(finalWidth, finalHeight, decoded.ColorType, decoded.AlphaType);
@@ -124,7 +127,7 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
     public ILockedFramebuffer Lock()
     {
         var format = Format ?? throw new NotSupportedException($"Unsupported pixel format {_bitmap.ColorType}.");
-        return new LockedFramebuffer(_bitmap.GetPixels(), PixelSize, _bitmap.RowBytes, Dpi, format, AlphaFormat ?? Avalonia.Platform.AlphaFormat.Premul, OnUnlock);
+        return new LockedFramebuffer(_bitmap.GetPixels(), PixelSize, _bitmap.RowBytes, Dpi, format, AlphaFormat ?? Avalonia.Platform.AlphaFormat.Premul, _onUnlock ??= OnUnlock);
     }
 
     /// <inheritdoc/>
@@ -135,6 +138,26 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
             _image?.Dispose();
             _image = null;
             _bitmap.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Converts a decoded bitmap that Avalonia cannot lock, such as a greyscale scan, to the platform's colour type, so
+    /// every decoded writeable bitmap can be read and written.
+    /// </summary>
+    /// <param name="decoded">The decoded bitmap; disposed when it is replaced.</param>
+    /// <returns>A bitmap in a lockable pixel format.</returns>
+    /// <exception cref="InvalidOperationException">The pixels could not be converted.</exception>
+    private static SKBitmap Lockable(SKBitmap decoded)
+    {
+        if (decoded.ColorType.ToAvalonia() is not null)
+        {
+            return decoded;
+        }
+
+        using (decoded)
+        {
+            return decoded.Copy(SKImageInfo.PlatformColorType) ?? throw new InvalidOperationException($"Unable to convert {decoded.ColorType} pixels.");
         }
     }
 
@@ -149,8 +172,12 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
                 return _image;
             }
 
+            ObjectDisposedException.ThrowIf(_bitmap.Handle == IntPtr.Zero, this);
             _image?.Dispose();
-            _image = SKImage.FromBitmap(_bitmap);
+
+            // Wrapping the pixels shares them; FromBitmap copies a mutable bitmap, doubling each tile's memory. Writers
+            // finish before a bitmap is shown, as Avalonia's own backend also assumes, and each unlock replaces the snapshot.
+            _image = SKImage.FromPixels(_bitmap.Info, _bitmap.GetPixels(), _bitmap.RowBytes);
             _imageValid = true;
             return _image;
         }

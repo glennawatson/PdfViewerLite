@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Signatures.Signing;
 /// <param name="Reason">Why the document is signed, for example "Approved"; may be empty.</param>
 /// <param name="Location">Where it was signed; may be empty.</param>
 /// <param name="Time">When it was signed.</param>
-[DebuggerDisplay("Page {PageIndex}: {Reason}")]
+[DebuggerDisplay("SigningRequest: Page {PageIndex}: {Reason}")]
 public readonly record struct SigningRequest(int PageIndex, string Reason, string Location, DateTimeOffset Time);

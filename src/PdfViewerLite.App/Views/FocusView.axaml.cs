@@ -22,7 +22,7 @@ namespace PdfViewerLite.App.Views;
 /// Focus Mode: the document's text in reading order in one calm, centred column. The settings become resources the
 /// styles use, pages are virtualised, and the view reports the place at its top so switching back keeps it.
 /// </summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("FocusView: {ViewModel}")]
 public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<FocusModeViewModel>
 {
     /// <summary>A character's average width as a share of the text size, to turn a width in characters into pixels.</summary>

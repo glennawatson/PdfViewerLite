@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using Avalonia.Controls.Templates;
 using PdfViewerLite.App.ViewModels;
 using ReactiveUI;
 using ReactiveUI.Binding;
@@ -11,7 +12,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Shows the comfort preferences; each choice applies as soon as it is made.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PreferencesWindow: {Title}")]
 public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWindow<PreferencesViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="PreferencesWindow"/> class.</summary>
@@ -27,8 +28,28 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
         CaretBox.ItemsSource = PreferencesViewModel.CaretOptions;
         FontSizeBox.ItemsSource = PreferencesViewModel.FontSizeOptions;
         SpeechEngineBox.ItemsSource = PreferencesViewModel.SpeechEngineOptions;
+        OcrLanguageList.ItemTemplate = new FuncDataTemplate<OcrLanguageItemViewModel>(static (_, _) => new OcrLanguageItemView());
+        FieldLabels.Link(
+            (SchemeBox, SchemeLabel),
+            (PageToneBox, PageToneLabel),
+            (ToolbarBox, ToolbarLabel),
+            (FileChangeBox, FileChangeLabel),
+            (MotionBox, MotionLabel),
+            (CaretBox, CaretLabel),
+            (FontSizeBox, FontSizeLabel),
+            (OpeningZoomBox, OpeningZoomLabel),
+            (SpeechEngineBox, SpeechEngineLabel),
+            (AzureKeyBox, AzureKeyLabel),
+            (AzureRegionBox, AzureRegionLabel),
+            (TimestampServerBox, TimestampServerLabel));
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.Items, static v => v.OcrLanguageList.ItemsSource));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.Note, static v => v.OcrNote.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.StatusText, static v => v.OcrStatusText.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.IsDownloading, static v => v.OcrDownloadProgress.Opacity, static downloading => downloading ? 1D : 0D));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.OcrLanguages.DownloadProgress, static v => v.OcrDownloadProgress.Value));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.OcrLanguages.StopDownloadCommand, static v => v.StopLanguageDownloadButton));
             disposables.Add(this.Bind(ViewModel, static vm => vm.ColorScheme, static v => v.SchemeBox.SelectedIndex));
             disposables.Add(this.Bind(ViewModel, static vm => vm.PageTone, static v => v.PageToneBox.SelectedIndex));
             disposables.Add(this.Bind(ViewModel, static vm => vm.OpeningZoom, static v => v.OpeningZoomBox.SelectedIndex));
@@ -51,6 +72,9 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
             disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
                 .SwitchMap(static closed => closed)
                 .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
+
+            // Start on the first choice, so the keyboard and screen readers begin at the top of the window.
+            _ = SchemeBox.Focus();
         });
     }
 

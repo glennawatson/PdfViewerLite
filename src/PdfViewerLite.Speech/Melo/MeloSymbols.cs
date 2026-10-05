@@ -13,7 +13,7 @@ namespace PdfViewerLite.Speech.Melo;
 /// MeloTTS-English's symbol table, speakers and sample rate, read from <c>melo-en.json</c>, and the rules that turn an
 /// ARPAbet phone such as <c>AH0</c> into the symbol id and tone the model was trained on.
 /// </summary>
-[DebuggerDisplay("{Count} symbols")]
+[DebuggerDisplay("MeloSymbols: {Count} symbols")]
 internal sealed class MeloSymbols
 {
     /// <summary>The id of the blank placed between phones, and of the padding phone.</summary>

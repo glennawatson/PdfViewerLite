@@ -4,6 +4,8 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using PdfViewerLite.Core.Documents;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Advanced;
@@ -17,7 +19,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// handed back through <see cref="TryTakeCompleted"/>, and <see cref="Completed"/> emits once per batch so the UI can
 /// drain them on its own thread.
 /// </summary>
-[DebuggerDisplay("Queue {QueueLength}")]
+[DebuggerDisplay("RenderScheduler: Queue {QueueLength}")]
 public sealed class RenderScheduler : IDisposable
 {
     /// <summary>The bit position of the priority within the queue ordering key.</summary>
@@ -32,11 +34,14 @@ public sealed class RenderScheduler : IDisposable
     /// <summary>The work queue, ordered by priority then arrival.</summary>
     private readonly PriorityQueue<RenderRequest, long> _queue = new();
 
-    /// <summary>Keys that are queued or rendered but not yet taken, mapped to the latest requested generation.</summary>
-    private readonly Dictionary<TileKey, int> _pending = [];
+    /// <summary>Keys that are queued or rendered but not yet taken, mapped to the latest request for them.</summary>
+    private readonly Dictionary<TileKey, PendingTile> _pending = [];
+
+    /// <summary>The epoch at which each document's content last changed; tiles rendered before it are discarded.</summary>
+    private readonly Dictionary<int, long> _invalidated = [];
 
     /// <summary>Completed renders waiting for the UI.</summary>
-    private readonly ConcurrentQueue<RenderedTile> _finished = new();
+    private readonly ConcurrentQueue<FinishedTile> _finished = new();
 
     /// <summary>Emits on the render thread when finished tiles are waiting.</summary>
     private readonly Signal<RxVoid> _completed = new();
@@ -55,6 +60,9 @@ public sealed class RenderScheduler : IDisposable
 
     /// <summary>Monotonic counter preserving FIFO order within a priority.</summary>
     private long _sequence;
+
+    /// <summary>Counts content invalidations; each render records the value it started under.</summary>
+    private long _epoch;
 
     /// <summary>1 while a completion notification is outstanding.</summary>
     private int _notificationPending;
@@ -92,7 +100,10 @@ public sealed class RenderScheduler : IDisposable
         }
     }
 
-    /// <summary>Queues a render unless the same tile is already queued, in which case its generation is refreshed.</summary>
+    /// <summary>
+    /// Queues a render. When the tile is already pending, the newer request replaces it, so the render uses the latest
+    /// document, generation and tone; a more urgent priority queues it again so it does not wait behind prefetch work.
+    /// </summary>
     /// <param name="request">The request.</param>
     /// <returns><see langword="true"/> when a new job was queued.</returns>
     public bool Request(in RenderRequest request)
@@ -100,17 +111,15 @@ public sealed class RenderScheduler : IDisposable
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         lock (_gate)
         {
-            if (_pending.TryGetValue(request.Key, out var generation))
+            ref var pending = ref CollectionsMarshal.GetValueRefOrAddDefault(_pending, request.Key, out var exists);
+            var urgent = exists && !pending.Started && request.Priority < pending.Latest.Priority;
+            if (exists && !urgent)
             {
-                if (generation != request.Generation)
-                {
-                    _pending[request.Key] = request.Generation;
-                }
-
+                pending = pending with { Latest = request };
                 return false;
             }
 
-            _pending.Add(request.Key, request.Generation);
+            pending = new(request, Started: false);
             var sequence = _sequence;
             _sequence = sequence + 1;
             _queue.Enqueue(request, ((long)request.Priority << PriorityShift) | sequence);
@@ -118,6 +127,28 @@ public sealed class RenderScheduler : IDisposable
 
         _ = _signal.Release();
         return true;
+    }
+
+    /// <summary>
+    /// Marks a document's content as changed: tiles of it that are rendering or waiting to be taken are discarded, and
+    /// requests for them are no longer merged with the old work.
+    /// </summary>
+    /// <param name="documentId">The document identifier.</param>
+    public void Invalidate(int documentId)
+    {
+        lock (_gate)
+        {
+            _epoch++;
+            _invalidated[documentId] = _epoch;
+            foreach (var (key, pending) in _pending)
+            {
+                // Work that has not started yet will render the new content, so only started work is cut loose.
+                if (key.DocumentId == documentId && pending.Started)
+                {
+                    _ = _pending.Remove(key);
+                }
+            }
+        }
     }
 
     /// <summary>Determines whether a tile is queued or awaiting collection.</summary>
@@ -138,17 +169,19 @@ public sealed class RenderScheduler : IDisposable
     {
         // Clear the flag first so a render finishing during the drain raises a fresh notification.
         _ = Interlocked.Exchange(ref _notificationPending, 0);
-        if (!_finished.TryDequeue(out tile))
+        while (_finished.TryDequeue(out var finished))
         {
-            return false;
+            if (TryRelease(finished))
+            {
+                tile = finished.Tile;
+                return true;
+            }
+
+            finished.Tile.Surface.Dispose();
         }
 
-        lock (_gate)
-        {
-            _ = _pending.Remove(tile.Key);
-        }
-
-        return true;
+        tile = default;
+        return false;
     }
 
     /// <inheritdoc/>
@@ -160,13 +193,19 @@ public sealed class RenderScheduler : IDisposable
         }
 
         _shutdown.Cancel();
-        _ = _thread.Join(ShutdownTimeout);
-        while (_finished.TryDequeue(out var tile))
+        var stopped = _thread.Join(ShutdownTimeout);
+        while (_finished.TryDequeue(out var finished))
         {
-            tile.Surface.Dispose();
+            finished.Tile.Surface.Dispose();
         }
 
         _completed.OnCompleted();
+        if (!stopped)
+        {
+            // A render still running may yet signal; it sees the disposed flag and drops its tile instead.
+            return;
+        }
+
         _completed.Dispose();
         _signal.Dispose();
         _shutdown.Dispose();
@@ -202,45 +241,76 @@ public sealed class RenderScheduler : IDisposable
                 return;
             }
 
-            if (!TryDequeue(out var request))
+            if (!TryDequeue(out var request, out var epoch))
             {
                 continue;
             }
 
-            if (!Execute(request))
+            if (!Execute(request, epoch))
             {
                 Forget(request.Key);
             }
         }
     }
 
-    /// <summary>Dequeues the next live request, discarding stale ones.</summary>
-    /// <param name="request">The request.</param>
+    /// <summary>Dequeues the latest request for the next live key, discarding stale and superseded entries.</summary>
+    /// <param name="request">The request to render.</param>
+    /// <param name="epoch">The invalidation epoch the render starts under.</param>
     /// <returns><see langword="true"/> when a request should be rendered.</returns>
-    private bool TryDequeue(out RenderRequest request)
+    private bool TryDequeue(out RenderRequest request, out long epoch)
     {
         lock (_gate)
         {
-            if (!_queue.TryDequeue(out request, out _))
+            epoch = _epoch;
+            while (_queue.TryDequeue(out var queued, out _))
+            {
+                ref var pending = ref CollectionsMarshal.GetValueRefOrNullRef(_pending, queued.Key);
+
+                // A key queued again at a more urgent priority leaves its first entry behind; skip it once handled.
+                if (Unsafe.IsNullRef(ref pending) || pending.Started)
+                {
+                    continue;
+                }
+
+                request = pending.Latest;
+                if (request.Generation != request.Client.Generation || request.Document.IsDisposed)
+                {
+                    _ = _pending.Remove(queued.Key);
+                    continue;
+                }
+
+                pending = pending with { Started = true };
+                return true;
+            }
+
+            request = default;
+            return false;
+        }
+    }
+
+    /// <summary>Clears a taken tile's pending entry, unless its document changed after the render started.</summary>
+    /// <param name="finished">The finished render.</param>
+    /// <returns><see langword="true"/> when the tile shows current content.</returns>
+    private bool TryRelease(in FinishedTile finished)
+    {
+        var key = finished.Tile.Key;
+        lock (_gate)
+        {
+            if (_invalidated.TryGetValue(key.DocumentId, out var changed) && finished.Epoch < changed)
             {
                 return false;
             }
 
-            var latest = _pending.TryGetValue(request.Key, out var generation) ? generation : request.Generation;
-            if (latest != request.Client.Generation || request.Document.IsDisposed)
-            {
-                _ = _pending.Remove(request.Key);
-                return false;
-            }
-
+            _ = _pending.Remove(key);
             return true;
         }
     }
 
     /// <summary>Renders one request and publishes the result.</summary>
     /// <param name="request">The request.</param>
+    /// <param name="epoch">The invalidation epoch the render started under.</param>
     /// <returns><see langword="true"/> when a tile was published.</returns>
-    private bool Execute(in RenderRequest request)
+    private bool Execute(in RenderRequest request, long epoch)
     {
         IRenderSurface? surface = null;
         try
@@ -264,7 +334,13 @@ public sealed class RenderScheduler : IDisposable
             return false;
         }
 
-        _finished.Enqueue(new(request.Key, surface));
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            surface.Dispose();
+            return false;
+        }
+
+        _finished.Enqueue(new(new(request.Key, surface), epoch));
         if (Interlocked.Exchange(ref _notificationPending, 1) == 0)
         {
             _completed.OnNext(RxVoid.Default);
@@ -279,7 +355,21 @@ public sealed class RenderScheduler : IDisposable
     {
         lock (_gate)
         {
-            _ = _pending.Remove(key);
+            // Only the entry this render started is removed; a newer request queued after an invalidation stays.
+            if (_pending.TryGetValue(key, out var pending) && pending.Started)
+            {
+                _ = _pending.Remove(key);
+            }
         }
     }
+
+    /// <summary>The latest request for a pending tile.</summary>
+    /// <param name="Latest">The most recent request.</param>
+    /// <param name="Started">Whether the render thread has taken it.</param>
+    private readonly record struct PendingTile(RenderRequest Latest, bool Started);
+
+    /// <summary>A finished render with the invalidation epoch it started under.</summary>
+    /// <param name="Tile">The tile.</param>
+    /// <param name="Epoch">The epoch.</param>
+    private readonly record struct FinishedTile(RenderedTile Tile, long Epoch);
 }

@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Documents;
 /// <param name="PageIndex">The zero based page index.</param>
 /// <param name="Start">The first character index.</param>
 /// <param name="Length">The number of characters.</param>
-[DebuggerDisplay("Page {PageIndex} [{Start}+{Length}]")]
+[DebuggerDisplay("TextMatch: Page {PageIndex} [{Start}+{Length}]")]
 public readonly record struct TextMatch(int PageIndex, int Start, int Length);

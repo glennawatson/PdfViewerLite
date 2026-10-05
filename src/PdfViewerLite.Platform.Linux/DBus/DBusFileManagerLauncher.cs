@@ -9,7 +9,7 @@ using Tmds.DBus.Protocol;
 namespace PdfViewerLite.Platform.Linux.DBus;
 
 /// <summary>Shows files in the desktop file manager (Dolphin, Nautilus, ...) through <c>org.freedesktop.FileManager1</c>.</summary>
-[DebuggerDisplay("FileManager1")]
+[DebuggerDisplay("DBusFileManagerLauncher: FileManager1")]
 public sealed class DBusFileManagerLauncher : IFileManagerLauncher
 {
     /// <summary>The file manager service and interface name.</summary>

@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Annotations;
 /// <summary>A freehand drawing: one or more strokes, stored as a flat point list with the length of each stroke.</summary>
 /// <param name="Points">Every point, in page space, stroke after stroke.</param>
 /// <param name="StrokeLengths">The number of points in each stroke.</param>
-[DebuggerDisplay("{StrokeLengths.Length} strokes")]
+[DebuggerDisplay("InkStroke: {StrokeLengths.Length} strokes")]
 public sealed record InkStroke(PagePoint[] Points, int[] StrokeLengths);

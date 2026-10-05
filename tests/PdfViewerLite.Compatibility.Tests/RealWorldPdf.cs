@@ -18,7 +18,7 @@ namespace PdfViewerLite.Compatibility.Tests;
 /// <param name="GroundTruthUrl">A Markdown transcript in reading order, when the source has one.</param>
 /// <param name="Password">The password that opens it, when it has one.</param>
 /// <param name="Unreadable">Whether the file is too broken to open, so the test checks it fails cleanly instead.</param>
-[DebuggerDisplay("{Id}")]
+[DebuggerDisplay("RealWorldPdf: {Id}")]
 public sealed record RealWorldPdf(
     string Id,
     string Source,

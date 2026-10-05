@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -62,32 +61,35 @@ public static class PdfSigner
     /// <returns>The signed PDF.</returns>
     /// <exception cref="ArgumentException">The certificate has no private key.</exception>
     /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static byte[] Sign(byte[] source, X509Certificate2 certificate, in SigningRequest request) => Sign(source, certificate, request, null);
+    public static byte[] Sign(byte[] source, X509Certificate2 certificate, in SigningRequest request)
+    {
+        var (bytes, cms, contentsStart) = PrepareSignature(source, certificate, request);
+        WriteContents(bytes, contentsStart, cms.Encode());
+        return bytes;
+    }
 
     /// <summary>Signs a PDF, adding a trusted timestamp to the signature when a timestamp authority is given.</summary>
     /// <param name="source">The PDF's bytes.</param>
     /// <param name="certificate">The signing certificate, with its private key.</param>
     /// <param name="request">What the signature records.</param>
     /// <param name="timestamper">The timestamp authority, or <see langword="null"/> for none.</param>
+    /// <param name="cancellationToken">Stops waiting for the timestamp authority.</param>
     /// <returns>The signed PDF.</returns>
     /// <exception cref="ArgumentException">The certificate has no private key.</exception>
     /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
-    public static byte[] Sign(byte[] source, X509Certificate2 certificate, in SigningRequest request, ISignatureTimestamper? timestamper)
+    /// <exception cref="CryptographicException">The signature is larger than the space reserved for it.</exception>
+    public static async Task<byte[]> SignAsync(byte[] source, X509Certificate2 certificate, SigningRequest request, ISignatureTimestamper? timestamper, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(certificate);
-        if (!certificate.HasPrivateKey)
+        var (bytes, cms, contentsStart) = PrepareSignature(source, certificate, request);
+        if (timestamper is not null)
         {
-            throw new ArgumentException("The certificate has no private key, so it cannot sign.", nameof(certificate));
+            // The token stamps the signature value and travels as an unsigned attribute of the signer (PAdES-T).
+            var signerInfo = cms.SignerInfos[0];
+            var token = await timestamper.TimestampAsync(signerInfo.GetSignature(), cancellationToken).ConfigureAwait(false);
+            signerInfo.AddUnsignedAttribute(new(TimestampTokenOid, token));
         }
 
-        var structure = PdfReader.Read(source);
-        var update = BuildUpdate(structure, SignatureDictionary(certificate, request), request.PageIndex);
-        var bytes = new byte[source.Length + update.Length];
-        source.CopyTo(bytes, 0);
-        update.CopyTo(bytes, source.Length);
-        FillSignature(bytes, source.Length, certificate, request.Time, timestamper);
+        WriteContents(bytes, contentsStart, cms.Encode());
         return bytes;
     }
 
@@ -97,10 +99,11 @@ public static class PdfSigner
     /// </summary>
     /// <param name="source">The PDF's bytes, usually already signed.</param>
     /// <param name="timestamper">The timestamp authority.</param>
+    /// <param name="cancellationToken">Stops waiting for the timestamp authority.</param>
     /// <returns>The timestamped PDF.</returns>
     /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
     /// <exception cref="CryptographicException">The token is larger than the space reserved for it.</exception>
-    public static byte[] AddDocumentTimestamp(byte[] source, ISignatureTimestamper timestamper)
+    public static async Task<byte[]> AddDocumentTimestampAsync(byte[] source, ISignatureTimestamper timestamper, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(timestamper);
@@ -111,7 +114,7 @@ public static class PdfSigner
         source.CopyTo(bytes, 0);
         update.CopyTo(bytes, source.Length);
         var (signed, contentsStart) = PrepareRange(bytes, source.Length);
-        WriteContents(bytes, contentsStart, timestamper.Timestamp(signed));
+        WriteContents(bytes, contentsStart, await timestamper.TimestampAsync(signed, cancellationToken).ConfigureAwait(false));
         return bytes;
     }
 
@@ -267,28 +270,36 @@ public static class PdfSigner
         return string.Create(CultureInfo.InvariantCulture, $"D:{time:yyyyMMddHHmmss}{(offset < TimeSpan.Zero ? '-' : '+')}{Math.Abs(offset.Hours):D2}'{Math.Abs(offset.Minutes):D2}'");
     }
 
-    /// <summary>Fills in the byte range and the CMS signature over everything except the signature's own digits.</summary>
-    /// <param name="bytes">The whole file with its update.</param>
-    /// <param name="updateStart">Where the update starts.</param>
-    /// <param name="certificate">The certificate.</param>
-    /// <param name="time">The signing time.</param>
-    /// <param name="timestamper">The timestamp authority, or <see langword="null"/>.</param>
-    /// <exception cref="CryptographicException">The signature is larger than the space reserved for it.</exception>
-    private static void FillSignature(byte[] bytes, int updateStart, X509Certificate2 certificate, DateTimeOffset time, ISignatureTimestamper? timestamper)
+    /// <summary>
+    /// Appends the signature's update to a copy of the PDF, fills in the byte range, and computes the CMS signature over
+    /// everything except the signature's own digits. The caller writes the signature in, after any timestamp.
+    /// </summary>
+    /// <param name="source">The PDF's bytes.</param>
+    /// <param name="certificate">The signing certificate, with its private key.</param>
+    /// <param name="request">What the signature records.</param>
+    /// <returns>The whole file with its update, the signature, and where the contents' opening bracket is.</returns>
+    /// <exception cref="ArgumentException">The certificate has no private key.</exception>
+    /// <exception cref="InvalidDataException">The PDF's structure could not be read.</exception>
+    private static (byte[] Bytes, SignedCms Cms, int ContentsStart) PrepareSignature(byte[] source, X509Certificate2 certificate, in SigningRequest request)
     {
-        var (signed, contentsStart) = PrepareRange(bytes, updateStart);
-        var cms = new SignedCms(new(signed), true);
-        var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, certificate) { DigestAlgorithm = new(Sha256Oid), IncludeOption = X509IncludeOption.WholeChain };
-        _ = signer.SignedAttributes.Add(new Pkcs9SigningTime(time.UtcDateTime));
-        cms.ComputeSignature(signer, true);
-        if (timestamper is not null)
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(certificate);
+        if (!certificate.HasPrivateKey)
         {
-            // The token stamps the signature value and travels as an unsigned attribute of the signer (PAdES-T).
-            var signerInfo = cms.SignerInfos[0];
-            signerInfo.AddUnsignedAttribute(new(TimestampTokenOid, timestamper.Timestamp(signerInfo.GetSignature())));
+            throw new ArgumentException("The certificate has no private key, so it cannot sign.", nameof(certificate));
         }
 
-        WriteContents(bytes, contentsStart, cms.Encode());
+        var structure = PdfReader.Read(source);
+        var update = BuildUpdate(structure, SignatureDictionary(certificate, request), request.PageIndex);
+        var bytes = new byte[source.Length + update.Length];
+        source.CopyTo(bytes, 0);
+        update.CopyTo(bytes, source.Length);
+        var (signed, contentsStart) = PrepareRange(bytes, source.Length);
+        var cms = new SignedCms(new(signed), true);
+        var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, certificate) { DigestAlgorithm = new(Sha256Oid), IncludeOption = X509IncludeOption.WholeChain };
+        _ = signer.SignedAttributes.Add(new Pkcs9SigningTime(request.Time.UtcDateTime));
+        cms.ComputeSignature(signer, true);
+        return (bytes, cms, contentsStart);
     }
 
     /// <summary>Fills in the byte range and returns the bytes it covers: everything except the signature's own digits.</summary>

@@ -24,7 +24,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// file that is printed, and a few settings on the right. Printing hands that file to the desktop's print dialog, which
 /// picks the printer; Save as PDF writes it where the user chooses.
 /// </summary>
-[DebuggerDisplay("{Summary}")]
+[DebuggerDisplay("PrintPreviewViewModel: {Summary}")]
 public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The booklet's place in <see cref="LayoutChoices"/>.</summary>

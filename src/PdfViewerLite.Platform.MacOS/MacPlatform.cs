@@ -15,7 +15,7 @@ namespace PdfViewerLite.Platform.MacOS;
 /// user through a Unix domain socket, printing through CUPS and Preview's print dialog, and sound through CoreAudio.
 /// Documents opened from the Finder arrive through Avalonia's activation events.
 /// </summary>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("MacPlatform: {Name}")]
 public sealed class MacPlatform : IDesktopPlatform
 {
     /// <summary>The application name, used for the socket and the data folder.</summary>

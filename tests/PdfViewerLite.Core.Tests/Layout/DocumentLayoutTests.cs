@@ -135,6 +135,22 @@ public sealed class DocumentLayoutTests
         await Assert.That(layout.GetPageNearest(bounds.Bottom + (Spacing / Half))).IsEqualTo(secondPage + 1);
     }
 
+    /// <summary>Verifies the current page stays on the page asked for while its spread is shown, and follows the row otherwise.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task CurrentPageKeepsThePageInTheSpread()
+    {
+        var layout = Create(PageLayoutMode.Dual, 1);
+        layout.GetRowExtent(SpreadSecondPage, out var top, out var bottom);
+        var middle = (top + bottom) / Half;
+
+        await Assert.That(layout.GetCurrentPage(middle, SpreadSecondPage)).IsEqualTo(SpreadSecondPage);
+        await Assert.That(layout.GetCurrentPage(middle, SpreadFirstPage)).IsEqualTo(SpreadFirstPage);
+        await Assert.That(layout.GetCurrentPage(middle, 0)).IsEqualTo(SpreadFirstPage);
+        await Assert.That(layout.GetCurrentPage(layout.ExtentHeight, 0)).IsEqualTo(Pages - 1);
+        await Assert.That(DocumentLayout.Empty.GetCurrentPage(0, 0)).IsEqualTo(-1);
+    }
+
     /// <summary>Verifies rotation swaps page dimensions.</summary>
     /// <returns>A task.</returns>
     [Test]

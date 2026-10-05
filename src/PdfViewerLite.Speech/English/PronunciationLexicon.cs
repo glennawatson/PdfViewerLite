@@ -13,7 +13,7 @@ namespace PdfViewerLite.Speech.English;
 /// The misaki pronunciation dictionaries (Apache-2.0): words to the phonemes Kokoro was trained on. The hand checked
 /// "gold" entries win over the larger "silver" set. Words with several pronunciations keep their default one.
 /// </summary>
-[DebuggerDisplay("{Count} words")]
+[DebuggerDisplay("PronunciationLexicon: {Count} words")]
 internal sealed class PronunciationLexicon
 {
     /// <summary>The key holding a word's default pronunciation when it has several.</summary>

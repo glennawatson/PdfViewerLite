@@ -13,5 +13,5 @@ namespace PdfViewerLite.Core.Reading;
 /// <param name="FontSize">Its font size in points.</param>
 /// <param name="Bold">Whether its font is bold.</param>
 /// <param name="Generated">Whether the engine inserted it, as it does for spaces and line breaks it infers.</param>
-[DebuggerDisplay("{Value} {Bounds}")]
+[DebuggerDisplay("PageCharacter: {Value} {Bounds}")]
 public readonly record struct PageCharacter(char Value, PageRect Bounds, float FontSize, bool Bold, bool Generated);

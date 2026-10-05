@@ -12,7 +12,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One page thumbnail in the sidebar.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("ThumbnailItemView: {ViewModel}")]
 public sealed partial class ThumbnailItemView : ReactiveUI.Avalonia.ReactiveUserControl<ThumbnailItemViewModel>
 {
     /// <summary>Defines the <see cref="Tab"/> property.</summary>

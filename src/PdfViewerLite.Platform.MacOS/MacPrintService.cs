@@ -12,7 +12,7 @@ namespace PdfViewerLite.Platform.MacOS;
 /// Prints on macOS, whose printing system is CUPS: jobs go straight to a printer's queue through libcups, and the
 /// system print dialog is Preview's, opened on the file.
 /// </summary>
-[DebuggerDisplay("macOS printing")]
+[DebuggerDisplay("MacPrintService: macOS printing")]
 public sealed class MacPrintService : IPrintService
 {
     /// <summary>The AppleScript runner.</summary>

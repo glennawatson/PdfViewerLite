@@ -11,7 +11,7 @@ using ReactiveUI.Binding;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One layer in the layers panel: a check box with the layer's name.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("LayerItemView: {ViewModel}")]
 public sealed partial class LayerItemView : ReactiveUI.Avalonia.ReactiveUserControl<LayerItemViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="LayerItemView"/> class.</summary>

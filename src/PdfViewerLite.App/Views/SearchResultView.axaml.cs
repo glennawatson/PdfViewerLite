@@ -12,7 +12,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One search result in the sidebar.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("SearchResultView: {ViewModel}")]
 public sealed partial class SearchResultView : ReactiveUI.Avalonia.ReactiveUserControl<SearchResultItemViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="SearchResultView"/> class.</summary>

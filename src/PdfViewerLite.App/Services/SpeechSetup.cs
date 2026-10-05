@@ -19,7 +19,7 @@ namespace PdfViewerLite.App.Services;
 /// <param name="CreateEngine">Creates the engine the settings choose, given the voice folder.</param>
 /// <param name="CreateAudio">Creates the sound output.</param>
 /// <param name="DownloadVoice">Downloads the missing files of the voice the settings choose into the voice folder, reporting the fraction done.</param>
-[DebuggerDisplay("{VoiceDirectory}")]
+[DebuggerDisplay("SpeechSetup: {VoiceDirectory}")]
 public sealed record SpeechSetup(
     string VoiceDirectory,
     Func<AppSettings, IReadOnlyList<SpeechModelFile>> VoiceFilesFor,

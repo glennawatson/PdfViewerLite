@@ -11,7 +11,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>The confirm dialog: shows a <see cref="ConfirmRequest"/> and answers it.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("ConfirmViewModel: {Title}")]
 public sealed partial class ConfirmViewModel : ReactiveObject
 {
     /// <summary>Initializes a new instance of the <see cref="ConfirmViewModel"/> class.</summary>

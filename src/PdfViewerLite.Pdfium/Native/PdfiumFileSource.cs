@@ -13,7 +13,7 @@ namespace PdfViewerLite.Pdfium.Native;
 /// lets the file be renamed and replaced while open: saving writes a new file and moves it over the old one, which
 /// Windows refuses for a file PDFium opened itself. PDFium reads blocks through <see cref="Access"/> on demand.
 /// </summary>
-[DebuggerDisplay("{Length} bytes")]
+[DebuggerDisplay("PdfiumFileSource: {Length} bytes")]
 internal sealed unsafe class PdfiumFileSource : IDisposable
 {
     /// <summary>The file.</summary>

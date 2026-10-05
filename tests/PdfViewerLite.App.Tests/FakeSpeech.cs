@@ -10,7 +10,7 @@ using PdfViewerLite.Core.Speech;
 namespace PdfViewerLite.App.Tests;
 
 /// <summary>A speech engine and sound output that record what they are asked to do, so tests never make a sound.</summary>
-[DebuggerDisplay("Spoken={Spoken.Count}, Played={Played}")]
+[DebuggerDisplay("FakeSpeech: Spoken={Spoken.Count}, Played={Played}")]
 internal sealed class FakeSpeech : ISpeechEngine, IAudioOutput
 {
     /// <summary>The sample rate of the fake audio.</summary>

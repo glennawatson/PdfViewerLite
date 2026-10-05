@@ -12,7 +12,7 @@ namespace PdfViewerLite.Core.Geometry;
 /// <param name="Top">The top edge.</param>
 /// <param name="Width">The width.</param>
 /// <param name="Height">The height.</param>
-[DebuggerDisplay("({Left}, {Top}, {Width}, {Height})")]
+[DebuggerDisplay("PageRect: ({Left}, {Top}, {Width}, {Height})")]
 public readonly record struct PageRect(float Left, float Top, float Width, float Height)
 {
     /// <summary>Gets the right edge.</summary>

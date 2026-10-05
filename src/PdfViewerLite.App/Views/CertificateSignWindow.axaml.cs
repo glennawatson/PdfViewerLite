@@ -4,8 +4,11 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Platform.Storage;
 using PdfViewerLite.App.ViewModels;
+using PdfViewerLite.Core.Settings;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
@@ -13,15 +16,22 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Asks for a certificate and its password to sign with. Closes with <see langword="true"/> to sign.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("CertificateSignWindow: {Title}")]
 public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.ReactiveWindow<CertificateSignViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="CertificateSignWindow"/> class.</summary>
     public CertificateSignWindow()
     {
         InitializeComponent();
+        FieldLabels.Link((CertificateBox, CertificateLabel), (PasswordBox, PasswordLabel), (ReasonBox, ReasonLabel), (LocationBox, LocationLabel));
+        RememberedBox.ItemTemplate = new FuncDataTemplate<RememberedCertificate>(static (certificate, _) => new TextBlock { Text = Describe(certificate) });
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Remembered, static v => v.RememberedBox.ItemsSource));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.SelectedCertificate, static v => v.RememberedBox.SelectedItem, static chosen => chosen, static item => item as RememberedCertificate));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.HasRemembered, static v => v.RememberedRow.IsVisible));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.ForgetCommand, static v => v.ForgetButton));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Remember, static v => v.RememberCheck.IsChecked, static on => on, static on => on == true));
             disposables.Add(this.Bind(ViewModel, static vm => vm.CertificatePath, static v => v.CertificateBox.Text, static text => text, static text => text ?? string.Empty));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Password, static v => v.PasswordBox.Text, static text => text, static text => text ?? string.Empty));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Reason, static v => v.ReasonBox.Text, static text => text, static text => text ?? string.Empty));
@@ -40,7 +50,26 @@ public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.Reactive
             disposables.Add(this.WhenChanged(static v => v.ViewModel!.CertificatePath)
                 .Take(1)
                 .SubscribeSafe(path => FocusFirstEmpty(this, path), OnError));
+
+            // After a wrong password, the password box takes the keyboard again with its text selected, ready to retype.
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.Error)
+                .Where(static error => error is not null)
+                .SubscribeSafe(_ => RetryPassword(this), OnError));
         });
+    }
+
+    /// <summary>Describes a remembered certificate by who it names and where it is.</summary>
+    /// <param name="certificate">The certificate.</param>
+    /// <returns>The description.</returns>
+    private static string Describe(RememberedCertificate? certificate) =>
+        certificate is null ? string.Empty : $"{certificate.Subject} ({Path.GetFileName(certificate.Path)})";
+
+    /// <summary>Focuses the password box and selects what was typed, so a wrong password can be typed again.</summary>
+    /// <param name="window">The window.</param>
+    private static void RetryPassword(CertificateSignWindow window)
+    {
+        _ = window.PasswordBox.Focus();
+        window.PasswordBox.SelectAll();
     }
 
     /// <summary>Focuses the password box when a certificate is named, otherwise the certificate box.</summary>

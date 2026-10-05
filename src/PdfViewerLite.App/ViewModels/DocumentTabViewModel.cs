@@ -31,7 +31,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// One open document. A tab is cheap until it is first shown: the native document is opened on demand through the
 /// <see cref="DocumentPool"/> and may be closed again while the tab is in the background.
 /// </summary>
-[DebuggerDisplay("{FileName}")]
+[DebuggerDisplay("DocumentTabViewModel: {FileName}")]
 public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 {
     /// <summary>How long after saving a file change notice is taken to be our own save.</summary>
@@ -67,6 +67,12 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Owns the subscriptions that react to this tab's own property changes.</summary>
     private readonly MultipleDisposable _subscriptions = [];
 
+    /// <summary>Whether Back has somewhere to go.</summary>
+    private readonly IObservable<bool> _canGoBack;
+
+    /// <summary>Whether Forward has somewhere to go.</summary>
+    private readonly IObservable<bool> _canGoForward;
+
     /// <summary>Whether the sidebar was shown before read mode put it away.</summary>
     private bool _sidebarBeforeReading;
 
@@ -78,6 +84,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>The Read Aloud state, once used.</summary>
     private ReadAloudViewModel? _readAloud;
+
+    /// <summary>The text recognition state, once used.</summary>
+    private TextRecognitionViewModel? _textRecognition;
 
     /// <summary>Focus Mode, once used.</summary>
     private FocusModeViewModel? _focusMode;
@@ -93,6 +102,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>The source version the reading order was worked out for.</summary>
     private long _readingFor = -1;
+
+    /// <summary>The open document the reading order reads from, captured on the UI thread.</summary>
+    private ITextLayoutSource? _readingSource;
 
     /// <summary>How the tab looked before presenting.</summary>
     private PresentationState _beforePresenting;
@@ -112,6 +124,8 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         LayoutMode = services.Settings.DefaultLayoutMode;
         SidebarVisible = services.Settings.ShowSidebar;
         PageTone = services.CurrentTheme.PageTone;
+        _canGoBack = this.WhenChanged(static vm => vm.CanGoBack);
+        _canGoForward = this.WhenChanged(static vm => vm.CanGoForward);
 
         NavigationRequests = new(_navigationRequests);
         UriRequests = new(_uriRequests);
@@ -152,6 +166,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the render hub.</summary>
     public RenderHub RenderHub => _services.RenderHub;
 
+    /// <summary>Gets a value indicating whether the reader asked for movement to be reduced, so views jump instead of easing.</summary>
+    public bool ReduceMotion => _services.CurrentTheme.ReduceMotion;
+
     /// <summary>Gets the render client used by the page canvas.</summary>
     public RenderClient CanvasClient { get; } = new();
 
@@ -172,6 +189,14 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the folder the file is in.</summary>
     public string Folder => Path.GetDirectoryName(Source.FilePath) ?? string.Empty;
+
+    /// <summary>Gets a value indicating whether Back can return to a place the reader jumped from.</summary>
+    [Reactive]
+    public partial bool CanGoBack { get; private set; }
+
+    /// <summary>Gets a value indicating whether Forward can return to a place the reader went back from.</summary>
+    [Reactive]
+    public partial bool CanGoForward { get; private set; }
 
     /// <summary>Gets the page shown in the hover preview: the page the tab was on when the preview was prepared.</summary>
     [Reactive]
@@ -337,7 +362,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     public SignaturesViewModel Signatures => field ??= new(this, _services);
 
     /// <summary>Gets the tab's text recognition, created on first use.</summary>
-    public TextRecognitionViewModel TextRecognition => field ??= new(this, _services);
+    public TextRecognitionViewModel TextRecognition => _textRecognition ??= new(this, _services);
 
     /// <summary>Gets Focus Mode, created when first used.</summary>
     public FocusModeViewModel FocusMode => _focusMode ??= new(this, _services);
@@ -439,14 +464,17 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <returns>The reading order, or <see langword="null"/> when the document cannot describe its layout.</returns>
     public ReadingDocument? GetReadingDocument()
     {
-        if (TryGetDocument() is not ITextLayoutSource)
+        if (TryGetDocument() is not ITextLayoutSource layout)
         {
             return null;
         }
 
+        // Pages are read on worker threads, and the document pool belongs to the UI thread, so workers only ever see
+        // the document opened here; one closed since then reads as unavailable.
+        Volatile.Write(ref _readingSource, layout);
         if (_reading is null || _readingFor != Source.Id)
         {
-            _reading = new(() => TryGetDocument() as ITextLayoutSource, Source.PageSizes);
+            _reading = new(ReadingSource, Source.PageSizes);
             _readingFor = Source.Id;
         }
 
@@ -501,7 +529,31 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(request);
         History.Push(Position);
+        UpdateHistoryState();
         _navigationRequests.OnNext(request);
+    }
+
+    /// <summary>Shows a page as a step through the document, such as the next page, without adding it to Back history.</summary>
+    /// <param name="pageIndex">The page.</param>
+    public void ShowPage(int pageIndex)
+    {
+        if (PageCount == 0)
+        {
+            return;
+        }
+
+        _navigationRequests.OnNext(new(Math.Clamp(pageIndex, 0, PageCount - 1), null, 0));
+    }
+
+    /// <summary>Scrolls an area of a page into view without adding it to Back history, for example a mark being placed.</summary>
+    /// <param name="pageIndex">The page.</param>
+    /// <param name="area">The area, in page space.</param>
+    public void ShowArea(int pageIndex, PageRect area)
+    {
+        if ((uint)pageIndex < (uint)PageCount)
+        {
+            _navigationRequests.OnNext(new(pageIndex, area, 0));
+        }
     }
 
     /// <summary>Called by the canvas as the view scrolls.</summary>
@@ -537,6 +589,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     {
         HasPendingReload = false;
         var page = CurrentPageIndex;
+        RenderHub.Scheduler.Invalidate(Source.Id);
         RenderHub.Cache.RemoveDocument(Source.Id);
         Source.Reload();
         IsLoaded = false;
@@ -580,6 +633,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Drops every tile after layers were shown or hidden, so all pages redraw.</summary>
     public void OnLayersChanged()
     {
+        RenderHub.Scheduler.Invalidate(Source.Id);
         RenderHub.Cache.RemoveDocument(Source.Id);
         _pageEdits.OnNext(-1);
     }
@@ -588,6 +642,8 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <param name="pageIndex">The page.</param>
     public void OnPageEdited(int pageIndex)
     {
+        // Tiles rendered before the edit may still be on their way; the scheduler drops them so they cannot be cached.
+        RenderHub.Scheduler.Invalidate(Source.Id);
         RenderHub.Cache.RemovePage(Source.Id, pageIndex);
         HasUnsavedChanges = Source.HasUnsavedChanges;
         _pageEdits.OnNext(pageIndex);
@@ -702,6 +758,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _subscriptions.Dispose();
         _focusMode?.Dispose();
         _readAloud?.Dispose();
+        _textRecognition?.Dispose();
         _layers?.Dispose();
         _measure?.Dispose();
         _fileWatch?.Dispose();
@@ -711,6 +768,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _documentChanges.Dispose();
         _pageEdits.Dispose();
         _copyRequests.Dispose();
+        RenderHub.Scheduler.Invalidate(Source.Id);
         RenderHub.Cache.RemoveDocument(Source.Id);
         _ = CanvasClient.Advance();
         _ = ThumbnailClient.Advance();
@@ -740,6 +798,11 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
             return false;
         }
     }
+
+    /// <summary>Gets the captured document for the reading order, from any thread.</summary>
+    /// <returns>The document, or <see langword="null"/> once it has been closed.</returns>
+    private ITextLayoutSource? ReadingSource() =>
+        Volatile.Read(ref _readingSource) is { } source && source is not IDocument { IsDisposed: true } ? source : null;
 
     /// <summary>Reads document structure after the first successful open.</summary>
     private void OnFirstLoad()
@@ -966,15 +1029,15 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void RotateRight() => Rotation = Rotation.Clockwise;
 
-    /// <summary>Goes to the next page.</summary>
+    /// <summary>Goes to the next page, or the next pair of pages when two are shown side by side.</summary>
     [ReactiveCommand]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void NextPage() => GoToPage(CurrentPageIndex + 1);
+    private void NextPage() => ShowPage(PageRows.GetNextRowPage(CurrentPageIndex, PageCount, LayoutMode));
 
-    /// <summary>Goes to the previous page.</summary>
+    /// <summary>Goes to the previous page, or the previous pair of pages when two are shown side by side.</summary>
     [ReactiveCommand]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void PreviousPage() => GoToPage(CurrentPageIndex - 1);
+    private void PreviousPage() => ShowPage(PageRows.GetPreviousRowPage(CurrentPageIndex, LayoutMode));
 
     /// <summary>Goes to the first page.</summary>
     [ReactiveCommand]
@@ -1070,24 +1133,35 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         }
     }
 
-    /// <summary>Goes back in history.</summary>
-    [ReactiveCommand]
+    /// <summary>Returns to where the reader was before the last jump, like a web browser's Back.</summary>
+    [ReactiveCommand(CanExecute = nameof(_canGoBack))]
     private void GoBack()
     {
         if (History.TryGoBack(Position, out var target))
         {
             _navigationRequests.OnNext(new(target.PageIndex, null, target.OffsetFraction));
         }
+
+        UpdateHistoryState();
     }
 
-    /// <summary>Goes forward in history.</summary>
-    [ReactiveCommand]
+    /// <summary>Returns to where the reader was before going back.</summary>
+    [ReactiveCommand(CanExecute = nameof(_canGoForward))]
     private void GoForward()
     {
         if (History.TryGoForward(Position, out var target))
         {
             _navigationRequests.OnNext(new(target.PageIndex, null, target.OffsetFraction));
         }
+
+        UpdateHistoryState();
+    }
+
+    /// <summary>Publishes whether Back and Forward have somewhere to go.</summary>
+    private void UpdateHistoryState()
+    {
+        CanGoBack = History.CanGoBack;
+        CanGoForward = History.CanGoForward;
     }
 
     /// <summary>Jumps to the page typed in the page box, accepting page labels or numbers.</summary>

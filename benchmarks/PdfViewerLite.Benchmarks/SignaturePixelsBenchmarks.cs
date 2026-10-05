@@ -19,6 +19,9 @@ public class SignaturePixelsBenchmarks
     /// <summary>The scan restored before each operation.</summary>
     private byte[] _original = [];
 
+    /// <summary>A premultiplied picture with soft, partly transparent ink, as a decoder gives it.</summary>
+    private byte[] _translucent = [];
+
     /// <summary>The working image.</summary>
     private byte[] _pixels = [];
 
@@ -32,11 +35,15 @@ public class SignaturePixelsBenchmarks
     {
         _original = new byte[PixelCount * Channels];
         _pixels = new byte[_original.Length];
+        _translucent = new byte[_original.Length];
         for (var offset = 0; offset < _original.Length; offset += Channels)
         {
             var shade = (byte)((offset / Channels) % Opaque);
             _original.AsSpan(offset, Channels).Fill(shade);
             _original[offset + Channels - 1] = Opaque;
+
+            // Premultiplied colour never exceeds its alpha, so the same shade serves as both.
+            _translucent.AsSpan(offset, Channels).Fill(shade);
         }
     }
 
@@ -46,5 +53,13 @@ public class SignaturePixelsBenchmarks
     {
         _original.AsSpan().CopyTo(_pixels);
         SignaturePixels.RemoveWhitePaper(_pixels);
+    }
+
+    /// <summary>Restores the scan and converts it from premultiplied to straight alpha, as reading a picture does.</summary>
+    [Benchmark]
+    public void Unpremultiply()
+    {
+        _translucent.AsSpan().CopyTo(_pixels);
+        SignaturePixels.Unpremultiply(_pixels);
     }
 }

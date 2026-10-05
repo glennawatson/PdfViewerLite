@@ -14,7 +14,7 @@ namespace PdfViewerLite.Core.Documents;
 /// be closed again when the pool needs room; page sizes, outline and metadata are kept so a closed document can still
 /// be laid out and navigated.
 /// </summary>
-[DebuggerDisplay("{FilePath} (open: {IsOpen})")]
+[DebuggerDisplay("DocumentSource: {FilePath} (open: {IsOpen})")]
 public sealed class DocumentSource
 {
     /// <summary>The last identifier handed out.</summary>

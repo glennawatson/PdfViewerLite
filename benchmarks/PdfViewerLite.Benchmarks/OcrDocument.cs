@@ -9,7 +9,7 @@ using PdfViewerLite.Pdfium;
 namespace PdfViewerLite.Benchmarks;
 
 /// <summary>A document opened from bytes written to a temporary file, deleted when disposed.</summary>
-[DebuggerDisplay("{Document.FilePath}")]
+[DebuggerDisplay("OcrDocument: {Document.FilePath}")]
 public sealed class OcrDocument : IDisposable
 {
     /// <summary>Initializes a new instance of the <see cref="OcrDocument"/> class.</summary>

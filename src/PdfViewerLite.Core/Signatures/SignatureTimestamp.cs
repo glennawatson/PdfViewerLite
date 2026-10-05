@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Signatures;
 /// <param name="Authority">The timestamp authority's name.</param>
 /// <param name="IsValid">Whether the timestamp matches what it stamps and its own signature checks out.</param>
 /// <param name="IsTrusted">Whether the authority's certificate chains to a certificate this computer trusts.</param>
-[DebuggerDisplay("{Authority} at {Time}: valid {IsValid}, trusted {IsTrusted}")]
+[DebuggerDisplay("SignatureTimestamp: {Authority} at {Time}: valid {IsValid}, trusted {IsTrusted}")]
 public sealed record SignatureTimestamp(DateTimeOffset Time, string Authority, bool IsValid, bool IsTrusted);

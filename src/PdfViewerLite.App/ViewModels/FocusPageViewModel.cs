@@ -10,7 +10,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>One page of Focus Mode: its blocks in reading order, worked out off the UI thread when the page comes into view.</summary>
-[DebuggerDisplay("Page {PageIndex}")]
+[DebuggerDisplay("FocusPageViewModel: Page {PageIndex}")]
 public sealed partial class FocusPageViewModel : ReactiveObject
 {
     /// <summary>The separator between blocks in a page's reading text.</summary>

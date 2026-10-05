@@ -14,7 +14,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One page of Focus Mode; its reading order is worked out when the page comes into view.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("FocusPageView: {ViewModel}")]
 public sealed partial class FocusPageView : ReactiveUI.Avalonia.ReactiveUserControl<FocusPageViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="FocusPageView"/> class.</summary>

@@ -41,8 +41,14 @@ public sealed class PageExportTests
     /// <summary>The pages arranged side by side in a print grid.</summary>
     private const int GridPages = 2;
 
+    /// <summary>The width of drawn ink in points.</summary>
+    private const float InkWidth = 2;
+
     /// <summary>Where the note is added.</summary>
     private static readonly PagePoint NoteAt = new(100, 100);
+
+    /// <summary>A drawn signature on empty paper below the page's text.</summary>
+    private static readonly PagePoint[] DrawnSignature = [new(100, 500), new(160, 440), new(220, 500), new(280, 440)];
 
     /// <summary>Print layouts keep filled fields in the saved page content.</summary>
     /// <param name="imposition">The print layout.</param>
@@ -121,6 +127,31 @@ public sealed class PageExportTests
         {
             File.Delete(exported);
         }
+    }
+
+    /// <summary>
+    /// A drawn signature, even after its colour is changed, is still on the sheet when the print copy is flattened onto
+    /// a grid, because the ink carries its own appearance.
+    /// </summary>
+    /// <param name="recolour">Whether the ink's colour is changed before printing.</param>
+    /// <returns>A task.</returns>
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task PrintLayoutsKeepDrawnSignatures(bool recolour)
+    {
+        using var signed = new TestDocument(1);
+        using var blank = new TestDocument(1);
+        var editor = (IAnnotationEditor)signed.Document;
+        var index = editor.AddInk(0, DrawnSignature, [DrawnSignature.Length], AnnotationColors.Ink, InkWidth, AnnotationKind.Signature);
+        var recoloured = !recolour || editor.SetColor(0, index, AnnotationColors.Clay);
+
+        var withInk = await PrintedInkAsync(signed.Document);
+        var without = await PrintedInkAsync(blank.Document);
+
+        await Assert.That(index).IsGreaterThanOrEqualTo(0);
+        await Assert.That(recoloured).IsTrue();
+        await Assert.That(withInk).IsGreaterThan(without);
     }
 
     /// <summary>Fitting a filled form to paper keeps the field value in the printed page content.</summary>
@@ -301,6 +332,44 @@ public sealed class PageExportTests
         finally
         {
             File.Delete(source);
+        }
+    }
+
+    /// <summary>Prints the first page two to a sheet, which flattens it, and counts the sheet's inked pixels.</summary>
+    /// <param name="document">The document.</param>
+    /// <returns>The pixels that are not white paper.</returns>
+    private static async Task<int> PrintedInkAsync(IDocument document)
+    {
+        const int bytesPerPixel = 4;
+        const byte white = 0xFF;
+        var exported = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-ink-print-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            await using (var stream = File.Create(exported))
+            {
+                _ = ((IPageExporter)document).ExportPages([0], new(GridPages, PaperSize.A4, true), stream);
+            }
+
+            using var copy = new PdfiumEngine().Open(exported, null);
+            var size = copy.GetPageSizes()[0];
+            var width = (int)size.Width;
+            var height = (int)size.Height;
+            var pixels = new byte[width * height * bytesPerPixel];
+            _ = copy.Render(new(0, 1, PageRotation.None, 0, 0, RenderFlags.None), new(pixels, width, height, width * bytesPerPixel));
+            var inked = 0;
+            for (var offset = 0; offset < pixels.Length; offset += bytesPerPixel)
+            {
+                if (pixels.AsSpan(offset, bytesPerPixel - 1).ContainsAnyExcept(white))
+                {
+                    inked++;
+                }
+            }
+
+            return inked;
+        }
+        finally
+        {
+            File.Delete(exported);
         }
     }
 

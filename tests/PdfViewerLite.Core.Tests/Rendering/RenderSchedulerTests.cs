@@ -22,6 +22,9 @@ public sealed class RenderSchedulerTests
     /// <summary>The page still wanted after the view moves.</summary>
     private const int WantedPage = 2;
 
+    /// <summary>The file name of the document used to occupy the render thread.</summary>
+    private const string BlockerName = "blocker.pdf";
+
     /// <summary>The test document file name.</summary>
     private const string DocumentName = "a.pdf";
 
@@ -77,7 +80,7 @@ public sealed class RenderSchedulerTests
         using var completed = new SemaphoreSlim(0);
         using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
         using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
-        var blocker = new FakeDocument("blocker.pdf", FakeEngine.A4) { Gate = gate };
+        var blocker = new FakeDocument(BlockerName, FakeEngine.A4) { Gate = gate };
         var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4, FakeEngine.A4);
         var client = new RenderClient();
         var blockerClient = new RenderClient();
@@ -120,7 +123,7 @@ public sealed class RenderSchedulerTests
         using var completed = new SemaphoreSlim(0);
         using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
         using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
-        var blocker = new FakeDocument("blocker.pdf", FakeEngine.A4) { Gate = gate };
+        var blocker = new FakeDocument(BlockerName, FakeEngine.A4) { Gate = gate };
         var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
         var client = new RenderClient();
         var blockerKey = new TileKey(BlockerDocument, 0, 1, PageRotation.None, 0, 0, 0);
@@ -145,6 +148,114 @@ public sealed class RenderSchedulerTests
         await Assert.That(order).IsEquivalentTo([blockerKey, Key(1), Key(0)]);
         await Assert.That(order[0]).IsEqualTo(blockerKey);
         await Assert.That(order[1]).IsEqualTo(Key(1));
+    }
+
+    /// <summary>Verifies a tile rendered before its page changed is dropped, and the page is rendered again.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task DropsTilesRenderedBeforeAnEdit()
+    {
+        using var gate = new ManualResetEventSlim(false);
+        using var completed = new SemaphoreSlim(0);
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
+        var document = new FakeDocument(DocumentName, FakeEngine.A4) { Gate = gate };
+        var client = new RenderClient();
+        const int renders = 2;
+
+        _ = scheduler.Request(Request(Key(0), document, client, RenderPriority.Visible));
+        _ = document.Started.Wait(Timeout);
+        scheduler.Invalidate(Key(0).DocumentId);
+        var requeued = scheduler.Request(Request(Key(0), document, client, RenderPriority.Visible));
+        gate.Set();
+
+        var taken = 0;
+        while (document.RenderCount < renders || scheduler.IsPending(Key(0)))
+        {
+            _ = await completed.WaitAsync(Timeout);
+            while (scheduler.TryTakeCompleted(out var tile))
+            {
+                taken++;
+                tile.Surface.Dispose();
+            }
+        }
+
+        await Assert.That(requeued).IsTrue();
+        await Assert.That(document.RenderCount).IsEqualTo(renders);
+        await Assert.That(taken).IsEqualTo(1);
+    }
+
+    /// <summary>Verifies a pending tile renders from the latest request, such as a document that was reopened.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task RendersTheLatestRequest()
+    {
+        using var gate = new ManualResetEventSlim(false);
+        using var completed = new SemaphoreSlim(0);
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
+        var blocker = new FakeDocument(BlockerName, FakeEngine.A4) { Gate = gate };
+        var closed = new FakeDocument(DocumentName, FakeEngine.A4);
+        var reopened = new FakeDocument(DocumentName, FakeEngine.A4);
+        var client = new RenderClient();
+
+        _ = scheduler.Request(Request(new(BlockerDocument, 0, 1, PageRotation.None, 0, 0, 0), blocker, client, RenderPriority.Visible));
+        _ = blocker.Started.Wait(Timeout);
+        _ = scheduler.Request(Request(Key(0), closed, client, RenderPriority.Visible));
+        closed.Dispose();
+        var merged = scheduler.Request(Request(Key(0), reopened, client, RenderPriority.Visible));
+        gate.Set();
+
+        var found = false;
+        while (!found && await completed.WaitAsync(Timeout))
+        {
+            while (scheduler.TryTakeCompleted(out var tile))
+            {
+                found |= tile.Key == Key(0);
+                tile.Surface.Dispose();
+            }
+        }
+
+        await Assert.That(merged).IsFalse();
+        await Assert.That(found).IsTrue();
+        await Assert.That(reopened.RenderCount).IsEqualTo(1);
+    }
+
+    /// <summary>Verifies a pending tile requested again at a more urgent priority no longer waits behind less urgent work.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task RaisesThePriorityOfAPendingTile()
+    {
+        using var gate = new ManualResetEventSlim(false);
+        using var completed = new SemaphoreSlim(0);
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
+        var blocker = new FakeDocument(BlockerName, FakeEngine.A4) { Gate = gate };
+        var document = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
+        var client = new RenderClient();
+        var blockerKey = new TileKey(BlockerDocument, 0, 1, PageRotation.None, 0, 0, 0);
+        const int expectedTiles = 3;
+
+        _ = scheduler.Request(Request(blockerKey, blocker, client, RenderPriority.Visible));
+        _ = blocker.Started.Wait(Timeout);
+        _ = scheduler.Request(Request(Key(0), document, client, RenderPriority.Prefetch));
+        _ = scheduler.Request(Request(Key(1), document, client, RenderPriority.Thumbnail));
+        _ = scheduler.Request(Request(Key(1), document, client, RenderPriority.Visible));
+        gate.Set();
+
+        var order = new List<TileKey>();
+        while (order.Count < expectedTiles && await completed.WaitAsync(Timeout))
+        {
+            while (scheduler.TryTakeCompleted(out var tile))
+            {
+                order.Add(tile.Key);
+                tile.Surface.Dispose();
+            }
+        }
+
+        await Assert.That(order).IsEquivalentTo([blockerKey, Key(1), Key(0)]);
+        await Assert.That(order[1]).IsEqualTo(Key(1));
+        await Assert.That(document.RenderCount).IsEqualTo(expectedTiles - 1);
     }
 
     /// <summary>Verifies the request's page tone recolours rendered pixels.</summary>

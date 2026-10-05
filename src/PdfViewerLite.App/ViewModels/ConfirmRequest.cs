@@ -10,5 +10,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Title">The short question, for example "Close 5 tabs?".</param>
 /// <param name="Message">What will happen and how to undo it.</param>
 /// <param name="ConfirmText">The text of the button that goes ahead.</param>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("ConfirmRequest: {Title}")]
 public sealed record ConfirmRequest(string Title, string Message, string ConfirmText);

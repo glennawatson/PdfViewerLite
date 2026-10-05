@@ -14,7 +14,7 @@ namespace PdfViewerLite.Pdfium;
 /// Coordinates are converted between PDF user space and the viewer's top-left page space through a virtual device so
 /// that crop box offsets and intrinsic page rotation are honoured.
 /// </summary>
-[DebuggerDisplay("Page {Index}")]
+[DebuggerDisplay("PdfiumPage: Page {Index}")]
 internal sealed class PdfiumPage : IDisposable
 {
     /// <summary>Virtual device pixels per point used for coordinate conversion.</summary>

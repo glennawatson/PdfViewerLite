@@ -11,7 +11,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>The document properties dialog.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PropertiesViewModel: {Title}")]
 public sealed partial class PropertiesViewModel : ReactiveObject
 {
     /// <summary>Bytes in a kibibyte.</summary>

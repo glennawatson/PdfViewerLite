@@ -17,7 +17,7 @@ namespace PdfViewerLite.Core.Signatures;
 /// <param name="Certificates">The stored certificates.</param>
 /// <param name="OcspResponseCount">How many OCSP responses are stored.</param>
 /// <param name="CrlCount">How many certificate revocation lists are stored.</param>
-[DebuggerDisplay("{Certificates.Count} certificates, {OcspResponseCount} OCSP, {CrlCount} CRLs")]
+[DebuggerDisplay("DocumentSecurityStore: {Certificates.Count} certificates, {OcspResponseCount} OCSP, {CrlCount} CRLs")]
 public sealed record DocumentSecurityStore(X509Certificate2Collection Certificates, int OcspResponseCount, int CrlCount)
 {
     /// <summary>Gets an empty store, for files without one.</summary>

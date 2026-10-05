@@ -9,5 +9,5 @@ namespace PdfViewerLite.Core.Settings;
 /// <summary>Where reading aloud last stopped in a document.</summary>
 /// <param name="Page">The page.</param>
 /// <param name="Character">The page character the sentence starts at.</param>
-[DebuggerDisplay("Page {Page}, character {Character}")]
+[DebuggerDisplay("ReadingPosition: Page {Page}, character {Character}")]
 public sealed record ReadingPosition(int Page, int Character);

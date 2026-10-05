@@ -9,5 +9,5 @@ namespace PdfViewerLite.Compatibility.Tests;
 /// <summary>The corpus manifest, <c>tests/corpus/corpus.json</c>.</summary>
 /// <param name="Comment">What the file is.</param>
 /// <param name="Documents">The documents.</param>
-[DebuggerDisplay("{Documents.Count} documents")]
+[DebuggerDisplay("RealWorldPdfManifest: {Documents.Count} documents")]
 internal sealed record RealWorldPdfManifest(string Comment, IReadOnlyList<RealWorldPdf> Documents);

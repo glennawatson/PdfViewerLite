@@ -14,8 +14,4 @@
     <None Include="Speech\Melo\melo-reference.json" Link="melo-reference.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\listening\corpus.json" Link="listening-corpus.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\..\tools\voice-models\MeloFiles.cs" Link="Tools\MeloFiles.cs" />
-  </ItemGroup>
 </Project>

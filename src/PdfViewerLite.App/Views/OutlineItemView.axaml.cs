@@ -13,7 +13,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One outline entry; keeps the tree item's expansion in step with the view model both ways.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("OutlineItemView: {ViewModel}")]
 public sealed partial class OutlineItemView : ReactiveUI.Avalonia.ReactiveUserControl<OutlineItemViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="OutlineItemView"/> class.</summary>
@@ -23,7 +23,7 @@ public sealed partial class OutlineItemView : ReactiveUI.Avalonia.ReactiveUserCo
         _ = this.WhenActivated(disposables =>
         {
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.TitleText.Text));
-            disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(vm => ToolTip.SetTip(this, vm?.Title), static error => Trace.TraceError(error.ToString())));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString())));
 
             // The tree item that hosts this view owns the expander, so the model is bound to it directly.
             // The model writes first, so the tree item starts from its state; each direction follows the view's ViewModel.
@@ -33,5 +33,14 @@ public sealed partial class OutlineItemView : ReactiveUI.Avalonia.ReactiveUserCo
                 disposables.Add(container.WhenChanged(static item => item.IsExpanded).BindTo(this, static v => v.ViewModel!.IsExpanded));
             }
         });
+    }
+
+    /// <summary>Shows an entry's title as the tooltip and as the tree item's name for screen readers.</summary>
+    /// <param name="entry">The entry.</param>
+    private void Show(OutlineItemViewModel? entry)
+    {
+        // Both are attached properties, which a binding expression cannot reach.
+        ToolTip.SetTip(this, entry?.Title);
+        ItemAutomation.NameContainer(this, entry?.Title);
     }
 }

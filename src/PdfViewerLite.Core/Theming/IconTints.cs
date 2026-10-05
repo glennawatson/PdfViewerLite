@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Theming;
 /// <param name="Add">Sage: add, new, save, confirm.</param>
 /// <param name="Edit">Sand: edit, copy, settings, annotate.</param>
 /// <param name="Remove">Clay: delete, remove, close, stop.</param>
-[DebuggerDisplay("{Navigation:X6} {Add:X6} {Edit:X6} {Remove:X6}")]
+[DebuggerDisplay("IconTints: {Navigation:X6} {Add:X6} {Edit:X6} {Remove:X6}")]
 public readonly record struct IconTints(uint Navigation, uint Add, uint Edit, uint Remove);

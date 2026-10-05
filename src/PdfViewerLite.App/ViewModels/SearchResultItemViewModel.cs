@@ -12,7 +12,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="PageIndex">The zero based page.</param>
 /// <param name="Hit">The hit.</param>
 /// <param name="Context">The text around the hit.</param>
-[DebuggerDisplay("{PageIndex}: {Context}")]
+[DebuggerDisplay("SearchResultItemViewModel: {PageIndex}: {Context}")]
 public sealed record SearchResultItemViewModel(int Index, int PageIndex, SearchHit Hit, string Context)
 {
     /// <summary>Gets the one based page number.</summary>

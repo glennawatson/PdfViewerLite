@@ -12,5 +12,5 @@ namespace PdfViewerLite.Core.Tests.Speech.Listening;
 /// <param name="Audio">The audio.</param>
 /// <param name="Measurement">What a listener notices about it.</param>
 /// <param name="Work">How long synthesis took.</param>
-[DebuggerDisplay("{Measurement}: {Text}")]
+[DebuggerDisplay("SpokenSentence: {Measurement}: {Text}")]
 internal sealed record SpokenSentence(string Text, SpeechAudio Audio, SpeechMeasurement Measurement, TimeSpan Work);

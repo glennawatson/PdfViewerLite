@@ -8,7 +8,7 @@ using PdfViewerLite.Core.Platform;
 namespace PdfViewerLite.Platform.MacOS;
 
 /// <summary>Reveals a file in the Finder, selected, through <c>NSWorkspace</c>.</summary>
-[DebuggerDisplay("Finder")]
+[DebuggerDisplay("FinderFileManagerLauncher: Finder")]
 public sealed class FinderFileManagerLauncher : IFileManagerLauncher
 {
     /// <inheritdoc/>

@@ -19,7 +19,7 @@ namespace PdfViewerLite.Core.Tests.Speech.Listening;
 /// <param name="TrailingSilence">Seconds of silence after it stops.</param>
 /// <param name="LongestGap">The longest silence inside the sentence, in seconds.</param>
 /// <param name="IsFinite">Whether every sample is a real number.</param>
-[DebuggerDisplay("{ToString()}")]
+[DebuggerDisplay("SpeechMeasurement: {ToString()}")]
 public readonly record struct SpeechMeasurement(double Level, float Peak, double Rate, double LeadingSilence, double TrailingSilence, double LongestGap, bool IsFinite)
 {
     /// <summary>Samples per analysis window: 20 ms at 24 kHz.</summary>

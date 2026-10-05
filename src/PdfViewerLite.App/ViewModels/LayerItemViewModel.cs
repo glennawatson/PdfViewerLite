@@ -9,7 +9,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>A layer in the layers panel, with a check box showing or hiding it.</summary>
-[DebuggerDisplay("{Name} visible={IsVisible}")]
+[DebuggerDisplay("LayerItemViewModel: {Name} visible={IsVisible}")]
 public sealed partial class LayerItemViewModel : ReactiveObject
 {
     /// <summary>Initializes a new instance of the <see cref="LayerItemViewModel"/> class.</summary>

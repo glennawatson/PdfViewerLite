@@ -9,7 +9,7 @@ using Tmds.DBus.Protocol;
 namespace PdfViewerLite.Platform.Linux.DBus;
 
 /// <summary>Serves <c>org.freedesktop.Application</c> for the primary instance.</summary>
-[DebuggerDisplay("{Path}")]
+[DebuggerDisplay("ApplicationMethodHandler: {Path}")]
 internal sealed class ApplicationMethodHandler : IPathMethodHandler
 {
     /// <summary>The introspection data.</summary>

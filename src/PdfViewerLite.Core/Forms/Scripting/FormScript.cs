@@ -17,7 +17,7 @@ namespace PdfViewerLite.Core.Forms.Scripting;
 /// <param name="Arguments">The literal arguments in order: numbers, strings and booleans as written.</param>
 /// <param name="Fields">The field names a calculation reads.</param>
 /// <param name="Expression">The simplified field notation of an expression calculation, otherwise empty.</param>
-[DebuggerDisplay("{Function}({Arguments.Count} arguments)")]
+[DebuggerDisplay("FormScript: {Function}({Arguments.Count} arguments)")]
 public sealed partial record FormScript(FormScriptFunction Function, IReadOnlyList<string> Arguments, IReadOnlyList<string> Fields, string Expression)
 {
     /// <summary>Gets the script used when there is none, or it is not understood.</summary>

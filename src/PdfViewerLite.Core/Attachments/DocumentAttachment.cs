@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Attachments;
 /// <param name="Index">The attachment's index in the document.</param>
 /// <param name="Name">The file name.</param>
 /// <param name="Size">The size in bytes.</param>
-[DebuggerDisplay("{Name} ({Size} bytes)")]
+[DebuggerDisplay("DocumentAttachment: {Name} ({Size} bytes)")]
 public sealed record DocumentAttachment(int Index, string Name, long Size);

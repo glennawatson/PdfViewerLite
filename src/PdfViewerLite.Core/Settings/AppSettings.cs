@@ -9,7 +9,7 @@ using PdfViewerLite.Core.Layout;
 namespace PdfViewerLite.Core.Settings;
 
 /// <summary>User preferences persisted between runs.</summary>
-[DebuggerDisplay("{ColorScheme}, {PageTone}, cache {TileCacheMegabytes} MB")]
+[DebuggerDisplay("AppSettings: {ColorScheme}, {PageTone}, cache {TileCacheMegabytes} MB")]
 public sealed class AppSettings
 {
     /// <summary>Gets or sets the colour scheme.</summary>
@@ -36,11 +36,12 @@ public sealed class AppSettings
     /// <summary>Gets or sets the interface font size in points, or <see langword="null"/> to follow the desktop.</summary>
     public double? InterfaceFontSizePoints { get; set; }
 
-    /// <summary>Gets or sets the name used for typed signatures.</summary>
-    public string SignatureName { get; set; } = string.Empty;
-
-    /// <summary>Gets or sets the certificate file last used to sign, so it is offered again.</summary>
-    public string SigningCertificatePath { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets the signing certificates the user chose to remember, most recently used first. Only the file and who it
+    /// names are kept; passwords and private keys are never saved.
+    /// </summary>
+    [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+    public List<RememberedCertificate> RememberedCertificates { get; } = [];
 
     /// <summary>Gets or sets the Tesseract languages used to recognise text, for example <c>eng</c> or <c>eng+deu</c>.</summary>
     public string OcrLanguage { get; set; } = "eng";

@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Speech;
 /// <param name="Id">The engine's id for the voice.</param>
 /// <param name="Name">The name shown, for example "Heart".</param>
 /// <param name="Description">A short description, for example "American English, warm".</param>
-[DebuggerDisplay("{Name} ({Id})")]
+[DebuggerDisplay("SpeechVoice: {Name} ({Id})")]
 public sealed record SpeechVoice(string Id, string Name, string Description);

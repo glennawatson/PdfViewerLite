@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace PdfViewerLite.Http.GitHub;
 
 /// <summary>The subset of a GitHub release used for update checks.</summary>
-[DebuggerDisplay("{TagName}")]
+[DebuggerDisplay("GitHubRelease: {TagName}")]
 public sealed record GitHubRelease
 {
     /// <summary>Gets the tag, for example <c>v1.2.0</c>.</summary>

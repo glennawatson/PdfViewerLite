@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Core.Annotations;
 
 /// <summary>A signature image with tightly packed, straight-alpha BGRA pixels.</summary>
-[DebuggerDisplay("{Width} x {Height}")]
+[DebuggerDisplay("SignatureImage: {Width} x {Height}")]
 public sealed record SignatureImage
 {
     /// <summary>The bytes per BGRA pixel.</summary>

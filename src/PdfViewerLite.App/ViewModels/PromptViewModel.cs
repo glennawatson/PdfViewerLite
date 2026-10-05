@@ -11,7 +11,7 @@ using ReactiveUI.SourceGenerators;
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>The prompt dialog: shows a <see cref="TextPrompt"/>, edits its text and answers it.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PromptViewModel: {Title}")]
 public sealed partial class PromptViewModel : ReactiveObject
 {
     /// <summary>Initializes a new instance of the <see cref="PromptViewModel"/> class.</summary>

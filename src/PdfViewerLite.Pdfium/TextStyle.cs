@@ -11,5 +11,5 @@ namespace PdfViewerLite.Pdfium;
 /// <param name="Font">The font, owned by the caller.</param>
 /// <param name="FontSize">The font size in points.</param>
 /// <param name="Color">The colour as 0xRRGGBB.</param>
-[DebuggerDisplay("{FontSize}pt {Color:X6}")]
+[DebuggerDisplay("TextStyle: {FontSize}pt {Color:X6}")]
 internal readonly record struct TextStyle(PdfiumFontHandle Font, float FontSize, uint Color);

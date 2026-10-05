@@ -17,7 +17,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// A tab's embedded files. The attachments panel only appears for documents that have some; a file is saved where the
 /// user picks, and never opened automatically, so nothing runs that the user did not choose to run.
 /// </summary>
-[DebuggerDisplay("{Items.Count} attachments")]
+[DebuggerDisplay("AttachmentsViewModel: {Items.Count} attachments")]
 public sealed partial class AttachmentsViewModel : ReactiveObject
 {
     /// <summary>Bytes in a kilobyte.</summary>

@@ -11,7 +11,7 @@ using PdfViewerLite.Platform.Linux.DBus;
 namespace PdfViewerLite.Platform.Linux;
 
 /// <summary>Prints on Linux: straight to CUPS queues with chosen settings, or through the XDG portal's print dialog.</summary>
-[DebuggerDisplay("CUPS and print portal")]
+[DebuggerDisplay("LinuxPrintService: CUPS and print portal")]
 public sealed class LinuxPrintService : IPrintService
 {
     /// <summary>The portal, for the desktop's own dialog.</summary>

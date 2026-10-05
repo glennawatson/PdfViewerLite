@@ -29,6 +29,7 @@ public sealed partial class StartView : ReactiveUI.Avalonia.ReactiveUserControl<
         RecentList.ItemTemplate = new FuncDataTemplate<RecentDocument>(static (_, _) => new RecentDocumentView());
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(ItemAutomation.NameItems(RecentList));
             disposables.Add(this.BindCommand(ViewModel, static vm => vm.OpenCommand, static v => v.OpenButton));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.RecentDocuments, static v => v.RecentList.ItemsSource));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.RecentDocuments.Count, static v => v.RecentPanel.IsVisible, static count => count > 0));

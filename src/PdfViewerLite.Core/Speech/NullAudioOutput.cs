@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 namespace PdfViewerLite.Core.Speech;
 
 /// <summary>A sound output for desktops with no way to play sound; Read Aloud explains that sound is unavailable.</summary>
-[DebuggerDisplay("No sound output")]
+[DebuggerDisplay("NullAudioOutput: No sound output")]
 public sealed class NullAudioOutput : IAudioOutput
 {
     /// <inheritdoc/>

@@ -15,5 +15,5 @@ namespace PdfViewerLite.Core.Theming;
 /// <param name="ReduceMotion">Whether transitions are turned off.</param>
 /// <param name="SteadyCaret">Whether the text cursor stays steady.</param>
 /// <param name="ShowLabels">Whether tool bar buttons show text labels.</param>
-[DebuggerDisplay("{Scheme.Name}, motion reduced: {ReduceMotion}")]
+[DebuggerDisplay("ResolvedTheme: {Scheme.Name}, motion reduced: {ReduceMotion}")]
 public sealed record ResolvedTheme(ColorScheme Scheme, PageTone PageTone, string? FontFamily, double? FontSizePoints, bool ReduceMotion, bool SteadyCaret, bool ShowLabels);

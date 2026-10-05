@@ -13,7 +13,6 @@ using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Speech;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
-using PdfViewerLite.Ocr;
 using PdfViewerLite.Pdfium;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Advanced;
@@ -30,9 +29,6 @@ public sealed class AppServices : IDisposable
 
     /// <summary>The smallest permitted tile cache, in megabytes.</summary>
     private const int MinCacheMegabytes = 32;
-
-    /// <summary>The language used when none is configured.</summary>
-    private const string DefaultOcrLanguage = "eng";
 
     /// <summary>The resolved theme, re-published when the settings or the desktop palette change.</summary>
     private readonly BehaviorSignal<ResolvedTheme> _theme;
@@ -69,6 +65,8 @@ public sealed class AppServices : IDisposable
         Platform = platform;
         SettingsStore = settingsStore;
         Settings = settingsStore.Load();
+        SignatureMarkStore = SignatureMarkStore.Beside(settingsStore);
+        SignatureMarks = SignatureMarkStore.Load();
         Engine = engine;
         Pool = new(engine, Math.Max(1, Settings.MaxOpenDocuments));
         RenderHub = new(Math.Max(MinCacheMegabytes, Settings.TileCacheMegabytes) * BytesPerMegabyte);
@@ -85,6 +83,12 @@ public sealed class AppServices : IDisposable
 
     /// <summary>Gets the user settings.</summary>
     public AppSettings Settings { get; }
+
+    /// <summary>Gets the store for the remembered signature and initials.</summary>
+    public SignatureMarkStore SignatureMarkStore { get; }
+
+    /// <summary>Gets the signature and initials the user chose to remember.</summary>
+    public SavedSignatureMarks SignatureMarks { get; }
 
     /// <summary>Gets the document engine, for documents outside the pool such as print previews.</summary>
     public IDocumentEngine Engine { get; }
@@ -113,6 +117,9 @@ public sealed class AppServices : IDisposable
     /// <summary>Gets how the app reads aloud; tests replace it with fakes.</summary>
     public SpeechSetup Speech { get; init; }
 
+    /// <summary>Gets how the app recognises text and fetches language packs; tests replace it with fakes.</summary>
+    public OcrSetup Ocr { get; init; } = OcrSetup.CreateDefault();
+
     /// <summary>Gets the sound output shared by every tab.</summary>
     public IAudioOutput Audio => _audio ??= Speech.CreateAudio();
 
@@ -134,10 +141,10 @@ public sealed class AppServices : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AppServices CreateDefault(IDesktopPlatform platform) => new(new SettingsStore(), new PdfiumEngine(), platform);
 
-    /// <summary>Creates a text recogniser for the configured languages; dispose it when done.</summary>
-    /// <returns>The recogniser, which reports whether Tesseract was found.</returns>
+    /// <summary>Creates a text recogniser for the configured languages, using downloaded packs first; dispose it when done.</summary>
+    /// <returns>The recogniser, which reports whether Tesseract and the language data were found.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IOcrEngine CreateOcrEngine() => new TesseractEngine(string.IsNullOrWhiteSpace(Settings.OcrLanguage) ? DefaultOcrLanguage : Settings.OcrLanguage);
+    public IOcrEngine CreateOcrEngine() => Ocr.CreateEngine(OcrLanguageCatalog.Format(OcrLanguageCatalog.Parse(Settings.OcrLanguage)), Ocr.LanguageDirectory);
 
     /// <summary>Gets the speech engine the settings choose, reusing it while they stay the same.</summary>
     /// <returns>The engine.</returns>
@@ -201,6 +208,23 @@ public sealed class AppServices : IDisposable
         catch (UnauthorizedAccessException ex)
         {
             Debug.WriteLine($"Could not save settings: {ex.Message}");
+        }
+    }
+
+    /// <summary>Saves the remembered signature and initials, ignoring IO failures.</summary>
+    public void SaveSignatureMarks()
+    {
+        try
+        {
+            SignatureMarkStore.Save(SignatureMarks);
+        }
+        catch (IOException ex)
+        {
+            Debug.WriteLine($"Could not save signatures: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Debug.WriteLine($"Could not save signatures: {ex.Message}");
         }
     }
 

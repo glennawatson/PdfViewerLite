@@ -13,7 +13,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Asks for some text, for example a note; closes with the text, or <see langword="null"/> when cancelled.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("PromptWindow: {Title}")]
 public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<PromptViewModel>
 {
     /// <summary>The height of a multi-line text box.</summary>
@@ -26,6 +26,9 @@ public sealed partial class PromptWindow : ReactiveUI.Avalonia.ReactiveWindow<Pr
     public PromptWindow()
     {
         InitializeComponent();
+
+        // The box has no name of its own: it is named by the question above it, which changes with each prompt.
+        FieldLabels.Link((InputBox, LabelText));
         _ = this.WhenActivated(disposables =>
         {
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.Title));

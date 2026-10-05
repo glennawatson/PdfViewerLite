@@ -15,7 +15,7 @@ namespace PdfViewerLite.Speech.English;
 /// words; compound words are split into known halves; acronyms and unknown short words are spelled out.
 /// Reuses its buffers between sentences, so it is not thread safe; <see cref="Kokoro.KokoroEngine"/> holds a lock.
 /// </summary>
-[DebuggerDisplay("{_lexicon.Count} words, British={_british}")]
+[DebuggerDisplay("EnglishPhonemizer: {_lexicon.Count} words, British={_british}")]
 internal sealed class EnglishPhonemizer
 {
     /// <summary>The primary stress mark.</summary>

@@ -10,7 +10,7 @@ using ReactiveUI.Binding;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>One open tab in the tab finder.</summary>
-[DebuggerDisplay("{ViewModel}")]
+[DebuggerDisplay("TabSummaryView: {ViewModel}")]
 public sealed partial class TabSummaryView : ReactiveUI.Avalonia.ReactiveUserControl<DocumentTabViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="TabSummaryView"/> class.</summary>

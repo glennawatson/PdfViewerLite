@@ -9,6 +9,7 @@ using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
@@ -34,7 +35,7 @@ namespace PdfViewerLite.App.Controls;
 /// viewport are drawn or requested; every frame re-requests what it is missing under a fresh render generation so work
 /// for regions that scrolled away is dropped by the scheduler before it reaches PDFium.
 /// </summary>
-[DebuggerDisplay("{Tab}")]
+[DebuggerDisplay("PageCanvas: {Tab}")]
 public sealed partial class PageCanvas : Control
 {
     /// <summary>Defines the <see cref="Tab"/> property.</summary>
@@ -103,6 +104,13 @@ public sealed partial class PageCanvas : Control
     /// <summary>The page shadow brush.</summary>
     private static readonly IBrush ShadowBrush = new SolidColorBrush(Color.FromArgb(0x40, 0, 0, 0));
 
+    /// <summary>
+    /// How page images are sampled, with aliased edges so tiles meet without seams. Only stand-ins are ever scaled: the
+    /// preview and the last scale's tiles while a zoom settles. Bilinear with mipmaps draws those about ten times
+    /// faster than cubic (BitmapDrawBenchmarks), which keeps the zoom ease smooth; sharp tiles are drawn 1:1.
+    /// </summary>
+    private static readonly RenderOptions PageRenderOptions = new() { BitmapInterpolationMode = BitmapInterpolationMode.MediumQuality, EdgeMode = EdgeMode.Aliased };
+
     /// <summary>The hand cursor for links.</summary>
     private static readonly Cursor HandCursor = new(StandardCursorType.Hand);
 
@@ -156,6 +164,12 @@ public sealed partial class PageCanvas : Control
 
     /// <summary>The selection focus (page, character).</summary>
     private (int Page, int Char) _selectionFocus = (-1, -1);
+
+    /// <summary>The tile scale of the last frame whose visible pages were all sharp, drawn while newer tiles render.</summary>
+    private float _fallbackScale;
+
+    /// <summary>Whether every visible page in the frame being drawn had its sharp tiles.</summary>
+    private bool _frameComplete;
 
     /// <summary>The pen outlining the current search hit, rebuilt when <see cref="CurrentHitOutline"/> changes.</summary>
     private IPen? _currentHitPen;
@@ -282,17 +296,7 @@ public sealed partial class PageCanvas : Control
         }
 
         var viewport = new Rect(_scroller.Offset.X, _scroller.Offset.Y, _scroller.Viewport.Width, _scroller.Viewport.Height);
-        var frame = new FrameContext(tab, document, tab.RenderHub, viewport, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1, tab.CanvasClient.Advance());
-        var prefetch = viewport.Height * PrefetchViewports;
-        _layout.GetVisiblePages(viewport.Top - prefetch, viewport.Bottom + prefetch, out var first, out var last);
-        using (context.PushRenderOptions(new() { BitmapInterpolationMode = BitmapInterpolationMode.HighQuality }))
-        {
-            for (var page = first; page <= last && page >= 0; page++)
-            {
-                DrawPage(context, frame, page);
-            }
-        }
-
+        DrawPages(context, new(tab, document, tab.RenderHub, viewport, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1, tab.CanvasClient.Advance()));
         DrawAnnotationOverlay(context, tab);
         DrawMeasurement(context, tab);
         DrawCaret(context, tab);
@@ -312,13 +316,14 @@ public sealed partial class PageCanvas : Control
     /// <param name="page">The page.</param>
     /// <param name="rect">The page rectangle.</param>
     /// <param name="visible">Whether the page is visible.</param>
-    private static void DrawPreview(DrawingContext context, in FrameContext frame, int page, in Rect rect, bool visible)
+    /// <param name="draw">Whether sharp tiles leave part of the page for the preview to fill.</param>
+    private static void DrawPreview(DrawingContext context, in FrameContext frame, int page, in Rect rect, bool visible, bool draw)
     {
         var tab = frame.Tab;
         var key = TileKey.Preview(tab.Source.Id, page, tab.Rotation, tab.PageTone.Id);
         if (frame.Hub.Cache.TryGet(key, out var surface))
         {
-            if (visible)
+            if (draw)
             {
                 context.DrawImage(((AvaloniaRenderSurface)surface).Bitmap, new(0, 0, surface.Width, surface.Height), rect);
             }
@@ -339,7 +344,8 @@ public sealed partial class PageCanvas : Control
     /// <param name="column">The tile column.</param>
     /// <param name="row">The tile row.</param>
     /// <param name="visible">Whether to draw (true) or only request (false).</param>
-    private static void DrawTile(DrawingContext context, in FrameContext frame, in TileRange grid, int column, int row, bool visible)
+    /// <param name="request">Whether a missing tile is requested.</param>
+    private static void DrawTile(DrawingContext context, in FrameContext frame, in TileRange grid, int column, int row, bool visible, bool request)
     {
         var tab = frame.Tab;
         var tileSize = TileGrid.TileSize;
@@ -347,8 +353,12 @@ public sealed partial class PageCanvas : Control
         TileGrid.GetTileSize(grid.PixelWidth, grid.PixelHeight, column, row, out var tileWidth, out var tileHeight);
         if (!frame.Hub.Cache.TryGet(key, out var surface))
         {
-            var info = new PageRenderInfo(grid.Page, grid.Scale, tab.Rotation, column * tileSize, row * tileSize, RenderFlags.Annotations);
-            frame.Request(key, info, tileWidth, tileHeight, visible ? RenderPriority.Visible : RenderPriority.Prefetch);
+            if (request)
+            {
+                var info = new PageRenderInfo(grid.Page, grid.Scale, tab.Rotation, column * tileSize, row * tileSize, RenderFlags.Annotations);
+                frame.Request(key, info, tileWidth, tileHeight, visible ? RenderPriority.Visible : RenderPriority.Prefetch);
+            }
+
             return;
         }
 
@@ -383,12 +393,35 @@ public sealed partial class PageCanvas : Control
             this.WhenChanged(static x => x.Tab).SubscribeSafe(Wire, OnError),
             this.WhenChanged(static x => x.CurrentHitOutline)
                 .SubscribeSafe(outline => _currentHitPen = outline is not null ? new ImmutablePen(outline.ToImmutable(), CurrentHitOutlineWidth) : null, OnError),
-            this.Events().PointerWheelChanged.SubscribeSafe(HandlePointerWheel, OnError),
-            this.Events().PointerPressed.SubscribeSafe(HandlePointerPressed, OnError),
-            this.Events().PointerMoved.SubscribeSafe(HandlePointerMoved, OnError),
-            this.ObserveRouted(PointerReleasedEvent, handledEventsToo: true).SubscribeSafe(HandlePointerReleased, OnError),
-            this.Events().KeyDown.SubscribeSafe(HandleKeyDown, OnError),
+
+            // One failing gesture must not end the subscription, or the page would stop answering input.
+            this.Events().PointerWheelChanged.SubscribeSafe(e => Guard(HandlePointerWheel, e), OnError),
+            this.Events().PointerPressed.SubscribeSafe(e => Guard(HandlePointerPressed, e), OnError),
+            this.Events().PointerMoved.SubscribeSafe(e => Guard(HandlePointerMoved, e), OnError),
+            this.ObserveRouted(PointerReleasedEvent, handledEventsToo: true).SubscribeSafe(e => Guard(HandlePointerReleased, e), OnError),
+            this.Events().KeyDown.SubscribeSafe(e => Guard(HandleKeyDown, e), OnError),
         ];
+    }
+
+    /// <summary>Runs an input handler, reporting a failure instead of letting it end the input subscription.</summary>
+    /// <typeparam name="T">The routed event's argument type.</typeparam>
+    /// <param name="handler">The handler.</param>
+    /// <param name="args">The routed event's data.</param>
+    private void Guard<T>(Action<T> handler, T args)
+        where T : RoutedEventArgs
+    {
+        try
+        {
+            handler(args);
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // The gesture is abandoned: release any capture so the next press starts cleanly.
+            OnError(error);
+            (args as PointerEventArgs)?.Pointer.Capture(null);
+            _selecting = false;
+            InvalidateVisual();
+        }
     }
 
     /// <summary>Releases the scroll viewer, tab and input subscriptions.</summary>
@@ -396,6 +429,8 @@ public sealed partial class PageCanvas : Control
     {
         _controlSubscriptions?.Dispose();
         _controlSubscriptions = null;
+        _markPainter?.Dispose();
+        _markPainter = null;
         _scrollerSubscriptions?.Dispose();
         _scrollerSubscriptions = null;
         _scroller = null;
@@ -418,8 +453,7 @@ public sealed partial class PageCanvas : Control
             return;
         }
 
-        var factor = Math.Pow(WheelZoomStep, e.Delta.Y);
-        ZoomAround(tab, tab.Zoom * factor, e.GetPosition(this));
+        ZoomByWheel(tab, Math.Pow(WheelZoomStep, e.Delta.Y), e.GetPosition(this));
         e.Handled = true;
     }
 
@@ -532,12 +566,37 @@ public sealed partial class PageCanvas : Control
             return;
         }
 
-        if (!HandleMeasureKey(e.Key) && !HandleAnnotationKey(e.Key) && !HandleCaretKey(e) && !HandlePageByPageKey(e))
+        if (!HandlePlacementKey(e) && !HandleMeasureKey(e.Key) && !HandleAnnotationKey(e.Key) && !HandleCaretKey(e) && !HandlePageByPageKey(e))
         {
             return;
         }
 
         e.Handled = true;
+    }
+
+    /// <summary>Draws the pages around the viewport, and remembers the scale once every visible page is sharp.</summary>
+    /// <param name="context">The drawing context.</param>
+    /// <param name="frame">The frame.</param>
+    private void DrawPages(DrawingContext context, in FrameContext frame)
+    {
+        var viewport = frame.Viewport;
+        var prefetch = viewport.Height * PrefetchViewports;
+        _layout.GetVisiblePages(viewport.Top - prefetch, viewport.Bottom + prefetch, out var first, out var last);
+        _frameComplete = true;
+
+        // Aliased edges keep neighbouring tiles from showing seams where they meet at fractional positions.
+        using (context.PushRenderOptions(PageRenderOptions))
+        {
+            for (var page = first; page <= last && page >= 0; page++)
+            {
+                DrawPage(context, frame, page);
+            }
+        }
+
+        if (_frameComplete && !IsZoomEasing)
+        {
+            _fallbackScale = GetTileScale(frame.RenderScaling);
+        }
     }
 
     /// <summary>Draws one page: shadow, background, preview, tiles and highlights.</summary>
@@ -555,8 +614,22 @@ public sealed partial class PageCanvas : Control
             context.FillRectangle(PaperBrush.Get(frame.Tab.PageTone), rect);
         }
 
-        DrawPreview(context, frame, page, rect, visible);
-        DrawTiles(context, frame, page, rect, visible);
+        var tiled = TryGetTileWindow(frame, page, rect, visible, out var grid, out var window);
+        var tab = frame.Tab;
+        var covered = tiled && visible && frame.Hub.Cache.Covers(new(tab.Source.Id, page, grid.ScaleKey, tab.Rotation, tab.PageTone.Id, 0, 0), window);
+        DrawPreview(context, frame, page, rect, visible, visible && !covered);
+        if (visible && tiled && !covered)
+        {
+            // Until the sharp tiles arrive, the last complete scale stands in, so the page does not flash blurry.
+            _frameComplete = false;
+            DrawFallbackTiles(context, frame, page, rect, grid.ScaleKey);
+        }
+
+        if (tiled)
+        {
+            DrawTiles(context, frame, grid, window, visible);
+        }
+
         if (!visible)
         {
             return;
@@ -566,42 +639,108 @@ public sealed partial class PageCanvas : Control
         DrawFocusBand(context, frame.Tab, page, bounds, new(bounds, _sizes[page], frame.Tab.Rotation, _layout.Options.Scale));
     }
 
-    /// <summary>Draws the full resolution tiles of a page that intersect the viewport, requesting missing ones.</summary>
+    /// <summary>Gets the device pixels per point that tiles are rendered at.</summary>
+    /// <param name="scaling">The device pixels per canvas unit.</param>
+    /// <returns>The tile scale.</returns>
+    private float GetTileScale(double scaling) => (float)Math.Min(_layout.Options.Scale * scaling, TileGrid.MaxScale);
+
+    /// <summary>Finds the full resolution tiles of a page that intersect the viewport, or its prefetch area when off screen.</summary>
+    /// <param name="frame">The frame.</param>
+    /// <param name="page">The page.</param>
+    /// <param name="rect">The page rectangle.</param>
+    /// <param name="visible">Whether the page is on screen.</param>
+    /// <param name="grid">The page's tile grid.</param>
+    /// <param name="window">The tiles in the area.</param>
+    /// <returns><see langword="true"/> when the page needs tiles in the area; small pages use only the preview.</returns>
+    private bool TryGetTileWindow(in FrameContext frame, int page, in Rect rect, bool visible, out TileRange grid, out TileWindow window)
+    {
+        var scaling = frame.RenderScaling;
+        var scale = GetTileScale(scaling);
+        TileGrid.GetPagePixelSize(_sizes[page], frame.Tab.Rotation, scale, out var pixelWidth, out var pixelHeight);
+        var area = visible ? frame.Viewport : frame.Viewport.Inflate(new Thickness(0, frame.Viewport.Height * PrefetchViewports));
+        var region = area.Intersect(rect);
+
+        // Snap the page origin to device pixels so tiles meet without seams.
+        var originX = Math.Round(rect.X * scaling);
+        var originY = Math.Round(rect.Y * scaling);
+        grid = new(page, TileGrid.ToScaleKey(scale), scale, pixelWidth, pixelHeight, originX, originY);
+        if (pixelWidth <= TileGrid.PreviewWidth || region.Width <= 0 || region.Height <= 0)
+        {
+            window = default;
+            return false;
+        }
+
+        window = TileGrid.GetTileWindow(
+            pixelWidth,
+            pixelHeight,
+            (region.X * scaling) - originX,
+            (region.Y * scaling) - originY,
+            (region.Right * scaling) - originX,
+            (region.Bottom * scaling) - originY);
+        return true;
+    }
+
+    /// <summary>Draws the cached tiles in a window and requests missing ones, unless a zoom is still easing.</summary>
+    /// <param name="context">The drawing context.</param>
+    /// <param name="frame">The frame.</param>
+    /// <param name="grid">The page's tile grid.</param>
+    /// <param name="window">The tiles to draw.</param>
+    /// <param name="visible">Whether the page is on screen; off screen pages are only prefetched.</param>
+    private void DrawTiles(DrawingContext context, in FrameContext frame, in TileRange grid, in TileWindow window, bool visible)
+    {
+        var request = !IsZoomEasing;
+        for (var row = window.FirstRow; row <= window.LastRow; row++)
+        {
+            for (var column = window.FirstColumn; column <= window.LastColumn; column++)
+            {
+                DrawTile(context, frame, grid, column, row, visible, request);
+            }
+        }
+    }
+
+    /// <summary>Stretches the cached tiles of the last complete scale over the visible part of a page.</summary>
     /// <param name="context">The drawing context.</param>
     /// <param name="frame">The frame.</param>
     /// <param name="page">The page.</param>
     /// <param name="rect">The page rectangle.</param>
-    /// <param name="visible">Whether the page is on screen; off screen pages are only prefetched.</param>
-    private void DrawTiles(DrawingContext context, in FrameContext frame, int page, in Rect rect, bool visible)
+    /// <param name="scaleKey">The quantised scale being drawn, which needs no stand in.</param>
+    private void DrawFallbackTiles(DrawingContext context, in FrameContext frame, int page, in Rect rect, int scaleKey)
     {
-        var tab = frame.Tab;
-        var scaling = frame.RenderScaling;
-        var scale = (float)Math.Min(_layout.Options.Scale * scaling, TileGrid.MaxScale);
-        TileGrid.GetPagePixelSize(_sizes[page], tab.Rotation, scale, out var pixelWidth, out var pixelHeight);
-        var area = visible ? frame.Viewport : frame.Viewport.Inflate(new Thickness(0, frame.Viewport.Height * PrefetchViewports));
-        var region = area.Intersect(rect);
+        var scale = _fallbackScale;
+        var fallbackKey = TileGrid.ToScaleKey(scale);
+        if (scale <= 0 || fallbackKey == scaleKey)
+        {
+            return;
+        }
 
-        // The preview already has enough resolution for small pages.
+        var tab = frame.Tab;
+        TileGrid.GetPagePixelSize(_sizes[page], tab.Rotation, scale, out var pixelWidth, out var pixelHeight);
+        var region = frame.Viewport.Intersect(rect);
         if (pixelWidth <= TileGrid.PreviewWidth || region.Width <= 0 || region.Height <= 0)
         {
             return;
         }
 
-        // Snap the page origin to device pixels so tiles meet without seams.
-        var originX = Math.Round(rect.X * scaling);
-        var originY = Math.Round(rect.Y * scaling);
         var tileSize = TileGrid.TileSize;
+        var unitX = rect.Width / pixelWidth;
+        var unitY = rect.Height / pixelHeight;
         TileGrid.GetTileCounts(pixelWidth, pixelHeight, out var columns, out var rows);
-        var firstColumn = Math.Clamp((int)(((region.X * scaling) - originX) / tileSize), 0, columns - 1);
-        var lastColumn = Math.Clamp((int)(((region.Right * scaling) - originX) / tileSize), 0, columns - 1);
-        var firstRow = Math.Clamp((int)(((region.Y * scaling) - originY) / tileSize), 0, rows - 1);
-        var lastRow = Math.Clamp((int)(((region.Bottom * scaling) - originY) / tileSize), 0, rows - 1);
-        var grid = new TileRange(page, TileGrid.ToScaleKey(scale), scale, pixelWidth, pixelHeight, originX, originY);
+        var firstColumn = Math.Clamp((int)((region.X - rect.X) / unitX / tileSize), 0, columns - 1);
+        var lastColumn = Math.Clamp((int)((region.Right - rect.X) / unitX / tileSize), 0, columns - 1);
+        var firstRow = Math.Clamp((int)((region.Y - rect.Y) / unitY / tileSize), 0, rows - 1);
+        var lastRow = Math.Clamp((int)((region.Bottom - rect.Y) / unitY / tileSize), 0, rows - 1);
         for (var row = firstRow; row <= lastRow; row++)
         {
             for (var column = firstColumn; column <= lastColumn; column++)
             {
-                DrawTile(context, frame, grid, column, row, visible);
+                var key = new TileKey(tab.Source.Id, page, fallbackKey, tab.Rotation, tab.PageTone.Id, (short)column, (short)row);
+                if (!frame.Hub.Cache.TryGet(key, out var surface))
+                {
+                    continue;
+                }
+
+                var destination = new Rect(rect.X + (column * tileSize * unitX), rect.Y + (row * tileSize * unitY), surface.Width * unitX, surface.Height * unitY);
+                context.DrawImage(((AvaloniaRenderSurface)surface).Bitmap, new(0, 0, surface.Width, surface.Height), destination);
             }
         }
     }
@@ -849,6 +988,7 @@ public sealed partial class PageCanvas : Control
             tab.ReadAloud.ReadFromCharacterCommand.SubscribeSafe(_ => ClearSelection(), OnError),
             tab.WhenChanged(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),
             tab.Annotations.WhenChanged(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.FillAndSign.WhenChanged(static x => x.Placement).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
         tab.EnsureLoaded();
         var position = tab.Position;
@@ -883,41 +1023,6 @@ public sealed partial class PageCanvas : Control
         InvalidateVisual();
     }
 
-    /// <summary>Zooms keeping the point under the pointer fixed.</summary>
-    /// <param name="tab">The tab.</param>
-    /// <param name="zoom">The new zoom.</param>
-    /// <param name="anchor">The canvas point to keep fixed.</param>
-    private void ZoomAround(DocumentTabViewModel tab, double zoom, Point anchor)
-    {
-        if (_scroller is null)
-        {
-            return;
-        }
-
-        var page = _layout.HitTest(anchor.X, anchor.Y);
-        if (page < 0)
-        {
-            page = _layout.GetPageNearest(anchor.Y);
-        }
-
-        if (page < 0)
-        {
-            tab.SetZoom(zoom);
-            return;
-        }
-
-        var pagePoint = new PageTransform(_layout.GetPageBounds(page), _sizes[page], tab.Rotation, _layout.Options.Scale).ToPage(anchor);
-        var screenOffset = anchor - _scroller.Offset;
-        tab.SetZoom(zoom);
-        _pendingScroll = () =>
-        {
-            var transform = new PageTransform(_layout.GetPageBounds(page), _sizes[page], tab.Rotation, _layout.Options.Scale);
-            var target = transform.ToCanvas(pagePoint);
-            _scroller.Offset = new(target.X - screenOffset.X, target.Y - screenOffset.Y);
-        };
-        SchedulePendingScroll();
-    }
-
     /// <summary>Scrolls to a remembered position once laid out.</summary>
     /// <param name="position">The position.</param>
     private void ScrollToPosition(DocumentPosition position)
@@ -948,10 +1053,9 @@ public sealed partial class PageCanvas : Control
         }
 
         var top = _scroller.Offset.Y + ContentMargin;
-        var topPage = _layout.GetPageNearest(top);
+        GetCurrentPages(tab, top, _scroller.Offset.Y + (_scroller.Viewport.Height * Half), out var topPage, out var middlePage);
         var bounds = _layout.GetPageBounds(topPage);
         var fraction = bounds.Height > 0 ? Math.Clamp((top - bounds.Y) / bounds.Height, 0, 1) : 0;
-        var middlePage = _layout.GetPageNearest(_scroller.Offset.Y + (_scroller.Viewport.Height * Half));
         tab.ReportPosition(new(topPage, fraction), middlePage);
     }
 
@@ -1001,7 +1105,7 @@ public sealed partial class PageCanvas : Control
         }
 
         var position = tab.Position;
-        var hasAnchor = _pendingScroll is not null;
+        var hasAnchor = _anchoring || _pendingScroll is not null;
         RebuildLayout();
         if (!hasAnchor)
         {
@@ -1019,6 +1123,7 @@ public sealed partial class PageCanvas : Control
         }
 
         var bounds = _layout.GetPageBounds(request.PageIndex);
+        _requestedPage = request.PageIndex;
         if (request.Target is { } target)
         {
             var transform = new PageTransform(bounds, _sizes[request.PageIndex], tab.Rotation, _layout.Options.Scale);

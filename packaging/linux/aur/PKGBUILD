@@ -1,17 +1,21 @@
 # Maintainer: Glenn Watson
+# Builds from source. Release tags have no "v" prefix. Update pkgver and the
+# archive hash for each release; the release workflow generates pdfviewerlite-bin.
 pkgname=pdfviewerlite
-pkgver=0.1.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc="Fast, tabbed PDF viewer that integrates with KDE Plasma and Dolphin"
 arch=('x86_64' 'aarch64')
 url="https://github.com/glennawatson/PdfViewerLite"
 license=('MIT')
 depends=('fontconfig' 'libx11' 'libice' 'libsm' 'gcc-libs' 'glibc')
-optdepends=('wayland: native Wayland support' 'libxkbcommon: Wayland keyboard input' 'libegl: native Wayland rendering' 'libcups: print straight to a printer' 'tesseract: recognise text on scanned pages' 'tesseract-data-eng: English text recognition' 'libpulse: Read Aloud sound through PulseAudio or PipeWire')
-makedepends=('dotnet-sdk>=10.0' 'clang' 'zlib')
+optdepends=('wayland: native Wayland support' 'libxkbcommon: Wayland keyboard input' 'libegl: native Wayland rendering' 'libcups: print straight to a printer' 'libpulse: Read Aloud sound through PulseAudio or PipeWire')
+# global.json pins the .NET 11 SDK.
+makedepends=('dotnet-sdk>=11.0' 'clang' 'zlib')
+conflicts=('pdfviewerlite-bin')
 options=('!strip' '!debug')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz")
+sha256sums=('14876a0bc415f308dcc539aa03f20ac5404c963e8db59dcf5ab2ab7f390cc3db')
 
 _rid() {
   case "$CARCH" in
@@ -23,15 +27,20 @@ _rid() {
 build() {
   cd "PdfViewerLite-$pkgver"
   export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
-  dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$(_rid)" -o "$srcdir/publish"
+  # The source archive has no Git history, so MinVer takes the version from pkgver.
+  dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$(_rid)" -o "$srcdir/publish" \
+    -p:Version="$pkgver" -p:MinVerVersionOverride="$pkgver"
 }
 
 package() {
   cd "PdfViewerLite-$pkgver"
   install -Dm755 "$srcdir/publish/pdfviewerlite" "$pkgdir/usr/lib/pdfviewerlite/pdfviewerlite"
-  for lib in "$srcdir"/publish/*.so; do
-    install -Dm644 "$lib" "$pkgdir/usr/lib/pdfviewerlite/$(basename "$lib")"
+  # Native libraries, including the shipped Tesseract and its dependencies under their soname (libjpeg.so.62 and so on).
+  for lib in "$srcdir"/publish/*.so "$srcdir"/publish/*.so.*; do
+    [ -e "$lib" ] && install -Dm644 "$lib" "$pkgdir/usr/lib/pdfviewerlite/$(basename "$lib")"
   done
+  # The English text recognition data shipped with the app.
+  install -Dm644 "$srcdir/publish/tessdata/eng.traineddata" "$pkgdir/usr/lib/pdfviewerlite/tessdata/eng.traineddata"
   install -d "$pkgdir/usr/bin"
   ln -s /usr/lib/pdfviewerlite/pdfviewerlite "$pkgdir/usr/bin/pdfviewerlite"
   install -Dm644 packaging/linux/net.glennwatson.PdfViewerLite.desktop "$pkgdir/usr/share/applications/net.glennwatson.PdfViewerLite.desktop"

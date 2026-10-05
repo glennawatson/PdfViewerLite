@@ -33,6 +33,11 @@ public static class Program
     public static int Main(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
+        if (Array.IndexOf(args, TextRecognitionCheck.Argument) >= 0)
+        {
+            return TextRecognitionCheck.Run(Console.Out);
+        }
+
         var newInstance = Array.IndexOf(args, NewInstanceArgument) >= 0;
         StartupDocuments = NormalizeArguments(args);
         Platform = DesktopPlatforms.Detect();

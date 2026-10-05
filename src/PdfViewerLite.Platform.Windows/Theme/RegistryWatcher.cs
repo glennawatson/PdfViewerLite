@@ -11,7 +11,7 @@ using ReactiveUI.Primitives.Signals;
 namespace PdfViewerLite.Platform.Windows.Theme;
 
 /// <summary>Watches registry keys under HKEY_CURRENT_USER on a background thread until disposed.</summary>
-[DebuggerDisplay("{_keys.Length} keys")]
+[DebuggerDisplay("RegistryWatcher: {_keys.Length} keys")]
 internal sealed class RegistryWatcher : IDisposable
 {
     /// <summary>Notify on value changes and new subkeys.</summary>

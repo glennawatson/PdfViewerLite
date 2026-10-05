@@ -12,5 +12,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Zoom">The zoom, for a free zoom.</param>
 /// <param name="PageByPage">Whether pages were shown one at a time.</param>
 /// <param name="SidebarVisible">Whether the sidebar was shown.</param>
-[DebuggerDisplay("{ZoomMode} page by page={PageByPage}")]
+[DebuggerDisplay("PresentationState: {ZoomMode} page by page={PageByPage}")]
 public readonly record struct PresentationState(ZoomMode ZoomMode, double Zoom, bool PageByPage, bool SidebarVisible);

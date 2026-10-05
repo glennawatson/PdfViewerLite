@@ -28,12 +28,6 @@ public enum AnnotationTool
     /// <summary>Clicking writes text on the page.</summary>
     Text = 6,
 
-    /// <summary>Dragging draws a signature; used by Fill &amp; Sign.</summary>
-    DrawSignature = 7,
-
-    /// <summary>Clicking places the typed signature; used by Fill &amp; Sign.</summary>
-    PlaceSignature = 8,
-
     /// <summary>Dragging draws a rectangle.</summary>
     Rectangle = 9,
 

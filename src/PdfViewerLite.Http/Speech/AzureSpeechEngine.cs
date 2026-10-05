@@ -15,7 +15,7 @@ namespace PdfViewerLite.Http.Speech;
 /// Reads aloud with Azure AI Speech's neural voices, using the person's own key and region, through Refit. Nothing is
 /// sent until the person turns it on and enters their key; the text of each sentence is sent to their Azure resource.
 /// </summary>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("AzureSpeechEngine: {Name}")]
 public sealed class AzureSpeechEngine : ISpeechEngine
 {
     /// <summary>The sample rate of the requested output format.</summary>

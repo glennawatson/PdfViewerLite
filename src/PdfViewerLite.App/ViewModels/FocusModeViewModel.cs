@@ -22,7 +22,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// width, colour and typeface the person chooses. Switching between it and the pages keeps the place, Read Aloud is
 /// followed and marked, and Read from Here starts reading at a paragraph.
 /// </summary>
-[DebuggerDisplay("On={IsOn}")]
+[DebuggerDisplay("FocusModeViewModel: On={IsOn}")]
 public sealed partial class FocusModeViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The smallest text size.</summary>

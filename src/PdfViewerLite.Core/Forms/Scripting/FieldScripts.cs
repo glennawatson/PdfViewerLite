@@ -14,7 +14,7 @@ namespace PdfViewerLite.Core.Forms.Scripting;
 /// <param name="Format">Formats the value for display.</param>
 /// <param name="Validate">Validates a new value.</param>
 /// <param name="Calculate">Calculates the value from other fields.</param>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("FieldScripts: {Name}")]
 public sealed record FieldScripts(int PageIndex, int Index, string Name, FormScript Keystroke, FormScript Format, FormScript Validate, FormScript Calculate)
 {
     /// <summary>Gets a value indicating whether the field has any script PdfViewerLite runs.</summary>

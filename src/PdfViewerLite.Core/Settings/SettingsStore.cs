@@ -3,12 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using System.Text.Json;
 
 namespace PdfViewerLite.Core.Settings;
 
 /// <summary>Loads and saves <see cref="AppSettings"/> as JSON in the user's configuration directory.</summary>
-[DebuggerDisplay("{FilePath}")]
+[DebuggerDisplay("SettingsStore: {FilePath}")]
 public sealed class SettingsStore
 {
     /// <summary>Initializes a new instance of the <see cref="SettingsStore"/> class using the default location.</summary>
@@ -38,58 +37,13 @@ public sealed class SettingsStore
 
     /// <summary>Loads settings, returning defaults when the file is missing or unreadable.</summary>
     /// <returns>The settings.</returns>
-    public AppSettings Load()
-    {
-        try
-        {
-            if (!File.Exists(FilePath))
-            {
-                return new();
-            }
-
-            using var stream = File.OpenRead(FilePath);
-            return JsonSerializer.Deserialize(stream, SettingsJsonContext.Default.AppSettings) ?? new();
-        }
-        catch (IOException)
-        {
-            return new();
-        }
-        catch (JsonException)
-        {
-            return new();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return new();
-        }
-    }
+    public AppSettings Load() => PrivateJsonFile.Load(FilePath, SettingsJsonContext.Default.AppSettings) ?? new();
 
     /// <summary>Saves settings atomically.</summary>
     /// <param name="settings">The settings.</param>
     public void Save(AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        var directory = Path.GetDirectoryName(FilePath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            _ = Directory.CreateDirectory(directory);
-        }
-
-        var temp = $"{FilePath}.tmp";
-
-        // The settings can hold the person's Azure Speech key, so the file is readable only by its owner.
-        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
-        if (!OperatingSystem.IsWindows())
-        {
-            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
-        }
-
-        File.Delete(temp);
-        using (var stream = new FileStream(temp, options))
-        {
-            JsonSerializer.Serialize(stream, settings, SettingsJsonContext.Default.AppSettings);
-        }
-
-        File.Move(temp, FilePath, true);
+        PrivateJsonFile.Save(FilePath, settings, SettingsJsonContext.Default.AppSettings);
     }
 }

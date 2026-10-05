@@ -24,7 +24,7 @@ using ReactiveUI.Primitives.ObservableEvents;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>The main window: the tab strip, the start page and the document of the selected tab.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("MainWindow: {Title}")]
 public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<MainViewModel>
 {
     /// <summary>How far the pointer must move before a tab drag starts.</summary>
@@ -65,6 +65,7 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         _ = this.WhenActivated(
             disposables =>
             {
+                disposables.Add(ItemAutomation.NameItems(TabFinderList));
                 BindWindowEvents(disposables);
                 BindTabStrip(disposables, TabStrip);
                 BindTabFinder(disposables, TabFinderList, TabFinderBox, TabFinderButton.Flyout!);

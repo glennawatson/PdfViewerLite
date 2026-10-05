@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <Description>Allocation and throughput benchmarks for PdfViewerLite.</Description>
+    <UsesTesseractNative>true</UsesTesseractNative>
   </PropertyGroup>
 
   <ItemGroup>

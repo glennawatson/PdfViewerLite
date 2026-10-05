@@ -13,5 +13,5 @@ namespace PdfViewerLite.Pdfium;
 /// <param name="Height">The page height in pixels.</param>
 /// <param name="Rotation">The rotation in quarter turns.</param>
 /// <param name="Flags">The PDFium render flags.</param>
-[DebuggerDisplay("{X},{Y} {Width}x{Height}")]
+[DebuggerDisplay("PagePlacement: {X},{Y} {Width}x{Height}")]
 internal readonly record struct PagePlacement(int X, int Y, int Width, int Height, int Rotation, int Flags);

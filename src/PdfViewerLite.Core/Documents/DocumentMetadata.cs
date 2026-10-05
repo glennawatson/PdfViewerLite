@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Core.Documents;
 
 /// <summary>Descriptive information about a document.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("DocumentMetadata: {Title}")]
 public sealed record DocumentMetadata
 {
     /// <summary>Gets the title.</summary>

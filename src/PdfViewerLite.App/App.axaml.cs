@@ -27,7 +27,7 @@ using ReactiveUI.Primitives.Signals;
 namespace PdfViewerLite.App;
 
 /// <summary>The Avalonia application.</summary>
-[DebuggerDisplay("PdfViewerLite")]
+[DebuggerDisplay("App: PdfViewerLite")]
 public sealed class App : Application
 {
     /// <summary>Subscriptions and resources owned for the application's lifetime.</summary>

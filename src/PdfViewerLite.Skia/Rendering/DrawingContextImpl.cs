@@ -35,11 +35,17 @@ internal sealed class DrawingContextImpl : IDrawingContextWithAcrylicLikeSupport
     /// <summary>The blur sigma offset.</summary>
     private const float BlurSigmaOffset = 0.5F;
 
+    /// <summary>How far, in device pixels, a bitmap's drawn size may differ from its pixel size and still count as 1:1.</summary>
+    private const float OneToOneTolerance = 0.5F;
+
+    /// <summary>The sampling for bitmaps drawn at their own size: bilinear, which is exact on whole pixels and adds no cubic blur.</summary>
+    private static readonly SKSamplingOptions OneToOneSampling = new(SKFilterMode.Linear, SKMipmapMode.None);
+
     /// <summary>The intermediate surface dpi.</summary>
     private readonly Vector _intermediateSurfaceDpi;
 
     /// <summary>The mask stack.</summary>
-    private readonly Stack<(SKMatrix Matrix, PaintWrapper Paint)> _maskStack = new();
+    private readonly Stack<(SKMatrix Matrix, PaintWrapper Paint, SKPaint Owned)> _maskStack = new();
 
     /// <summary>The opacity stack.</summary>
     private readonly Stack<double> _opacityStack = new();
@@ -73,6 +79,12 @@ internal sealed class DrawingContextImpl : IDrawingContextWithAcrylicLikeSupport
 
     /// <summary>The box shadow paint.</summary>
     private readonly SKPaint _boxShadowPaint = new();
+
+    /// <summary>The paint for bitmap draws, reset before each use.</summary>
+    private readonly SKPaint _bitmapPaint = new();
+
+    /// <summary>The paint for opacity and mask layers, which Skia copies when the layer is saved.</summary>
+    private readonly SKPaint _layerPaint = new();
 
     /// <summary>The round rect.</summary>
     private readonly SKRoundRect _roundRect = new();
@@ -179,13 +191,20 @@ internal sealed class DrawingContextImpl : IDrawingContextWithAcrylicLikeSupport
         var drawableImage = (IDrawableBitmapImpl)source;
         var s = sourceRect.ToSKRect();
         var d = destRect.ToSKRect();
-        var isUpscaling = d.Width > s.Width || d.Height > s.Height;
-        using var paint = new SKPaint();
-        var samplingOptions = RenderOptions.BitmapInterpolationMode.ToSKSamplingOptions(isUpscaling);
-        paint.Color = new(byte.MaxValue, byte.MaxValue, byte.MaxValue, (byte)(byte.MaxValue * opacity * _currentOpacity));
-        paint.BlendMode = RenderOptions.BitmapBlendingMode.ToSKBlendMode();
-        paint.IsAntialias = RenderOptions.EdgeMode != EdgeMode.Aliased;
-        drawableImage.Draw(this, s, d, samplingOptions, paint);
+
+        // Compare in device pixels: a tile drawn 1:1 on a scaled display is neither up nor down scaled, and choosing
+        // its filter from canvas units made it flip between filters as the zoom or position changed.
+        var matrix = Canvas.TotalMatrix;
+        var deviceWidth = d.Width * MathF.Sqrt((matrix.ScaleX * matrix.ScaleX) + (matrix.SkewY * matrix.SkewY));
+        var deviceHeight = d.Height * MathF.Sqrt((matrix.ScaleY * matrix.ScaleY) + (matrix.SkewX * matrix.SkewX));
+        var samplingOptions = Math.Abs(deviceWidth - s.Width) < OneToOneTolerance && Math.Abs(deviceHeight - s.Height) < OneToOneTolerance
+            ? OneToOneSampling
+            : RenderOptions.BitmapInterpolationMode.ToSKSamplingOptions(deviceWidth > s.Width || deviceHeight > s.Height);
+        _bitmapPaint.Reset();
+        _bitmapPaint.Color = new(byte.MaxValue, byte.MaxValue, byte.MaxValue, (byte)(byte.MaxValue * opacity * _currentOpacity));
+        _bitmapPaint.BlendMode = RenderOptions.BitmapBlendingMode.ToSKBlendMode();
+        _bitmapPaint.IsAntialias = RenderOptions.EdgeMode != EdgeMode.Aliased;
+        drawableImage.Draw(this, s, d, samplingOptions, _bitmapPaint);
     }
 
     /// <inheritdoc/>
@@ -433,14 +452,15 @@ PopClip();
         {
             opacity = _currentOpacity * opacity;
             _currentOpacity = 1.0;
-            using var paint = new SKPaint { ColorF = new(0, 0, 0, (float)opacity) };
+            _layerPaint.Reset();
+            _layerPaint.ColorF = new(0, 0, 0, (float)opacity);
             if (bounds.HasValue)
             {
-                _ = Canvas.SaveLayer(bounds.Value.ToSKRect(), paint);
+                _ = Canvas.SaveLayer(bounds.Value.ToSKRect(), _layerPaint);
             }
             else
             {
-                _ = Canvas.SaveLayer(paint);
+                _ = Canvas.SaveLayer(_layerPaint);
             }
         }
         else
@@ -468,18 +488,22 @@ PopClip();
         CheckLease();
         var rect = bounds.ToSKRect();
         _ = Canvas.SaveLayer(rect, null!);
-        using var paint = new SKPaint();
-        _maskStack.Push((Canvas.TotalMatrix, CreatePaint(paint, mask, bounds)));
+
+        // The mask paint is drawn when the mask is popped, so the stack owns it until then.
+        var paint = new SKPaint();
+        _maskStack.Push((Canvas.TotalMatrix, CreatePaint(paint, mask, bounds), paint));
     }
 
     /// <inheritdoc/>
     public void PopOpacityMask()
     {
         CheckLease();
-        using var maskPaint = new SKPaint { BlendMode = SKBlendMode.DstIn };
-        _ = Canvas.SaveLayer(maskPaint);
-        var (transform, paintWrapper) = _maskStack.Pop();
+        _layerPaint.Reset();
+        _layerPaint.BlendMode = SKBlendMode.DstIn;
+        _ = Canvas.SaveLayer(_layerPaint);
+        var (transform, paintWrapper, owned) = _maskStack.Pop();
         Canvas.SetMatrix(transform);
+        using (owned)
         using (paintWrapper)
         {
             Canvas.DrawPaint(paintWrapper.Paint);
@@ -568,7 +592,15 @@ PopClip();
             _strokePaint.Dispose();
             _fillPaint.Dispose();
             _boxShadowPaint.Dispose();
+            _bitmapPaint.Dispose();
+            _layerPaint.Dispose();
             _roundRect.Dispose();
+            while (_maskStack.TryPop(out var mask))
+            {
+                mask.Paint.Dispose();
+                mask.Owned.Dispose();
+            }
+
             if (_graphicsContext is not null)
             {
                 Monitor.Exit(_graphicsContext);

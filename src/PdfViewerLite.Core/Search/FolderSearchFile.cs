@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Search;
 /// <param name="Matches">The matches, in page order.</param>
 /// <param name="Problem">Why the file could not be searched, such as needing a password; otherwise <see langword="null"/>.</param>
 /// <param name="IsTruncated">Whether the file had more matches than were kept.</param>
-[DebuggerDisplay("{Path}: {Matches.Count} matches")]
+[DebuggerDisplay("FolderSearchFile: {Path}: {Matches.Count} matches")]
 public sealed record FolderSearchFile(string Path, IReadOnlyList<FolderSearchMatch> Matches, string? Problem, bool IsTruncated);

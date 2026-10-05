@@ -21,7 +21,7 @@ namespace PdfViewerLite.Core.Theming;
 /// <param name="Selection">The background of selected list items.</param>
 /// <param name="Tints">Icon colours by action.</param>
 /// <param name="PageTone">The page tone that suits the scheme.</param>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("ColorScheme: {Name}")]
 public sealed record ColorScheme(
     string Name,
     bool IsDark,

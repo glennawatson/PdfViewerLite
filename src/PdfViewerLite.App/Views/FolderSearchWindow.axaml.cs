@@ -20,7 +20,7 @@ using ReactiveUI.Primitives.Signals;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>The Search in Folder window: every PDF in a folder searched, with the results listed as they arrive.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("FolderSearchWindow: {Title}")]
 public sealed partial class FolderSearchWindow : ReactiveUI.Avalonia.ReactiveWindow<FolderSearchViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="FolderSearchWindow"/> class.</summary>
@@ -28,8 +28,10 @@ public sealed partial class FolderSearchWindow : ReactiveUI.Avalonia.ReactiveWin
     {
         InitializeComponent();
         ResultList.ItemTemplate = new FuncDataTemplate<FolderSearchResultViewModel>(static (result, _) => FolderSearchResultView.Create(result));
+        FieldLabels.Link((FolderBox, FolderLabel), (QueryBox, QueryLabel));
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(ItemAutomation.NameItems(ResultList));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Folder, static v => v.FolderBox.Text));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Query, static v => v.QueryBox.Text));
             disposables.Add(this.Bind(ViewModel, static vm => vm.MatchCase, static v => v.MatchCaseBox.IsChecked, static on => on, static value => value == true));

@@ -9,5 +9,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <summary>A name and value shown in the properties dialog.</summary>
 /// <param name="Name">The property name.</param>
 /// <param name="Value">The property value.</param>
-[DebuggerDisplay("{Name}: {Value}")]
+[DebuggerDisplay("PropertyEntry: {Name}: {Value}")]
 public sealed record PropertyEntry(string Name, string Value);

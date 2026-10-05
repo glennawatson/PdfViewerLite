@@ -9,5 +9,5 @@ namespace PdfViewerLite.Core.Rendering;
 /// <summary>A completed render, waiting to be moved into the <see cref="TileCache"/> on the UI thread.</summary>
 /// <param name="Key">The tile key.</param>
 /// <param name="Surface">The rendered surface; ownership passes to the receiver.</param>
-[DebuggerDisplay("{Key}")]
+[DebuggerDisplay("RenderedTile: {Key}")]
 public readonly record struct RenderedTile(TileKey Key, IRenderSurface Surface);

@@ -9,7 +9,7 @@ namespace PdfViewerLite.Core.Platform;
 /// <summary>A recently opened document.</summary>
 /// <param name="FilePath">The file path.</param>
 /// <param name="Visited">When the document was last opened.</param>
-[DebuggerDisplay("{FilePath}")]
+[DebuggerDisplay("RecentDocument: {FilePath}")]
 public sealed record RecentDocument(string FilePath, DateTimeOffset Visited)
 {
     /// <summary>Gets the file name.</summary>

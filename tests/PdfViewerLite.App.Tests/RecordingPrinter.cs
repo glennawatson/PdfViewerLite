@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using PdfViewerLite.Core.Annotations;
+using PdfViewerLite.Core.Documents;
+using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Pdfium;
 
@@ -31,6 +33,12 @@ internal sealed class RecordingPrinter : IPrintService
 
     /// <summary>Gets text present in the first printed page's content.</summary>
     public string PageText { get; private set; } = string.Empty;
+
+    /// <summary>Gets or sets an area of the first page to check for ink when the file is handed over.</summary>
+    public PageRect InkArea { get; set; }
+
+    /// <summary>Gets the inked pixels found in <see cref="InkArea"/> when the first page is rendered for printing.</summary>
+    public int InkPixels { get; private set; }
 
     /// <summary>Gets the job settings sent.</summary>
     public PrintJobOptions Options { get; private set; }
@@ -73,5 +81,9 @@ internal sealed class RecordingPrinter : IPrintService
         List<PageAnnotation> annotations = [];
         ((IAnnotationEditor)document).GetAnnotations(0, annotations);
         AnnotationCount = annotations.Count;
+        if (InkArea.Width > 0)
+        {
+            InkPixels = PageInk.Count(document, 0, InkArea, RenderFlags.Annotations | RenderFlags.Printing);
+        }
     }
 }

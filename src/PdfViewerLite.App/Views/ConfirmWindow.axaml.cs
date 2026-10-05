@@ -11,7 +11,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Asks the user to confirm a destructive action; closes with <see langword="true"/> to go ahead.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("ConfirmWindow: {Title}")]
 public sealed partial class ConfirmWindow : ReactiveUI.Avalonia.ReactiveWindow<ConfirmViewModel>
 {
     /// <summary>Initializes a new instance of the <see cref="ConfirmWindow"/> class.</summary>

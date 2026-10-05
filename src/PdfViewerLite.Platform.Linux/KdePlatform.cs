@@ -18,7 +18,7 @@ namespace PdfViewerLite.Platform.Linux;
 /// <c>recently-used.xbel</c>, printing through the XDG portal and a single window claimed on the session bus. The
 /// freedesktop parts work on other Linux desktops too.
 /// </summary>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("KdePlatform: {Name}")]
 public sealed class KdePlatform : IDesktopPlatform
 {
     /// <inheritdoc/>

@@ -9,7 +9,7 @@ using PdfViewerLite.Pdfium.Native;
 namespace PdfViewerLite.Pdfium;
 
 /// <summary>Opens PDF documents with PDFium.</summary>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("PdfiumEngine: {Name}")]
 public sealed class PdfiumEngine : IDocumentEngine
 {
     /// <summary>How far into the file the signature may appear (some writers prefix junk).</summary>

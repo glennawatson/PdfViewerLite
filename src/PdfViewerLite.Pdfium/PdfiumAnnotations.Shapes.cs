@@ -210,15 +210,17 @@ internal static partial class PdfiumAnnotations
         try
         {
             PdfBounds bounds = default;
+            nint path = 0;
             var offset = 0;
             foreach (var length in strokeLengths)
             {
-                AddStroke(page, annotation, points.Slice(offset, length), ref bounds);
+                AddStroke(page, annotation, points.Slice(offset, length), ref bounds, ref path);
                 offset += length;
             }
 
             _ = NativeMethods.FPDFAnnot_SetBorder(annotation, 0, 0, width);
             Finish(annotation, bounds.ToRect(width), color, string.Empty, subject);
+            AppendInkAppearance(annotation, path, color, width);
             return NativeMethods.FPDFPage_GetAnnotIndex(page.Handle, annotation);
         }
         finally

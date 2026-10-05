@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Buffers;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -17,14 +18,14 @@ namespace PdfViewerLite.App.ViewModels;
 /// Annotation state for one tab: the active tool and colour, the sidebar list, undo, and the edits themselves.
 /// Edits go straight to the document; the page's tiles are dropped so it redraws.
 /// </summary>
-[DebuggerDisplay("{Tool}, {Items.Count} annotations")]
+[DebuggerDisplay("AnnotationsViewModel: {Tool}, {Items.Count} annotations")]
 public sealed partial class AnnotationsViewModel : ReactiveObject
 {
     /// <summary>The default text size in points.</summary>
     private const float TextSize = 12;
 
-    /// <summary>The default typed signature size in points.</summary>
-    private const float SignatureSize = 24;
+    /// <summary>The coordinates stored for each drawn signature point.</summary>
+    private const int PointCoordinates = 2;
 
     /// <summary>The freehand line width in points.</summary>
     private const float InkWidth = 1.5F;
@@ -197,7 +198,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
     /// <param name="location">The stamp's top-left corner.</param>
     /// <returns><see langword="true"/> when placed.</returns>
     public bool AddStamp(int page, PagePoint location) =>
-        Editor is { } editor && Added(page, editor.AddStamp(page, location, StampLabel, AnnotationColors.Deep(Color)));
+        !string.IsNullOrWhiteSpace(StampLabel) && Editor is { } editor && Added(page, editor.AddStamp(page, location, StampLabel, AnnotationColors.Deep(Color)));
 
     /// <summary>Marks the given lines of text on each page.</summary>
     /// <param name="kind">The markup kind.</param>
@@ -290,14 +291,58 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
         }
     }
 
-    /// <summary>Places a typed signature at a point.</summary>
+    /// <summary>Writes a signature or initials mark into its bounds as a removable signature annotation, then picks it.</summary>
     /// <param name="page">The page.</param>
-    /// <param name="location">The top-left corner of the signature.</param>
-    /// <param name="name">The name to sign with.</param>
-    /// <returns><see langword="true"/> when placed.</returns>
-    public bool PlaceTypedSignature(int page, PagePoint location, string name) =>
-        !string.IsNullOrWhiteSpace(name) && Editor is { } editor
-        && Added(page, editor.AddText(page, location, name, SignatureSize, AnnotationColors.Ink, AnnotationKind.Signature));
+    /// <param name="bounds">Where the mark goes, in page space.</param>
+    /// <param name="mark">The mark.</param>
+    /// <returns>The placed annotation, or <see langword="null"/> when it could not be placed.</returns>
+    public PageAnnotation? PlaceMark(int page, PageRect bounds, SignatureMark mark)
+    {
+        ArgumentNullException.ThrowIfNull(mark);
+        if (Editor is not { } editor || !mark.IsValid)
+        {
+            return null;
+        }
+
+        var index = mark.Style switch
+        {
+            SignatureMarkStyle.Typed => AddTypedMark(editor, page, bounds, mark),
+            SignatureMarkStyle.Drawn => AddDrawnMark(editor, page, bounds, mark),
+            SignatureMarkStyle.Image when editor is IImageSignatureEditor images => images.AddImageSignature(page, bounds, mark.Pixels.Span, (int)mark.Width, (int)mark.Height),
+            _ => -1,
+        };
+        if (!Added(page, index))
+        {
+            return null;
+        }
+
+        Selected = Find(page, index);
+        return Selected;
+    }
+
+    /// <summary>Reads one annotation as it is now.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="index">The annotation index.</param>
+    /// <returns>The annotation, or <see langword="null"/> when there is none at that index.</returns>
+    public PageAnnotation? Find(int page, int index)
+    {
+        if (Editor is not { } editor)
+        {
+            return null;
+        }
+
+        _scratch.Clear();
+        editor.GetAnnotations(page, _scratch);
+        foreach (var annotation in _scratch)
+        {
+            if (annotation.Index == index)
+            {
+                return annotation;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>Finds the annotation under a point, topmost first.</summary>
     /// <param name="page">The page.</param>
@@ -421,6 +466,39 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
         }
     }
 
+    /// <summary>Writes a typed mark's text at the size that fills its bounds, as a signature.</summary>
+    /// <param name="editor">The editor.</param>
+    /// <param name="page">The page.</param>
+    /// <param name="bounds">Where the mark goes.</param>
+    /// <param name="mark">The typed mark.</param>
+    /// <returns>The new annotation's index, or -1.</returns>
+    private static int AddTypedMark(IAnnotationEditor editor, int page, PageRect bounds, SignatureMark mark)
+    {
+        var size = (float)SignatureMarkLayout.TypedFontSize(bounds.Height);
+        return editor.AddText(page, new(bounds.Left, bounds.Top), mark.Text, size, AnnotationColors.Ink, AnnotationKind.Signature);
+    }
+
+    /// <summary>Draws a drawn mark's strokes, scaled into its bounds, as a signature.</summary>
+    /// <param name="editor">The editor.</param>
+    /// <param name="page">The page.</param>
+    /// <param name="bounds">Where the mark goes.</param>
+    /// <param name="mark">The drawn mark.</param>
+    /// <returns>The new annotation's index, or -1.</returns>
+    private static int AddDrawnMark(IAnnotationEditor editor, int page, PageRect bounds, SignatureMark mark)
+    {
+        var count = mark.Points.Length / PointCoordinates;
+        var points = ArrayPool<PagePoint>.Shared.Rent(count);
+        try
+        {
+            SignatureMarkLayout.MapPoints(mark, bounds, points);
+            return editor.AddInk(page, points.AsSpan(0, count), mark.StrokeLengths.Span, AnnotationColors.Ink, InkWidth, AnnotationKind.Signature);
+        }
+        finally
+        {
+            ArrayPool<PagePoint>.Shared.Return(points);
+        }
+    }
+
     /// <summary>Makes a sidebar item for an annotation, with its replies.</summary>
     /// <param name="editor">The editor.</param>
     /// <param name="annotation">The annotation.</param>
@@ -455,11 +533,15 @@ public sealed partial class AnnotationsViewModel : ReactiveObject
     private void SetTool(AnnotationTool tool) => Tool = Tool == tool ? AnnotationTool.Select : tool;
 
     /// <summary>Chooses a stamp and the stamp tool.</summary>
-    /// <param name="label">The stamp's word.</param>
+    /// <param name="label">The stamp's word; a blank word keeps the current stamp.</param>
     [ReactiveCommand]
-    private void SetStamp(string label)
+    private void SetStamp(string? label)
     {
-        StampLabel = label;
+        if (!string.IsNullOrWhiteSpace(label))
+        {
+            StampLabel = label;
+        }
+
         Tool = AnnotationTool.Stamp;
     }
 

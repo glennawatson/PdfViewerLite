@@ -11,7 +11,7 @@ namespace PdfViewerLite.Core.Rendering;
 /// A consumer of rendered tiles, such as a page canvas. Requests carry the client generation at the time they were
 /// made; advancing the generation drops any queued request the client did not re-issue.
 /// </summary>
-[DebuggerDisplay("Generation {Generation}")]
+[DebuggerDisplay("RenderClient: Generation {Generation}")]
 public sealed class RenderClient
 {
     /// <summary>The current generation.</summary>

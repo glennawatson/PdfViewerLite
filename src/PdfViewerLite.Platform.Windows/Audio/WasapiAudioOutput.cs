@@ -12,7 +12,7 @@ namespace PdfViewerLite.Platform.Windows.Audio;
 /// to the device's format. The COM interfaces are called through their function tables, so nothing needs reflection.
 /// Each clip opens a client on the current default device, so a change of headphones is followed.
 /// </summary>
-[DebuggerDisplay("WASAPI")]
+[DebuggerDisplay("WasapiAudioOutput: WASAPI")]
 public sealed unsafe class WasapiAudioOutput : IAudioOutput
 {
     /// <summary>Shared mode.</summary>
@@ -116,7 +116,18 @@ public sealed unsafe class WasapiAudioOutput : IAudioOutput
     public Task PlayAsync(SpeechAudio audio, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(audio);
-        return Task.Run(() => Play(audio, cancellationToken), CancellationToken.None);
+
+        // Playback waits for the clip to be heard, so it gets its own thread rather than holding a pool thread.
+        return Task.Factory.StartNew(
+            static state =>
+            {
+                var (output, clip, token) = ((WasapiAudioOutput, SpeechAudio, CancellationToken))state!;
+                output.Play(clip, token);
+            },
+            (this, audio, cancellationToken),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
     }
 
     /// <inheritdoc/>

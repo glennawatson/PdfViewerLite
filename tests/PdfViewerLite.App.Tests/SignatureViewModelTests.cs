@@ -9,14 +9,11 @@ using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Tests;
 
-/// <summary>Tests for <see cref="SignaturesViewModel"/> and placing signatures through Fill &amp; Sign.</summary>
+/// <summary>Tests for <see cref="SignaturesViewModel"/>.</summary>
 public sealed class SignatureViewModelTests
 {
     /// <summary>The page count of the signed document.</summary>
     private const int Pages = 2;
-
-    /// <summary>Where the signature is placed.</summary>
-    private static readonly PdfViewerLite.Core.Geometry.PagePoint SignAt = new(72, 500);
 
     /// <summary>Verifies a signed document reports its signature, and checking shows it with its signer.</summary>
     /// <returns>A task.</returns>
@@ -45,28 +42,5 @@ public sealed class SignatureViewModelTests
         await Assert.That(shown).IsEqualTo(1);
         await Assert.That(signatures.Signatures[0].SignerName).IsEqualTo(TestSignedPdf.SignerName);
         await Assert.That(signatures.Signatures[0].Integrity).IsEqualTo(SignatureIntegrity.Intact);
-    }
-
-    /// <summary>Verifies typing a signature remembers the name and places it with one click.</summary>
-    /// <returns>A task.</returns>
-    [Test]
-    public async Task PlacesTypedSignature()
-    {
-        using var test = new TestServices();
-        using var main = new MainViewModel(test.Services);
-        main.Open([test.CreateDocument("sign.pdf", Pages)]);
-        var tab = main.SelectedTab!;
-        using var prompt = tab.Annotations.PromptInteraction.RegisterHandler(static context => context.SetOutput("Glenn Watson"));
-        tab.SidebarMode = SidebarMode.Annotations;
-
-        _ = await tab.FillAndSign.StartCommand.Execute().ToTask();
-        _ = await tab.FillAndSign.TypeSignatureCommand.Execute().ToTask();
-        var armed = tab.Annotations.Tool;
-        tab.FillAndSign.PlaceSignature(0, SignAt);
-
-        await Assert.That(armed).IsEqualTo(AnnotationTool.PlaceSignature);
-        await Assert.That(test.Services.Settings.SignatureName).IsEqualTo("Glenn Watson");
-        await Assert.That(tab.Annotations.Tool).IsEqualTo(AnnotationTool.Select);
-        await Assert.That(tab.Annotations.Items.Single().Annotation.Kind).IsEqualTo(PdfViewerLite.Core.Annotations.AnnotationKind.Signature);
     }
 }

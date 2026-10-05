@@ -12,7 +12,7 @@ namespace PdfViewerLite.Core.Tests.Speech.Listening;
 /// <param name="British">Whether it is read with a British voice.</param>
 /// <param name="Expect">Phrases the spoken text must contain.</param>
 /// <param name="Forbid">Phrases the spoken text must not contain.</param>
-[DebuggerDisplay("{Category}: {Text}")]
+[DebuggerDisplay("ListeningCase: {Category}: {Text}")]
 public sealed record ListeningCase(string Category, string Text, bool British, IReadOnlyList<string> Expect, IReadOnlyList<string>? Forbid)
 {
     /// <inheritdoc/>

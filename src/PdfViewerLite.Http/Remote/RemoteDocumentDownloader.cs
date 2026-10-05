@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Http.Remote;
 
 /// <summary>Downloads a document from an <c>http</c> or <c>https</c> URI into a temporary file.</summary>
-[DebuggerDisplay("{_downloadDirectory}")]
+[DebuggerDisplay("RemoteDocumentDownloader: {_downloadDirectory}")]
 public sealed class RemoteDocumentDownloader
 {
     /// <summary>The largest document downloaded, guarding against runaway responses.</summary>

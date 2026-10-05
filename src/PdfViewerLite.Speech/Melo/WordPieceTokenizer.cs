@@ -14,7 +14,7 @@ namespace PdfViewerLite.Speech.Melo;
 /// punctuation, and each word is cut into the longest pieces the vocabulary holds, continuing pieces marked with
 /// <c>##</c>. MeloTTS groups these pieces into words and feeds their ids to BERT, so this must match the original.
 /// </summary>
-[DebuggerDisplay("{Count} pieces")]
+[DebuggerDisplay("WordPieceTokenizer: {Count} pieces")]
 internal sealed class WordPieceTokenizer
 {
     /// <summary>The id of the token that opens every sentence.</summary>

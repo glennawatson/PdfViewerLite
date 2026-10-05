@@ -13,7 +13,7 @@ namespace PdfViewerLite.Core.Layout;
 /// The positions of every page in a continuous layout. Lookups are binary searches over row offsets, so locating the
 /// visible pages costs O(log n) regardless of document length.
 /// </summary>
-[DebuggerDisplay("{PageCount} pages, {ExtentWidth} x {ExtentHeight}")]
+[DebuggerDisplay("DocumentLayout: {PageCount} pages, {ExtentWidth} x {ExtentHeight}")]
 public sealed record DocumentLayout
 {
     /// <summary>The number of pages in a two page spread.</summary>
@@ -85,7 +85,7 @@ public sealed record DocumentLayout
             return Empty;
         }
 
-        var rowCount = GetRowCount(sizes.Length, options.Mode);
+        var rowCount = PageRows.GetRowCount(sizes.Length, options.Mode);
         var pages = new LayoutRect[sizes.Length];
         var rowTops = new double[rowCount];
         var rowBottoms = new double[rowCount];
@@ -95,7 +95,7 @@ public sealed record DocumentLayout
         var contentWidth = 0.0;
         for (var row = 0; row < rowCount; row++)
         {
-            GetRowPages(row, sizes.Length, options.Mode, out var first, out var count);
+            PageRows.GetRowPages(row, sizes.Length, options.Mode, out var first, out var count);
             rowFirstPage[row] = first;
             var width = GetSlotWidth(sizes, options, row, first, count);
             rowWidths[row] = width;
@@ -106,7 +106,7 @@ public sealed record DocumentLayout
         var y = options.Margin;
         for (var row = 0; row < rowCount; row++)
         {
-            GetRowPages(row, sizes.Length, options.Mode, out var first, out var count);
+            PageRows.GetRowPages(row, sizes.Length, options.Mode, out var first, out var count);
             var rowHeight = 0.0;
             for (var i = first; i < first + count; i++)
             {
@@ -114,7 +114,7 @@ public sealed record DocumentLayout
             }
 
             var x = (extentWidth - rowWidths[row]) / Halves;
-            if (IsCoverRow(row, options.Mode))
+            if (PageRows.IsCoverRow(row, options.Mode))
             {
                 // The cover sits in the right hand slot of a two page spread.
                 x += (rowWidths[row] + options.Spacing) / Halves;
@@ -227,41 +227,25 @@ public sealed record DocumentLayout
         return _rowFirstPage[Math.Min(row, _rowFirstPage.Length - 1)];
     }
 
-    /// <summary>Gets the number of rows for a page count and mode.</summary>
-    /// <param name="pageCount">The page count.</param>
-    /// <param name="mode">The mode.</param>
-    /// <returns>The row count.</returns>
-    private static int GetRowCount(int pageCount, PageLayoutMode mode) => mode switch
+    /// <summary>
+    /// Gets the current page for the page indicator: the page in the row nearest a vertical offset. A spread shows two
+    /// pages, so <paramref name="preferredPage"/> is kept when it is one of them; otherwise the row's first page is used.
+    /// </summary>
+    /// <param name="y">The offset, usually the middle of the viewport.</param>
+    /// <param name="preferredPage">The page last shown or asked for.</param>
+    /// <returns>The page index, or -1 when the layout is empty.</returns>
+    public int GetCurrentPage(double y, int preferredPage)
     {
-        PageLayoutMode.Dual => (pageCount + 1) / SpreadPages,
-        PageLayoutMode.DualCover => 1 + (pageCount / SpreadPages),
-        _ => pageCount,
-    };
-
-    /// <summary>Gets the pages in a row.</summary>
-    /// <param name="row">The row.</param>
-    /// <param name="pageCount">The page count.</param>
-    /// <param name="mode">The mode.</param>
-    /// <param name="first">The first page.</param>
-    /// <param name="count">The number of pages.</param>
-    private static void GetRowPages(int row, int pageCount, PageLayoutMode mode, out int first, out int count)
-    {
-        if (mode == PageLayoutMode.Single)
+        if (_rowTops.Length == 0)
         {
-            first = row;
-            count = 1;
-            return;
+            return -1;
         }
 
-        first = mode == PageLayoutMode.Dual ? row * SpreadPages : Math.Max(0, (row * SpreadPages) - 1);
-        count = IsCoverRow(row, mode) ? 1 : Math.Min(SpreadPages, pageCount - first);
+        var row = Math.Min(LowerBound(_rowBottoms, y), _rowFirstPage.Length - 1);
+        var first = _rowFirstPage[row];
+        var end = row + 1 < _rowFirstPage.Length ? _rowFirstPage[row + 1] : _pages.Length;
+        return preferredPage >= first && preferredPage < end ? preferredPage : first;
     }
-
-    /// <summary>Determines whether a row holds only the cover page.</summary>
-    /// <param name="row">The row.</param>
-    /// <param name="mode">The mode.</param>
-    /// <returns><see langword="true"/> for the cover row.</returns>
-    private static bool IsCoverRow(int row, PageLayoutMode mode) => mode == PageLayoutMode.DualCover && row == 0;
 
     /// <summary>Gets the width a row occupies, including an empty slot beside the cover page.</summary>
     /// <param name="sizes">The page sizes.</param>
@@ -279,7 +263,7 @@ public sealed record DocumentLayout
         }
 
         width += options.Spacing * (count - 1);
-        if (IsCoverRow(row, options.Mode))
+        if (PageRows.IsCoverRow(row, options.Mode))
         {
             width = (width * SpreadPages) + options.Spacing;
         }

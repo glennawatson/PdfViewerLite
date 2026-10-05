@@ -10,5 +10,5 @@ namespace PdfViewerLite.Core.Documents;
 /// <summary>A clickable area on a page.</summary>
 /// <param name="Bounds">The clickable area in page space.</param>
 /// <param name="Target">The destination.</param>
-[DebuggerDisplay("{Target} @ {Bounds}")]
+[DebuggerDisplay("PageLink: {Target} @ {Bounds}")]
 public readonly record struct PageLink(PageRect Bounds, LinkTarget Target);

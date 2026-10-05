@@ -11,5 +11,5 @@ namespace PdfViewerLite.Core.Search;
 /// <summary>One search match with the rectangles to highlight.</summary>
 /// <param name="Match">The matched characters.</param>
 /// <param name="Bounds">The highlight rectangles in page space.</param>
-[DebuggerDisplay("{Match}")]
+[DebuggerDisplay("SearchHit: {Match}")]
 public sealed record SearchHit(TextMatch Match, PageRect[] Bounds);

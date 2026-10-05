@@ -5,9 +5,11 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Signatures;
 using PdfViewerLite.Core.Signatures.Signing;
 using PdfViewerLite.Http.Signatures;
@@ -21,7 +23,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// A tab's digital signatures. Signatures are only checked when the user asks, because checking trust may look up
 /// certificate revocation online; the check runs off the UI thread.
 /// </summary>
-[DebuggerDisplay("{SignatureCount} signatures")]
+[DebuggerDisplay("SignaturesViewModel: {SignatureCount} signatures")]
 public sealed partial class SignaturesViewModel : ReactiveObject
 {
     /// <summary>The owning tab.</summary>
@@ -92,6 +94,59 @@ public sealed partial class SignaturesViewModel : ReactiveObject
         return results;
     }
 
+    /// <summary>Finds a remembered certificate by its file.</summary>
+    /// <param name="remembered">The remembered certificates.</param>
+    /// <param name="path">The file.</param>
+    /// <returns>The index, or -1.</returns>
+    private static int IndexOf(List<RememberedCertificate> remembered, string path)
+    {
+        for (var i = 0; i < remembered.Count; i++)
+        {
+            if (string.Equals(remembered[i].Path, path, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Saves the user's remember choices from the window: certificates they forgot are dropped even when they cancelled,
+    /// and the certificate they signed with is remembered only when they ticked the box. Only the file, the name it
+    /// holds and its fingerprint are kept.
+    /// </summary>
+    /// <param name="request">The window's state.</param>
+    /// <param name="certificate">The certificate signed with, or <see langword="null"/> when the user cancelled.</param>
+    private void UpdateRemembered(CertificateSignViewModel request, X509Certificate2? certificate)
+    {
+        var remembered = _services.Settings.RememberedCertificates;
+        var changed = !remembered.SequenceEqual(request.Remembered);
+        remembered.Clear();
+        remembered.AddRange(request.Remembered);
+        if (certificate is not null)
+        {
+            var index = IndexOf(remembered, request.CertificatePath);
+            if (index >= 0)
+            {
+                remembered.RemoveAt(index);
+                changed = true;
+            }
+
+            if (request.Remember)
+            {
+                // Most recently used first, so it is offered next time.
+                remembered.Insert(0, new(request.CertificatePath, certificate.GetNameInfo(X509NameType.SimpleName, false), certificate.Thumbprint));
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            _services.SaveSettings();
+        }
+    }
+
     /// <summary>Gets the document as it is now: its saved bytes, or with unsaved edits written in.</summary>
     /// <returns>The bytes, or <see langword="null"/> when the document is not open.</returns>
     private byte[]? ReadCurrent()
@@ -107,22 +162,24 @@ public sealed partial class SignaturesViewModel : ReactiveObject
     }
 
     /// <summary>Asks for the certificate and where to save, signs a copy off the UI thread and opens it.</summary>
+    /// <param name="cancellationToken">Stops signing, including waiting for the timestamp server.</param>
     /// <returns>A task.</returns>
     [ReactiveCommand]
-    private async Task SignWithCertificateAsync()
+    private async Task SignWithCertificateAsync(CancellationToken cancellationToken)
     {
-        using var request = new CertificateSignViewModel(_services.Settings.SigningCertificatePath);
-        if (!await CertificateSignInteraction.Handle(request).ToTask().ConfigureAwait(true) || request.TakeCertificate() is not { } certificate)
+        using var request = new CertificateSignViewModel(_services.Settings.RememberedCertificates);
+        var accepted = await CertificateSignInteraction.Handle(request).ToTask(cancellationToken).ConfigureAwait(true);
+        var certificate = accepted ? request.TakeCertificate() : null;
+        UpdateRemembered(request, certificate);
+        if (certificate is null)
         {
             return;
         }
 
         using (certificate)
         {
-            _services.Settings.SigningCertificatePath = request.CertificatePath;
-            _services.SaveSettings();
             var suggested = $"{Path.GetFileNameWithoutExtension(_owner.FileName)}-signed.pdf";
-            var destination = await _owner.SaveAsInteraction.Handle(suggested).ToTask().ConfigureAwait(true);
+            var destination = await _owner.SaveAsInteraction.Handle(suggested).ToTask(cancellationToken).ConfigureAwait(true);
             if (string.IsNullOrEmpty(destination) || ReadCurrent() is not { } source)
             {
                 return;
@@ -132,10 +189,16 @@ public sealed partial class SignaturesViewModel : ReactiveObject
             try
             {
                 var timestamper = Uri.TryCreate(_services.Settings.TimestampServer, UriKind.Absolute, out var server) ? new TimestampAuthorityClient(server) : null;
-                var signed = await Task.Run(() => PdfSigner.Sign(source, certificate, signing, timestamper)).ConfigureAwait(true);
+
+                // Reading and signing the file is CPU work, so it starts on the pool; the timestamp request then awaits.
+                var signed = await Task.Run(() => PdfSigner.SignAsync(source, certificate, signing, timestamper, cancellationToken), cancellationToken).ConfigureAwait(true);
                 var temporary = $"{destination}.signing";
-                await File.WriteAllBytesAsync(temporary, signed).ConfigureAwait(true);
+                await File.WriteAllBytesAsync(temporary, signed, cancellationToken).ConfigureAwait(true);
                 FileReplacement.Replace(temporary, destination);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex) when (IsSigningFailure(ex))
             {

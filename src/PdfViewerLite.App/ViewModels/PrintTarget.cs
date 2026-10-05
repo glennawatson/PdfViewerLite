@@ -10,5 +10,5 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Kind">Where the print goes.</param>
 /// <param name="Name">The printer's queue name, or an empty string.</param>
 /// <param name="Label">The name shown.</param>
-[DebuggerDisplay("{Label}")]
+[DebuggerDisplay("PrintTarget: {Label}")]
 public sealed record PrintTarget(PrintDestination Kind, string Name, string Label);

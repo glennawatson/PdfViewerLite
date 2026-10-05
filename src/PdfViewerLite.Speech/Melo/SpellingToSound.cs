@@ -14,7 +14,7 @@ namespace PdfViewerLite.Speech.Melo;
 /// reads the letters and a GRU decoder writes ARPAbet phones, one at a time, until it writes the end mark. The weights
 /// come from <c>g2p-en.bin</c>; the arithmetic follows g2p_en's own NumPy code.
 /// </summary>
-[DebuggerDisplay("{Hidden} hidden units")]
+[DebuggerDisplay("SpellingToSound: {Hidden} hidden units")]
 internal sealed class SpellingToSound
 {
     /// <summary>The most phones written for one word.</summary>
@@ -275,7 +275,7 @@ internal sealed class SpellingToSound
     /// <param name="Values">The values.</param>
     /// <param name="Rows">The rows.</param>
     /// <param name="Columns">The columns.</param>
-    [DebuggerDisplay("{Rows}x{Columns}")]
+    [DebuggerDisplay("Layer: {Rows}x{Columns}")]
     private sealed record Layer(float[] Values, int Rows, int Columns)
     {
         /// <summary>Gets a row.</summary>

@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Media;
@@ -16,7 +17,7 @@ using ReactiveUI.Primitives;
 namespace PdfViewerLite.App.Views;
 
 /// <summary>Lists a document's checked digital signatures in plain words.</summary>
-[DebuggerDisplay("{Title}")]
+[DebuggerDisplay("SignaturesWindow: {Title}")]
 public sealed partial class SignaturesWindow : ReactiveUI.Avalonia.ReactiveWindow<SignaturesViewModel>
 {
     /// <summary>The space between the lines of one signature.</summary>
@@ -24,6 +25,9 @@ public sealed partial class SignaturesWindow : ReactiveUI.Avalonia.ReactiveWindo
 
     /// <summary>The space below each signature.</summary>
     private const double EntryGap = 12;
+
+    /// <summary>The heading level of each signer's name; the window title is the level above.</summary>
+    private const int SignerHeadingLevel = 2;
 
     /// <summary>Initializes a new instance of the <see cref="SignaturesWindow"/> class.</summary>
     public SignaturesWindow()
@@ -38,6 +42,7 @@ public sealed partial class SignaturesWindow : ReactiveUI.Avalonia.ReactiveWindo
             disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
                 .SwitchMap(static closed => closed)
                 .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
+            _ = CloseButton.Focus();
         });
     }
 
@@ -54,7 +59,11 @@ public sealed partial class SignaturesWindow : ReactiveUI.Avalonia.ReactiveWindo
 
         var who = signature.SignerName.Length > 0 ? signature.SignerName : "Unknown signer";
         who = signature.IsDocumentTimestamp ? $"Document timestamp by {who}" : who;
-        panel.Children.Add(new TextBlock { Text = who, FontWeight = FontWeight.SemiBold });
+        var heading = new TextBlock { Text = who, FontWeight = FontWeight.SemiBold };
+
+        // Each signer starts a section, so a screen reader can move from one signature to the next by heading.
+        AutomationProperties.SetHeadingLevel(heading, SignerHeadingLevel);
+        panel.Children.Add(heading);
         panel.Children.Add(new TextBlock { Text = signature.Summary, TextWrapping = TextWrapping.Wrap });
         AddDetail(panel, signature.SigningTime is { } time ? string.Create(CultureInfo.CurrentCulture, $"Signed {time.ToLocalTime():f}") : null);
         AddDetail(panel, signature.Reason.Length > 0 ? $"Reason: {signature.Reason}" : null);

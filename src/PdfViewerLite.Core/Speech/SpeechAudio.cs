@@ -9,7 +9,7 @@ namespace PdfViewerLite.Core.Speech;
 /// <summary>Spoken audio: mono samples from -1 to 1.</summary>
 /// <param name="Samples">The samples.</param>
 /// <param name="SampleRate">The samples per second.</param>
-[DebuggerDisplay("{Samples.Length} samples at {SampleRate} Hz")]
+[DebuggerDisplay("SpeechAudio: {Samples.Length} samples at {SampleRate} Hz")]
 public sealed record SpeechAudio(float[] Samples, int SampleRate)
 {
     /// <summary>Gets how long the audio plays.</summary>

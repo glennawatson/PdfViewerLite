@@ -83,7 +83,9 @@ internal static class SkiaSharpExtensions
             BitmapInterpolationMode.None => new(SKFilterMode.Nearest, SKMipmapMode.None),
             BitmapInterpolationMode.Unspecified or BitmapInterpolationMode.LowQuality => new(SKFilterMode.Linear, SKMipmapMode.None),
             BitmapInterpolationMode.MediumQuality => new(SKFilterMode.Linear, SKMipmapMode.Linear),
-            BitmapInterpolationMode.HighQuality => isUpscaling ? new(SKCubicResampler.Mitchell) : new(SKFilterMode.Linear, SKMipmapMode.Linear),
+
+            // Catmull-Rom keeps text edges crisp when enlarged; Mitchell's smoothing visibly softened page tiles.
+            BitmapInterpolationMode.HighQuality => isUpscaling ? new(SKCubicResampler.CatmullRom) : new(SKFilterMode.Linear, SKMipmapMode.Linear),
             _ => new(SKFilterMode.Linear, SKMipmapMode.None),
         };
     }

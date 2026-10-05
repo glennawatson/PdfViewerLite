@@ -11,7 +11,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// <param name="Path">The file.</param>
 /// <param name="PageIndex">The page of the match, zero-based; -1 for a file that could not be searched.</param>
 /// <param name="Snippet">The words around the match, or why the file could not be searched.</param>
-[DebuggerDisplay("{FileName} {PageIndex}: {Snippet}")]
+[DebuggerDisplay("FolderSearchResultViewModel: {FileName} {PageIndex}: {Snippet}")]
 public sealed record FolderSearchResultViewModel(string Path, int PageIndex, string Snippet)
 {
     /// <summary>Gets the file's name without its folder.</summary>

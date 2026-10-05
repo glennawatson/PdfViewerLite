@@ -14,5 +14,5 @@ namespace PdfViewerLite.Core.Documents;
 /// <param name="OffsetX">The horizontal offset, in device pixels, of the target's origin within the full rotated page image.</param>
 /// <param name="OffsetY">The vertical offset, in device pixels, of the target's origin within the full rotated page image.</param>
 /// <param name="Flags">The render options.</param>
-[DebuggerDisplay("Page {PageIndex} x{Scale}")]
+[DebuggerDisplay("PageRenderInfo: Page {PageIndex} x{Scale}")]
 public readonly record struct PageRenderInfo(int PageIndex, float Scale, PageRotation Rotation, int OffsetX, int OffsetY, RenderFlags Flags);

@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace PdfViewerLite.Core.Platform;
 
 /// <summary>Colours and fonts taken from the desktop environment, as 0xAARRGGBB values.</summary>
-[DebuggerDisplay("{SchemeName} (dark: {IsDark})")]
+[DebuggerDisplay("DesktopPalette: {SchemeName} (dark: {IsDark})")]
 public sealed record DesktopPalette
 {
     /// <summary>Gets the colour scheme name.</summary>

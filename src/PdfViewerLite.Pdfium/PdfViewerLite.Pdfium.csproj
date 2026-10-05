@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="PdfViewerLite.Pdfium.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.App.Tests" />
     <InternalsVisibleTo Include="PdfViewerLite.Benchmarks" />
   </ItemGroup>
 </Project>

@@ -13,7 +13,7 @@ namespace PdfViewerLite.App.Services;
 /// A desktop with no integration: the app's own colours, no file manager, no shared recent list, no printing, and
 /// every launch its own window. Used on platforms without an implementation, and by tests.
 /// </summary>
-[DebuggerDisplay("{Name}")]
+[DebuggerDisplay("FallbackPlatform: {Name}")]
 public sealed class FallbackPlatform : IDesktopPlatform
 {
     /// <inheritdoc/>

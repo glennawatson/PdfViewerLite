@@ -25,7 +25,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// no gaps. The sentence being read is softly marked on the page and the view follows it from page to page. Pausing
 /// keeps the place; Previous and Next move a sentence at a time.
 /// </summary>
-[DebuggerDisplay("Open={IsOpen}, Playing={IsPlaying}, Page={SpokenPage}")]
+[DebuggerDisplay("ReadAloudViewModel: Open={IsOpen}, Playing={IsPlaying}, Page={SpokenPage}")]
 public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
 {
     /// <summary>Bytes in a megabyte.</summary>
@@ -808,7 +808,7 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
             _startChar = 0;
             if (_sentences.Count > 0 && page != _owner.CurrentPageIndex)
             {
-                _owner.GoToPage(page);
+                _owner.ShowPage(page);
             }
         }
 

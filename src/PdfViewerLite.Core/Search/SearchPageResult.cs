@@ -9,5 +9,5 @@ namespace PdfViewerLite.Core.Search;
 /// <summary>The matches found on one page.</summary>
 /// <param name="PageIndex">The zero based page.</param>
 /// <param name="Hits">The hits, in reading order.</param>
-[DebuggerDisplay("Page {PageIndex}: {Hits.Count} hits")]
+[DebuggerDisplay("SearchPageResult: Page {PageIndex}: {Hits.Count} hits")]
 public sealed record SearchPageResult(int PageIndex, IReadOnlyList<SearchHit> Hits);

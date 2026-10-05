@@ -15,5 +15,5 @@ namespace PdfViewerLite.Core.Annotations;
 /// <param name="Color">The colour as 0xRRGGBB.</param>
 /// <param name="Contents">The note text, or an empty string.</param>
 /// <param name="Author">The author, or an empty string.</param>
-[DebuggerDisplay("{Kind} on page {PageIndex}")]
+[DebuggerDisplay("PageAnnotation: {Kind} on page {PageIndex}")]
 public sealed record PageAnnotation(int PageIndex, int Index, AnnotationKind Kind, PageRect Bounds, uint Color, string Contents, string Author);
