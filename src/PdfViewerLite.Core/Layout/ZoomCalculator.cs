@@ -42,22 +42,40 @@ public static class ZoomCalculator
             return 1.0;
         }
 
-        var columns = parameters.Mode == PageLayoutMode.Single ? 1 : SpreadPages;
-        var maxWidth = 0.0;
-        var maxHeight = 0.0;
-        foreach (var size in sizes)
+        // The widest row of each kind and the tallest row decide the zoom; a spread is as wide as its pages together and
+        // has one gap between them, so lone pages and spreads are measured apart.
+        var mode = parameters.Mode;
+        var widestPage = 0.0;
+        var widestSpread = 0.0;
+        var tallest = 0.0;
+        var rows = PageRows.GetRowCount(sizes.Length, mode);
+        for (var row = 0; row < rows; row++)
         {
-            var rotated = size.Rotate(parameters.Rotation);
-            maxWidth = Math.Max(maxWidth, rotated.Width);
-            maxHeight = Math.Max(maxHeight, rotated.Height);
+            PageRows.GetRowPages(row, sizes.Length, mode, out var first, out var count);
+            GetRowSize(sizes.Slice(first, count), parameters.Rotation, out var width, out var height);
+            tallest = Math.Max(tallest, height);
+            if (PageRows.IsCoverRow(row, mode))
+            {
+                // The cover keeps an empty facing slot, so it sits where a right hand page would.
+                widestSpread = Math.Max(widestSpread, width * SpreadPages);
+            }
+            else if (count == 1)
+            {
+                widestPage = Math.Max(widestPage, width);
+            }
+            else
+            {
+                widestSpread = Math.Max(widestSpread, width);
+            }
         }
 
-        var availableWidth = Math.Max(1, parameters.ViewportWidth - (Sides * parameters.Margin) - (parameters.Spacing * (columns - 1)));
-        var scale = availableWidth / (maxWidth * columns);
+        var margins = Sides * parameters.Margin;
+        var scale = Math.Min(
+            Math.Max(1, parameters.ViewportWidth - margins) / widestPage,
+            Math.Max(1, parameters.ViewportWidth - margins - parameters.Spacing) / widestSpread);
         if (parameters.ZoomMode == ZoomMode.FitPage)
         {
-            var availableHeight = Math.Max(1, parameters.ViewportHeight - (Sides * parameters.Margin));
-            scale = Math.Min(scale, availableHeight / maxHeight);
+            scale = Math.Min(scale, Math.Max(1, parameters.ViewportHeight - margins) / tallest);
         }
 
         return Clamp(scale / PixelsPerPoint);
@@ -100,4 +118,21 @@ public static class ZoomCalculator
     /// <returns>The clamped zoom.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Clamp(double zoom) => Math.Clamp(zoom, MinZoom, MaxZoom);
+
+    /// <summary>Gets the size of a row of pages in points: their widths together and the tallest height.</summary>
+    /// <param name="pages">The pages in the row.</param>
+    /// <param name="rotation">The page rotation.</param>
+    /// <param name="width">The row width.</param>
+    /// <param name="height">The row height.</param>
+    private static void GetRowSize(ReadOnlySpan<PageSize> pages, PageRotation rotation, out double width, out double height)
+    {
+        width = 0.0;
+        height = 0.0;
+        foreach (var page in pages)
+        {
+            var rotated = page.Rotate(rotation);
+            width += rotated.Width;
+            height = Math.Max(height, rotated.Height);
+        }
+    }
 }

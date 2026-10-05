@@ -76,6 +76,39 @@ public class LayoutBenchmarks
             new(PageRotation.None, PageLayoutMode.Single, zoom * ZoomCalculator.PixelsPerPoint, Spacing, Margin, Viewport) { PageByPage = true, ViewportHeight = ViewportHeight });
     }
 
+    /// <summary>Lays out every page in two page spreads, scrolling continuously.</summary>
+    /// <returns>The layout.</returns>
+    [Benchmark]
+    public DocumentLayout CreateTwoPageLayout() =>
+        DocumentLayout.Create(_sizes, new(PageRotation.None, PageLayoutMode.Dual, Scale, Spacing, Margin, Viewport));
+
+    /// <summary>Fits two page spreads to the width and lays them out one spread per viewport, as Two Pages with Page by Page does.</summary>
+    /// <returns>The layout.</returns>
+    [Benchmark]
+    public DocumentLayout EnterTwoPagesOneAtATime()
+    {
+        var zoom = ZoomCalculator.GetFitZoom(_sizes, new(PageRotation.None, PageLayoutMode.Dual, ZoomMode.FitWidth, Viewport, ViewportHeight, Spacing, Margin));
+        return DocumentLayout.Create(
+            _sizes,
+            new(PageRotation.None, PageLayoutMode.Dual, zoom * ZoomCalculator.PixelsPerPoint, Spacing, Margin, Viewport) { PageByPage = true, ViewportHeight = ViewportHeight });
+    }
+
+    /// <summary>Fits the widest spread, with the cover alone, to the viewport.</summary>
+    /// <returns>The zoom.</returns>
+    [Benchmark]
+    public double FitCoverSpreads() =>
+        ZoomCalculator.GetFitZoom(_sizes, new(PageRotation.None, PageLayoutMode.DualCover, ZoomMode.FitPage, Viewport, ViewportHeight, Spacing, Margin));
+
+    /// <summary>Finds the current page in the middle of the viewport, keeping the page asked for, as every scroll report does.</summary>
+    /// <returns>The page.</returns>
+    [Benchmark]
+    public int FindCurrentPage() => _layout.GetCurrentPage(_layout.ExtentHeight * Half, MiddlePage);
+
+    /// <summary>Finds the next spread from the right hand page, as the Next page command does.</summary>
+    /// <returns>The page.</returns>
+    [Benchmark]
+    public int FindNextSpread() => PageRows.GetNextRowPage(MiddlePage + 1, PageCount, PageLayoutMode.DualCover);
+
     /// <summary>Finds the row a page sits in, as page by page scrolling does for every step.</summary>
     /// <returns>The row top.</returns>
     [Benchmark]

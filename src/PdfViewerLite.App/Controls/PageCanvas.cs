@@ -948,10 +948,9 @@ public sealed partial class PageCanvas : Control
         }
 
         var top = _scroller.Offset.Y + ContentMargin;
-        var topPage = _layout.GetPageNearest(top);
+        GetCurrentPages(tab, top, _scroller.Offset.Y + (_scroller.Viewport.Height * Half), out var topPage, out var middlePage);
         var bounds = _layout.GetPageBounds(topPage);
         var fraction = bounds.Height > 0 ? Math.Clamp((top - bounds.Y) / bounds.Height, 0, 1) : 0;
-        var middlePage = _layout.GetPageNearest(_scroller.Offset.Y + (_scroller.Viewport.Height * Half));
         tab.ReportPosition(new(topPage, fraction), middlePage);
     }
 
@@ -1019,6 +1018,7 @@ public sealed partial class PageCanvas : Control
         }
 
         var bounds = _layout.GetPageBounds(request.PageIndex);
+        _requestedPage = request.PageIndex;
         if (request.Target is { } target)
         {
             var transform = new PageTransform(bounds, _sizes[request.PageIndex], tab.Rotation, _layout.Options.Scale);

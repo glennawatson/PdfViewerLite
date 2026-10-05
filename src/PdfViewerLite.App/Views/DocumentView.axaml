@@ -72,13 +72,21 @@
                 <MenuItem x:Name="RotateLeftItem" Header="Rotate _Left" InputGesture="Ctrl+Left" />
                 <MenuItem x:Name="RotateRightItem" Header="Rotate _Right" InputGesture="Ctrl+Right" />
                 <Separator />
-                <MenuItem x:Name="SingleLayoutItem" Header="_Single Page" />
-                <MenuItem x:Name="DualLayoutItem" Header="_Dual Page" />
-                <MenuItem x:Name="CoverLayoutItem" Header="Dual Page with _Cover" />
+                <MenuItem x:Name="SingleLayoutItem" Header="_Single Page" ToggleType="Radio" GroupName="PageLayout"
+                          ToolTip.Tip="Show one page in each row"
+                          AutomationProperties.HelpText="Shows one page in each row. Scroll down for the next page." />
+                <MenuItem x:Name="DualLayoutItem" Header="_Two Pages" ToggleType="Radio" GroupName="PageLayout"
+                          ToolTip.Tip="Show two pages side by side: 1 and 2, then 3 and 4"
+                          AutomationProperties.HelpText="Shows two pages side by side: pages 1 and 2, then 3 and 4, and so on. Next page moves to the next pair." />
+                <MenuItem x:Name="CoverLayoutItem" Header="Two Pages with _Cover" ToggleType="Radio" GroupName="PageLayout"
+                          ToolTip.Tip="Show the cover alone, then pages side by side: 2 and 3, then 4 and 5, like a book"
+                          AutomationProperties.HelpText="Shows the first page alone, as a book cover, then two pages side by side: 2 and 3, then 4 and 5. Next page moves to the next pair." />
                 <MenuItem x:Name="ReadModeItem" Header="Rea_d Mode" InputGesture="Ctrl+H" ToolTip.Tip="Put the tool bars and sidebar away so the pages fill the window" />
                 <MenuItem x:Name="PresentItem" Header="P_resent" InputGesture="Shift+F5" ToolTip.Tip="Full screen, one page at a time; Esc to stop" />
                 <MenuItem x:Name="CaretModeItem" Header="_Caret Navigation" InputGesture="F7" ToggleType="CheckBox" ToolTip.Tip="Move through the text with the arrow keys; Shift selects" />
-                <MenuItem x:Name="PageByPageItem" Header="Page _by Page" ToggleType="CheckBox" ToolTip.Tip="Show one page at a time instead of scrolling continuously" />
+                <MenuItem x:Name="PageByPageItem" Header="Page _by Page" ToggleType="CheckBox"
+                          ToolTip.Tip="Show one page, or one pair of pages, at a time instead of scrolling continuously"
+                          AutomationProperties.HelpText="Shows one page at a time, or one pair of pages with Two Pages. Page Down, Space and the mouse wheel move to the next page or pair." />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
