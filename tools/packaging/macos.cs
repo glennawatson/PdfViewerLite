@@ -48,6 +48,12 @@ File.Copy("packaging/macos/PdfViewerLite.icns", Path.Combine(resources, "PdfView
 
 var plist = XDocument.Load("packaging/macos/Info.plist");
 
+if (plist.DocumentType is { } documentType)
+{
+    // Apple's plist parser rejects the empty internal subset added by XDocument.Load.
+    documentType.InternalSubset = null;
+}
+
 foreach (var element in plist.Descendants("string"))
 {
     if (element.Value == "@VERSION@")

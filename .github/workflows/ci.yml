@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [windows-latest, ubuntu-26.04, ubuntu-26.04-arm, macos-latest]
     uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
     with:
       runner: ${{ matrix.os }}
