@@ -36,5 +36,25 @@ internal static partial class NativeMethods
     [LibraryImport("msi.dll", EntryPoint = "MsiEnableLogW", StringMarshalling = StringMarshalling.Utf16)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     internal static partial uint MsiEnableLog(uint mode, string file, uint attributes);
+
+    /// <summary>Gets one installed product that shares an upgrade code.</summary>
+    /// <param name="upgradeCode">The upgrade code.</param>
+    /// <param name="reserved">Must be zero.</param>
+    /// <param name="index">The zero-based product index.</param>
+    /// <param name="productCode">A 39 character buffer that receives the product code.</param>
+    /// <returns>The result code; 259 when there are no more products.</returns>
+    [LibraryImport("msi.dll", EntryPoint = "MsiEnumRelatedProductsW", StringMarshalling = StringMarshalling.Utf16)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    internal static partial uint MsiEnumRelatedProducts(string upgradeCode, uint reserved, uint index, Span<char> productCode);
+
+    /// <summary>Installs or removes an installed product.</summary>
+    /// <param name="productCode">The product code.</param>
+    /// <param name="installLevel">The install level; zero for the default.</param>
+    /// <param name="installState">The requested state; 2 removes the product.</param>
+    /// <param name="commandLine">The installer properties.</param>
+    /// <returns>The Windows Installer result code.</returns>
+    [LibraryImport("msi.dll", EntryPoint = "MsiConfigureProductExW", StringMarshalling = StringMarshalling.Utf16)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    internal static partial uint MsiConfigureProductEx(string productCode, int installLevel, int installState, string commandLine);
 }
 #endif

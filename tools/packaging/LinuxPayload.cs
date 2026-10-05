@@ -61,6 +61,19 @@ internal static class LinuxPayload
         "pulseaudio-libs",
     ];
 
+    /// <summary>The Arch Linux runtime dependencies.</summary>
+    internal static readonly string[] ArchDepends = ["fontconfig", "libx11", "libice", "libsm", "gcc-libs", "glibc"];
+
+    /// <summary>The Arch Linux optional dependencies, each with the reason it helps.</summary>
+    internal static readonly string[] ArchOptionalDepends =
+    [
+        "wayland: native Wayland support",
+        "libxkbcommon: Wayland keyboard input",
+        "libegl: native Wayland rendering",
+        "libcups: print straight to a printer",
+        "libpulse: Read Aloud sound through PulseAudio or PipeWire",
+    ];
+
     /// <summary>The time stamped on every packaged entry.</summary>
     internal static readonly DateTimeOffset BuildTime = DateTimeOffset.FromUnixTimeSeconds(TimeProvider.System.GetUtcNow().ToUnixTimeSeconds());
 

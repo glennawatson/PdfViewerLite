@@ -48,6 +48,7 @@ internal static class Program
         CommandFactory.Create("windows", "Create Windows MSI, MSIX and ZIP packages.", WindowsCommand.Run, "rid", VersionArgument),
         CommandFactory.Create("linux", "Create Linux AppImage, DEB, RPM and tar.gz packages.", LinuxCommand.RunAsync, "rid", VersionArgument),
         CommandFactory.Create("macos", "Create macOS DMG and app ZIP packages.", MacosCommand.Run, "rid", VersionArgument),
+        CommandFactory.Create("aur", "Write the AUR PKGBUILD and .SRCINFO for the release DEBs.", AurCommand.RunAsync, VersionArgument, FolderArgument, OutputArgument),
     };
 
     /// <summary>Creates the signing commands.</summary>
