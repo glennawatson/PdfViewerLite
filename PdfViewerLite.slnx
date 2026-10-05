@@ -21,10 +21,5 @@
     <Project Path="tests/PdfViewerLite.Core.Tests/PdfViewerLite.Core.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.Pdfium.Tests/PdfViewerLite.Pdfium.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.TestAssets/PdfViewerLite.TestAssets.csproj" />
-    <Project Path="tests/PdfViewerLite.Tools.Tests/PdfViewerLite.Tools.Tests.csproj" />
-  </Folder>
-  <Folder Name="/tools/">
-    <Project Path="tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj" />
-    <Project Path="tools/PdfViewerLite.AllocationAudit/PdfViewerLite.AllocationAudit.csproj" />
   </Folder>
 </Solution>

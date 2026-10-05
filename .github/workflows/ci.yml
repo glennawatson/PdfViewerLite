@@ -6,24 +6,16 @@ on:
     branches: [main]
 permissions:
   contents: read
-concurrency:
-  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  actions: write
 jobs:
   build:
-    name: Build and test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-26.04, ubuntu-26.04-arm, macos-latest]
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@a0753ca8958455753f3ce4841947034057717d76 # main
+    name: Build and test
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@952c87a450f5e4f2d6d52f8198e1c04a577008f5 # main
     with:
-      runner: ${{ matrix.os }}
       srcFolder: '.'
       solutionFile: PdfViewerLite.slnx
-      stampVersion: false
-      testPreparationProject: tools/PdfViewerLite.Tools/PdfViewerLite.Tools.csproj
-      testPreparationArguments: '["ci","prepare","test"]'
+      minverTagPrefix: ''
+      uploadCodecov: false
       dotnetVersions: |
         10.x
         11.x
