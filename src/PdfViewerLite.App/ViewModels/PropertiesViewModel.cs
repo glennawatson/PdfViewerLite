@@ -4,12 +4,15 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>The document properties dialog.</summary>
 [DebuggerDisplay("{Title}")]
-public sealed record PropertiesViewModel
+public sealed partial class PropertiesViewModel : ReactiveObject
 {
     /// <summary>Bytes in a kibibyte.</summary>
     private const double Kibibyte = 1024;
@@ -17,7 +20,7 @@ public sealed record PropertiesViewModel
     /// <summary>Millimetres per PDF point.</summary>
     private const double MillimetresPerPoint = 25.4 / 72;
 
-    /// <summary>Initializes a new instance of the <see cref="PropertiesViewModel"/> record.</summary>
+    /// <summary>Initializes a new instance of the <see cref="PropertiesViewModel"/> class.</summary>
     /// <param name="tab">The tab.</param>
     public PropertiesViewModel(DocumentTabViewModel tab)
     {
@@ -58,6 +61,13 @@ public sealed record PropertiesViewModel
 
     /// <summary>Gets the properties.</summary>
     public IReadOnlyList<PropertyEntry> Entries { get; }
+
+    /// <summary>Asks the window to close.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void Close()
+    {
+    }
 
     /// <summary>Adds a property when it has a value.</summary>
     /// <param name="entries">The list.</param>

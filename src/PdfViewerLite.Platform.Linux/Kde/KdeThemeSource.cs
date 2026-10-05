@@ -6,6 +6,7 @@ using System.Diagnostics;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Platform;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Platform.Linux.Kde;
@@ -26,17 +27,17 @@ public sealed class KdeThemeSource : IDesktopThemeSource
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         FilePath = filePath;
-        Palette = Signal.Defer(() => FileChanges.Watch(filePath)
+        Palette = new(Signal.Defer(() => FileChanges.Watch(filePath)
             .Select(_ => Read(filePath))
             .StartWith(Read(filePath))
-            .DistinctUntilChanged());
+            .DistinctUntilChanged()));
     }
 
     /// <summary>Gets the watched file.</summary>
     public string FilePath { get; }
 
     /// <inheritdoc/>
-    public IObservable<DesktopPalette?> Palette { get; }
+    public AsObservableSignal<DesktopPalette?> Palette { get; }
 
     /// <summary>Reads and parses the file.</summary>
     /// <param name="filePath">The file.</param>

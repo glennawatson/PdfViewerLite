@@ -12,6 +12,7 @@ on:
     - 'packaging/**'
     - 'Directory.*.props'
     - 'global.json'
+    - 'src/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -56,9 +57,12 @@ jobs:
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll publish ${{ matrix.rid }} 1.0.0
     - name: Build packages
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll package ${{ matrix.script }} ${{ matrix.rid }} 1.0.0
-    - name: Check Windows installer formats after payload replacement
+    - name: Install and launch Windows packages after payload replacement
       if: runner.os == 'Windows'
       run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-windows-packages artifacts
+    - name: Install and launch native packages
+      if: runner.os != 'Windows'
+      run: dotnet artifacts/tools/PdfViewerLite.Tools.dll ci check-installed-packages ${{ matrix.rid }} artifacts
     - name: Upload packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:

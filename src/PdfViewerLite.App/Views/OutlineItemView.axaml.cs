@@ -3,13 +3,12 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -17,46 +16,22 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{ViewModel}")]
 public sealed partial class OutlineItemView : ReactiveUI.Avalonia.ReactiveUserControl<OutlineItemViewModel>
 {
-    /// <summary>The bindings made while attached.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="OutlineItemView"/> class.</summary>
-    public OutlineItemView() => InitializeComponent();
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
+    public OutlineItemView()
     {
-        base.OnLoaded(e);
-
-        _bindings =
-        [
-            this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.TitleText.Text),
-            this.WhenAnyValue(static v => v.ViewModel).SubscribeSafe(vm => ToolTip.SetTip(this, vm?.Title), static error => Trace.TraceError(error.ToString())),
-        ];
-        if (this.FindAncestorOfType<TreeViewItem>() is not { } container)
+        InitializeComponent();
+        _ = this.WhenActivated(disposables =>
         {
-            return;
-        }
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.TitleText.Text));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(vm => ToolTip.SetTip(this, vm?.Title), static error => Trace.TraceError(error.ToString())));
 
-        _bindings.Add(this.WhenAnyValue(static v => v.ViewModel!.IsExpanded).SubscribeSafe(expanded => container.IsExpanded = expanded, static error => Trace.TraceError(error.ToString())));
-        _bindings.Add(container.GetObservable(TreeViewItem.IsExpandedProperty).SubscribeSafe(Expand, static error => Trace.TraceError(error.ToString())));
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
-    }
-
-    /// <summary>Records the tree item's expansion in the view model.</summary>
-    /// <param name="expanded">Whether the item is expanded.</param>
-    private void Expand(bool expanded)
-    {
-        if (ViewModel is { } viewModel)
-        {
-            viewModel.IsExpanded = expanded;
-        }
+            // The tree item that hosts this view owns the expander, so the model is bound to it directly.
+            // The model writes first, so the tree item starts from its state; each direction follows the view's ViewModel.
+            if (this.FindAncestorOfType<TreeViewItem>() is { } container)
+            {
+                disposables.Add(this.WhenChanged(static v => v.ViewModel!.IsExpanded).BindTo(container, static item => item.IsExpanded));
+                disposables.Add(container.WhenChanged(static item => item.IsExpanded).BindTo(this, static v => v.ViewModel!.IsExpanded));
+            }
+        });
     }
 }

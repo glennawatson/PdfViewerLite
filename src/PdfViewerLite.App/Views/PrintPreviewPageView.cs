@@ -3,9 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -13,6 +13,8 @@ using Avalonia.Platform;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
 
@@ -37,8 +39,8 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <summary>The caption.</summary>
     private readonly TextBlock _caption = new() { HorizontalAlignment = HorizontalAlignment.Center, Margin = new(0, 6, 0, 0) };
 
-    /// <summary>The bindings made while loaded.</summary>
-    private MultipleDisposable? _bindings;
+    /// <summary>The sizing subscription, owned until disposal so unloaded sheets can be measured.</summary>
+    private readonly MultipleDisposable _sizing;
 
     /// <summary>The rendered sheet.</summary>
     private WriteableBitmap? _bitmap;
@@ -51,44 +53,29 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
         sheet.Children.Add(new Border { Background = Brushes.White, BoxShadow = BoxShadows.Parse("0 1 4 0 #40000000"), Child = _image });
         sheet.Children.Add(_caption);
         Content = sheet;
+
+        // Virtualised sheets receive their model before loading; sizing must precede the first measure.
+        _sizing = [this.WhenChanged(static v => v.ViewModel).SubscribeSafe(SetSheetSize, OnError)];
+
+        // A sheet is an immutable record, so the view follows which one it shows.
+        _ = this.WhenActivated(disposables =>
+        {
+            disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(Show, OnError));
+            disposables.Add(EmptyDisposable.Instance.DisposeWith(ReleaseBitmap));
+        });
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        _bindings?.Dispose();
-        _bindings = null;
+        _sizing.Dispose();
         ReleaseBitmap();
     }
 
-    /// <inheritdoc/>
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        if (change.Property == ViewModelProperty)
-        {
-            SetSheetSize(ViewModel);
-        }
-
-        base.OnPropertyChanged(change);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-
-        // A sheet is an immutable record, so the view follows which one it shows.
-        _bindings = [this.WhenAnyValue(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString()))];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
-        ReleaseBitmap();
-    }
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
     /// <summary>Renders a sheet as it will print: white paper, annotations included.</summary>
     /// <param name="sheet">The sheet.</param>

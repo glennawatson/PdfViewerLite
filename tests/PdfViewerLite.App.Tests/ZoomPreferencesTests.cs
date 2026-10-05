@@ -34,6 +34,7 @@ public sealed class ZoomPreferencesTests
             window.Show();
             var choice = window.FindControl<ComboBox>("OpeningZoomBox");
             await Assert.That(choice).IsNotNull();
+            await Assert.That(await UiWait.UntilAsync(() => window.IsLoaded)).IsTrue();
             choice!.SelectedIndex = (int)mode;
             await Assert.That(await UiWait.UntilAsync(() => test.Services.Settings.DefaultZoomMode == mode)).IsTrue();
             var saved = new SettingsStore(Path.Combine(test.Directory, "settings.json")).Load();

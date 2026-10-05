@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -13,13 +14,15 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Attachments;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Views;
@@ -37,9 +40,6 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
     private const uint OpaqueAlpha = 0xFF000000U;
 
-    /// <summary>The bindings made while attached.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="DocumentView"/> class.</summary>
     public DocumentView()
     {
@@ -55,6 +55,18 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         SingleLayoutItem.CommandParameter = "Single";
         DualLayoutItem.CommandParameter = "Dual";
         CoverLayoutItem.CommandParameter = "DualCover";
+        _ = this.WhenActivated(disposables =>
+        {
+            BindToolBar(disposables);
+            BindAnnotationTools(disposables);
+            BindBars(disposables);
+            BindFind(disposables);
+            BindSidebar(disposables);
+            BindPages(disposables);
+            BindWindowCommands(disposables);
+            BindFieldEditor(disposables);
+            disposables.Add(OnMainThread().SubscribeSafe(_ => FocusCanvas(), OnError));
+        });
     }
 
     /// <summary>Focuses the page box.</summary>
@@ -69,52 +81,33 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string GetSelectedText() => Canvas.GetSelectedText();
 
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-        _bindings = [];
-        BindToolBar(_bindings);
-        BindAnnotationTools(_bindings);
-        BindBars(_bindings);
-        BindFind(_bindings);
-        BindSidebar(_bindings);
-        BindPages(_bindings);
-        BindWindowCommands(_bindings);
-        BindFieldEditor(_bindings);
-        Dispatcher.UIThread.Post(FocusControl, Canvas, DispatcherPriority.Loaded);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
-    }
-
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
-    /// <summary>Focuses a control passed as dispatcher state.</summary>
-    /// <param name="state">The control.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void FocusControl(object? state) => (state as Control)?.Focus();
-
-    /// <summary>Focuses a text box passed as dispatcher state and selects its text.</summary>
-    /// <param name="state">The text box.</param>
-    private static void FocusAndSelect(object? state)
+    /// <summary>
+    /// Keeps a handler registered on the interaction of whichever tab the view shows. This view is reused across tabs,
+    /// and <c>BindInteraction</c> stays on the view model it was given rather than following <c>ViewModel</c>.
+    /// </summary>
+    /// <typeparam name="TInput">The interaction input.</typeparam>
+    /// <typeparam name="TOutput">The interaction output.</typeparam>
+    /// <param name="interactions">The shown tab's interaction, from <c>WhenChanged</c>.</param>
+    /// <param name="handler">The handler.</param>
+    /// <returns>The registration.</returns>
+    private static MultipleDisposable HandleInteraction<TInput, TOutput>(
+        IObservable<IInteraction<TInput, TOutput>?> interactions,
+        Func<IInteractionContext<TInput, TOutput>, Task> handler)
     {
-        if (state is not TextBox box)
-        {
-            return;
-        }
-
-        _ = box.Focus();
-        box.SelectAll();
+        var registration = new SwapDisposable();
+        var follow = interactions.SubscribeSafe(interaction => registration.Disposable = interaction?.RegisterHandler(handler), OnError);
+        return new(follow, registration);
     }
+
+    /// <summary>Creates a signal that fires once, later on the main thread, after the current UI work.</summary>
+    /// <returns>The signal.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<RxVoid> OnMainThread() => Signal.Return(RxVoid.Default).ObserveOn(RxSchedulers.MainThreadScheduler);
 
     /// <summary>Converts a nullable toggle state to a plain flag.</summary>
     /// <param name="value">The toggle state.</param>
@@ -134,14 +127,59 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     private static string DescribeSignatures(int count) =>
         count == 1 ? "This document is digitally signed." : string.Create(CultureInfo.CurrentCulture, $"This document has {count} digital signatures.");
 
-    /// <summary>Creates a stream of key presses of one key in a control.</summary>
+    /// <summary>Creates a stream of Enter presses, with no modifier, in a control.</summary>
     /// <param name="control">The control.</param>
-    /// <param name="key">The key.</param>
-    /// <param name="modifiers">The modifiers that must be held.</param>
     /// <returns>The presses.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static IObservable<RxVoid> KeyPresses(Control control, Key key, KeyModifiers modifiers) =>
-        control.GetObservable(KeyDownEvent, RoutingStrategies.Bubble).Where(args => args.Key == key && args.KeyModifiers == modifiers).Select(static _ => RxVoid.Default);
+    private static IObservable<RxVoid> EnterPresses(Control control) =>
+        control.Events().KeyDown.Where(static args => args.Key == Key.Enter && args.KeyModifiers == KeyModifiers.None).Select(static _ => RxVoid.Default);
+
+    /// <summary>Creates a stream of Shift+Enter presses in a control.</summary>
+    /// <param name="control">The control.</param>
+    /// <returns>The presses.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<RxVoid> ShiftEnterPresses(Control control) =>
+        control.Events().KeyDown.Where(static args => args.Key == Key.Enter && args.KeyModifiers == KeyModifiers.Shift).Select(static _ => RxVoid.Default);
+
+    /// <summary>Creates a stream of Escape presses, with no modifier, in a control.</summary>
+    /// <param name="control">The control.</param>
+    /// <returns>The presses.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<RxVoid> EscapePresses(Control control) =>
+        control.Events().KeyDown.Where(static args => args.Key == Key.Escape && args.KeyModifiers == KeyModifiers.None).Select(static _ => RxVoid.Default);
+
+    /// <summary>Creates a stream of the selections made in a list box.</summary>
+    /// <param name="list">The list box.</param>
+    /// <returns>The selection changes; the event source is the list box.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<SelectionChangedEventArgs> Selections(ListBox list) => list.Events().SelectionChanged;
+
+    /// <summary>Creates a stream of the context menu requests in a control.</summary>
+    /// <param name="control">The control.</param>
+    /// <returns>The requests.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<ContextRequestedEventArgs> ContextRequests(Control control) => control.Events().ContextRequested;
+
+    /// <summary>Creates a stream that fires when a control loses focus.</summary>
+    /// <param name="control">The control.</param>
+    /// <returns>The events.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<RoutedEventArgs> FocusLosses(Control control) => control.Events().LostFocus;
+
+    /// <summary>Focuses the page canvas.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FocusCanvas() => _ = Canvas.Focus();
+
+    /// <summary>Focuses the find box.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void FocusSearchBox() => _ = SearchBox.Focus();
+
+    /// <summary>Focuses the form field editor and selects its text.</summary>
+    private void FocusFieldEditor()
+    {
+        _ = FieldEditor.Focus();
+        FieldEditor.SelectAll();
+    }
 
     /// <summary>Binds the main tool bar.</summary>
     /// <param name="bindings">The bindings.</param>
@@ -161,7 +199,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetLayoutCommand, static v => v.CoverLayoutItem, Signal.Return("DualCover")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveCommand, static v => v.SaveItem));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PrintCommand, static v => v.PrintItem));
-        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.PrintPreviewInteraction, ShowPrintPreviewAsync));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.PrintPreviewInteraction), ShowPrintPreviewAsync));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PresentCommand, static v => v.PresentItem));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ShowsChrome, static v => v.Chrome.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsReading, static v => v.ReadModeBar.IsVisible));
@@ -180,7 +218,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.PreviousPageCommand, static v => v.PreviousPageButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.NextPageCommand, static v => v.NextPageButton));
         bindings.Add(this.Bind(ViewModel, static vm => vm.PageEntry, static v => v.PageBox.Text, static entry => entry, static text => text ?? string.Empty));
-        bindings.Add(KeyPresses(PageBox, Key.Enter, KeyModifiers.None).InvokeCommand(ViewModel, static vm => vm.GoToPageEntryCommand));
+        bindings.Add(EnterPresses(PageBox).InvokeCommand(this, static v => v.ViewModel!.GoToPageEntryCommand));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.PageCount, static v => v.PageCountText.Text, static count => string.Create(CultureInfo.CurrentCulture, $"of {count}")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ZoomOutCommand, static v => v.ZoomOutButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ZoomInCommand, static v => v.ZoomInButton));
@@ -245,9 +283,9 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.DrawSignatureCommand, static v => v.DrawSignatureButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.TypeSignatureCommand, static v => v.TypeSignatureButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Signatures.SignWithCertificateCommand, static v => v.CertificateSignButton));
-        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Signatures.CertificateSignInteraction, ShowCertificateSignAsync));
-        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Annotations.PromptInteraction, PromptAsync));
-        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.SaveAsInteraction, SaveAsAsync));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Signatures.CertificateSignInteraction), ShowCertificateSignAsync));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Annotations.PromptInteraction), PromptAsync));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.SaveAsInteraction), SaveAsAsync));
     }
 
     /// <summary>Binds the signed, notice and reload bars.</summary>
@@ -258,7 +296,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Signatures.SignatureCount, static v => v.SignedText.Text, DescribeSignatures));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Signatures.CheckCommand, static v => v.CheckSignaturesButton));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Signatures.IsChecking, static v => v.CheckSignaturesButton.Content, static checking => checking ? "Checking…" : "Check Signatures"));
-        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Signatures.ShowInteraction, ShowSignaturesAsync));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Signatures.ShowInteraction), ShowSignaturesAsync));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Notice, static v => v.NoticeText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Notice, static v => v.NoticeBar.IsVisible, static notice => notice is not null));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissNoticeCommand, static v => v.DismissNoticeButton));
@@ -315,12 +353,13 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Search.NextCommand, static v => v.NextResultButton));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Search.CloseCommand, static v => v.CloseFindButton));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Search.Status, static v => v.SearchStatusText.Text));
-        bindings.Add(KeyPresses(SearchBox, Key.Enter, KeyModifiers.None).InvokeCommand(ViewModel, static vm => vm.Search.NextCommand));
-        bindings.Add(KeyPresses(SearchBox, Key.Enter, KeyModifiers.Shift).InvokeCommand(ViewModel, static vm => vm.Search.PreviousCommand));
-        bindings.Add(KeyPresses(SearchBox, Key.Escape, KeyModifiers.None).InvokeCommand(ViewModel, static vm => vm.Search.CloseCommand));
-        bindings.Add(this.WhenAnyValue(static v => v.ViewModel!.Search.IsOpen)
+        bindings.Add(EnterPresses(SearchBox).InvokeCommand(this, static v => v.ViewModel!.Search.NextCommand));
+        bindings.Add(ShiftEnterPresses(SearchBox).InvokeCommand(this, static v => v.ViewModel!.Search.PreviousCommand));
+        bindings.Add(EscapePresses(SearchBox).InvokeCommand(this, static v => v.ViewModel!.Search.CloseCommand));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Search.IsOpen)
             .Where(static open => open)
-            .SubscribeSafe(_ => Dispatcher.UIThread.Post(FocusControl, SearchBox, DispatcherPriority.Loaded), OnError));
+            .SelectMany(static _ => OnMainThread())
+            .SubscribeSafe(_ => FocusSearchBox(), OnError));
     }
 
     /// <summary>Binds the sidebar panels.</summary>
@@ -353,16 +392,19 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Attachments.Items, static v => v.AttachmentList.ItemsSource));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Attachments.Selected, static v => v.AttachmentList.SelectedItem, static item => item, static item => item as DocumentAttachment));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Attachments.SaveCommand, static v => v.SaveAttachmentButton));
-        bindings.Add(this.BindInteraction(ViewModel, static vm => vm.Attachments.SaveInteraction, SaveAttachmentAsync));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Attachments.SaveInteraction), SaveAttachmentAsync));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsSearchMode, static v => v.SearchResultList.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Search.Results, static v => v.SearchResultList.ItemsSource));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Search.SelectedResult, static v => v.SearchResultList.SelectedItem, static item => item, static item => item as SearchResultItemViewModel));
-        bindings.Add(AnnotationList.GetObservable(SelectingItemsControl.SelectionChangedEvent, RoutingStrategies.Bubble)
-            .Select(_ => AnnotationList.SelectedItem as AnnotationItemViewModel)
+
+        // Events() cannot see the controls the XAML name generator declares, so the streams come from typed parameters.
+        bindings.Add(Selections(AnnotationList)
+            .Select(static args => (args.Source as ListBox)?.SelectedItem as AnnotationItemViewModel)
             .Where(static item => item is not null)
-            .InvokeCommand(ViewModel, static vm => vm.Annotations.GoToCommand));
-        bindings.Add(AnnotationList.GetObservable(ContextRequestedEvent, RoutingStrategies.Bubble).SubscribeSafe(OnAnnotationContextRequested, OnError));
-        bindings.Add(ThumbnailList.GetObservable(ScrollViewer.ScrollChangedEvent, RoutingStrategies.Bubble)
+            .InvokeCommand(this, static v => v.ViewModel!.Annotations.GoToCommand));
+
+        bindings.Add(ContextRequests(AnnotationList).SubscribeSafe(OnAnnotationContextRequested, OnError));
+        bindings.Add(ThumbnailList.ObserveRouted(ScrollViewer.ScrollChangedEvent, RoutingStrategies.Bubble, handledEventsToo: true)
             .Where(static args => args.OffsetDelta.Y != 0)
             .SubscribeSafe(_ => OnThumbnailsScrolled(), OnError));
     }
@@ -371,32 +413,28 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <param name="bindings">The bindings.</param>
     private void BindPages(MultipleDisposable bindings)
     {
-        bindings.Add(this.WhenAnyValue(static v => v.ViewModel).BindTo(this, static v => v.Canvas.Tab));
-        bindings.Add(this.WhenAnyObservable(static v => v.ViewModel!.UriRequests).SubscribeSafe(OpenUri, OnError));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel).BindTo(this, static v => v.Canvas.Tab));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.UriRequests).SwitchTo().SubscribeSafe(OpenUri, OnError));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ErrorMessage, static v => v.ErrorText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ErrorMessage, static v => v.ErrorPanel.IsVisible, static message => message is not null));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.NeedsPassword, static v => v.PasswordPanel.IsVisible));
         bindings.Add(this.Bind(ViewModel, static vm => vm.PasswordEntry, static v => v.PasswordBox.Text, static entry => entry, static text => text ?? string.Empty));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SubmitPasswordCommand, static v => v.UnlockButton));
-        bindings.Add(KeyPresses(PasswordBox, Key.Enter, KeyModifiers.None).InvokeCommand(ViewModel, static vm => vm.SubmitPasswordCommand));
+        bindings.Add(EnterPresses(PasswordBox).InvokeCommand(this, static v => v.ViewModel!.SubmitPasswordCommand));
     }
 
     /// <summary>Wires the menu items whose commands belong to the window rather than the tab.</summary>
     /// <param name="bindings">The bindings.</param>
     private void BindWindowCommands(MultipleDisposable bindings)
     {
-        if (TopLevel.GetTopLevel(this) is not MainWindow window)
+        if (TopLevel.GetTopLevel(this) is not MainWindow { ViewModel: { } main })
         {
             return;
         }
 
-        bindings.Add(window.WhenAnyValue(static w => w.ViewModel).SubscribeSafe(
-            main =>
-            {
-                ShowInFolderItem.Command = main?.ShowInFolderCommand;
-                PropertiesItem.Command = main?.PropertiesCommand;
-            },
-            OnError));
+        // The commands belong to the window's view model, not this view's, so the binding starts from that source.
+        bindings.Add(main.BindOneWay(this, static vm => vm.ShowInFolderCommand, static v => v.ShowInFolderItem.Command, static command => (ICommand?)command));
+        bindings.Add(main.BindOneWay(this, static vm => vm.PropertiesCommand, static v => v.PropertiesItem.Command, static command => (ICommand?)command));
     }
 
     /// <summary>Binds the editor placed over the text field being filled in.</summary>
@@ -404,13 +442,15 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     private void BindFieldEditor(MultipleDisposable bindings)
     {
         bindings.Add(this.Bind(ViewModel, static vm => vm.Forms.EditText, static v => v.FieldEditor.Text, static text => text, static text => text ?? string.Empty));
-        bindings.Add(this.WhenAnyValue(static v => v.ViewModel!.Forms.Editing).SubscribeSafe(ShowFieldEditor, OnError));
-        bindings.Add(KeyPresses(FieldEditor, Key.Escape, KeyModifiers.None).SubscribeSafe(_ => ViewModel?.Forms.Cancel(), OnError));
-        bindings.Add(FieldEditor.GetObservable(KeyDownEvent, RoutingStrategies.Tunnel).Where(static args => args.Key == Key.Tab).SubscribeSafe(OnFieldTab, OnError));
-        bindings.Add(KeyPresses(FieldEditor, Key.Enter, KeyModifiers.None)
-            .Where(_ => ViewModel?.Forms.Editing is { IsMultiline: false })
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Forms.Editing).SubscribeSafe(ShowFieldEditor, OnError));
+        bindings.Add(EscapePresses(FieldEditor).SubscribeSafe(_ => ViewModel?.Forms.Cancel(), OnError));
+        bindings.Add(FieldEditor.ObserveRouted(InputElement.KeyDownEvent, RoutingStrategies.Tunnel).Where(static args => args.Key == Key.Tab).SubscribeSafe(OnFieldTab, OnError));
+
+        // ShowFieldEditor sets AcceptsReturn from the field, so a single-line field commits on Enter.
+        bindings.Add(FieldEditor.Events().KeyDown
+            .Where(static args => args.Key == Key.Enter && args.KeyModifiers == KeyModifiers.None && args.Source is TextBox { AcceptsReturn: false })
             .SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
-        bindings.Add(FieldEditor.GetObservable(LostFocusEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
+        bindings.Add(FocusLosses(FieldEditor).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
     }
 
     /// <summary>Places the editor over a field and focuses it, or hides it.</summary>
@@ -433,7 +473,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         Avalonia.Automation.AutomationProperties.SetName(FieldEditor, string.IsNullOrWhiteSpace(field.Name) ? "Form field" : field.Name);
         FieldEditor.FontSize = Math.Max(MinFieldFontSize, rect.Height * FieldFontShare);
         FieldEditor.IsVisible = true;
-        Dispatcher.UIThread.Post(FocusAndSelect, FieldEditor, DispatcherPriority.Loaded);
+        _ = OnMainThread().SubscribeSafe(_ => FocusFieldEditor(), OnError);
     }
 
     /// <summary>Moves to the next text field on Tab.</summary>
@@ -468,7 +508,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
             return;
         }
 
-        context.SetOutput(await new PromptWindow { ViewModel = context.Input }.ShowDialog<string?>(owner));
+        context.SetOutput(await new PromptWindow { ViewModel = new(context.Input) }.ShowDialog<string?>(owner));
     }
 
     /// <summary>Asks where to save a copy, through the desktop's save dialog.</summary>

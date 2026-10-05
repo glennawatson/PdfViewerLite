@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Security.Cryptography;
 using System.Text;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Core.Platform;
@@ -56,10 +57,11 @@ public sealed class PipeSingleInstance : ISingleInstance
         // The first pipe exists before the claim is returned, so a launch straight after finds it.
         var first = CreateServer(name);
         _ = Task.Run(() => ListenAsync(first));
+        OpenRequests = new(_openRequests);
     }
 
     /// <inheritdoc/>
-    public IObservable<OpenRequest> OpenRequests => _openRequests;
+    public AsObservableSignal<OpenRequest> OpenRequests { get; }
 
     /// <summary>Gets the name used for the current user.</summary>
     /// <param name="application">The application name.</param>

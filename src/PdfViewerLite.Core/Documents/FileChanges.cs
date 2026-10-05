@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
+using ReactiveUI.Primitives.ObservableEvents;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Core.Documents;
@@ -19,24 +21,24 @@ public static class FileChanges
     /// </summary>
     /// <param name="filePath">The file to watch.</param>
     /// <returns>The change notifications.</returns>
-    public static IObservable<RxVoid> Watch(string filePath)
+    public static AsObservableSignal<RxVoid> Watch(string filePath)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         var fullPath = Path.GetFullPath(filePath);
         var directory = Path.GetDirectoryName(fullPath);
-        return Signal.Defer(() => WatchDirectory(directory, fullPath))
+        return new(Signal.Defer(() => WatchDirectory(directory, fullPath))
             .Throttle(SettleTime)
-            .Where(_ => File.Exists(fullPath));
+            .Where(_ => File.Exists(fullPath)));
     }
 
     /// <summary>Watches the file's directory, or never emits when it does not exist.</summary>
     /// <param name="directory">The directory containing the file.</param>
     /// <param name="fullPath">The file.</param>
     /// <returns>The raw notifications.</returns>
-    private static IObservable<RxVoid> WatchDirectory(string? directory, string fullPath) =>
-        directory is not null && Directory.Exists(directory)
+    private static AsObservableSignal<RxVoid> WatchDirectory(string? directory, string fullPath) =>
+        new(directory is not null && Directory.Exists(directory)
             ? Signal.Using(() => CreateWatcher(directory, fullPath), Observe)
-            : Signal.Never<RxVoid>();
+            : Signal.Never<RxVoid>());
 
     /// <summary>Creates the watcher.</summary>
     /// <param name="directory">The directory containing the file.</param>
@@ -48,21 +50,12 @@ public static class FileChanges
     /// <summary>Bridges the watcher's notifications into one observable and starts raising them.</summary>
     /// <param name="watcher">The watcher.</param>
     /// <returns>The notifications.</returns>
-    private static IObservable<RxVoid> Observe(FileSystemWatcher watcher)
+    private static AsObservableSignal<RxVoid> Observe(FileSystemWatcher watcher)
     {
-        var changed = Signal.FromEvent<FileSystemEventHandler, FileSystemEventArgs>(
-            static handler => (_, e) => handler(e),
-            handler => watcher.Changed += handler,
-            handler => watcher.Changed -= handler);
-        var created = Signal.FromEvent<FileSystemEventHandler, FileSystemEventArgs>(
-            static handler => (_, e) => handler(e),
-            handler => watcher.Created += handler,
-            handler => watcher.Created -= handler);
-        var renamed = Signal.FromEvent<RenamedEventHandler, RenamedEventArgs>(
-            static handler => (_, e) => handler(e),
-            handler => watcher.Renamed += handler,
-            handler => watcher.Renamed -= handler);
+        var changed = watcher.Events().Changed;
+        var created = watcher.Events().Created;
+        var renamed = watcher.Events().Renamed;
         watcher.EnableRaisingEvents = true;
-        return Signal.Merge(changed.Select(static _ => RxVoid.Default), created.Select(static _ => RxVoid.Default), renamed.Select(static _ => RxVoid.Default));
+        return new(Signal.Merge(changed.Select(static _ => RxVoid.Default), created.Select(static _ => RxVoid.Default), renamed.Select(static _ => RxVoid.Default)));
     }
 }

@@ -4,10 +4,10 @@
 
 using System.Diagnostics;
 using Avalonia;
-using Avalonia.Interactivity;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Views;
 
@@ -18,38 +18,24 @@ public sealed partial class ThumbnailItemView : ReactiveUI.Avalonia.ReactiveUser
     /// <summary>Defines the <see cref="Tab"/> property.</summary>
     public static readonly StyledProperty<DocumentTabViewModel?> TabProperty = AvaloniaProperty.Register<ThumbnailItemView, DocumentTabViewModel?>(nameof(Tab));
 
-    /// <summary>The bindings made while attached.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="ThumbnailItemView"/> class.</summary>
-    public ThumbnailItemView() => InitializeComponent();
+    public ThumbnailItemView()
+    {
+        InitializeComponent();
+        _ = this.WhenActivated(disposables =>
+        {
+            // A thumbnail item is an immutable record with no change notification, so OneWayBind cannot observe it.
+            // The view follows which item it shows, and which tab it belongs to.
+            disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString())));
+            disposables.Add(this.WhenChanged(static v => v.Tab).BindTo(this, static v => v.Thumbnail.Tab));
+        });
+    }
 
     /// <summary>Gets or sets the tab the page belongs to.</summary>
     public DocumentTabViewModel? Tab
     {
         get => GetValue(TabProperty);
         set => SetValue(TabProperty, value);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-
-        // A thumbnail item is immutable, so the view follows only which one it shows, and which tab it belongs to.
-        _bindings =
-        [
-            this.WhenAnyValue(static v => v.ViewModel).SubscribeSafe(Show, static error => Trace.TraceError(error.ToString())),
-            this.WhenAnyValue(static v => v.Tab).BindTo(this, static v => v.Thumbnail.Tab),
-        ];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
     }
 
     /// <summary>Shows a thumbnail item.</summary>

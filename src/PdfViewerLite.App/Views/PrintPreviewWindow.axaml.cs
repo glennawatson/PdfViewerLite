@@ -7,11 +7,13 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using Avalonia.Interactivity;
+using Avalonia.Input;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Printing;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
-using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
 
 namespace PdfViewerLite.App.Views;
 
@@ -19,9 +21,6 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{Title}")]
 public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWindow<PrintPreviewViewModel>
 {
-    /// <summary>The bindings made while open.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="PrintPreviewWindow"/> class.</summary>
     public PrintPreviewWindow()
     {
@@ -37,71 +36,44 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
         {
             _ = LayoutBox.Items.Add(choice);
         }
-    }
 
-    /// <inheritdoc/>
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        _bindings =
-        [
-            this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Print {name}"),
-            this.OneWayBind(ViewModel, static vm => vm.Summary, static v => v.SummaryText.Text),
-            this.OneWayBind(ViewModel, static vm => vm.Sheets, static v => v.SheetList.ItemsSource),
-            this.OneWayBind(ViewModel, static vm => vm.Targets, static v => v.DestinationBox.ItemsSource),
-            this.Bind(ViewModel, static vm => vm.SelectedTarget, static v => v.DestinationBox.SelectedItem, static target => target, static item => item as PrintTarget),
-            this.Bind(ViewModel, static vm => vm.Copies, static v => v.CopiesBox.Value, static copies => (decimal?)copies, static value => (int)(value ?? 1)),
-            this.Bind(ViewModel, static vm => vm.Colour, static v => v.ColourBox.SelectedIndex, static colour => colour ? 0 : 1, static index => index != 1),
-            this.Bind(ViewModel, static vm => vm.TwoSided, static v => v.TwoSidedBox.IsChecked, static on => on, static on => on == true),
-            this.Bind(
-                ViewModel,
-                static vm => vm.Binding,
-                static v => v.BindingBox.SelectedIndex,
-                static binding => (int)binding,
-                static index => index == (int)DuplexBinding.ShortEdge ? DuplexBinding.ShortEdge : DuplexBinding.LongEdge),
-            this.OneWayBind(ViewModel, static vm => vm.TwoSided, static v => v.BindingBox.IsEnabled),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.CopiesRow.IsVisible, static d => d == PrintDestination.Printer),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.ColourRow.IsVisible, static d => d == PrintDestination.Printer),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.SidesRow.IsVisible, static d => d == PrintDestination.Printer),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.BindingRow.IsVisible, static d => d == PrintDestination.Printer),
-            this.Bind(ViewModel, static vm => vm.PageChoice, static v => v.PagesBox.SelectedIndex, static c => (int)c, static i => (PrintPageChoice)Math.Max(0, i)),
-            this.Bind(ViewModel, static vm => vm.CustomPages, static v => v.CustomPagesBox.Text, static text => text, static text => text ?? string.Empty),
-            this.OneWayBind(ViewModel, static vm => vm.PageChoice, static v => v.CustomPagesRow.IsVisible, static c => c == PrintPageChoice.Custom),
-            this.Bind(ViewModel, static vm => vm.LayoutIndex, static v => v.LayoutBox.SelectedIndex, static i => i, static i => Math.Max(0, i)),
-            this.OneWayBind(ViewModel, static vm => vm.LayoutIndex, static v => v.PagesPerSheetRow.IsVisible, static i => i == 0),
-            this.Bind(ViewModel, static vm => vm.PagesPerSheetIndex, static v => v.PagesPerSheetBox.SelectedIndex, static i => i, static i => Math.Max(0, i)),
-            this.OneWayBind(ViewModel, static vm => vm.ShowsPaper, static v => v.PaperRow.IsVisible),
-            this.Bind(ViewModel, static vm => vm.Paper, static v => v.PaperBox.SelectedIndex, static p => (int)p, static i => (PaperSize)Math.Max(0, i)),
-            this.Bind(ViewModel, static vm => vm.IncludeAnnotations, static v => v.AnnotationsBox.IsChecked, static on => on, static on => on == true),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrinterHint.IsVisible, static d => d == PrintDestination.SystemDialog),
-            this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrintButton.Content, ButtonText),
-            this.BindCommand(ViewModel, static vm => vm.ConfirmCommand, static v => v.PrintButton),
-            this.BindCommand(ViewModel, static vm => vm.SystemDialogCommand, static v => v.SystemDialogButton),
-            this.WhenAnyObservable(static v => v.ViewModel!.Confirmed).SubscribeSafe(_ => Close(true), OnError),
-            CancelButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(false), OnError),
-        ];
-    }
-
-    /// <inheritdoc/>
-    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
-    {
-        ArgumentNullException.ThrowIfNull(e);
-        if (e.Key == Avalonia.Input.Key.P && e.KeyModifiers == (Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift) && ViewModel is { } preview)
+        _ = this.WhenActivated(disposables =>
         {
-            _ = preview.SystemDialogCommand.Execute().Subscribe();
-            e.Handled = true;
-            return;
-        }
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Print {name}"));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Summary, static v => v.SummaryText.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Sheets, static v => v.SheetList.ItemsSource));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Targets, static v => v.DestinationBox.ItemsSource));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.SelectedTarget, static v => v.DestinationBox.SelectedItem, static target => target, static item => item as PrintTarget));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Copies, static v => v.CopiesBox.Value, static copies => (decimal?)copies, static value => (int)(value ?? 1)));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Colour, static v => v.ColourBox.SelectedIndex, static colour => colour ? 0 : 1, static index => index != 1));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.TwoSided, static v => v.TwoSidedBox.IsChecked, static on => on, static on => on == true));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Binding, static v => v.BindingBox.SelectedIndex, static b => (int)b, static i => (DuplexBinding)Math.Clamp(i, 0, 1)));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.TwoSided, static v => v.BindingBox.IsEnabled));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.CopiesRow.IsVisible, static d => d == PrintDestination.Printer));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.ColourRow.IsVisible, static d => d == PrintDestination.Printer));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.SidesRow.IsVisible, static d => d == PrintDestination.Printer));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.BindingRow.IsVisible, static d => d == PrintDestination.Printer));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.PageChoice, static v => v.PagesBox.SelectedIndex, static c => (int)c, static i => (PrintPageChoice)Math.Max(0, i)));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.CustomPages, static v => v.CustomPagesBox.Text, static text => text, static text => text ?? string.Empty));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.PageChoice, static v => v.CustomPagesRow.IsVisible, static c => c == PrintPageChoice.Custom));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.LayoutIndex, static v => v.LayoutBox.SelectedIndex, static i => i, static i => Math.Max(0, i)));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.LayoutIndex, static v => v.PagesPerSheetRow.IsVisible, static i => i == 0));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.PagesPerSheetIndex, static v => v.PagesPerSheetBox.SelectedIndex, static i => i, static i => Math.Max(0, i)));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.ShowsPaper, static v => v.PaperRow.IsVisible));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Paper, static v => v.PaperBox.SelectedIndex, static p => (int)p, static i => (PaperSize)Math.Max(0, i)));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.IncludeAnnotations, static v => v.AnnotationsBox.IsChecked, static on => on, static on => on == true));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrinterHint.IsVisible, static d => d == PrintDestination.SystemDialog));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrintButton.Content, ButtonText));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.ConfirmCommand, static v => v.PrintButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.SystemDialogCommand, static v => v.SystemDialogButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CancelCommand, static v => v.CancelButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.Answered)
+                .SwitchMap(static answered => answered)
+                .SubscribeSafe(answer => Close(answer), OnError));
 
-        base.OnKeyDown(e);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _bindings?.Dispose();
-        _bindings = null;
+            // Ctrl+Shift+P opens the system print dialog.
+            disposables.Add(SystemDialogShortcut().InvokeCommand(this, static v => v.ViewModel!.SystemDialogCommand));
+        });
     }
 
     /// <summary>Gets the main button's text for a destination: Print sends at once, the others open a dialog next.</summary>
@@ -118,4 +90,15 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Gets a request each time Ctrl+Shift+P is pressed.</summary>
+    /// <returns>The requests; the declared type matters because InvokeCommand must start from this method's result.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private IObservable<RxVoid> SystemDialogShortcut() => this.Events().KeyDown
+        .Where(static e => e.Key == Key.P && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
+        .Select(static e =>
+        {
+            e.Handled = true;
+            return RxVoid.Default;
+        });
 }

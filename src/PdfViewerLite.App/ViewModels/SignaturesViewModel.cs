@@ -13,6 +13,7 @@ using PdfViewerLite.Core.Signatures.Signing;
 using PdfViewerLite.Http.Signatures;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -21,7 +22,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// certificate revocation online; the check runs off the UI thread.
 /// </summary>
 [DebuggerDisplay("{SignatureCount} signatures")]
-public sealed class SignaturesViewModel : ReactiveObject
+public sealed partial class SignaturesViewModel : ReactiveObject
 {
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
@@ -32,19 +33,10 @@ public sealed class SignaturesViewModel : ReactiveObject
     /// <summary>Initializes a new instance of the <see cref="SignaturesViewModel"/> class.</summary>
     /// <param name="owner">The owning tab.</param>
     /// <param name="services">The application services.</param>
-    public SignaturesViewModel(DocumentTabViewModel owner, AppServices services)
-    {
-        _owner = owner;
-        _services = services;
-        CheckCommand = ReactiveCommand.CreateFromTask(CheckAsync);
-        SignWithCertificateCommand = ReactiveCommand.CreateFromTask(SignWithCertificateAsync);
-    }
+    public SignaturesViewModel(DocumentTabViewModel owner, AppServices services) => (_owner, _services) = (owner, services);
 
     /// <summary>Gets the interaction showing the "Sign with Certificate" window; the output says whether to sign.</summary>
     public Interaction<CertificateSignViewModel, bool> CertificateSignInteraction { get; } = new();
-
-    /// <summary>Gets the command signing a copy of the document with a certificate.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SignWithCertificateCommand { get; }
 
     /// <summary>Gets the interaction asking the view to show the checked signatures.</summary>
     public Interaction<SignaturesViewModel, RxVoid> ShowInteraction { get; } = new();
@@ -53,30 +45,28 @@ public sealed class SignaturesViewModel : ReactiveObject
     public ObservableCollection<DocumentSignature> Signatures { get; } = [];
 
     /// <summary>Gets the number of signatures in the document.</summary>
-    public int SignatureCount
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial int SignatureCount { get; private set; }
 
     /// <summary>Gets a value indicating whether a check is running.</summary>
-    public bool IsChecking
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsChecking { get; private set; }
 
     /// <summary>Gets the document's file name, for the window title.</summary>
     public string FileName => _owner.FileName;
-
-    /// <summary>Gets the command checking every signature and showing the result.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> CheckCommand { get; }
 
     /// <summary>Counts the document's signatures; called when the document loads.</summary>
     public void Refresh()
     {
         SignatureCount = (_owner.TryGetDocument() as ISignatureSource)?.SignatureCount ?? 0;
         Signatures.Clear();
+    }
+
+    /// <summary>Asks the signatures window to close.</summary>
+    [ReactiveCommand]
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static void Close()
+    {
     }
 
     /// <summary>Determines whether an exception is a signing failure to tell the user about, rather than a bug.</summary>
@@ -118,6 +108,7 @@ public sealed class SignaturesViewModel : ReactiveObject
 
     /// <summary>Asks for the certificate and where to save, signs a copy off the UI thread and opens it.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task SignWithCertificateAsync()
     {
         using var request = new CertificateSignViewModel(_services.Settings.SigningCertificatePath);
@@ -159,6 +150,7 @@ public sealed class SignaturesViewModel : ReactiveObject
 
     /// <summary>Checks every signature off the UI thread, then shows the results.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task CheckAsync()
     {
         if (_owner.TryGetDocument() is not ISignatureSource source)

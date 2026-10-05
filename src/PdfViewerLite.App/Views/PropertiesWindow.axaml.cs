@@ -3,12 +3,12 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using Avalonia.Interactivity;
 using Avalonia.Layout;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Views;
@@ -26,36 +26,20 @@ public sealed partial class PropertiesWindow : ReactiveUI.Avalonia.ReactiveWindo
     /// <summary>The vertical space around each row.</summary>
     private const double RowGap = 3;
 
-    /// <summary>The close button subscription.</summary>
-    private readonly IDisposable _close;
-
     /// <summary>Initializes a new instance of the <see cref="PropertiesWindow"/> class.</summary>
     public PropertiesWindow()
     {
         InitializeComponent();
         EntryList.ItemTemplate = new FuncDataTemplate<PropertyEntry>(static (entry, _) => CreateRow(entry));
-        _close = CloseButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString()));
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        ArgumentNullException.ThrowIfNull(change);
-        base.OnPropertyChanged(change);
-        if (change.Property != ViewModelProperty || ViewModel is not { } viewModel)
+        _ = this.WhenActivated(disposables =>
         {
-            return;
-        }
-
-        Title = $"Properties — {viewModel.Title}";
-        EntryList.ItemsSource = viewModel.Entries;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        _close.Dispose();
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.Title, static title => $"Properties — {title}"));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Entries, static v => v.EntryList.ItemsSource));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CloseCommand, static v => v.CloseButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
+                .SwitchMap(static closed => closed)
+                .SubscribeSafe(_ => Close(), static error => Trace.TraceError(error.ToString())));
+        });
     }
 
     /// <summary>Creates one name and value row.</summary>

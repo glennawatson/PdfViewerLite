@@ -4,6 +4,7 @@
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Rendering;
@@ -12,14 +13,18 @@ using PdfViewerLite.Core.Tabs;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
+using ReactiveUI.Primitives.Disposables;
 using ReactiveUI.Primitives.Signals;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>The main window: the open tabs, the start page and window level commands.</summary>
 [DebuggerDisplay("{Tabs.Count} tabs")]
-public sealed class MainViewModel : ReactiveObject, IDisposable
+public sealed partial class MainViewModel : ReactiveObject, IDisposable
 {
     /// <summary>The number of recent documents shown on the start page.</summary>
     private const int RecentCount = 24;
@@ -39,14 +44,8 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Emits when the tab finder should open.</summary>
     private readonly Signal<RxVoid> _tabFinderRequests = new();
 
-    /// <summary>Follows the resolved theme so every tab draws pages in the current tone.</summary>
-    private readonly IDisposable _themeSubscription;
-
-    /// <summary>The subscription opening documents other parts of the app ask for.</summary>
-    private readonly IDisposable _openSubscription;
-
-    /// <summary>Follows settings so the page-colour toggle stays current even when the rendered tone is unchanged.</summary>
-    private readonly IDisposable _settingsSubscription;
+    /// <summary>Subscriptions following the theme, open requests and applied settings.</summary>
+    private readonly MultipleDisposable _subscriptions;
 
     /// <summary>Initializes a new instance of the <see cref="MainViewModel"/> class.</summary>
     /// <param name="services">The application services.</param>
@@ -54,26 +53,18 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
-        OpenCommand = ReactiveCommand.CreateFromTask(OpenWithDialogAsync);
-        CloseTabCommand = ReactiveCommand.CreateFromTask<DocumentTabViewModel?>(tab => CloseTabAsync(tab ?? SelectedTab));
-        CloseOtherTabsCommand = ReactiveCommand.CreateFromTask<DocumentTabViewModel?>(tab => CloseOtherTabsAsync(tab ?? SelectedTab));
-        CloseAllTabsCommand = ReactiveCommand.CreateFromTask(CloseAllTabsAsync);
-        DismissStatusCommand = ReactiveCommand.Create(() => StatusMessage = null);
-        GoToTabCommand = ReactiveCommand.Create<DocumentTabViewModel?>(tab => SelectedTab = tab ?? SelectedTab);
-        ShowTabFinderCommand = ReactiveCommand.Create(() => _tabFinderRequests.OnNext(RxVoid.Default));
-        NextTabCommand = ReactiveCommand.Create(() => CycleTab(1));
-        PreviousTabCommand = ReactiveCommand.Create(() => CycleTab(-1));
-        ReopenClosedTabCommand = ReactiveCommand.Create(ReopenClosedTab);
-        TogglePageToneCommand = ReactiveCommand.Create(() => PageToneEnabled = !PageToneEnabled);
-        OpenRecentCommand = ReactiveCommand.Create<RecentDocument>(recent => Open([recent.FilePath]));
-        ShowInFolderCommand = ReactiveCommand.CreateFromTask(ShowInFolderAsync);
-        PropertiesCommand = ReactiveCommand.CreateFromTask(ShowPropertiesAsync);
-        SearchFolderCommand = ReactiveCommand.CreateFromTask(ShowFolderSearchAsync);
-        PreferencesCommand = ReactiveCommand.CreateFromTask(async () => await ShowPreferencesInteraction.Handle(new(services)).ToTask().ConfigureAwait(true));
+        TabFinderRequests = new(_tabFinderRequests);
+        PageToneEnabled = services.Settings.PageToneEnabled;
         RefreshRecentDocuments();
-        _themeSubscription = services.Theme.SubscribeSafe(OnTheme, static error => Trace.TraceError(error.ToString()));
-        _openSubscription = services.OpenRequests.SubscribeSafe(path => Open([path]), static error => Trace.TraceError(error.ToString()));
-        _settingsSubscription = services.SettingsApplied.SubscribeSafe(_ => this.RaisePropertyChanged(nameof(PageToneEnabled)), static error => Trace.TraceError(error.ToString()));
+        _subscriptions =
+        [
+            services.Theme.SubscribeSafe(OnTheme, OnError),
+            services.OpenRequests.SubscribeSafe(path => Open([path]), OnError),
+            services.SettingsApplied.SubscribeSafe(_ => PageToneEnabled = services.Settings.PageToneEnabled, OnError),
+            this.WhenChanged(static x => x.TabQuery).Skip(1).SubscribeSafe(_ => RefreshFoundTabs(), OnError),
+            this.WhenChanged(static x => x.SelectedTab).Skip(1).SubscribeSafe(static tab => tab?.EnsureLoaded(), OnError),
+            this.WhenChanged(static x => x.PageToneEnabled).Skip(1).SubscribeSafe(ApplyPageTone, OnError),
+        ];
     }
 
     /// <summary>Gets the interaction asking the view for files to open.</summary>
@@ -95,37 +86,23 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     public ObservableCollection<DocumentTabViewModel> FoundTabs { get; } = [];
 
     /// <summary>Gets or sets what the user typed in the tab finder.</summary>
-    public string TabQuery
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            RefreshFoundTabs();
-        }
-    } = string.Empty;
+    [Reactive]
+    public partial string TabQuery { get; set; } = string.Empty;
 
     /// <summary>Gets the recently opened documents shown on the start page.</summary>
     public ObservableCollection<RecentDocument> RecentDocuments { get; } = [];
 
     /// <summary>Gets or sets the selected tab.</summary>
-    public DocumentTabViewModel? SelectedTab
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            value?.EnsureLoaded();
-            this.RaisePropertyChanged(nameof(WindowTitle));
-        }
-    }
+    [Reactive(nameof(WindowTitle))]
+    public partial DocumentTabViewModel? SelectedTab { get; set; }
 
     /// <summary>Gets a value indicating whether any tab is open.</summary>
-    public bool HasTabs
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool HasTabs { get; private set; }
+
+    /// <summary>Gets a value indicating whether the user is being asked whether to discard unsaved edits.</summary>
+    [Reactive]
+    public partial bool IsConfirmingDiscard { get; private set; }
 
     /// <summary>Gets a value indicating whether any tab has unsaved annotations or form entries.</summary>
     public bool HasUnsavedTabs
@@ -148,86 +125,19 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     public string WindowTitle => SelectedTab is { } tab ? $"{tab.Title} — Hyper PDF Viewer" : "Hyper PDF Viewer";
 
     /// <summary>Gets or sets a value indicating whether pages are drawn in the comfort page colour rather than plain white.</summary>
-    public bool PageToneEnabled
-    {
-        get => _services.Settings.PageToneEnabled;
-        set
-        {
-            if (value == _services.Settings.PageToneEnabled)
-            {
-                return;
-            }
-
-            _services.Settings.PageToneEnabled = value;
-            this.RaisePropertyChanged();
-            _services.ApplySettings();
-        }
-    }
+    [Reactive]
+    public partial bool PageToneEnabled { get; set; }
 
     /// <summary>Gets the page tone tabs draw with.</summary>
-    public PageTone PageTone
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = PageTone.None;
+    [Reactive]
+    public partial PageTone PageTone { get; private set; } = PageTone.None;
 
     /// <summary>Gets a status message, for example a failed download; it stays until dismissed.</summary>
-    public string? StatusMessage
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
-
-    /// <summary>Gets the open command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> OpenCommand { get; }
-
-    /// <summary>Gets the close tab command; a null parameter closes the selected tab.</summary>
-    public ReactiveCommand<DocumentTabViewModel?, RxVoid> CloseTabCommand { get; }
-
-    /// <summary>Gets the close other tabs command.</summary>
-    public ReactiveCommand<DocumentTabViewModel?, RxVoid> CloseOtherTabsCommand { get; }
-
-    /// <summary>Gets the close all tabs command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> CloseAllTabsCommand { get; }
-
-    /// <summary>Gets the command selecting a tab from the tab finder.</summary>
-    public ReactiveCommand<DocumentTabViewModel?, RxVoid> GoToTabCommand { get; }
-
-    /// <summary>Gets the command opening the tab finder.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ShowTabFinderCommand { get; }
+    [Reactive]
+    public partial string? StatusMessage { get; private set; }
 
     /// <summary>Gets the requests to open the tab finder.</summary>
-    public IObservable<RxVoid> TabFinderRequests => _tabFinderRequests;
-
-    /// <summary>Gets the command dismissing the status message.</summary>
-    public ReactiveCommand<RxVoid, string?> DismissStatusCommand { get; }
-
-    /// <summary>Gets the next tab command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> NextTabCommand { get; }
-
-    /// <summary>Gets the previous tab command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PreviousTabCommand { get; }
-
-    /// <summary>Gets the reopen closed tab command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ReopenClosedTabCommand { get; }
-
-    /// <summary>Gets the command switching between the comfort page colour and plain white pages.</summary>
-    public ReactiveCommand<RxVoid, bool> TogglePageToneCommand { get; }
-
-    /// <summary>Gets the command opening a recent document.</summary>
-    public ReactiveCommand<RecentDocument, RxVoid> OpenRecentCommand { get; }
-
-    /// <summary>Gets the command showing the selected document in the file manager.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> ShowInFolderCommand { get; }
-
-    /// <summary>Gets the preferences command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PreferencesCommand { get; }
-
-    /// <summary>Gets the document properties command.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> PropertiesCommand { get; }
-
-    /// <summary>Gets the command that searches every PDF in a folder.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SearchFolderCommand { get; }
+    public AsObservableSignal<RxVoid> TabFinderRequests { get; }
 
     /// <summary>Gets the interaction that shows the Search in Folder window.</summary>
     public Interaction<FolderSearchViewModel, RxVoid> ShowFolderSearchInteraction { get; } = new();
@@ -414,14 +324,24 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
             unsaved == 1 ? "Close without saving?" : $"Close {unsaved} documents without saving?",
             "Annotations and form entries you have not saved will be lost. Choose Cancel, then Save (Ctrl+S) to keep them.",
             "Close Without Saving");
-        return await ConfirmInteraction.Handle(request).ToTask().ConfigureAwait(true);
+        IsConfirmingDiscard = true;
+        try
+        {
+            return await ConfirmInteraction.Handle(request).ToTask().ConfigureAwait(true);
+        }
+        finally
+        {
+            IsConfirmingDiscard = false;
+        }
     }
 
     /// <summary>Closes a tab, asking first when it has unsaved edits.</summary>
-    /// <param name="tab">The tab.</param>
+    /// <param name="tab">The tab; null closes the selected tab.</param>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     public async Task CloseTabAsync(DocumentTabViewModel? tab)
     {
+        tab ??= SelectedTab;
         if (tab is null)
         {
             return;
@@ -455,9 +375,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        _themeSubscription.Dispose();
-        _openSubscription.Dispose();
-        _settingsSubscription.Dispose();
+        _subscriptions.Dispose();
         _tabFinderRequests.Dispose();
         foreach (var tab in Tabs)
         {
@@ -466,6 +384,11 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
         Tabs.Clear();
     }
+
+    /// <summary>Reports a failure in a subscription.</summary>
+    /// <param name="error">The error.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
     /// <summary>Converts a path or <c>file://</c> URI to a full local path.</summary>
     /// <param name="item">The item.</param>
@@ -513,7 +436,8 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
     /// <summary>Shows the Search in Folder window, starting in the selected document's folder.</summary>
     /// <returns>A task.</returns>
-    private async Task ShowFolderSearchAsync()
+    [ReactiveCommand]
+    private async Task SearchFolderAsync()
     {
         var search = FolderSearch;
         if (search.Folder.Length == 0 && SelectedTab is { } tab && Path.GetDirectoryName(tab.FilePath) is { Length: > 0 } folder)
@@ -548,7 +472,8 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
     /// <summary>Asks the view for files and opens them.</summary>
     /// <returns>A task.</returns>
-    private async Task OpenWithDialogAsync()
+    [ReactiveCommand]
+    private async Task OpenAsync()
     {
         var files = await OpenFileInteraction.Handle(RxVoid.Default);
         Open(files);
@@ -556,7 +481,8 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
     /// <summary>Asks the view to show properties of the selected document.</summary>
     /// <returns>A task.</returns>
-    private async Task ShowPropertiesAsync()
+    [ReactiveCommand]
+    private async Task PropertiesAsync()
     {
         if (SelectedTab is { IsLoaded: true } tab)
         {
@@ -564,8 +490,18 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         }
     }
 
+    /// <summary>Asks the view to show the preferences; they stop following the settings when the window closes.</summary>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    private async Task PreferencesAsync()
+    {
+        using PreferencesViewModel preferences = new(_services);
+        _ = await ShowPreferencesInteraction.Handle(preferences).ToTask().ConfigureAwait(true);
+    }
+
     /// <summary>Shows the selected document in the file manager.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task ShowInFolderAsync()
     {
         if (SelectedTab is { } tab && !await _services.FileManager.ShowItemAsync(tab.FilePath, CancellationToken.None).ConfigureAwait(true))
@@ -575,10 +511,12 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Closes every tab except one, asking first when more than one would close.</summary>
-    /// <param name="keep">The tab to keep.</param>
+    /// <param name="keep">The tab to keep; null keeps the selected tab.</param>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task CloseOtherTabsAsync(DocumentTabViewModel? keep)
     {
+        keep ??= SelectedTab;
         var closing = new List<DocumentTabViewModel>(Tabs.Count);
         foreach (var tab in Tabs)
         {
@@ -596,6 +534,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
     /// <summary>Closes every tab, asking first when there is more than one.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task CloseAllTabsAsync()
     {
         if (!await ConfirmCloseAsync(Tabs.Count).ConfigureAwait(true))
@@ -659,6 +598,43 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
         UpdateHasTabs();
     }
 
+    /// <summary>Selects the next tab, wrapping around.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void NextTab() => CycleTab(1);
+
+    /// <summary>Selects the previous tab, wrapping around.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void PreviousTab() => CycleTab(-1);
+
+    /// <summary>Selects a tab from the tab finder; a null tab keeps the current one.</summary>
+    /// <param name="tab">The tab.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void GoToTab(DocumentTabViewModel? tab) => SelectedTab = tab ?? SelectedTab;
+
+    /// <summary>Asks the view to open the tab finder.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ShowTabFinder() => _tabFinderRequests.OnNext(RxVoid.Default);
+
+    /// <summary>Clears the status message.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void DismissStatus() => StatusMessage = null;
+
+    /// <summary>Switches between the comfort page colour and plain white pages.</summary>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void TogglePageTone() => PageToneEnabled = !PageToneEnabled;
+
+    /// <summary>Opens a recent document.</summary>
+    /// <param name="recent">The document.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void OpenRecent(RecentDocument recent) => Open([recent.FilePath]);
+
     /// <summary>Selects the next or previous tab, wrapping around.</summary>
     /// <param name="direction">1 or -1.</param>
     private void CycleTab(int direction)
@@ -673,6 +649,7 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
     }
 
     /// <summary>Reopens the most recently closed tab, or every tab of a group closed together.</summary>
+    [ReactiveCommand]
     private void ReopenClosedTab()
     {
         if (_closedTabs.Count == 0)
@@ -717,6 +694,19 @@ public sealed class MainViewModel : ReactiveObject, IDisposable
 
     /// <summary>Updates <see cref="HasTabs"/>.</summary>
     private void UpdateHasTabs() => HasTabs = Tabs.Count > 0;
+
+    /// <summary>Saves the page colour toggle and applies it.</summary>
+    /// <param name="enabled">Whether the comfort page colour is on.</param>
+    private void ApplyPageTone(bool enabled)
+    {
+        if (enabled == _services.Settings.PageToneEnabled)
+        {
+            return;
+        }
+
+        _services.Settings.PageToneEnabled = enabled;
+        _services.ApplySettings();
+    }
 
     /// <summary>Applies a new theme's page tone to every tab.</summary>
     /// <param name="theme">The theme.</param>

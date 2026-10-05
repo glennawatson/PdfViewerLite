@@ -508,7 +508,7 @@
             </ToggleButton>
           </StackPanel>
           <Panel>
-            <ListBox x:Name="ThumbnailList" Classes="thumbnails" Background="Transparent" />
+            <controls:ThumbnailListBox x:Name="ThumbnailList" Classes="thumbnails" Background="Transparent" />
             <Panel x:Name="OutlinePanel">
               <TreeView x:Name="OutlineTree" Background="Transparent" />
               <TextBlock x:Name="NoOutlineText" Classes="secondary" Margin="12" TextWrapping="Wrap" Text="This document has no outline." />

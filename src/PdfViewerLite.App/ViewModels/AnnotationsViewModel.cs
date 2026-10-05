@@ -4,10 +4,12 @@
 
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Geometry;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -16,7 +18,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// Edits go straight to the document; the page's tiles are dropped so it redraws.
 /// </summary>
 [DebuggerDisplay("{Tool}, {Items.Count} annotations")]
-public sealed class AnnotationsViewModel : ReactiveObject
+public sealed partial class AnnotationsViewModel : ReactiveObject
 {
     /// <summary>The default text size in points.</summary>
     private const float TextSize = 12;
@@ -50,23 +52,7 @@ public sealed class AnnotationsViewModel : ReactiveObject
 
     /// <summary>Initializes a new instance of the <see cref="AnnotationsViewModel"/> class.</summary>
     /// <param name="owner">The owning tab.</param>
-    public AnnotationsViewModel(DocumentTabViewModel owner)
-    {
-        _owner = owner;
-        SetToolCommand = ReactiveCommand.Create<AnnotationTool>(tool => Tool = Tool == tool ? AnnotationTool.Select : tool);
-        SetColorCommand = ReactiveCommand.Create<string>(SetColorByName);
-        SetStampCommand = ReactiveCommand.Create<string>(label =>
-        {
-            StampLabel = label;
-            Tool = AnnotationTool.Stamp;
-        });
-        StartCommand = ReactiveCommand.Create(Start);
-        DoneCommand = ReactiveCommand.Create(Done);
-        UndoCommand = ReactiveCommand.Create(Undo);
-        DeleteCommand = ReactiveCommand.Create<AnnotationItemViewModel?>(item => Delete(item?.Annotation ?? Selected));
-        EditNoteCommand = ReactiveCommand.CreateFromTask<AnnotationItemViewModel?>(item => EditNoteAsync(item?.Annotation ?? Selected));
-        GoToCommand = ReactiveCommand.Create<AnnotationItemViewModel?>(GoTo);
-    }
+    public AnnotationsViewModel(DocumentTabViewModel owner) => _owner = owner;
 
     /// <summary>Gets the stamps offered, in menu order.</summary>
     public static IReadOnlyList<string> Stamps { get; } = ["APPROVED", "REVIEWED", "DRAFT", "CONFIDENTIAL", "FINAL", "NOT APPROVED"];
@@ -78,150 +64,98 @@ public sealed class AnnotationsViewModel : ReactiveObject
     public ObservableCollection<AnnotationItemViewModel> Items { get; } = [];
 
     /// <summary>Gets or sets a value indicating whether the annotation tool row is shown.</summary>
-    public bool IsAnnotating
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsAnnotating { get; set; }
 
     /// <summary>Gets or sets the active tool.</summary>
-    public AnnotationTool Tool
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(IsSelectTool));
-            this.RaisePropertyChanged(nameof(IsHighlightTool));
-            this.RaisePropertyChanged(nameof(IsUnderlineTool));
-            this.RaisePropertyChanged(nameof(IsStrikeOutTool));
-            this.RaisePropertyChanged(nameof(IsDrawTool));
-            this.RaisePropertyChanged(nameof(IsNoteTool));
-            this.RaisePropertyChanged(nameof(IsTextTool));
-            this.RaisePropertyChanged(nameof(ShapeLabel));
-            this.RaisePropertyChanged(nameof(StampButtonLabel));
-        }
-    }
+    [Reactive(
+        nameof(IsSelectTool),
+        nameof(IsHighlightTool),
+        nameof(IsUnderlineTool),
+        nameof(IsStrikeOutTool),
+        nameof(IsDrawTool),
+        nameof(IsNoteTool),
+        nameof(IsTextTool),
+        nameof(ShapeLabel),
+        nameof(StampButtonLabel))]
+    public partial AnnotationTool Tool { get; set; }
 
     /// <summary>Gets or sets a value indicating whether the select tool is active.</summary>
     public bool IsSelectTool
     {
         get => Tool == AnnotationTool.Select;
-        set => SetTool(value, AnnotationTool.Select);
+        set => SelectTool(value, AnnotationTool.Select);
     }
 
     /// <summary>Gets or sets a value indicating whether the highlight tool is active.</summary>
     public bool IsHighlightTool
     {
         get => Tool == AnnotationTool.Highlight;
-        set => SetTool(value, AnnotationTool.Highlight);
+        set => SelectTool(value, AnnotationTool.Highlight);
     }
 
     /// <summary>Gets or sets a value indicating whether the underline tool is active.</summary>
     public bool IsUnderlineTool
     {
         get => Tool == AnnotationTool.Underline;
-        set => SetTool(value, AnnotationTool.Underline);
+        set => SelectTool(value, AnnotationTool.Underline);
     }
 
     /// <summary>Gets or sets a value indicating whether the strikeout tool is active.</summary>
     public bool IsStrikeOutTool
     {
         get => Tool == AnnotationTool.StrikeOut;
-        set => SetTool(value, AnnotationTool.StrikeOut);
+        set => SelectTool(value, AnnotationTool.StrikeOut);
     }
 
     /// <summary>Gets or sets a value indicating whether the draw tool is active.</summary>
     public bool IsDrawTool
     {
         get => Tool == AnnotationTool.Draw;
-        set => SetTool(value, AnnotationTool.Draw);
+        set => SelectTool(value, AnnotationTool.Draw);
     }
 
     /// <summary>Gets or sets a value indicating whether the note tool is active.</summary>
     public bool IsNoteTool
     {
         get => Tool == AnnotationTool.Note;
-        set => SetTool(value, AnnotationTool.Note);
+        set => SelectTool(value, AnnotationTool.Note);
     }
 
     /// <summary>Gets or sets a value indicating whether the text tool is active.</summary>
     public bool IsTextTool
     {
         get => Tool == AnnotationTool.Text;
-        set => SetTool(value, AnnotationTool.Text);
+        set => SelectTool(value, AnnotationTool.Text);
     }
 
     /// <summary>Gets the shape button's label: the shape being drawn, or "Shape".</summary>
     public string ShapeLabel => GetShapeKind(Tool) is { } kind ? AnnotationNames.Get(kind) : "Shape";
 
     /// <summary>Gets or sets the word on the stamp placed by the stamp tool.</summary>
-    public string StampLabel
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(StampButtonLabel));
-        }
-    } = "APPROVED";
+    [Reactive(nameof(StampButtonLabel))]
+    public partial string StampLabel { get; set; } = "APPROVED";
 
     /// <summary>Gets the stamp button's label: the stamp being placed, or "Stamp".</summary>
     public string StampButtonLabel => Tool == AnnotationTool.Stamp ? $"Stamp: {StampLabel}" : "Stamp";
 
     /// <summary>Gets or sets the colour for new highlights, lines and notes, as 0xRRGGBB.</summary>
-    public uint Color
-    {
-        get;
-        set
-        {
-            _ = this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(ColorName));
-        }
-    } = AnnotationColors.Sand;
+    [Reactive(nameof(ColorName))]
+    public partial uint Color { get; set; } = AnnotationColors.Sand;
 
     /// <summary>Gets the name of the colour, shown beside its swatch.</summary>
     public string ColorName => AnnotationNames.GetColor(Color);
 
     /// <summary>Gets the annotation picked with the select tool, outlined on the page.</summary>
-    public PageAnnotation? Selected
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial PageAnnotation? Selected { get; private set; }
 
     /// <summary>Gets a value indicating whether the document can be annotated.</summary>
     public bool CanAnnotate => Editor is not null;
 
     /// <summary>Gets a value indicating whether there are edits to undo.</summary>
-    public bool CanUndo => _added.Count > 0;
-
-    /// <summary>Gets the command choosing a tool.</summary>
-    public ReactiveCommand<AnnotationTool, RxVoid> SetToolCommand { get; }
-
-    /// <summary>Gets the command choosing a stamp and the stamp tool.</summary>
-    public ReactiveCommand<string, RxVoid> SetStampCommand { get; }
-
-    /// <summary>Gets the command choosing a colour by name ("Yellow", "Green", "Blue" or "Red").</summary>
-    public ReactiveCommand<string, RxVoid> SetColorCommand { get; }
-
-    /// <summary>Gets the command showing the annotation tools.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> StartCommand { get; }
-
-    /// <summary>Gets the command hiding the annotation tools.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> DoneCommand { get; }
-
-    /// <summary>Gets the command removing the last annotation added.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> UndoCommand { get; }
-
-    /// <summary>Gets the command deleting an annotation; null deletes the selected one.</summary>
-    public ReactiveCommand<AnnotationItemViewModel?, RxVoid> DeleteCommand { get; }
-
-    /// <summary>Gets the command editing an annotation's note; null edits the selected one.</summary>
-    public ReactiveCommand<AnnotationItemViewModel?, RxVoid> EditNoteCommand { get; }
-
-    /// <summary>Gets the command scrolling to an annotation.</summary>
-    public ReactiveCommand<AnnotationItemViewModel?, RxVoid> GoToCommand { get; }
+    [Reactive]
+    public partial bool CanUndo { get; private set; }
 
     /// <summary>Gets the document's editor, or <see langword="null"/> when the document cannot be edited.</summary>
     private IAnnotationEditor? Editor => _owner.TryGetDocument() as IAnnotationEditor;
@@ -418,6 +352,7 @@ public sealed class AnnotationsViewModel : ReactiveObject
 
         // Indexes after the removed one shift down; forget undo entries on that page rather than remove the wrong one.
         _ = _added.RemoveAll(entry => entry.Page == annotation.PageIndex);
+        CanUndo = _added.Count > 0;
         Selected = null;
         Edited(annotation.PageIndex);
     }
@@ -501,7 +436,7 @@ public sealed class AnnotationsViewModel : ReactiveObject
     /// <summary>Turns a tool on, or back to selecting when it is turned off.</summary>
     /// <param name="on">Whether the tool is being turned on.</param>
     /// <param name="tool">The tool.</param>
-    private void SetTool(bool on, AnnotationTool tool)
+    private void SelectTool(bool on, AnnotationTool tool)
     {
         if (on)
         {
@@ -513,7 +448,23 @@ public sealed class AnnotationsViewModel : ReactiveObject
         }
     }
 
+    /// <summary>Chooses a tool, or goes back to selecting when it is already the active one.</summary>
+    /// <param name="tool">The tool.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetTool(AnnotationTool tool) => Tool = Tool == tool ? AnnotationTool.Select : tool;
+
+    /// <summary>Chooses a stamp and the stamp tool.</summary>
+    /// <param name="label">The stamp's word.</param>
+    [ReactiveCommand]
+    private void SetStamp(string label)
+    {
+        StampLabel = label;
+        Tool = AnnotationTool.Stamp;
+    }
+
     /// <summary>Shows the tools; Fill &amp; Sign is put away so only one tool row is ever shown.</summary>
+    [ReactiveCommand]
     private void Start()
     {
         _owner.FillAndSign.IsActive = false;
@@ -521,13 +472,69 @@ public sealed class AnnotationsViewModel : ReactiveObject
     }
 
     /// <summary>Hides the tools and goes back to selecting text.</summary>
+    [ReactiveCommand]
     private void Done()
     {
         Tool = AnnotationTool.Select;
         IsAnnotating = false;
     }
 
+    /// <summary>Deletes an annotation; null deletes the selected one.</summary>
+    /// <param name="item">The sidebar item.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Delete(AnnotationItemViewModel? item) => Delete(item?.Annotation ?? Selected);
+
+    /// <summary>Edits an annotation's note; null edits the selected one.</summary>
+    /// <param name="item">The sidebar item.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task EditNote(AnnotationItemViewModel? item) => EditNoteAsync(item?.Annotation ?? Selected);
+
+    /// <summary>Asks for a reply to an annotation; null replies to the selected one.</summary>
+    /// <param name="item">The sidebar item.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task Reply(AnnotationItemViewModel? item) => ReplyAsync(item?.Annotation ?? Selected);
+
+    /// <summary>Marks the selected text.</summary>
+    /// <param name="request">What to mark, and the lines it covers.</param>
+    /// <returns><see langword="true"/> when anything was marked.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool MarkSelection(MarkSelectionRequest request) => MarkText(request.Kind, request.Lines, request.Color);
+
+    /// <summary>Changes an annotation's colour.</summary>
+    /// <param name="choice">The annotation and its new colour.</param>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void RecolorAnnotation(AnnotationColorChoice choice) => Recolor(choice.Annotation, choice.Color);
+
+    /// <summary>Records a review status for a comment.</summary>
+    /// <param name="choice">The comment and its status.</param>
+    /// <returns><see langword="true"/> when recorded.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool SetAnnotationStatus(AnnotationStatusChoice choice) => SetStatus(choice.Annotation, choice.State);
+
+    /// <summary>Asks for a note and adds it where the page was clicked.</summary>
+    /// <param name="location">The page and point.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task AddNoteHere(PageLocation location) => AddNoteAsync(location.Page, location.Point);
+
+    /// <summary>Asks for text and writes it where the page was clicked.</summary>
+    /// <param name="location">The page and point.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private Task AddTextHere(PageLocation location) => AddTextAsync(location.Page, location.Point);
+
     /// <summary>Removes the last annotation added.</summary>
+    [ReactiveCommand]
     private void Undo()
     {
         if (_added.Count == 0 || Editor is not { } editor)
@@ -542,12 +549,13 @@ public sealed class AnnotationsViewModel : ReactiveObject
             Edited(page);
         }
 
-        this.RaisePropertyChanged(nameof(CanUndo));
+        CanUndo = _added.Count > 0;
     }
 
-    /// <summary>Chooses a colour by its name.</summary>
+    /// <summary>Chooses a colour by its name ("Yellow", "Green", "Blue" or "Red").</summary>
     /// <param name="name">The name.</param>
-    private void SetColorByName(string name)
+    [ReactiveCommand]
+    private void SetColor(string name)
     {
         foreach (var (colorName, color) in AnnotationColors.All)
         {
@@ -568,6 +576,7 @@ public sealed class AnnotationsViewModel : ReactiveObject
 
     /// <summary>Scrolls to an annotation and picks it.</summary>
     /// <param name="item">The sidebar item.</param>
+    [ReactiveCommand]
     private void GoTo(AnnotationItemViewModel? item)
     {
         if (item is null)
@@ -591,7 +600,7 @@ public sealed class AnnotationsViewModel : ReactiveObject
         }
 
         _added.Add((page, index));
-        this.RaisePropertyChanged(nameof(CanUndo));
+        CanUndo = true;
         Edited(page);
         return true;
     }

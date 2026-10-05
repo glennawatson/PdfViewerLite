@@ -6,6 +6,7 @@ using System.Diagnostics;
 using PdfViewerLite.Core.Rendering;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Rendering;
@@ -29,13 +30,14 @@ public sealed class RenderHub : IDisposable
     {
         Cache = new(cacheBytes);
         Scheduler = new(new AvaloniaSurfaceFactory());
+        TilesArrived = new(_tilesArrived);
         _drainSubscription = Scheduler.Completed
             .ObserveOn(RxSchedulers.MainThreadScheduler)
             .SubscribeSafe(_ => Drain(), static ex => Trace.TraceError(ex.ToString()));
     }
 
     /// <summary>Gets notifications, on the UI thread, that new tiles were added to the cache.</summary>
-    public IObservable<RxVoid> TilesArrived => _tilesArrived;
+    public AsObservableSignal<RxVoid> TilesArrived { get; }
 
     /// <summary>Gets the tile cache. Use only on the UI thread.</summary>
     public TileCache Cache { get; }

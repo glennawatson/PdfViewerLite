@@ -12,7 +12,6 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Rendering;
 using PdfViewerLite.App.ViewModels;
@@ -22,8 +21,11 @@ using PdfViewerLite.Core.Layout;
 using PdfViewerLite.Core.Navigation;
 using PdfViewerLite.Core.Rendering;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Controls;
 
@@ -134,6 +136,9 @@ public sealed partial class PageCanvas : Control
     /// <summary>Subscriptions to the hosting scroll viewer.</summary>
     private MultipleDisposable? _scrollerSubscriptions;
 
+    /// <summary>Property and input subscriptions while attached.</summary>
+    private MultipleDisposable? _controlSubscriptions;
+
     /// <summary>A position to restore once the layout has been measured.</summary>
     private Action? _pendingScroll;
 
@@ -161,6 +166,14 @@ public sealed partial class PageCanvas : Control
         AffectsRender<PageCanvas>(TabProperty, HitBrushProperty, CurrentHitOutlineProperty, SelectionBrushProperty, SpokenBrushProperty, DimBrushProperty);
         AffectsRender<PageCanvas>(LabelBackgroundProperty, LabelForegroundProperty);
         FocusableProperty.OverrideDefaultValue<PageCanvas>(true);
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="PageCanvas"/> class.</summary>
+    public PageCanvas()
+    {
+        // These live as long as the control and only reference it, so they need no owner.
+        _ = this.Events().AttachedToVisualTree.SubscribeSafe(_ => Attach(), OnError);
+        _ = this.Events().DetachedFromVisualTree.SubscribeSafe(_ => Detach(), OnError);
     }
 
     /// <summary>Gets or sets the tab to display.</summary>
@@ -288,189 +301,6 @@ public sealed partial class PageCanvas : Control
     /// <inheritdoc/>
     protected override Size MeasureOverride(Size availableSize) => new(_layout.ExtentWidth, _layout.ExtentHeight);
 
-    /// <inheritdoc/>
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        _scroller = this.FindAncestorOfType<ScrollViewer>();
-        if (_scroller is { } scroller)
-        {
-            _scrollerSubscriptions =
-            [
-                scroller.GetObservable(ScrollViewer.OffsetProperty).Skip(1).SubscribeSafe(_ => OnScrolled(), OnError),
-                scroller.GetObservable(BoundsProperty).Select(static bounds => bounds.Size).DistinctUntilChanged().Skip(1).SubscribeSafe(_ => OnViewportResized(), OnError),
-
-                // The extent changes after a layout pass; apply any pending scroll once the dispatcher is idle again.
-                scroller.GetObservable(ScrollViewer.ExtentProperty).ObserveOn(RxSchedulers.MainThreadScheduler).SubscribeSafe(_ => ApplyPendingScroll(), OnError),
-            ];
-        }
-
-        Wire(Tab);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        _scrollerSubscriptions?.Dispose();
-        _scrollerSubscriptions = null;
-        _scroller = null;
-        Wire(null);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        ArgumentNullException.ThrowIfNull(change);
-        base.OnPropertyChanged(change);
-        if (change.Property == TabProperty && _scroller is not null)
-        {
-            Wire(Tab);
-        }
-        else if (change.Property == CurrentHitOutlineProperty)
-        {
-            _currentHitPen = CurrentHitOutline is { } outline ? new ImmutablePen(outline.ToImmutable(), CurrentHitOutlineWidth) : null;
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
-    {
-        ArgumentNullException.ThrowIfNull(e);
-        if ((e.KeyModifiers & KeyModifiers.Control) == 0 && StepPageByPage(-e.Delta.Y * LineStep))
-        {
-            e.Handled = true;
-            return;
-        }
-
-        if ((e.KeyModifiers & KeyModifiers.Control) == 0 || Tab is not { } tab)
-        {
-            base.OnPointerWheelChanged(e);
-            return;
-        }
-
-        var factor = Math.Pow(WheelZoomStep, e.Delta.Y);
-        ZoomAround(tab, tab.Zoom * factor, e.GetPosition(this));
-        e.Handled = true;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPointerPressed(PointerPressedEventArgs e)
-    {
-        ArgumentNullException.ThrowIfNull(e);
-        base.OnPointerPressed(e);
-        var point = e.GetCurrentPoint(this);
-        if (point.Properties.IsRightButtonPressed)
-        {
-            ShowContextMenu(point.Position);
-            e.Handled = true;
-            return;
-        }
-
-        if (!point.Properties.IsLeftButtonPressed)
-        {
-            return;
-        }
-
-        _ = Focus();
-        _pressPoint = point.Position;
-        if (BeginMeasurePress(point.Position, e) || BeginAnnotationPress(point.Position, e))
-        {
-            return;
-        }
-
-        _pressedLink = HitTestLink(point.Position, out _);
-        ClearSelection();
-        if (_pressedLink is not null || !TryHitTestCharacter(point.Position, out var page, out var character))
-        {
-            return;
-        }
-
-        _selectionAnchor = (page, character);
-        _selectionFocus = (page, character);
-        _caret = (page, character);
-        _selecting = true;
-        e.Pointer.Capture(this);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPointerMoved(PointerEventArgs e)
-    {
-        ArgumentNullException.ThrowIfNull(e);
-        base.OnPointerMoved(e);
-        var position = e.GetPosition(this);
-        if (ContinueMeasure(position) || ContinueStroke(position))
-        {
-            return;
-        }
-
-        if (_selecting)
-        {
-            if (TryHitTestCharacter(position, out var page, out var character))
-            {
-                _selectionFocus = (page, character);
-                _selectionRects.Clear();
-                InvalidateVisual();
-            }
-
-            return;
-        }
-
-        var cursor = TryHitTestCharacter(position, out _, out _) ? TextCursor : Cursor.Default;
-        if (HitTestLink(position, out _) is not null || IsOverField(position))
-        {
-            cursor = HandCursor;
-        }
-
-        Cursor = cursor;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPointerReleased(PointerReleasedEventArgs e)
-    {
-        ArgumentNullException.ThrowIfNull(e);
-        base.OnPointerReleased(e);
-        e.Pointer.Capture(null);
-        if (EndAnnotationPress(e.GetPosition(this)))
-        {
-            return;
-        }
-
-        if (_selecting)
-        {
-            _selecting = false;
-            ApplyMarkupTool();
-        }
-
-        var link = _pressedLink;
-        _pressedLink = null;
-        var travel = e.GetPosition(this) - _pressPoint;
-        if (link is { } pressed && Math.Abs(travel.X) < DragThreshold && Math.Abs(travel.Y) < DragThreshold)
-        {
-            Tab?.Navigate(pressed.Target);
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override void OnKeyDown(KeyEventArgs e)
-    {
-        ArgumentNullException.ThrowIfNull(e);
-        if (e.Key == Key.C && (e.KeyModifiers & KeyModifiers.Control) != 0)
-        {
-            CopySelection();
-            e.Handled = true;
-            return;
-        }
-
-        if (HandleMeasureKey(e.Key) || HandleAnnotationKey(e.Key) || HandleCaretKey(e) || HandlePageByPageKey(e))
-        {
-            e.Handled = true;
-            return;
-        }
-
-        base.OnKeyDown(e);
-    }
-
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -530,6 +360,184 @@ public sealed partial class PageCanvas : Control
         var scaling = frame.RenderScaling;
         var destination = new Rect((grid.OriginX + (column * tileSize)) / scaling, (grid.OriginY + (row * tileSize)) / scaling, tileWidth / scaling, tileHeight / scaling);
         context.DrawImage(((AvaloniaRenderSurface)surface).Bitmap, new(0, 0, tileWidth, tileHeight), destination);
+    }
+
+    /// <summary>Finds the hosting scroll viewer and subscribes to it, to the tab and to input.</summary>
+    private void Attach()
+    {
+        _scroller = this.FindAncestorOfType<ScrollViewer>();
+        if (_scroller is { } scroller)
+        {
+            _scrollerSubscriptions =
+            [
+                scroller.WhenChanged(static x => x.Offset).Skip(1).SubscribeSafe(_ => OnScrolled(), OnError),
+                scroller.WhenChanged(static x => x.Bounds).Select(static bounds => bounds.Size).DistinctUntilChanged().Skip(1).SubscribeSafe(_ => OnViewportResized(), OnError),
+
+                // The extent changes after a layout pass; apply any pending scroll once the dispatcher is idle again.
+                scroller.WhenChanged(static x => x.Extent).ObserveOn(RxSchedulers.MainThreadScheduler).SubscribeSafe(_ => ApplyPendingScroll(), OnError),
+            ];
+        }
+
+        _controlSubscriptions =
+        [
+            this.WhenChanged(static x => x.Tab).SubscribeSafe(Wire, OnError),
+            this.WhenChanged(static x => x.CurrentHitOutline)
+                .SubscribeSafe(outline => _currentHitPen = outline is not null ? new ImmutablePen(outline.ToImmutable(), CurrentHitOutlineWidth) : null, OnError),
+            this.Events().PointerWheelChanged.SubscribeSafe(HandlePointerWheel, OnError),
+            this.Events().PointerPressed.SubscribeSafe(HandlePointerPressed, OnError),
+            this.Events().PointerMoved.SubscribeSafe(HandlePointerMoved, OnError),
+            this.ObserveRouted(PointerReleasedEvent, handledEventsToo: true).SubscribeSafe(HandlePointerReleased, OnError),
+            this.Events().KeyDown.SubscribeSafe(HandleKeyDown, OnError),
+        ];
+    }
+
+    /// <summary>Releases the scroll viewer, tab and input subscriptions.</summary>
+    private void Detach()
+    {
+        _controlSubscriptions?.Dispose();
+        _controlSubscriptions = null;
+        _scrollerSubscriptions?.Dispose();
+        _scrollerSubscriptions = null;
+        _scroller = null;
+        Wire(null);
+    }
+
+    /// <summary>Handles page stepping and pointer anchored zoom.</summary>
+    /// <param name="e">The routed input.</param>
+    private void HandlePointerWheel(PointerWheelEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        if ((e.KeyModifiers & KeyModifiers.Control) == 0 && StepPageByPage(-e.Delta.Y * LineStep))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if ((e.KeyModifiers & KeyModifiers.Control) == 0 || Tab is not { } tab)
+        {
+            return;
+        }
+
+        var factor = Math.Pow(WheelZoomStep, e.Delta.Y);
+        ZoomAround(tab, tab.Zoom * factor, e.GetPosition(this));
+        e.Handled = true;
+    }
+
+    /// <summary>Begins a selection, measurement or annotation.</summary>
+    /// <param name="e">The routed input.</param>
+    private void HandlePointerPressed(PointerPressedEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        var point = e.GetCurrentPoint(this);
+        if (point.Properties.IsRightButtonPressed)
+        {
+            ShowContextMenu(point.Position);
+            e.Handled = true;
+            return;
+        }
+
+        if (!point.Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _ = Focus();
+        _pressPoint = point.Position;
+        if (BeginMeasurePress(point.Position, e) || BeginAnnotationPress(point.Position, e))
+        {
+            return;
+        }
+
+        _pressedLink = HitTestLink(point.Position, out _);
+        ClearSelection();
+        if (_pressedLink is not null || !TryHitTestCharacter(point.Position, out var page, out var character))
+        {
+            return;
+        }
+
+        _selectionAnchor = (page, character);
+        _selectionFocus = (page, character);
+        _caret = (page, character);
+        _selecting = true;
+        e.Pointer.Capture(this);
+    }
+
+    /// <summary>Updates pointer interaction and the hover cursor.</summary>
+    /// <param name="e">The routed input.</param>
+    private void HandlePointerMoved(PointerEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        var position = e.GetPosition(this);
+        if (ContinueMeasure(position) || ContinueStroke(position))
+        {
+            return;
+        }
+
+        if (_selecting)
+        {
+            if (TryHitTestCharacter(position, out var page, out var character))
+            {
+                _selectionFocus = (page, character);
+                _selectionRects.Clear();
+                InvalidateVisual();
+            }
+
+            return;
+        }
+
+        var cursor = TryHitTestCharacter(position, out _, out _) ? TextCursor : Cursor.Default;
+        if (HitTestLink(position, out _) is not null || IsOverField(position))
+        {
+            cursor = HandCursor;
+        }
+
+        Cursor = cursor;
+    }
+
+    /// <summary>Completes a pointer interaction.</summary>
+    /// <param name="e">The routed input.</param>
+    private void HandlePointerReleased(PointerReleasedEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        e.Pointer.Capture(null);
+        if (EndAnnotationPress(e.GetPosition(this)))
+        {
+            return;
+        }
+
+        if (_selecting)
+        {
+            _selecting = false;
+            ApplyMarkupTool();
+        }
+
+        var link = _pressedLink;
+        _pressedLink = null;
+        var travel = e.GetPosition(this) - _pressPoint;
+        if (link is { } pressed && Math.Abs(travel.X) < DragThreshold && Math.Abs(travel.Y) < DragThreshold)
+        {
+            Tab?.Navigate(pressed.Target);
+        }
+    }
+
+    /// <summary>Handles document keyboard actions.</summary>
+    /// <param name="e">The routed input.</param>
+    private void HandleKeyDown(KeyEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        if (e.Key == Key.C && (e.KeyModifiers & KeyModifiers.Control) != 0)
+        {
+            CopyToClipboard(GetSelectedText());
+            e.Handled = true;
+            return;
+        }
+
+        if (!HandleMeasureKey(e.Key) && !HandleAnnotationKey(e.Key) && !HandleCaretKey(e) && !HandlePageByPageKey(e))
+        {
+            return;
+        }
+
+        e.Handled = true;
     }
 
     /// <summary>Draws one page: shadow, background, preview, tiles and highlights.</summary>
@@ -813,21 +821,34 @@ public sealed partial class PageCanvas : Control
 
         _tabSubscriptions =
         [
-            tab.WhenAnyValue(static x => x.ZoomMode, static x => x.LayoutMode, static x => x.Rotation, static x => x.IsPageByPage, static (_, _, _, _) => RxVoid.Default)
+
+            // The zoom only matters to the layout in Free mode, so it is part of the key only then.
+            tab.WhenChanged(
+                    static x => x.ZoomMode,
+                    static x => x.LayoutMode,
+                    static x => x.Rotation,
+                    static x => x.IsPageByPage,
+                    static x => x.Zoom,
+                    static (mode, layout, rotation, pageByPage, zoom) => (mode, layout, rotation, pageByPage, Zoom: mode == ZoomMode.Free ? zoom : 0))
+                .DistinctUntilChanged()
                 .Skip(1)
                 .SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
-            tab.WhenAnyValue(static x => x.Zoom).Skip(1).Where(_ => tab.ZoomMode == ZoomMode.Free).SubscribeSafe(_ => OnLayoutSettingsChanged(), OnError),
-            tab.WhenAnyValue(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.WhenChanged(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.NavigationRequests.SubscribeSafe(OnNavigationRequested, OnError),
             tab.DocumentChanges.SubscribeSafe(_ => OnDocumentChanged(), OnError),
             tab.Search.HighlightChanges.SubscribeSafe(_ => InvalidateVisual(), OnError),
-            tab.ReadAloud.WhenAnyValue(static x => x.SpokenBounds).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.ReadAloud.WhenChanged(static x => x.SpokenBounds).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.ReadAloud.MarksChanged.SubscribeSafe(_ => InvalidateVisual(), OnError),
-            tab.FocusMode.WhenAnyValue(static x => x.FocusBand).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.FocusMode.WhenChanged(static x => x.FocusBand).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.PageEdits.SubscribeSafe(_ => InvalidateVisual(), OnError),
-            tab.WhenAnyValue(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),
-            tab.Annotations.WhenAnyValue(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.CopyRequests.SubscribeSafe(CopyToClipboard, OnError),
+
+            // The selection belongs to the canvas, so it clears once a menu command has used it.
+            tab.Annotations.MarkSelectionCommand.Where(static marked => marked).SubscribeSafe(_ => ClearSelection(), OnError),
+            tab.ReadAloud.ReadFromCharacterCommand.SubscribeSafe(_ => ClearSelection(), OnError),
+            tab.WhenChanged(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),
+            tab.Annotations.WhenChanged(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
         tab.EnsureLoaded();
         var position = tab.Position;
@@ -915,7 +936,8 @@ public sealed partial class PageCanvas : Control
 
     /// <summary>Applies the pending scroll after the next layout pass, covering layouts whose extent did not change.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void SchedulePendingScroll() => Dispatcher.UIThread.Post(ApplyPendingScroll, DispatcherPriority.Loaded);
+    private void SchedulePendingScroll() =>
+        _ = Signal.Timer(TimeSpan.Zero, RxSchedulers.MainThreadScheduler).SubscribeSafe(_ => ApplyPendingScroll(), OnError);
 
     /// <summary>Reports the current position to the tab.</summary>
     private void ReportPosition()

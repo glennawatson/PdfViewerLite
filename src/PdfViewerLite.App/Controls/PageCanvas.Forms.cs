@@ -47,13 +47,10 @@ public sealed partial class PageCanvas
     /// <param name="field">The field.</param>
     private void ShowChoices(FormsViewModel forms, FormField field)
     {
-        _menuCommands?.Dispose();
-        _menuCommands = [];
         var items = new List<Control>(field.Options.Count);
         for (var i = 0; i < field.Options.Count; i++)
         {
-            var option = i;
-            var item = Item(field.Options[i], null, () => forms.Choose(field, option));
+            var item = Item(field.Options[i], null, forms.ChooseOptionCommand, new FormChoice(field, i), true);
             item.ToggleType = MenuItemToggleType.Radio;
             item.IsChecked = i == field.SelectedOption;
             items.Add(item);

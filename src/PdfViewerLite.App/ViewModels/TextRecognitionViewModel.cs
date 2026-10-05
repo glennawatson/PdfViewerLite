@@ -7,7 +7,9 @@ using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Ocr;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -17,13 +19,19 @@ namespace PdfViewerLite.App.ViewModels;
 /// "page n of m" with a Stop button; the result waits in the tab's notice until dismissed.
 /// </summary>
 [DebuggerDisplay("Recognizing={IsRunning}")]
-public sealed class TextRecognitionViewModel : ReactiveObject
+public sealed partial class TextRecognitionViewModel : ReactiveObject
 {
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
 
     /// <summary>The application services.</summary>
     private readonly AppServices _services;
+
+    /// <summary>Emits whether recognition is running; enables Stop.</summary>
+    private readonly IObservable<bool> _isRunning;
+
+    /// <summary>Emits whether recognition is idle; enables Recognize.</summary>
+    private readonly IObservable<bool> _isIdle;
 
     /// <summary>Cancels the running recognition.</summary>
     private CancellationTokenSource? _cancellation;
@@ -35,37 +43,21 @@ public sealed class TextRecognitionViewModel : ReactiveObject
     {
         _owner = owner;
         _services = services;
-        var idle = this.WhenAnyValue(static vm => vm.IsRunning).Select(static running => !running);
-        RecognizeCommand = ReactiveCommand.CreateFromTask(RecognizeAsync, idle);
-        StopCommand = ReactiveCommand.Create(Stop, this.WhenAnyValue(static vm => vm.IsRunning));
+        _isRunning = this.WhenChanged(static vm => vm.IsRunning);
+        _isIdle = _isRunning.Select(static running => !running);
     }
 
     /// <summary>Gets a value indicating whether recognition is running.</summary>
-    public bool IsRunning
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsRunning { get; private set; }
 
     /// <summary>Gets the progress from 0 to 1.</summary>
-    public double Progress
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial double Progress { get; private set; }
 
     /// <summary>Gets the progress as words, for example "Recognising text: page 3 of 12".</summary>
-    public string ProgressText
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
-
-    /// <summary>Gets the command recognising every page without text.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> RecognizeCommand { get; }
-
-    /// <summary>Gets the command stopping after the current page.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> StopCommand { get; }
+    [Reactive]
+    public partial string ProgressText { get; private set; } = string.Empty;
 
     /// <summary>Describes the outcome of a run.</summary>
     /// <param name="recognized">Pages given text.</param>
@@ -89,6 +81,7 @@ public sealed class TextRecognitionViewModel : ReactiveObject
 
     /// <summary>Starts the engine and recognises the pages, then reports the outcome in the tab's notice.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand(CanExecute = nameof(_isIdle))]
     private async Task RecognizeAsync()
     {
         if (_owner.TryGetDocument() is not { } document || document is not ITextLayerWriter writer)
@@ -177,6 +170,7 @@ public sealed class TextRecognitionViewModel : ReactiveObject
     }
 
     /// <summary>Stops after the page being recognised.</summary>
+    [ReactiveCommand(CanExecute = nameof(_isRunning))]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void Stop() => _cancellation?.Cancel();
 }

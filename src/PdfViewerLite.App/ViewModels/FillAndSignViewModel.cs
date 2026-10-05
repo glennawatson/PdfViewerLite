@@ -7,6 +7,7 @@ using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Geometry;
 using ReactiveUI;
 using ReactiveUI.Primitives;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -15,7 +16,7 @@ namespace PdfViewerLite.App.ViewModels;
 /// signature where the user clicks. The typed name is remembered for next time.
 /// </summary>
 [DebuggerDisplay("Fill & Sign: {IsActive}")]
-public sealed class FillAndSignViewModel : ReactiveObject
+public sealed partial class FillAndSignViewModel : ReactiveObject
 {
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
@@ -26,37 +27,14 @@ public sealed class FillAndSignViewModel : ReactiveObject
     /// <summary>Initializes a new instance of the <see cref="FillAndSignViewModel"/> class.</summary>
     /// <param name="owner">The owning tab.</param>
     /// <param name="services">The services.</param>
-    public FillAndSignViewModel(DocumentTabViewModel owner, AppServices services)
-    {
-        _owner = owner;
-        _services = services;
-        StartCommand = ReactiveCommand.Create(Start);
-        DoneCommand = ReactiveCommand.Create(Done);
-        DrawSignatureCommand = ReactiveCommand.Create(() => Annotations.Tool = AnnotationTool.DrawSignature);
-        TypeSignatureCommand = ReactiveCommand.CreateFromTask(TypeSignatureAsync);
-    }
+    public FillAndSignViewModel(DocumentTabViewModel owner, AppServices services) => (_owner, _services) = (owner, services);
 
     /// <summary>Gets or sets a value indicating whether the Fill &amp; Sign tool row is shown.</summary>
-    public bool IsActive
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsActive { get; set; }
 
     /// <summary>Gets the remembered typed signature, or an empty string.</summary>
     public string SignatureName => _services.Settings.SignatureName;
-
-    /// <summary>Gets the command showing the Fill &amp; Sign tools.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> StartCommand { get; }
-
-    /// <summary>Gets the command hiding the Fill &amp; Sign tools.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> DoneCommand { get; }
-
-    /// <summary>Gets the command arming the draw signature tool: drag on the page to sign.</summary>
-    public ReactiveCommand<RxVoid, AnnotationTool> DrawSignatureCommand { get; }
-
-    /// <summary>Gets the command asking for (or reusing) a typed signature and arming placement: click on the page to sign.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> TypeSignatureCommand { get; }
 
     /// <summary>Gets the tab's annotation state, which holds the active tool.</summary>
     private AnnotationsViewModel Annotations => _owner.Annotations;
@@ -73,6 +51,7 @@ public sealed class FillAndSignViewModel : ReactiveObject
     }
 
     /// <summary>Shows the tools; annotation tools are put away so only one tool row is ever shown.</summary>
+    [ReactiveCommand]
     private void Start()
     {
         Annotations.IsAnnotating = false;
@@ -81,14 +60,21 @@ public sealed class FillAndSignViewModel : ReactiveObject
     }
 
     /// <summary>Hides the tools.</summary>
+    [ReactiveCommand]
     private void Done()
     {
         Annotations.Tool = AnnotationTool.Select;
         IsActive = false;
     }
 
+    /// <summary>Arms the draw signature tool: drag on the page to sign.</summary>
+    /// <returns>The armed tool.</returns>
+    [ReactiveCommand]
+    private AnnotationTool DrawSignature() => Annotations.Tool = AnnotationTool.DrawSignature;
+
     /// <summary>Asks for the name to sign with, offering the remembered one, then arms placement.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task TypeSignatureAsync()
     {
         var name = await Annotations.PromptInteraction.Handle(new("Type Signature", "Your name, as you sign it", SignatureName, "Use Signature", false)).ToTask().ConfigureAwait(true);

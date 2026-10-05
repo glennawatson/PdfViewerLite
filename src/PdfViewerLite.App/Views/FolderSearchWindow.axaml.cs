@@ -3,14 +3,19 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using PdfViewerLite.App.ViewModels;
+using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
+using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Views;
 
@@ -18,77 +23,60 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{Title}")]
 public sealed partial class FolderSearchWindow : ReactiveUI.Avalonia.ReactiveWindow<FolderSearchViewModel>
 {
-    /// <summary>The bindings, while loaded.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="FolderSearchWindow"/> class.</summary>
     public FolderSearchWindow()
     {
         InitializeComponent();
         ResultList.ItemTemplate = new FuncDataTemplate<FolderSearchResultViewModel>(static (result, _) => FolderSearchResultView.Create(result));
-    }
+        _ = this.WhenActivated(disposables =>
+        {
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Folder, static v => v.FolderBox.Text));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Query, static v => v.QueryBox.Text));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.MatchCase, static v => v.MatchCaseBox.IsChecked, static on => on, static value => value == true));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.WholeWord, static v => v.WholeWordBox.IsChecked, static on => on, static value => value == true));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.IncludeSubfolders, static v => v.SubfoldersBox.IsChecked, static on => on, static value => value == true));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Status, static v => v.StatusText.Text));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Results, static v => v.ResultList.ItemsSource));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.IsSearching, static v => v.StopButton.IsEnabled));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.ChooseFolderCommand, static v => v.ChooseFolderButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.SearchCommand, static v => v.SearchButton));
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.StopCommand, static v => v.StopButton));
+            disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ChooseFolderInteraction, ChooseFolderAsync));
 
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-        _bindings =
-        [
-            this.Bind(ViewModel, static vm => vm.Folder, static v => v.FolderBox.Text),
-            this.Bind(ViewModel, static vm => vm.Query, static v => v.QueryBox.Text),
-            this.Bind(ViewModel, static vm => vm.MatchCase, static v => v.MatchCaseBox.IsChecked, static on => on, static value => value == true),
-            this.Bind(ViewModel, static vm => vm.WholeWord, static v => v.WholeWordBox.IsChecked, static on => on, static value => value == true),
-            this.Bind(ViewModel, static vm => vm.IncludeSubfolders, static v => v.SubfoldersBox.IsChecked, static on => on, static value => value == true),
-            this.OneWayBind(ViewModel, static vm => vm.Status, static v => v.StatusText.Text),
-            this.OneWayBind(ViewModel, static vm => vm.Results, static v => v.ResultList.ItemsSource),
-            this.OneWayBind(ViewModel, static vm => vm.IsSearching, static v => v.StopButton.IsEnabled),
-            this.BindCommand(ViewModel, static vm => vm.ChooseFolderCommand, static v => v.ChooseFolderButton),
-            this.BindCommand(ViewModel, static vm => vm.SearchCommand, static v => v.SearchButton),
-            this.BindCommand(ViewModel, static vm => vm.StopCommand, static v => v.StopButton),
-            this.BindInteraction(ViewModel, static vm => vm.ChooseFolderInteraction, ChooseFolderAsync),
-            CloseButton.GetObservable(Button.ClickEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => Close(), OnError),
-            ResultList.GetObservable(DoubleTappedEvent, RoutingStrategies.Bubble).SubscribeSafe(_ => OpenSelected(), OnError),
-            ResultList.GetObservable(KeyDownEvent, RoutingStrategies.Bubble).SubscribeSafe(OnResultKey, OnError),
-        ];
-        _ = QueryBox.Focus();
-    }
+            disposables.Add(this.BindCommand(ViewModel, static vm => vm.CloseCommand, static v => v.CloseButton));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel!.CloseCommand)
+                .SwitchMap(static closed => closed)
+                .SubscribeSafe(_ => Close(), OnError));
+            disposables.Add(Opens(ResultList).InvokeCommand(ViewModel, static vm => vm.OpenCommand));
 
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnClosed(EventArgs e)
-    {
-        base.OnClosed(e);
-        ViewModel?.Stop();
+            // The window deactivates when it closes by any route (title bar, Alt+F4), which ends a search still running.
+            disposables.Add(Scope.Create(this, static window => window.ViewModel?.Stop()));
+            _ = QueryBox.Focus();
+        });
     }
 
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
 
-    /// <summary>Opens the selected result.</summary>
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    private void OpenSelected() => ViewModel?.OpenCommand.Execute(ResultList.SelectedItem as FolderSearchResultViewModel).SubscribeSafe(static _ => { }, OnError);
-
-    /// <summary>Opens the selected result when Enter is pressed in the list.</summary>
-    /// <param name="e">The key press.</param>
-    private void OnResultKey(KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter)
-        {
-            return;
-        }
-
-        OpenSelected();
-        e.Handled = true;
-    }
+    /// <summary>Gets the results chosen with a double tap or Enter.</summary>
+    /// <param name="results">The results list; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
+    /// <returns>
+    /// The chosen results, read from the item the event came from. The declared type matters: the binding generator
+    /// cannot see the types Events() generates, so InvokeCommand must start from this method's result.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static IObservable<FolderSearchResultViewModel> Opens(ListBox results) =>
+        Signal.Merge(
+                results.Events().DoubleTapped.Select(static args => args.Source),
+                results.Events().KeyDown.Where(static args => args.Key == Key.Enter).Select(static args =>
+                {
+                    args.Handled = true;
+                    return args.Source;
+                }))
+            .Select(static source => (source as StyledElement)?.DataContext)
+            .OfType<FolderSearchResultViewModel>();
 
     /// <summary>Asks for the folder to search.</summary>
     /// <param name="context">The interaction context.</param>

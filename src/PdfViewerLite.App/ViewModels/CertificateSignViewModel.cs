@@ -6,8 +6,10 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using ReactiveUI;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Signals;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
@@ -16,10 +18,13 @@ namespace PdfViewerLite.App.ViewModels;
 /// and place. Signing checks the password straight away, so a mistake is shown in the window rather than later.
 /// </summary>
 [DebuggerDisplay("{CertificatePath}")]
-public sealed class CertificateSignViewModel : ReactiveObject, IDisposable
+public sealed partial class CertificateSignViewModel : ReactiveObject, IDisposable
 {
-    /// <summary>Raises <see cref="Confirmed"/>.</summary>
+    /// <summary>Raises <see cref="Answered"/> with <see langword="true"/>.</summary>
     private readonly Signal<RxVoid> _confirmed = new();
+
+    /// <summary>Whether a certificate file is named, so signing can start.</summary>
+    private readonly IObservable<bool> _canSign;
 
     /// <summary>The loaded certificate, once the password was right.</summary>
     private X509Certificate2? _certificate;
@@ -29,56 +34,35 @@ public sealed class CertificateSignViewModel : ReactiveObject, IDisposable
     public CertificateSignViewModel(string certificatePath)
     {
         CertificatePath = certificatePath;
-        BrowseCommand = ReactiveCommand.CreateFromTask(BrowseAsync);
-        SignCommand = ReactiveCommand.Create(Sign, this.WhenAnyValue(static vm => vm.CertificatePath).Select(static path => !string.IsNullOrWhiteSpace(path)));
+        _canSign = this.WhenChanged(static vm => vm.CertificatePath).Select(static path => !string.IsNullOrWhiteSpace(path));
+        Answered = Signal.Merge(_confirmed.Select(static _ => true), CancelCommand);
     }
 
     /// <summary>Gets or sets the certificate file.</summary>
-    public string CertificatePath
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial string CertificatePath { get; set; }
 
     /// <summary>Gets or sets the certificate's password.</summary>
-    public string Password
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Password { get; set; } = string.Empty;
 
     /// <summary>Gets or sets why the document is signed; optional.</summary>
-    public string Reason
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Reason { get; set; } = string.Empty;
 
     /// <summary>Gets or sets where it is signed; optional.</summary>
-    public string Location
-    {
-        get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
-    } = string.Empty;
+    [Reactive]
+    public partial string Location { get; set; } = string.Empty;
 
     /// <summary>Gets what went wrong with the certificate, or <see langword="null"/>.</summary>
-    public string? Error
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial string? Error { get; private set; }
 
     /// <summary>Gets the interaction asking for a certificate file.</summary>
     public Interaction<RxVoid, string?> BrowseInteraction { get; } = new();
 
-    /// <summary>Gets the command choosing a certificate file.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> BrowseCommand { get; }
-
-    /// <summary>Gets the command checking the certificate and confirming.</summary>
-    public ReactiveCommand<RxVoid, RxVoid> SignCommand { get; }
-
-    /// <summary>Gets the confirmations, which close the window.</summary>
-    public IObservable<RxVoid> Confirmed => _confirmed;
+    /// <summary>Gets the answer, which closes the window: <see langword="true"/> to sign.</summary>
+    public IObservable<bool> Answered { get; }
 
     /// <summary>Hands over the loaded certificate; the caller disposes it.</summary>
     /// <returns>The certificate, or <see langword="null"/> when none was loaded.</returns>
@@ -96,7 +80,14 @@ public sealed class CertificateSignViewModel : ReactiveObject, IDisposable
         _confirmed.Dispose();
     }
 
+    /// <summary>Closes the window without signing.</summary>
+    /// <returns>Always <see langword="false"/>.</returns>
+    [ReactiveCommand]
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    private static bool Cancel() => false;
+
     /// <summary>Loads the certificate with the password, confirming when it can sign.</summary>
+    [ReactiveCommand(CanExecute = nameof(_canSign))]
     private void Sign()
     {
         try
@@ -130,6 +121,7 @@ public sealed class CertificateSignViewModel : ReactiveObject, IDisposable
 
     /// <summary>Asks for a certificate file.</summary>
     /// <returns>A task.</returns>
+    [ReactiveCommand]
     private async Task BrowseAsync()
     {
         if (await BrowseInteraction.Handle(RxVoid.Default).ToTask().ConfigureAwait(true) is { Length: > 0 } path)

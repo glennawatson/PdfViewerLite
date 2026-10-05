@@ -3,9 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using Avalonia.Interactivity;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.App.ViewModels;
-using ReactiveUI.Primitives.Disposables;
+using ReactiveUI;
+using ReactiveUI.Binding;
 
 namespace PdfViewerLite.App.Views;
 
@@ -13,28 +14,20 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("{ViewModel}")]
 public sealed partial class LayerItemView : ReactiveUI.Avalonia.ReactiveUserControl<LayerItemViewModel>
 {
-    /// <summary>The bindings made while loaded.</summary>
-    private MultipleDisposable? _bindings;
-
     /// <summary>Initializes a new instance of the <see cref="LayerItemView"/> class.</summary>
-    public LayerItemView() => InitializeComponent();
-
-    /// <inheritdoc/>
-    protected override void OnLoaded(RoutedEventArgs e)
+    public LayerItemView()
     {
-        base.OnLoaded(e);
-        _bindings =
-        [
-            this.OneWayBind(ViewModel, static vm => vm.Name, static v => v.LayerBox.Content),
-            this.Bind(ViewModel, static vm => vm.IsVisible, static v => v.LayerBox.IsChecked, static on => on, static on => on == true),
-        ];
+        InitializeComponent();
+        _ = this.WhenActivated(disposables =>
+        {
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Name, static v => v.LayerBox.Content));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.IsVisible, static v => v.LayerBox.IsChecked, static on => on, IsOn));
+        });
     }
 
-    /// <inheritdoc/>
-    protected override void OnUnloaded(RoutedEventArgs e)
-    {
-        base.OnUnloaded(e);
-        _bindings?.Dispose();
-        _bindings = null;
-    }
+    /// <summary>Converts a nullable toggle state to a plain flag.</summary>
+    /// <param name="value">The toggle state.</param>
+    /// <returns><see langword="true"/> only when checked.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsOn(bool? value) => value == true;
 }

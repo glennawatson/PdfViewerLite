@@ -4,6 +4,7 @@
 
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -13,8 +14,6 @@ using Avalonia.Media.Immutable;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Geometry;
-using ReactiveUI;
-using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Controls;
 
@@ -50,9 +49,6 @@ public sealed partial class PageCanvas
 
     /// <summary>The page a click tool was pressed on, or -1.</summary>
     private int _clickPage = -1;
-
-    /// <summary>The commands of the open context menu, released when the next one opens.</summary>
-    private MultipleDisposable? _menuCommands;
 
     /// <summary>Runs a click tool: adds a note, text, a signature or a stamp where the page was clicked.</summary>
     /// <param name="tab">The tab.</param>
@@ -92,6 +88,96 @@ public sealed partial class PageCanvas
             }
         }
     }
+
+    /// <summary>Builds the menu for an annotation: its note, its colour and removing it.</summary>
+    /// <param name="annotations">The annotation state.</param>
+    /// <param name="annotation">The annotation.</param>
+    /// <returns>The items.</returns>
+    private static List<Control> AnnotationMenu(AnnotationsViewModel annotations, PageAnnotation annotation)
+    {
+        // The menu is only built right after the annotation was selected, so the commands' null parameter targets it.
+        var name = AnnotationNames.Get(annotation.Kind);
+        var colour = new MenuItem
+        {
+            Header = "C_olour",
+            ItemsSource = ColorItems(annotations.RecolorAnnotationCommand, annotation, static (picked, color) => new AnnotationColorChoice(picked, color)),
+        };
+        return
+        [
+            new MenuItem { Header = name, IsEnabled = false },
+            Item(annotation.Contents.Length > 0 ? "_Edit Note…" : "Add _Note…", null, annotations.EditNoteCommand, null, true),
+            Item("_Reply…", null, annotations.ReplyCommand, null, true),
+            new MenuItem { Header = "_Status", ItemsSource = StatusItems(annotations, annotation) },
+            colour,
+            new Separator(),
+            Item($"_Delete {name}", "Delete", annotations.DeleteCommand, null, true),
+        ];
+    }
+
+    /// <summary>Builds the menu for blank page: add a note or text where the pointer is.</summary>
+    /// <param name="tab">The tab.</param>
+    /// <param name="location">The page and point in page space.</param>
+    /// <returns>The items.</returns>
+    private static List<Control> PageMenu(DocumentTabViewModel tab, PageLocation location)
+    {
+        var annotations = tab.Annotations;
+        var editable = annotations.CanAnnotate;
+        return
+        [
+            Item("_Read Aloud from Here", null, tab.ReadAloud.ReadFromPointCommand, location, true),
+            new Separator(),
+            Item("Add _Note Here…", null, annotations.AddNoteHereCommand, location, editable),
+            Item("Add _Text Here…", null, annotations.AddTextHereCommand, location, editable),
+            new Separator(),
+            Item("_Annotate…", null, annotations.StartCommand, null, editable),
+        ];
+    }
+
+    /// <summary>Builds one item per review status.</summary>
+    /// <param name="annotations">The annotation state.</param>
+    /// <param name="annotation">The comment.</param>
+    /// <returns>The items.</returns>
+    private static List<MenuItem> StatusItems(AnnotationsViewModel annotations, PageAnnotation annotation)
+    {
+        var command = annotations.SetAnnotationStatusCommand;
+        return
+        [
+            Item("_Accepted", null, command, new AnnotationStatusChoice(annotation, ReviewState.Accepted), true),
+            Item("_Rejected", null, command, new AnnotationStatusChoice(annotation, ReviewState.Rejected), true),
+            Item("_Cancelled", null, command, new AnnotationStatusChoice(annotation, ReviewState.Cancelled), true),
+            Item("C_ompleted", null, command, new AnnotationStatusChoice(annotation, ReviewState.Completed), true),
+        ];
+    }
+
+    /// <summary>Builds one named colour item per annotation colour.</summary>
+    /// <typeparam name="TState">The type of what the colour applies to.</typeparam>
+    /// <param name="command">The command a colour is chosen with.</param>
+    /// <param name="state">What the colour applies to.</param>
+    /// <param name="parameter">Makes the command parameter from the state and the colour.</param>
+    /// <returns>The items.</returns>
+    private static List<MenuItem> ColorItems<TState>(ICommand command, TState state, Func<TState, uint, object> parameter)
+    {
+        var items = new List<MenuItem>(AnnotationColors.All.Count);
+        foreach (var (name, color) in AnnotationColors.All)
+        {
+            var swatch = new Border { Width = SwatchSize, Height = SwatchSize, CornerRadius = new(SwatchRadius), Background = new SolidColorBrush(Color.FromUInt32(0xFF000000U | color)) };
+            var item = Item(name, null, command, parameter(state, color), true);
+            item.Icon = swatch;
+            items.Add(item);
+        }
+
+        return items;
+    }
+
+    /// <summary>Creates a menu item running a command.</summary>
+    /// <param name="header">The header, with an access key.</param>
+    /// <param name="gesture">The shortcut shown, or <see langword="null"/>.</param>
+    /// <param name="command">The command.</param>
+    /// <param name="parameter">The command parameter, or <see langword="null"/>.</param>
+    /// <param name="enabled">Whether the item can be chosen.</param>
+    /// <returns>The item.</returns>
+    private static MenuItem Item(string header, string? gesture, ICommand command, object? parameter, bool enabled) =>
+        new() { Header = header, Command = command, CommandParameter = parameter, IsEnabled = enabled, InputGesture = gesture is null ? null : KeyGesture.Parse(gesture) };
 
     /// <summary>Handles a left press for the active annotation tool.</summary>
     /// <param name="position">The canvas point.</param>
@@ -232,21 +318,33 @@ public sealed partial class PageCanvas
     /// <param name="color">The colour.</param>
     private void MarkSelection(DocumentTabViewModel tab, AnnotationKind kind, uint color)
     {
-        if (!TryGetSelection(out var start, out var end))
+        if (!TryGetSelection(out _, out _))
         {
             return;
         }
 
+        if (tab.Annotations.MarkText(kind, GetSelectionLines(), color))
+        {
+            ClearSelection();
+        }
+    }
+
+    /// <summary>Gets the line rectangles of the selection on each page it covers.</summary>
+    /// <returns>The rectangles by page; empty when nothing is selected.</returns>
+    private Dictionary<int, List<PageRect>> GetSelectionLines()
+    {
         var lines = new Dictionary<int, List<PageRect>>();
+        if (!TryGetSelection(out var start, out var end))
+        {
+            return lines;
+        }
+
         for (var page = start.Page; page <= end.Page; page++)
         {
             lines[page] = [.. GetSelectionRects(page)];
         }
 
-        if (tab.Annotations.MarkText(kind, lines, color))
-        {
-            ClearSelection();
-        }
+        return lines;
     }
 
     /// <summary>Opens the right-click menu for whatever is under the pointer.</summary>
@@ -258,8 +356,6 @@ public sealed partial class PageCanvas
             return;
         }
 
-        _menuCommands?.Dispose();
-        _menuCommands = [];
         var page = _layout.HitTest(position.X, position.Y);
         var annotations = tab.Annotations;
         var hit = page >= 0 ? annotations.HitTest(page, ToPage(tab, page, position)) : null;
@@ -275,7 +371,7 @@ public sealed partial class PageCanvas
         }
         else if (page >= 0)
         {
-            items = PageMenu(annotations, page, ToPage(tab, page, position));
+            items = PageMenu(tab, new(page, ToPage(tab, page, position)));
         }
         else
         {
@@ -292,108 +388,27 @@ public sealed partial class PageCanvas
     /// <returns>The items.</returns>
     private List<Control> SelectionMenu(DocumentTabViewModel tab)
     {
-        var editable = tab.Annotations.CanAnnotate;
-        var highlight = new MenuItem { Header = "_Highlight", IsEnabled = editable, ItemsSource = ColorItems(color => MarkSelection(tab, AnnotationKind.Highlight, color)) };
+        var annotations = tab.Annotations;
+        var editable = annotations.CanAnnotate;
+        var mark = annotations.MarkSelectionCommand;
+        var lines = GetSelectionLines();
+        var readFrom = TryGetSelection(out var start, out _) ? new PageCharacter(start.Page, start.Char) : default;
+        var highlight = new MenuItem
+        {
+            Header = "_Highlight",
+            IsEnabled = editable,
+            ItemsSource = ColorItems(mark, lines, static (selected, color) => new MarkSelectionRequest(AnnotationKind.Highlight, color, selected)),
+        };
         return
         [
-            Item("_Copy", "Ctrl+C", CopySelection),
-            Item("_Read Aloud from Here", null, () => ReadAloudFromSelection(tab)),
+            Item("_Copy", "Ctrl+C", tab.CopyTextCommand, GetSelectedText(), true),
+            Item("_Read Aloud from Here", null, tab.ReadAloud.ReadFromCharacterCommand, readFrom, true),
             new Separator(),
             highlight,
-            Item("_Underline", null, () => MarkSelection(tab, AnnotationKind.Underline, tab.Annotations.Color), editable),
-            Item("_Strike Out", null, () => MarkSelection(tab, AnnotationKind.StrikeOut, AnnotationColors.Clay), editable),
-            Item("S_quiggly Underline", null, () => MarkSelection(tab, AnnotationKind.Squiggly, AnnotationColors.Clay), editable),
+            Item("_Underline", null, mark, new MarkSelectionRequest(AnnotationKind.Underline, annotations.Color, lines), editable),
+            Item("_Strike Out", null, mark, new MarkSelectionRequest(AnnotationKind.StrikeOut, AnnotationColors.Clay, lines), editable),
+            Item("S_quiggly Underline", null, mark, new MarkSelectionRequest(AnnotationKind.Squiggly, AnnotationColors.Clay, lines), editable),
         ];
-    }
-
-    /// <summary>Builds the menu for an annotation: its note, its colour and removing it.</summary>
-    /// <param name="annotations">The annotation state.</param>
-    /// <param name="annotation">The annotation.</param>
-    /// <returns>The items.</returns>
-    private List<Control> AnnotationMenu(AnnotationsViewModel annotations, PageAnnotation annotation)
-    {
-        var name = AnnotationNames.Get(annotation.Kind);
-        var colour = new MenuItem { Header = "C_olour", ItemsSource = ColorItems(color => annotations.Recolor(annotation, color)) };
-        return
-        [
-            new MenuItem { Header = name, IsEnabled = false },
-            Item(annotation.Contents.Length > 0 ? "_Edit Note…" : "Add _Note…", null, () => _ = annotations.EditNoteAsync(annotation)),
-            Item("_Reply…", null, () => _ = annotations.ReplyAsync(annotation)),
-            new MenuItem { Header = "_Status", ItemsSource = StatusItems(annotations, annotation) },
-            colour,
-            new Separator(),
-            Item($"_Delete {name}", "Delete", () => annotations.Delete(annotation)),
-        ];
-    }
-
-    /// <summary>Builds the menu for blank page: add a note or text where the pointer is.</summary>
-    /// <param name="annotations">The annotation state.</param>
-    /// <param name="page">The page.</param>
-    /// <param name="point">The point in page space.</param>
-    /// <returns>The items.</returns>
-    private List<Control> PageMenu(AnnotationsViewModel annotations, int page, PagePoint point)
-    {
-        var editable = annotations.CanAnnotate;
-        var tab = Tab!;
-        return
-        [
-            Item("_Read Aloud from Here", null, () => ReadAloudFrom(tab, page, point)),
-            new Separator(),
-            Item("Add _Note Here…", null, () => _ = annotations.AddNoteAsync(page, point), editable),
-            Item("Add _Text Here…", null, () => _ = annotations.AddTextAsync(page, point), editable),
-            new Separator(),
-            Item("_Annotate…", null, () => annotations.IsAnnotating = true, editable),
-        ];
-    }
-
-    /// <summary>Builds one item per review status.</summary>
-    /// <param name="annotations">The annotation state.</param>
-    /// <param name="annotation">The comment.</param>
-    /// <returns>The items.</returns>
-    private List<MenuItem> StatusItems(AnnotationsViewModel annotations, PageAnnotation annotation) =>
-    [
-        Item("_Accepted", null, () => annotations.SetStatus(annotation, ReviewState.Accepted)),
-        Item("_Rejected", null, () => annotations.SetStatus(annotation, ReviewState.Rejected)),
-        Item("_Cancelled", null, () => annotations.SetStatus(annotation, ReviewState.Cancelled)),
-        Item("C_ompleted", null, () => annotations.SetStatus(annotation, ReviewState.Completed)),
-    ];
-
-    /// <summary>Builds one named colour item per annotation colour.</summary>
-    /// <param name="apply">What choosing a colour does.</param>
-    /// <returns>The items.</returns>
-    private List<MenuItem> ColorItems(Action<uint> apply)
-    {
-        var items = new List<MenuItem>(AnnotationColors.All.Count);
-        foreach (var (name, color) in AnnotationColors.All)
-        {
-            var swatch = new Border { Width = SwatchSize, Height = SwatchSize, CornerRadius = new(SwatchRadius), Background = new SolidColorBrush(Color.FromUInt32(0xFF000000U | color)) };
-            var item = Item(name, null, () => apply(color));
-            item.Icon = swatch;
-            items.Add(item);
-        }
-
-        return items;
-    }
-
-    /// <summary>Creates a menu item running an action.</summary>
-    /// <param name="header">The header, with an access key.</param>
-    /// <param name="gesture">The shortcut shown, or <see langword="null"/>.</param>
-    /// <param name="action">The action.</param>
-    /// <returns>The item.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private MenuItem Item(string header, string? gesture, Action action) => Item(header, gesture, action, true);
-
-    /// <summary>Creates a menu item running an action.</summary>
-    /// <param name="header">The header, with an access key.</param>
-    /// <param name="gesture">The shortcut shown, or <see langword="null"/>.</param>
-    /// <param name="action">The action.</param>
-    /// <param name="enabled">Whether the item can be chosen.</param>
-    /// <returns>The item.</returns>
-    private MenuItem Item(string header, string? gesture, Action action, bool enabled)
-    {
-        var command = ReactiveCommand.Create(action);
-        _menuCommands?.Add(command);
-        return new() { Header = header, Command = command, IsEnabled = enabled, InputGesture = gesture is null ? null : KeyGesture.Parse(gesture) };
     }
 
     /// <summary>Handles Escape (clear the selection and the pick) and Delete (remove the picked annotation).</summary>
@@ -417,10 +432,10 @@ public sealed partial class PageCanvas
         return true;
     }
 
-    /// <summary>Copies the selected text to the clipboard.</summary>
-    private void CopySelection()
+    /// <summary>Puts text on the clipboard.</summary>
+    /// <param name="text">The text.</param>
+    private void CopyToClipboard(string text)
     {
-        var text = GetSelectedText();
         if (text.Length > 0 && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
         {
             _ = clipboard.SetTextAsync(text);

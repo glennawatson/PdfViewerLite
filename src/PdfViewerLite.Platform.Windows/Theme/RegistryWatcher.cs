@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using Microsoft.Win32;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.Platform.Windows.Theme;
@@ -35,10 +36,11 @@ internal sealed class RegistryWatcher : IDisposable
         _keys = keys;
         _thread = new(Watch) { IsBackground = true, Name = "Registry changes" };
         _thread.Start();
+        Changes = new(_changes);
     }
 
     /// <summary>Gets the changes, on the watching thread.</summary>
-    internal IObservable<RxVoid> Changes => _changes;
+    internal AsObservableSignal<RxVoid> Changes { get; }
 
     /// <inheritdoc/>
     public void Dispose()

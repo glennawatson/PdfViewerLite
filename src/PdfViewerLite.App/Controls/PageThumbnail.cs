@@ -13,8 +13,10 @@ using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Rendering;
+using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Disposables;
+using ReactiveUI.Primitives.ObservableEvents;
 
 namespace PdfViewerLite.App.Controls;
 
@@ -40,8 +42,19 @@ public sealed class PageThumbnail : Control
     /// <summary>Subscriptions to the tab and render hub while attached.</summary>
     private MultipleDisposable? _subscriptions;
 
+    /// <summary>Property subscriptions while attached.</summary>
+    private MultipleDisposable? _controlSubscriptions;
+
     /// <summary>Initializes static members of the <see cref="PageThumbnail"/> class.</summary>
     static PageThumbnail() => AffectsRender<PageThumbnail>(TabProperty, PageIndexProperty);
+
+    /// <summary>Initializes a new instance of the <see cref="PageThumbnail"/> class.</summary>
+    public PageThumbnail()
+    {
+        // These live as long as the control and only reference it, so they need no owner.
+        _ = this.Events().AttachedToVisualTree.SubscribeSafe(_ => Attach(), OnError);
+        _ = this.Events().DetachedFromVisualTree.SubscribeSafe(_ => Detach(), OnError);
+    }
 
     /// <summary>Gets or sets the tab.</summary>
     public DocumentTabViewModel? Tab
@@ -97,35 +110,34 @@ public sealed class PageThumbnail : Control
         _ = tab.RenderHub.Scheduler.Request(new(key, document, info, width, height, RenderPriority.Thumbnail, tab.ThumbnailClient, tab.ThumbnailClient.Generation, tab.PageTone));
     }
 
-    /// <inheritdoc/>
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        Subscribe(Tab);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        Subscribe(null);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        ArgumentNullException.ThrowIfNull(change);
-        base.OnPropertyChanged(change);
-        if (change.Property == TabProperty && TopLevel.GetTopLevel(this) is not null)
-        {
-            Subscribe(Tab);
-        }
-    }
-
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Redraws when new tiles arrive, until the thumbnail has its image.</summary>
+    private void InvalidateWithoutImage()
+    {
+        if (!_hasImage)
+        {
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>Follows the tab while attached.</summary>
+    private void Attach() =>
+        _controlSubscriptions =
+        [
+            this.WhenChanged(static x => x.Tab).SubscribeSafe(Subscribe, OnError),
+        ];
+
+    /// <summary>Releases the tab and render hub subscriptions.</summary>
+    private void Detach()
+    {
+        _controlSubscriptions?.Dispose();
+        _controlSubscriptions = null;
+        Subscribe(null);
+    }
 
     /// <summary>Subscribes to tile arrivals and page tone changes, replacing any previous subscriptions.</summary>
     /// <param name="tab">The tab, or <see langword="null"/> to unsubscribe.</param>
@@ -140,8 +152,8 @@ public sealed class PageThumbnail : Control
 
         _subscriptions =
         [
-            tab.RenderHub.TilesArrived.Where(_ => !_hasImage).SubscribeSafe(_ => InvalidateVisual(), OnError),
-            tab.WhenAnyValue(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+            tab.RenderHub.TilesArrived.SubscribeSafe(_ => InvalidateWithoutImage(), OnError),
+            tab.WhenChanged(static x => x.PageTone).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
         ];
     }
 }

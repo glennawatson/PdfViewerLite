@@ -5,12 +5,13 @@
 using System.Diagnostics;
 using PdfViewerLite.Core.Reading;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 
 namespace PdfViewerLite.App.ViewModels;
 
 /// <summary>One page of Focus Mode: its blocks in reading order, worked out off the UI thread when the page comes into view.</summary>
 [DebuggerDisplay("Page {PageIndex}")]
-public sealed class FocusPageViewModel : ReactiveObject
+public sealed partial class FocusPageViewModel : ReactiveObject
 {
     /// <summary>The separator between blocks in a page's reading text.</summary>
     private const int SeparatorLength = 2;
@@ -40,18 +41,12 @@ public sealed class FocusPageViewModel : ReactiveObject
     public string Label { get; }
 
     /// <summary>Gets the blocks, empty until loaded.</summary>
-    public IReadOnlyList<FocusBlockViewModel> Blocks
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    } = [];
+    [Reactive]
+    public partial IReadOnlyList<FocusBlockViewModel> Blocks { get; private set; } = [];
 
     /// <summary>Gets a value indicating whether the page has no text to show, once loaded.</summary>
-    public bool IsEmpty
-    {
-        get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
-    }
+    [Reactive]
+    public partial bool IsEmpty { get; private set; }
 
     /// <summary>Works out the page's blocks once, off the UI thread; later calls wait for the same work.</summary>
     /// <returns>A task completing once the blocks are shown.</returns>

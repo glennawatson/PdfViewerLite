@@ -16,6 +16,7 @@ using PdfViewerLite.Http.Remote;
 using PdfViewerLite.Ocr;
 using PdfViewerLite.Pdfium;
 using ReactiveUI.Primitives;
+using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
 
 namespace PdfViewerLite.App.Services;
@@ -74,6 +75,9 @@ public sealed class AppServices : IDisposable
         Downloader = new(Path.Combine(Path.GetTempPath(), "pdfviewerlite-downloads"));
         _theme = new(ThemeResolver.Resolve(Settings, null));
         Speech = SpeechSetup.CreateDefault(platform);
+        Theme = new(_theme);
+        OpenRequests = new(_openRequests);
+        SettingsApplied = new(_settingsApplied);
     }
 
     /// <summary>Gets the settings store.</summary>
@@ -113,16 +117,16 @@ public sealed class AppServices : IDisposable
     public IAudioOutput Audio => _audio ??= Speech.CreateAudio();
 
     /// <summary>Gets the resolved theme; the current value is replayed on subscription.</summary>
-    public IObservable<ResolvedTheme> Theme => _theme;
+    public AsObservableSignal<ResolvedTheme> Theme{ get; }
 
     /// <summary>Gets the documents the app is asked to open as tabs.</summary>
-    public IObservable<string> OpenRequests => _openRequests;
+    public AsObservableSignal<string> OpenRequests{ get; }
 
     /// <summary>Gets the current resolved theme.</summary>
     public ResolvedTheme CurrentTheme => _theme.Value;
 
     /// <summary>Gets notifications when user settings are applied.</summary>
-    internal IObservable<RxVoid> SettingsApplied => _settingsApplied;
+    internal AsObservableSignal<RxVoid> SettingsApplied{ get; }
 
     /// <summary>Creates the services for the current platform.</summary>
     /// <param name="platform">The desktop integration, normally from <see cref="DesktopPlatforms.Detect"/>.</param>
