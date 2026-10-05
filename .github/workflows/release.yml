@@ -53,7 +53,7 @@ jobs:
         stamp-version: 'false'
     - name: Resolve built commit SHA
       id: sourcesha
-      uses: glennawatson/actions-common/.github/actions/run-csharp@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         shared-script: resolve-built-commit-sha-c775df1621.cs
     - name: Validate version inputs
@@ -61,7 +61,7 @@ jobs:
         BUMP: ${{ inputs.bump }}
         PRE_RELEASE: ${{ inputs.preRelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         shared-script: validate-version-inputs-2aad3ac3e2.cs
     - name: Compute version and tag
@@ -79,7 +79,7 @@ jobs:
         BUMP_TAG: ${{ steps.bump.outputs.tag }}
         BUMP_PRERELEASE: ${{ steps.bump.outputs.prerelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         shared-script: resolve-release-tag-d98a6a5208.cs
     - name: Stamp version with MinVer
@@ -148,7 +148,7 @@ jobs:
         path: signed
     - name: Sign packages with Certum SimplySign
       if: env.CERTUM_USER_ID != '' && env.CERTUM_OTP_URI != ''
-      uses: glennawatson/actions-common/.github/actions/certum-sign@d500eb0a0f9554d8543550e9ea124638fa97d283 # main
+      uses: glennawatson/actions-common/.github/actions/certum-sign@139bdd91ec917f0f03c4a90d670fe4a126d78527 # main
       with:
         packages-glob: 'signed/*.msi*'
     - name: Verify installer signatures and certificate
