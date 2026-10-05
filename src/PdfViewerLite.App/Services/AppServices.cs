@@ -13,7 +13,6 @@ using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Speech;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
-using PdfViewerLite.Ocr;
 using PdfViewerLite.Pdfium;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Advanced;
@@ -30,9 +29,6 @@ public sealed class AppServices : IDisposable
 
     /// <summary>The smallest permitted tile cache, in megabytes.</summary>
     private const int MinCacheMegabytes = 32;
-
-    /// <summary>The language used when none is configured.</summary>
-    private const string DefaultOcrLanguage = "eng";
 
     /// <summary>The resolved theme, re-published when the settings or the desktop palette change.</summary>
     private readonly BehaviorSignal<ResolvedTheme> _theme;
@@ -113,6 +109,9 @@ public sealed class AppServices : IDisposable
     /// <summary>Gets how the app reads aloud; tests replace it with fakes.</summary>
     public SpeechSetup Speech { get; init; }
 
+    /// <summary>Gets how the app recognises text and fetches language packs; tests replace it with fakes.</summary>
+    public OcrSetup Ocr { get; init; } = OcrSetup.CreateDefault();
+
     /// <summary>Gets the sound output shared by every tab.</summary>
     public IAudioOutput Audio => _audio ??= Speech.CreateAudio();
 
@@ -134,10 +133,10 @@ public sealed class AppServices : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AppServices CreateDefault(IDesktopPlatform platform) => new(new SettingsStore(), new PdfiumEngine(), platform);
 
-    /// <summary>Creates a text recogniser for the configured languages; dispose it when done.</summary>
-    /// <returns>The recogniser, which reports whether Tesseract was found.</returns>
+    /// <summary>Creates a text recogniser for the configured languages, using downloaded packs first; dispose it when done.</summary>
+    /// <returns>The recogniser, which reports whether Tesseract and the language data were found.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IOcrEngine CreateOcrEngine() => new TesseractEngine(string.IsNullOrWhiteSpace(Settings.OcrLanguage) ? DefaultOcrLanguage : Settings.OcrLanguage);
+    public IOcrEngine CreateOcrEngine() => Ocr.CreateEngine(OcrLanguageCatalog.Format(OcrLanguageCatalog.Parse(Settings.OcrLanguage)), Ocr.LanguageDirectory);
 
     /// <summary>Gets the speech engine the settings choose, reusing it while they stay the same.</summary>
     /// <returns>The engine.</returns>

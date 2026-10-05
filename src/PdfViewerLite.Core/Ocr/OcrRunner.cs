@@ -81,19 +81,64 @@ public static class OcrRunner
     /// <returns>What happened.</returns>
     public static OcrPageResult RecognizePage(IDocument document, ITextLayerWriter writer, IOcrEngine engine, int pageIndex, List<OcrWord> words)
     {
-        ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(writer);
+        var status = RecognizeWords(document, engine, pageIndex, words);
+        return status == OcrPageStatus.Recognized ? WriteWords(writer, pageIndex, words) : new(pageIndex, status, 0);
+    }
+
+    /// <summary>Writes recognised words onto a page as invisible text.</summary>
+    /// <param name="writer">Writes the text layer.</param>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="words">The words.</param>
+    /// <returns>What happened.</returns>
+    public static OcrPageResult WriteWords(ITextLayerWriter writer, int pageIndex, List<OcrWord> words)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+        ArgumentNullException.ThrowIfNull(words);
+        var written = writer.AddTextLayer(pageIndex, CollectionsMarshal.AsSpan(words));
+        return new(pageIndex, written > 0 ? OcrPageStatus.Recognized : OcrPageStatus.NoTextFound, written);
+    }
+
+    /// <summary>Gets the mean confidence of recognised words, from 0 to 100.</summary>
+    /// <param name="words">The words.</param>
+    /// <returns>The mean, or 0 when there are none.</returns>
+    public static float AverageConfidence(List<OcrWord> words)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+        if (words.Count == 0)
+        {
+            return 0;
+        }
+
+        var total = 0F;
+        foreach (var word in CollectionsMarshal.AsSpan(words))
+        {
+            total += word.Confidence;
+        }
+
+        return total / words.Count;
+    }
+
+    /// <summary>Recognises one page's words without writing them, so they can be checked first.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="engine">The recogniser.</param>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="words">A reusable list receiving the words; cleared first.</param>
+    /// <returns><see cref="OcrPageStatus.Recognized"/> when words were found, otherwise why not.</returns>
+    public static OcrPageStatus RecognizeWords(IDocument document, IOcrEngine engine, int pageIndex, List<OcrWord> words)
+    {
+        ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(engine);
         ArgumentNullException.ThrowIfNull(words);
         words.Clear();
         if (!engine.IsAvailable)
         {
-            return new(pageIndex, OcrPageStatus.Unavailable, 0);
+            return OcrPageStatus.Unavailable;
         }
 
         if (document.GetCharacterCount(pageIndex) > 0)
         {
-            return new(pageIndex, OcrPageStatus.AlreadyHasText, 0);
+            return OcrPageStatus.AlreadyHasText;
         }
 
         var size = document.GetPageSizes()[pageIndex];
@@ -105,7 +150,7 @@ public static class OcrRunner
         {
             if (!RenderGrey(document, pageIndex, scale, width, height, grey))
             {
-                return new(pageIndex, OcrPageStatus.NotRendered, 0);
+                return OcrPageStatus.NotRendered;
             }
 
             engine.Recognize(grey.AsSpan(0, width * height), width, height, scale, words);
@@ -115,13 +160,7 @@ public static class OcrRunner
             ArrayPool<byte>.Shared.Return(grey);
         }
 
-        if (words.Count == 0)
-        {
-            return new(pageIndex, OcrPageStatus.NoTextFound, 0);
-        }
-
-        var written = writer.AddTextLayer(pageIndex, CollectionsMarshal.AsSpan(words));
-        return new(pageIndex, written > 0 ? OcrPageStatus.Recognized : OcrPageStatus.NoTextFound, written);
+        return words.Count == 0 ? OcrPageStatus.NoTextFound : OcrPageStatus.Recognized;
     }
 
     /// <summary>Converts BGRA pixels to 8 bit luma, 32 pixels at a time where vectors are accelerated.</summary>

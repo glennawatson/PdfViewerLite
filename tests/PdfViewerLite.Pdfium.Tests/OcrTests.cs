@@ -29,6 +29,9 @@ public sealed class OcrTests
     /// <summary>The fewest words expected on the test page.</summary>
     private const int MinimumWords = 10;
 
+    /// <summary>The English language data file.</summary>
+    private const string EnglishData = "eng.traineddata";
+
     /// <summary>The luma of white.</summary>
     private const byte WhiteLuma = 255;
 
@@ -112,6 +115,47 @@ public sealed class OcrTests
 
         await Assert.That(engine.IsAvailable).IsFalse();
         await Assert.That(result.Status).IsEqualTo(OcrPageStatus.Unavailable);
+        await Assert.That(engine.Status).IsEqualTo(TesseractEngine.IsLibraryAvailable() ? OcrEngineStatus.LanguageMissing : OcrEngineStatus.LibraryMissing);
+    }
+
+    /// <summary>Verifies the Tesseract and English data shipped with the app are used ahead of any system copy.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task UsesTheShippedLibraryAndEnglish()
+    {
+        using var engine = RequireEngine();
+        var bundled = TesseractEngine.BundledLibraryPath;
+
+        await Assert.That(bundled).IsNotNull();
+        await Assert.That(TesseractEngine.LibraryPath).IsEqualTo(bundled);
+        await Assert.That(engine.DataDirectory).IsEqualTo(TesseractEngine.BundledDataDirectory);
+        await Assert.That(File.Exists(Path.Combine(engine.DataDirectory!, EnglishData))).IsTrue();
+    }
+
+    /// <summary>Verifies a downloaded pack in the pack folder is used ahead of the system's language data.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task UsesDownloadedPacks()
+    {
+        using var bundled = RequireEngine();
+        var installed = TesseractEngine.FindDataDirectory("eng")!;
+        var folder = Path.Combine(Path.GetTempPath(), $"tessdata-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(folder);
+        try
+        {
+            File.Copy(Path.Combine(installed, EnglishData), Path.Combine(folder, EnglishData));
+            using var engine = new TesseractEngine("eng", folder);
+            using var scan = new TempDocument(Scan.Value);
+            var result = OcrRunner.RecognizePage(scan.Document, (ITextLayerWriter)scan.Document, engine, 0, []);
+
+            await Assert.That(TesseractEngine.FindDataDirectory("eng", folder)).IsEqualTo(folder);
+            await Assert.That(engine.Status).IsEqualTo(OcrEngineStatus.Ready);
+            await Assert.That(result.Status).IsEqualTo(OcrPageStatus.Recognized);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
     }
 
     /// <summary>Verifies greyscale conversion uses luma weights.</summary>
@@ -129,9 +173,10 @@ public sealed class OcrTests
         await Assert.That(grey[3]).IsEqualTo(BlueLuma);
     }
 
-    /// <summary>Creates an English engine, skipping the test when Tesseract is not installed.</summary>
+    /// <summary>Creates an English engine, skipping the test only on runtimes the app ships no Tesseract for.</summary>
     /// <returns>The engine.</returns>
-    /// <exception cref="TUnit.Core.Exceptions.SkipTestException">Tesseract is not installed.</exception>
+    /// <exception cref="InvalidOperationException">The shipped Tesseract did not start.</exception>
+    /// <exception cref="TUnit.Core.Exceptions.SkipTestException">No Tesseract ships for this runtime and none is installed.</exception>
     private static TesseractEngine RequireEngine()
     {
         var engine = new TesseractEngine("eng");
@@ -141,7 +186,14 @@ public sealed class OcrTests
         }
 
         engine.Dispose();
-        throw new TUnit.Core.Exceptions.SkipTestException("Tesseract and its English data are not installed.");
+
+        // Every runtime the app ships for carries Tesseract and English, so there a failure to start is a fault.
+        if (TesseractEngine.BundledLibraryPath is { } bundled)
+        {
+            throw new InvalidOperationException($"The shipped Tesseract at {bundled} did not start: {engine.Status}.");
+        }
+
+        throw new TUnit.Core.Exceptions.SkipTestException("No Tesseract ships for this runtime and none is installed.");
     }
 
     /// <summary>Renders the first test page at scanning resolution and wraps it in an image-only PDF.</summary>

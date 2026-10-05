@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PdfViewerLite.App.Views.OcrLanguageItemView">
+  <!-- Fixed columns, so a row's buttons never move when its pack is downloaded or removed. -->
+  <Grid ColumnDefinitions="170,*,110" ColumnSpacing="8" Margin="0,2">
+    <CheckBox x:Name="UseLanguageBox" Grid.Column="0"
+              AutomationProperties.HelpText="When ticked, text recognition reads this language."
+              ToolTip.Tip="Tick to recognise text in this language. Tick more than one for documents that mix languages." />
+    <TextBlock x:Name="LanguageStatusText" Grid.Column="1" Classes="secondary" VerticalAlignment="Center" TextWrapping="Wrap" />
+    <Panel Grid.Column="2">
+      <Button x:Name="DownloadLanguageButton" Content="Download" HorizontalAlignment="Stretch"
+              AutomationProperties.Name="Download language pack"
+              AutomationProperties.HelpText="Downloads this language's data from the Tesseract project on GitHub and keeps it on this computer."
+              ToolTip.Tip="Download this language's data from the Tesseract project on GitHub and keep it on this computer, so text in it can be recognised." />
+      <Button x:Name="RemoveLanguageButton" Content="Remove" HorizontalAlignment="Stretch"
+              AutomationProperties.Name="Remove language pack"
+              AutomationProperties.HelpText="Deletes this language's downloaded data from this computer. You can download it again later."
+              ToolTip.Tip="Delete this language's downloaded data from this computer to free space. You can download it again later." />
+    </Panel>
+  </Grid>
+</UserControl>

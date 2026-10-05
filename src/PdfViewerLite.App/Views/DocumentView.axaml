@@ -98,6 +98,7 @@
               <MenuFlyout Placement="BottomEdgeAlignedRight">
                 <MenuItem x:Name="MeasureItem" Header="_Measure" InputGesture="Ctrl+Shift+M" ToolTip.Tip="Measure distances, lengths and areas on the page" />
                 <MenuItem x:Name="RecognizeTextItem" Header="Recognise _Text" ToolTip.Tip="Make scanned pages searchable by recognising their text" />
+                <MenuItem x:Name="RecognizeLanguageItem" Header="Recognise Text in Another _Language…" ToolTip.Tip="Choose the language of a scanned document, then recognise its text. Other languages download in one click." />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
@@ -391,6 +392,26 @@
         <Button x:Name="StopRecognitionButton" DockPanel.Dock="Right" Content="Stop" />
         <ProgressBar x:Name="RecognitionProgress" DockPanel.Dock="Right" Width="160" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0" />
         <TextBlock x:Name="RecognitionText" VerticalAlignment="Center" Margin="6,0" />
+      </DockPanel>
+    </Border>
+
+    <!-- Asks which language a document is in, when it matters; one button downloads it if needed and recognises. -->
+    <Border x:Name="LanguageBar" DockPanel.Dock="Top" Classes="toolbar">
+      <DockPanel>
+        <Button x:Name="CloseLanguageBarButton" DockPanel.Dock="Right" Content="Not Now"
+                AutomationProperties.Name="Not now"
+                AutomationProperties.HelpText="Hides this bar. Nothing on the pages has been changed, and any download in progress stops."
+                ToolTip.Tip="Hide this bar. Nothing on the pages has been changed, and any download in progress stops." />
+        <ProgressBar x:Name="LanguageDownloadProgress" DockPanel.Dock="Right" Width="140" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0"
+                     AutomationProperties.Name="Language download progress" />
+        <Button x:Name="LanguageActionButton" DockPanel.Dock="Right" MinWidth="220"
+                AutomationProperties.HelpText="Recognises the text of this document in the chosen language, downloading the language first when it is not on this computer."
+                ToolTip.Tip="Recognise the text of this document in the chosen language. A language not on this computer downloads first and stays for next time." />
+        <ComboBox x:Name="LanguageBox" DockPanel.Dock="Right" Width="200" VerticalAlignment="Center" Margin="8,0"
+                  AutomationProperties.Name="Document language"
+                  AutomationProperties.HelpText="The language the scanned pages are written in."
+                  ToolTip.Tip="The language the scanned pages are written in" />
+        <TextBlock x:Name="LanguageBarText" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
       </DockPanel>
     </Border>
 

@@ -13,6 +13,7 @@
     <RoslynCommonAnalyzersVersion>5.1.2</RoslynCommonAnalyzersVersion>
     <SkiaVersion>4.153.1</SkiaVersion>
     <HarfBuzzVersion>14.2.1.202</HarfBuzzVersion>
+    <TesseractNativeVersion>5.5.2.200</TesseractNativeVersion>
   </PropertyGroup>
 
   <ItemGroup Label="UI">
@@ -42,6 +43,16 @@
     <PackageVersion Include="bblanchon.PDFium.Linux" Version="$(PdfiumVersion)" />
     <PackageVersion Include="bblanchon.PDFium.Win32" Version="$(PdfiumVersion)" />
     <PackageVersion Include="bblanchon.PDFium.macOS" Version="$(PdfiumVersion)" />
+  </ItemGroup>
+
+  <!-- Native Tesseract 5.5.2 and Leptonica 1.87, built from source with vcpkg in GitHub Actions by
+       github.com/jbtule/tesseract-nuget-platforms (Apache-2.0). One package per runtime, like Skia's native assets. -->
+  <ItemGroup Label="Text recognition (Tesseract)">
+    <PackageVersion Include="Tesseract.Native.runtime.linux-x64" Version="$(TesseractNativeVersion)" />
+    <PackageVersion Include="Tesseract.Native.runtime.linux-arm64" Version="$(TesseractNativeVersion)" />
+    <PackageVersion Include="Tesseract.Native.runtime.osx-arm64" Version="$(TesseractNativeVersion)" />
+    <PackageVersion Include="Tesseract.Native.runtime.win-x64" Version="$(TesseractNativeVersion)" />
+    <PackageVersion Include="Tesseract.Native.runtime.win-arm64" Version="$(TesseractNativeVersion)" />
   </ItemGroup>
 
   <ItemGroup Label="Platform / HTTP">

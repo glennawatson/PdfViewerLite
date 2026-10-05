@@ -34,10 +34,20 @@ public sealed unsafe class TesseractEngine : IOcrEngine
     /// <summary>The environment variable Tesseract itself uses for its language data.</summary>
     private const string DataVariable = "TESSDATA_PREFIX";
 
-    /// <summary>Where distributions install the language data.</summary>
+    /// <summary>The folder name Tesseract's language data is kept in.</summary>
+    private const string DataFolder = "tessdata";
+
+    /// <summary>The extension of a language data file.</summary>
+    private const string DataExtension = ".traineddata";
+
+    /// <summary>The directory separator as a string, joined between a folder and a file name.</summary>
+    private static readonly string DirectorySeparator = Path.DirectorySeparatorChar.ToString();
+
+    /// <summary>Where distributions and installers put the language data.</summary>
     private static readonly string[] DataDirectories =
     [
         "/usr/share/tesseract-ocr/5/tessdata",
+        "/usr/share/tesseract/tessdata",
         "/usr/share/tessdata",
         "/usr/share/tesseract-ocr/4.00/tessdata",
         "/usr/local/share/tessdata",
@@ -51,51 +61,97 @@ public sealed unsafe class TesseractEngine : IOcrEngine
     /// <summary>The engine, or <see langword="null"/> when unavailable.</summary>
     private readonly TesseractHandle? _handle;
 
-    /// <summary>Initializes a new instance of the <see cref="TesseractEngine"/> class.</summary>
+    /// <summary>Initializes a new instance of the <see cref="TesseractEngine"/> class, using installed language data.</summary>
     /// <param name="language">The Tesseract language, for example <c>eng</c> or <c>eng+deu</c>.</param>
     public TesseractEngine(string language)
+        : this(language, null)
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="TesseractEngine"/> class.</summary>
+    /// <param name="language">The Tesseract language, for example <c>eng</c> or <c>eng+deu</c>.</param>
+    /// <param name="packDirectory">The folder of downloaded language packs, searched first; <see langword="null"/> for none.</param>
+    public TesseractEngine(string language, string? packDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(language);
         Language = language;
-        TesseractLibraryResolver.Install();
-        if (!TesseractLibraryResolver.TryLoad() || FindDataDirectory(language) is not { } directory)
+        if (!IsLibraryAvailable())
         {
+            Status = OcrEngineStatus.LibraryMissing;
             return;
         }
 
-        var handle = NativeMethods.TessBaseAPICreate();
-        if (handle.IsInvalid || !Initialize(handle, directory, language))
+        if (FindDataDirectory(language, packDirectory) is not { } directory)
         {
-            handle.Dispose();
+            Status = OcrEngineStatus.LanguageMissing;
             return;
         }
 
-        NativeMethods.TessBaseAPISetPageSegMode(handle, AutomaticSegmentation);
-        _handle = handle;
+        DataDirectory = directory;
+        _handle = Start(directory, language);
+        Status = _handle is null ? OcrEngineStatus.StartFailed : OcrEngineStatus.Ready;
     }
+
+    /// <summary>Gets the folder holding the language data shipped with the app, or <see langword="null"/> when there is none.</summary>
+    public static string? BundledDataDirectory { get; } = FindBundledDataDirectory();
+
+    /// <summary>Gets the path or name Tesseract was loaded from, or <see langword="null"/> before it loads.</summary>
+    public static string? LibraryPath => TesseractLibraryResolver.LoadedFrom;
+
+    /// <summary>Gets the path of the Tesseract library shipped with the app, or <see langword="null"/> when none ships for this runtime.</summary>
+    public static string? BundledLibraryPath => TesseractLibraryResolver.FindBundled();
 
     /// <summary>Gets the language the engine recognises.</summary>
     public string Language { get; }
 
+    /// <summary>Gets the folder the language data was read from, or <see langword="null"/> when none was found.</summary>
+    public string? DataDirectory { get; }
+
     /// <inheritdoc/>
     public bool IsAvailable => _handle is not null;
+
+    /// <inheritdoc/>
+    public OcrEngineStatus Status { get; }
+
+    /// <summary>Determines whether the native Tesseract library can be loaded, preferring the copy shipped with the app.</summary>
+    /// <returns><see langword="true"/> when it was found.</returns>
+    public static bool IsLibraryAvailable()
+    {
+        TesseractLibraryResolver.Install();
+        return TesseractLibraryResolver.TryLoad();
+    }
 
     /// <summary>Finds the directory holding the language data for every language in a Tesseract language string.</summary>
     /// <param name="language">The language, for example <c>eng+deu</c>.</param>
     /// <returns>The directory, or <see langword="null"/> when the data is not installed.</returns>
-    public static string? FindDataDirectory(string language)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static string? FindDataDirectory(string language) => FindDataDirectory(language, null);
+
+    /// <summary>
+    /// Finds one directory holding the language data for every language in a Tesseract language string, because
+    /// Tesseract reads all of a run's languages from one folder. Downloaded packs come first, then the data shipped with
+    /// the app, then any the person or their system installed.
+    /// </summary>
+    /// <param name="language">The language, for example <c>eng+deu</c>.</param>
+    /// <param name="packDirectory">The folder of downloaded language packs, or <see langword="null"/>.</param>
+    /// <returns>The directory, or <see langword="null"/> when the data is not installed.</returns>
+    public static string? FindDataDirectory(string language, string? packDirectory)
     {
         ArgumentNullException.ThrowIfNull(language);
+        if (!string.IsNullOrEmpty(packDirectory) && HasLanguages(packDirectory, language))
+        {
+            return packDirectory;
+        }
+
+        if (BundledDataDirectory is { } bundled && HasLanguages(bundled, language))
+        {
+            return bundled;
+        }
+
         var configured = Environment.GetEnvironmentVariable(DataVariable);
         if (!string.IsNullOrEmpty(configured) && HasLanguages(configured, language))
         {
             return configured;
-        }
-
-        var local = Path.Combine(AppContext.BaseDirectory, "tessdata");
-        if (HasLanguages(local, language))
-        {
-            return local;
         }
 
         foreach (var directory in DataDirectories)
@@ -187,23 +243,47 @@ public sealed unsafe class TesseractEngine : IOcrEngine
         while (NativeMethods.TessResultIteratorNext(iterator, WordLevel) != 0);
     }
 
+    /// <summary>Creates and initialises the native engine, treating a library without the expected entry points as unusable.</summary>
+    /// <param name="directory">The language data directory.</param>
+    /// <param name="language">The language.</param>
+    /// <returns>The engine, or <see langword="null"/> when it could not start.</returns>
+    private static TesseractHandle? Start(string directory, string language)
+    {
+        TesseractHandle? handle = null;
+        try
+        {
+            handle = NativeMethods.TessBaseAPICreate();
+            if (handle.IsInvalid || !Initialize(handle, directory, language))
+            {
+                handle.Dispose();
+                return null;
+            }
+
+            NativeMethods.TessBaseAPISetPageSegMode(handle, AutomaticSegmentation);
+            return handle;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // An older or unusual build of the library lacks part of the C API.
+            handle?.Dispose();
+            return null;
+        }
+        catch (DllNotFoundException)
+        {
+            // The library loaded but one of its own dependencies, such as Leptonica, did not.
+            handle?.Dispose();
+            return null;
+        }
+    }
+
     /// <summary>Initialises the engine with a language.</summary>
     /// <param name="handle">The engine.</param>
     /// <param name="directory">The language data directory.</param>
     /// <param name="language">The language.</param>
     /// <returns><see langword="true"/> on success.</returns>
-    private static bool Initialize(TesseractHandle handle, string directory, string language)
-    {
-        var directoryBytes = Encoding.UTF8.GetBytes(directory + '\0');
-        var languageBytes = Encoding.UTF8.GetBytes(language + '\0');
-        fixed (byte* directoryPointer = directoryBytes)
-        {
-            fixed (byte* languagePointer = languageBytes)
-            {
-                return NativeMethods.TessBaseAPIInit3(handle, directoryPointer, languagePointer) == 0;
-            }
-        }
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool Initialize(TesseractHandle handle, string directory, string language) =>
+        NativeMethods.TessBaseAPIInit3(handle, directory, language) == 0;
 
     /// <summary>Determines whether a directory holds the data for every language in a language string.</summary>
     /// <param name="directory">The directory.</param>
@@ -211,14 +291,31 @@ public sealed unsafe class TesseractEngine : IOcrEngine
     /// <returns><see langword="true"/> when all are present.</returns>
     private static bool HasLanguages(string directory, string language)
     {
+        var separator = Path.EndsInDirectorySeparator(directory) ? ReadOnlySpan<char>.Empty : DirectorySeparator.AsSpan();
         foreach (var range in language.AsSpan().Split('+'))
         {
-            if (!File.Exists(Path.Combine(directory, $"{language.AsSpan()[range]}.traineddata")))
+            // One string per file checked: File.Exists has no span overload.
+            if (!File.Exists(string.Concat(directory, separator, language.AsSpan()[range], DataExtension)))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /// <summary>Finds the language data shipped with the app: beside it, or in the bundle's resources on macOS.</summary>
+    /// <returns>The folder, or <see langword="null"/> when the app ships none.</returns>
+    private static string? FindBundledDataDirectory()
+    {
+        var beside = Path.Combine(AppContext.BaseDirectory, DataFolder);
+        if (Directory.Exists(beside))
+        {
+            return beside;
+        }
+
+        // A macOS bundle keeps data in Contents/Resources, next to Contents/MacOS where the app runs.
+        var resources = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Resources", DataFolder));
+        return OperatingSystem.IsMacOS() && Directory.Exists(resources) ? resources : null;
     }
 }

@@ -6,7 +6,7 @@ using PdfViewerLite.Core.Ocr;
 
 namespace PdfViewerLite.Core.Tests.Ocr;
 
-/// <summary>Tests for <see cref="OcrRunner"/>'s greyscale conversion.</summary>
+/// <summary>Tests for <see cref="OcrRunner"/>'s greyscale conversion and confidence.</summary>
 public sealed class OcrRunnerTests
 {
     /// <summary>A pixel count that is not a multiple of the vector step, so the scalar tail runs too.</summary>
@@ -73,5 +73,19 @@ public sealed class OcrRunnerTests
         OcrRunner.ToGrey(bgra, grey);
 
         await Assert.That(grey[^1]).IsEqualTo(byte.MaxValue);
+    }
+
+    /// <summary>Verifies the mean word confidence, which decides whether to ask for the document's language.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task AveragesWordConfidence()
+    {
+        const float clear = 90;
+        const float poor = 30;
+        const float mean = 60;
+        List<OcrWord> words = [new("clear", default, clear), new("poor", default, poor)];
+
+        await Assert.That(OcrRunner.AverageConfidence(words)).IsEqualTo(mean);
+        await Assert.That(OcrRunner.AverageConfidence([])).IsEqualTo(0F);
     }
 }

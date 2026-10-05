@@ -45,8 +45,6 @@ internal static class LinuxPayload
         "libxkbcommon0",
         "libegl1",
         "libcups2",
-        "libtesseract5",
-        "tesseract-ocr-eng",
         "libpulse0",
     ];
 
@@ -60,8 +58,6 @@ internal static class LinuxPayload
         "libxkbcommon",
         "mesa-libEGL",
         "cups-libs",
-        "tesseract",
-        "tesseract-langpack-eng",
         "pulseaudio-libs",
     ];
 

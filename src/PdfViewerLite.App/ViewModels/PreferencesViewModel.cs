@@ -43,6 +43,7 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
+        OcrLanguages = new(services);
         Load();
         Follow();
     }
@@ -78,6 +79,9 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         "On this computer: Kokoro (American, British)",
         "Azure AI Speech with your own key",
     ];
+
+    /// <summary>Gets the text recognition languages: which are used, and their packs to download or remove.</summary>
+    public OcrLanguagesViewModel OcrLanguages { get; }
 
     /// <summary>Gets or sets the Read Aloud engine index.</summary>
     [Reactive(nameof(UsesAzure))]
@@ -131,8 +135,11 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
     public partial int FontSize { get; set; }
 
     /// <inheritdoc/>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Dispose() => _subscriptions.Dispose();
+    public void Dispose()
+    {
+        _subscriptions.Dispose();
+        OcrLanguages.Dispose();
+    }
 
     /// <summary>Asks the window to close; the choices are already applied.</summary>
     [ReactiveCommand]

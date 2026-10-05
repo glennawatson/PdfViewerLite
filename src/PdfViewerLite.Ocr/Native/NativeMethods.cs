@@ -6,10 +6,13 @@ using System.Runtime.InteropServices;
 
 namespace PdfViewerLite.Ocr.Native;
 
-/// <summary>Source generated entry points of Tesseract's C API (<c>tesseract/capi.h</c>).</summary>
+/// <summary>
+/// Source generated entry points of Tesseract's C API (<c>tesseract/capi.h</c>). <see cref="TesseractLibraryResolver"/>
+/// binds <see cref="Library"/> by absolute path to the copy shipped with the app, as PDFium and Skia are bound.
+/// </summary>
 internal static unsafe partial class NativeMethods
 {
-    /// <summary>The native library name, resolved by <see cref="TesseractLibraryResolver"/>.</summary>
+    /// <summary>The native library name: <c>libtesseract.so</c>, <c>libtesseract.dylib</c> or <c>tesseract.dll</c>.</summary>
     internal const string Library = "tesseract";
 
     /// <summary>Native <c>TessBaseAPICreate</c>.</summary>
@@ -24,11 +27,11 @@ internal static unsafe partial class NativeMethods
 
     /// <summary>Native <c>TessBaseAPIInit3</c>.</summary>
     /// <param name="handle">The engine.</param>
-    /// <param name="dataPath">The UTF-8 tessdata directory.</param>
-    /// <param name="language">The UTF-8 language, for example <c>eng</c>.</param>
+    /// <param name="dataPath">The tessdata directory.</param>
+    /// <param name="language">The language, for example <c>eng</c>.</param>
     /// <returns>0 on success.</returns>
-    [LibraryImport(Library)]
-    internal static partial int TessBaseAPIInit3(TesseractHandle handle, byte* dataPath, byte* language);
+    [LibraryImport(Library, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial int TessBaseAPIInit3(TesseractHandle handle, string dataPath, string language);
 
     /// <summary>Native <c>TessBaseAPISetPageSegMode</c>.</summary>
     /// <param name="handle">The engine.</param>
