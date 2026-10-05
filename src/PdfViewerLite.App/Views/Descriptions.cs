@@ -245,12 +245,6 @@ public static class Descriptions
     /// <summary>The button that closes the Fill and Sign tools.</summary>
     public static readonly string FillSignDone = "Put the Fill & Sign tools away.";
 
-    /// <summary>The Draw Signature button.</summary>
-    public static readonly string DrawSignature = "Draw your signature, then drag on the page where it should go.";
-
-    /// <summary>The Type Signature button.</summary>
-    public static readonly string TypeSignature = "Type your name as a signature, then click on the page where it should go.";
-
     /// <summary>The Sign with Certificate button.</summary>
     public static readonly string CertificateSign = "Sign a copy of the document with your digital certificate, a .p12 or .pfx file.";
 
@@ -507,7 +501,73 @@ public static class Descriptions
     public static readonly string ChooseCertificate = "Choose your certificate file from a folder.";
 
     /// <summary>The certificate password box.</summary>
-    public static readonly string CertificatePassword = "Type the password for your certificate.";
+    public static readonly string CertificatePassword = "Type the password for your certificate. It is never saved.";
+
+    /// <summary>The list of remembered certificates.</summary>
+    public static readonly string RememberedCertificates = "Pick a certificate you asked this computer to remember.";
+
+    /// <summary>The button that forgets a remembered certificate.</summary>
+    public static readonly string ForgetCertificate = "Forget the picked certificate. The certificate file itself is not changed.";
+
+    /// <summary>The check box that remembers a certificate.</summary>
+    public static readonly string RememberCertificate = "Offer this certificate next time. Only where the file is and the name in it are kept, never the password.";
+
+    /// <summary>The Signature button in Fill and Sign.</summary>
+    public static readonly string SignatureMark = "Type, draw or choose a picture of your signature, then place it on the page.";
+
+    /// <summary>The Initials button in Fill and Sign.</summary>
+    public static readonly string InitialsMark = "Type, draw or choose a picture of your initials, then place them on the page.";
+
+    /// <summary>The button that places the mark being previewed.</summary>
+    public static readonly string PlaceMark = $"Put the signature on the page where the preview is.{Shortcut}Enter";
+
+    /// <summary>The button that stops placing a mark.</summary>
+    public static readonly string CancelPlacement = $"Stop placing the signature. The document is not changed.{Shortcut}Escape";
+
+    /// <summary>The button that makes the mark being placed bigger.</summary>
+    public static readonly string BiggerMark = $"Make the signature being placed bigger.{Shortcut}+";
+
+    /// <summary>The button that makes the mark being placed smaller.</summary>
+    public static readonly string SmallerMark = $"Make the signature being placed smaller.{Shortcut}-";
+
+    /// <summary>The button that picks up the last placed mark again.</summary>
+    public static readonly string AdjustMark = "Pick up the signature you just placed so you can move or resize it again.";
+
+    /// <summary>The button that removes the last placed mark.</summary>
+    public static readonly string RemoveMark = "Take the signature you just placed off the page.";
+
+    /// <summary>The Type option when making a signature.</summary>
+    public static readonly string MarkType = "Make it by typing. This works with only a keyboard.";
+
+    /// <summary>The Draw option when making a signature.</summary>
+    public static readonly string MarkDraw = "Make it by drawing with a mouse, pen or finger.";
+
+    /// <summary>The Image option when making a signature.</summary>
+    public static readonly string MarkImage = "Make it from a picture, such as a photo or scan of your signature.";
+
+    /// <summary>The text box when typing a signature.</summary>
+    public static readonly string MarkText = "Type it as you want it to appear.";
+
+    /// <summary>The drawing area when drawing a signature.</summary>
+    public static readonly string MarkPad = "Draw here. Each line you draw is added until you clear it.";
+
+    /// <summary>The button that clears a drawn signature.</summary>
+    public static readonly string ClearDrawing = "Rub out the drawing and start again.";
+
+    /// <summary>The button that chooses a picture of a signature.</summary>
+    public static readonly string ChooseSignatureImage = "Choose a picture of your signature from a folder.";
+
+    /// <summary>The check box that removes white paper from a picture.</summary>
+    public static readonly string RemovePaper = "Make white paper see-through so only the ink shows. Untick to keep the picture as it is.";
+
+    /// <summary>The check box that remembers a signature.</summary>
+    public static readonly string RememberMark = "Keep it on this computer to use again. Untick to forget it after this time.";
+
+    /// <summary>The button that forgets a remembered signature.</summary>
+    public static readonly string ForgetMark = "Forget the remembered one now. Signatures already placed are not changed.";
+
+    /// <summary>The button that uses the signature that was made.</summary>
+    public static readonly string UseMark = "Use this, then choose where it goes on the page.";
 
     /// <summary>The signing reason box.</summary>
     public static readonly string SigningReason = "Optional. Type why you are signing, such as Approved.";

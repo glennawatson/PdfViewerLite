@@ -29,6 +29,8 @@
       <SolidColorBrush x:Key="AppSpokenBrush" Color="#409DBF93" />
       <SolidColorBrush x:Key="AppDimBrush" Color="#992A2826" />
       <SolidColorBrush x:Key="AppPaperBrush" Color="#2A2826" />
+      <!-- Signatures are drawn and previewed on soft paper in every scheme, because they are written on the page in dark ink. -->
+      <SolidColorBrush x:Key="AppSignaturePaperBrush" Color="#FBF9F4" />
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>

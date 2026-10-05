@@ -62,16 +62,20 @@ public sealed class TestTimestampAuthority : ISignatureTimestamper, IDisposable
     /// <summary>Gets the authority's certificate, to be trusted by the test.</summary>
     public X509Certificate2 Certificate { get; }
 
+    /// <summary>Gets the number of tokens issued, so tests can tell a timestamp was asked for.</summary>
+    public int Issued { get; private set; }
+
     /// <inheritdoc/>
-    public byte[] Timestamp(byte[] data)
+    public ValueTask<byte[]> TimestampAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(data);
-        var content = new ContentInfo(new(TstInfoOid), TstInfo(SHA256.HashData(data)));
+        cancellationToken.ThrowIfCancellationRequested();
+        var content = new ContentInfo(new(TstInfoOid), TstInfo(SHA256.HashData(data.Span)));
         var cms = new SignedCms(content, false);
         var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, Certificate) { DigestAlgorithm = new(Sha256Oid), IncludeOption = X509IncludeOption.EndCertOnly };
         _ = signer.SignedAttributes.Add(new AsnEncodedData(SigningCertificateV2Oid, SigningCertificateV2()));
         cms.ComputeSignature(signer, true);
-        return cms.Encode();
+        Issued++;
+        return ValueTask.FromResult(cms.Encode());
     }
 
     /// <inheritdoc/>

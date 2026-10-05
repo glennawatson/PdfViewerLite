@@ -35,7 +35,7 @@ public sealed class TimestampTests
         var now = TimeProvider.System.GetUtcNow();
         using var certificate = TestSignedPdf.CreateCertificate(TimeProvider.System);
         using var authority = new TestTimestampAuthority(now);
-        var signed = PdfSigner.Sign(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, now), authority);
+        var signed = await PdfSigner.SignAsync(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, now), authority, CancellationToken.None);
 
         var result = await CheckAsync(signed, [certificate, authority.Certificate]);
 
@@ -57,7 +57,7 @@ public sealed class TimestampTests
         var past = TimeProvider.System.GetUtcNow().AddYears(-YearsAgo);
         using var certificate = TestSignedPdf.CreateCertificate(new FixedClock(past));
         using var authority = new TestTimestampAuthority(past.AddDays(1));
-        var stamped = PdfSigner.Sign(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, past.AddDays(1)), authority);
+        var stamped = await PdfSigner.SignAsync(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, past.AddDays(1)), authority, CancellationToken.None);
         var unstamped = PdfSigner.Sign(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, past.AddDays(1)));
 
         var withTimestamp = await CheckAsync(stamped, [certificate, authority.Certificate]);
@@ -76,7 +76,7 @@ public sealed class TimestampTests
         using var certificate = TestSignedPdf.CreateCertificate(TimeProvider.System);
         using var authority = new TestTimestampAuthority(now);
         var signed = PdfSigner.Sign(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, now));
-        var stamped = PdfSigner.AddDocumentTimestamp(signed, authority);
+        var stamped = await PdfSigner.AddDocumentTimestampAsync(signed, authority, CancellationToken.None);
 
         var result = await CheckAsync(stamped, [certificate, authority.Certificate]);
 
@@ -95,7 +95,7 @@ public sealed class TimestampTests
     {
         var now = TimeProvider.System.GetUtcNow();
         using var authority = new TestTimestampAuthority(now);
-        var stamped = PdfSigner.AddDocumentTimestamp(TestPdf.Create(Pages), authority);
+        var stamped = await PdfSigner.AddDocumentTimestampAsync(TestPdf.Create(Pages), authority, CancellationToken.None);
         var at = stamped.AsSpan().IndexOf(") Tj"u8) - 1;
         stamped[at] = stamped[at] == (byte)'X' ? (byte)'Y' : (byte)'X';
 
@@ -112,7 +112,7 @@ public sealed class TimestampTests
         var now = TimeProvider.System.GetUtcNow();
         using var certificate = TestSignedPdf.CreateCertificate(TimeProvider.System);
         using var authority = new TestTimestampAuthority(now);
-        var signed = PdfSigner.Sign(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, now), authority);
+        var signed = await PdfSigner.SignAsync(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, now), authority, CancellationToken.None);
         byte[] revocation = [0x30, 0x03, 0x0A, 0x01, 0x00];
         var withStore = PdfSigner.AddValidationData(signed, [certificate.RawData, authority.Certificate.RawData], [revocation], [revocation]);
 
@@ -126,6 +126,23 @@ public sealed class TimestampTests
         await Assert.That(result[0].Integrity).IsEqualTo(SignatureIntegrity.ChangedAfterSigning);
         await Assert.That(result[0].TimestampSummary).Contains("Long-term validation");
         await Assert.That(DocumentSecurityStore.Read(signed).HasRevocationData).IsFalse();
+    }
+
+    /// <summary>Cancelling stops signing while it waits for the timestamp authority, and no token is issued.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task CancellingStopsTheTimestampRequest()
+    {
+        var now = TimeProvider.System.GetUtcNow();
+        using var certificate = TestSignedPdf.CreateCertificate(TimeProvider.System);
+        using var authority = new TestTimestampAuthority(now);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.That(async () => _ = await PdfSigner.SignAsync(TestPdf.Create(Pages), certificate, new(0, Reason, string.Empty, now), authority, cancellation.Token))
+            .Throws<OperationCanceledException>();
+        await Assert.That(async () => _ = await PdfSigner.AddDocumentTimestampAsync(TestPdf.Create(Pages), authority, cancellation.Token)).Throws<OperationCanceledException>();
+        await Assert.That(authority.Issued).IsEqualTo(0);
     }
 
     /// <summary>Writes a file, reads its signatures with PDFium and checks them.</summary>

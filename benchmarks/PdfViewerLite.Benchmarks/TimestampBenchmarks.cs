@@ -49,8 +49,9 @@ public class TimestampBenchmarks
     private SigningRequest _request;
 
     /// <summary>Creates the certificate, authority and documents.</summary>
+    /// <returns>A task.</returns>
     [GlobalSetup]
-    public void Setup()
+    public async Task SetupAsync()
     {
         var now = TimeProvider.System.GetUtcNow();
         _certificate = TestSignedPdf.CreateCertificate(TimeProvider.System);
@@ -58,10 +59,10 @@ public class TimestampBenchmarks
         _trust = [_certificate, _authority.Certificate];
         _request = new(0, "Approved", "Brisbane", now);
         _document = TestPdf.Create(Pages);
-        var signed = PdfSigner.Sign(_document, _certificate, _request, _authority);
+        var signed = await PdfSigner.SignAsync(_document, _certificate, _request, _authority, CancellationToken.None).ConfigureAwait(false);
         _validated = PdfSigner.AddValidationData(signed, [_certificate.RawData, _authority.Certificate.RawData], [], []);
         _path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-timestamp-bench-{Guid.NewGuid():N}.pdf");
-        File.WriteAllBytes(_path, _validated);
+        await File.WriteAllBytesAsync(_path, _validated).ConfigureAwait(false);
         using var opened = new PdfiumEngine().Open(_path, null);
         _signature = ((ISignatureSource)opened).GetSignatures()[0];
         _store = DocumentSecurityStore.Read(_validated);
@@ -79,12 +80,12 @@ public class TimestampBenchmarks
     /// <summary>Signs with a trusted timestamp.</summary>
     /// <returns>The signed length.</returns>
     [Benchmark]
-    public int SignWithTimestamp() => PdfSigner.Sign(_document, _certificate, _request, _authority).Length;
+    public async Task<int> SignWithTimestamp() => (await PdfSigner.SignAsync(_document, _certificate, _request, _authority, CancellationToken.None).ConfigureAwait(false)).Length;
 
     /// <summary>Adds a document timestamp.</summary>
     /// <returns>The stamped length.</returns>
     [Benchmark]
-    public int AddDocumentTimestamp() => PdfSigner.AddDocumentTimestamp(_document, _authority).Length;
+    public async Task<int> AddDocumentTimestamp() => (await PdfSigner.AddDocumentTimestampAsync(_document, _authority, CancellationToken.None).ConfigureAwait(false)).Length;
 
     /// <summary>Reads the document security store.</summary>
     /// <returns>The stored certificates.</returns>

@@ -12,8 +12,25 @@ public sealed class SignaturePixelsTests
     /// <summary>The expected transparent paper and black ink pixels.</summary>
     private static readonly byte[] SoftBlackInk = [0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 127];
 
+    /// <summary>Premultiplied pixels as a decoder gives them: half-transparent colour, clear, and solid colour.</summary>
+    private static readonly byte[] Premultiplied = [64, 32, 16, 128, 0, 0, 0, 0, 10, 20, 30, 255];
+
+    /// <summary>The same pixels with straight alpha.</summary>
+    private static readonly byte[] Straight = [128, 64, 32, 128, 0, 0, 0, 0, 10, 20, 30, 255];
+
     /// <summary>The expected blue ink pixel after removing white paper.</summary>
     private static readonly byte[] SoftBlueInk = [255, 0, 0, 127];
+
+    /// <summary>Verifies premultiplied pixels from an image decoder become straight alpha, leaving clear and solid pixels alone.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task UnpremultipliesDecodedPixels()
+    {
+        var pixels = Premultiplied.ToArray();
+        SignaturePixels.Unpremultiply(pixels);
+        await Assert.That(pixels.SequenceEqual(Straight)).IsTrue();
+        await Assert.That(static () => SignaturePixels.Unpremultiply(new byte[3])).Throws<ArgumentException>();
+    }
 
     /// <summary>Verifies white paper disappears while grey edge pixels become translucent black.</summary>
     /// <returns>A task.</returns>

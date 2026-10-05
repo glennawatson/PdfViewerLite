@@ -9,4 +9,5 @@ namespace PdfViewerLite.Core.Settings;
 /// <summary>Source generated JSON metadata for settings, keeping serialisation reflection free for Native AOT.</summary>
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(AppSettings))]
+[JsonSerializable(typeof(SavedSignatureMarks))]
 internal sealed partial class SettingsJsonContext : JsonSerializerContext;

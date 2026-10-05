@@ -542,6 +542,17 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _navigationRequests.OnNext(new(Math.Clamp(pageIndex, 0, PageCount - 1), null, 0));
     }
 
+    /// <summary>Scrolls an area of a page into view without adding it to Back history, for example a mark being placed.</summary>
+    /// <param name="pageIndex">The page.</param>
+    /// <param name="area">The area, in page space.</param>
+    public void ShowArea(int pageIndex, PageRect area)
+    {
+        if ((uint)pageIndex < (uint)PageCount)
+        {
+            _navigationRequests.OnNext(new(pageIndex, area, 0));
+        }
+    }
+
     /// <summary>Called by the canvas as the view scrolls.</summary>
     /// <param name="position">The position at the top of the viewport.</param>
     /// <param name="currentPage">The page in the middle of the viewport.</param>

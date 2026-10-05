@@ -19,6 +19,33 @@ public static class SignaturePixels
     /// <summary>The largest channel value.</summary>
     private const int Opaque = 255;
 
+    /// <summary>Converts premultiplied BGRA pixels, as decoders produce them, to the straight alpha signatures store.</summary>
+    /// <param name="pixels">Tightly packed BGRA pixels. The buffer is updated in place.</param>
+    /// <exception cref="ArgumentException">The buffer ends with an incomplete pixel.</exception>
+    public static void Unpremultiply(Span<byte> pixels)
+    {
+        if (pixels.Length % Channels != 0)
+        {
+            throw new ArgumentException("The image must contain complete BGRA pixels.", nameof(pixels));
+        }
+
+        for (var offset = 0; offset < pixels.Length; offset += Channels)
+        {
+            var alpha = pixels[offset + AlphaOffset];
+            if (alpha is 0 or Opaque)
+            {
+                continue;
+            }
+
+            // Round to nearest so a premultiply and unpremultiply round trip keeps colours.
+            var half = alpha >> 1;
+            for (var channel = 0; channel < AlphaOffset; channel++)
+            {
+                pixels[offset + channel] = (byte)Math.Min(Opaque, ((pixels[offset + channel] * Opaque) + half) / alpha);
+            }
+        }
+    }
+
     /// <summary>Removes white paper while retaining soft ink edges. Leaves images with existing transparency unchanged.</summary>
     /// <param name="pixels">Tightly packed, unpremultiplied BGRA pixels. The buffer is updated in place.</param>
     /// <exception cref="ArgumentException">The buffer ends with an incomplete pixel.</exception>
