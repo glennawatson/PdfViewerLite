@@ -30,6 +30,9 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
     /// <summary>The pixel content version.</summary>
     private int _version = 1;
 
+    /// <summary>The unlock callback, created once rather than on every lock.</summary>
+    private Action? _onUnlock;
+
     /// <summary>Initializes a new instance of the <see cref = "WriteableBitmapImpl"/> class.</summary>
     /// <param name = "size">The pixel dimensions.</param>
     /// <param name = "dpi">The DPI.</param>
@@ -124,7 +127,7 @@ internal sealed class WriteableBitmapImpl : IWriteableBitmapImpl, IDrawableBitma
     public ILockedFramebuffer Lock()
     {
         var format = Format ?? throw new NotSupportedException($"Unsupported pixel format {_bitmap.ColorType}.");
-        return new LockedFramebuffer(_bitmap.GetPixels(), PixelSize, _bitmap.RowBytes, Dpi, format, AlphaFormat ?? Avalonia.Platform.AlphaFormat.Premul, OnUnlock);
+        return new LockedFramebuffer(_bitmap.GetPixels(), PixelSize, _bitmap.RowBytes, Dpi, format, AlphaFormat ?? Avalonia.Platform.AlphaFormat.Premul, _onUnlock ??= OnUnlock);
     }
 
     /// <inheritdoc/>

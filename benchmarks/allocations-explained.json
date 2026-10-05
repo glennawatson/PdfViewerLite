@@ -32,6 +32,36 @@
   // Every allocation PdfViewerLite makes inside a measured benchmark must be listed here with its reason.
   // "type" and "frame" are prefixes of the allocated type and the innermost PdfViewerLite method.
   {
+    "type": "Avalonia.Platform.LockedFramebuffer",
+    "frame": "PdfViewerLite.Skia.Bitmaps.WriteableBitmapImpl.Lock(",
+    "reason": "Avalonia's ILockedFramebuffer contract returns a disposable lock object. A tile is locked once, while the render thread writes its pixels; drawing a cached tile does not lock it."
+  },
+  {
+    "type": "SkiaSharp.SKPixmap",
+    "frame": "PdfViewerLite.Skia.Bitmaps.WriteableBitmapImpl.GetOrCreateImage(",
+    "reason": "SKImage.FromPixels wraps the tile's pixels in a pixmap instead of copying 1 MB per tile. It runs on a tile's first draw after a write; later frames reuse the cached image (DrawOneToOne allocates nothing)."
+  },
+  {
+    "type": "SkiaSharp.SKImage",
+    "frame": "PdfViewerLite.Skia.Bitmaps.WriteableBitmapImpl.GetOrCreateImage(",
+    "reason": "The image that shares the tile's pixels, created on the first draw after a write and cached until the next write."
+  },
+  {
+    "type": "System.WeakReference",
+    "frame": "PdfViewerLite.Skia.Bitmaps.WriteableBitmapImpl.GetOrCreateImage(",
+    "reason": "SkiaSharp registers each new native wrapper in its handle table with a weak reference. One per image snapshot, once per written tile."
+  },
+  {
+    "type": "<>c__DisplayClass",
+    "frame": "PdfViewerLite.Skia.Bitmaps.WriteableBitmapImpl.GetOrCreateImage(",
+    "reason": "SkiaSharp's FromPixels keeps the pixmap alive through a release callback closure. One per image snapshot, once per written tile."
+  },
+  {
+    "type": "System.Object",
+    "frame": "PdfViewerLite.Skia.Bitmaps.WriteableBitmapImpl.GetOrCreateImage(",
+    "reason": "SkiaSharp's handle table entry for a new native wrapper. One per image snapshot, once per written tile."
+  },
+  {
     "type": "Avalonia.AvaloniaPropertyChangedEventArgs`1[System.Double]",
     "frame": "PdfViewerLite.App.Views.PrintPreviewPageView.SetSheetSize(",
     "reason": "Assigning a preview sheet changes its image width and height. Avalonia creates property notifications for layout. This runs when a sheet is assigned or recycled."
