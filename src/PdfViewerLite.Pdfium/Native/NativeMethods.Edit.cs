@@ -272,6 +272,43 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial int FPDFPageObj_SetStrokeWidth(nint pageObject, float width);
 
+    /// <summary>Native <c>FPDFPageObj_CreateNewPath</c> entry point.</summary>
+    /// <param name="x">Where the path starts, across.</param>
+    /// <param name="y">Where the path starts, up.</param>
+    /// <returns>A new path object.</returns>
+    [LibraryImport(Library)]
+    internal static partial nint FPDFPageObj_CreateNewPath(float x, float y);
+
+    /// <summary>Native <c>FPDFPath_MoveTo</c> entry point.</summary>
+    /// <param name="path">The path object.</param>
+    /// <param name="x">Where the next part starts, across.</param>
+    /// <param name="y">Where the next part starts, up.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPath_MoveTo(nint path, float x, float y);
+
+    /// <summary>Native <c>FPDFPath_LineTo</c> entry point.</summary>
+    /// <param name="path">The path object.</param>
+    /// <param name="x">Where the line ends, across.</param>
+    /// <param name="y">Where the line ends, up.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPath_LineTo(nint path, float x, float y);
+
+    /// <summary>Native <c>FPDFPageObj_SetLineCap</c> entry point.</summary>
+    /// <param name="pageObject">The page object.</param>
+    /// <param name="lineCap">The cap: 0 butt, 1 round, 2 square.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPageObj_SetLineCap(nint pageObject, int lineCap);
+
+    /// <summary>Native <c>FPDFPageObj_SetLineJoin</c> entry point.</summary>
+    /// <param name="pageObject">The page object.</param>
+    /// <param name="lineJoin">The join: 0 miter, 1 round, 2 bevel.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFPageObj_SetLineJoin(nint pageObject, int lineJoin);
+
     /// <summary>Native <c>FPDFPath_SetDrawMode</c> entry point.</summary>
     /// <param name="path">The path object.</param>
     /// <param name="fillMode">0 for no fill.</param>
