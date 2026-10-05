@@ -46,14 +46,14 @@ jobs:
         ref: ${{ inputs.sourceRef }}
         fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
         stamp-version: 'false'
     - name: Resolve built commit SHA
       id: sourcesha
-      uses: glennawatson/actions-common/.github/actions/run-csharp@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         shared-script: resolve-built-commit-sha-c775df1621.cs
     - name: Validate version inputs
@@ -61,13 +61,13 @@ jobs:
         BUMP: ${{ inputs.bump }}
         PRE_RELEASE: ${{ inputs.preRelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         shared-script: validate-version-inputs-2aad3ac3e2.cs
     - name: Compute version and tag
       if: inputs.bump != '(pick one)' && inputs.versionOverride == ''
       id: bump
-      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         bump: ${{ inputs.bump }}
         tag-prefix: ''
@@ -79,12 +79,12 @@ jobs:
         BUMP_TAG: ${{ steps.bump.outputs.tag }}
         BUMP_PRERELEASE: ${{ steps.bump.outputs.prerelease }}
         VERSION_OVERRIDE: ${{ inputs.versionOverride }}
-      uses: glennawatson/actions-common/.github/actions/run-csharp@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/run-csharp@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         shared-script: resolve-release-tag-d98a6a5208.cs
     - name: Stamp version with MinVer
       id: minver
-      uses: glennawatson/actions-common/.github/actions/minver@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/minver@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         tag-prefix: ''
         version-override: ${{ inputs.versionOverride != '' && inputs.versionOverride || steps.bump.outputs.version }}
@@ -101,7 +101,7 @@ jobs:
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
@@ -153,15 +153,15 @@ jobs:
         merge-multiple: true
         path: signed
     - name: Connect SimplySign
-      uses: glennawatson/actions-common/.github/actions/certum-connect@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/certum-connect@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
     - name: Sign and verify Windows payloads and installers
       id: authenticode
-      uses: glennawatson/actions-common/.github/actions/sign-authenticode@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/sign-authenticode@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         tools-assembly: artifacts/tools/PdfViewerLite.Tools.dll
         packages-glob: 'signed/*'
     - name: Sign and verify detached archive signatures
-      uses: glennawatson/actions-common/.github/actions/sign-detached@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/sign-detached@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         tools-assembly: artifacts/tools/PdfViewerLite.Tools.dll
         packages-glob: 'signed/*'
@@ -193,7 +193,7 @@ jobs:
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
@@ -227,7 +227,7 @@ jobs:
       with:
         ref: ${{ needs.version.outputs.sourceSha }}
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
@@ -260,7 +260,7 @@ jobs:
         ref: ${{ needs.version.outputs.sourceSha }}
         fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@487388d02447ebe6073d26a4d4d490c4fd249189 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@5e0bd6d05eb07c7ee0bb7930596d9d38dc6e0070 # main
       with:
         dotnet-versions: |
           11.0.100-rc.1.26425.128
