@@ -31,7 +31,7 @@ jobs:
       with:
         fetch-depth: 0
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -39,32 +39,17 @@ jobs:
           11.x
     - name: Compute version and tag
       id: bump
-      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/compute-version-and-tag@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         bump: ${{ inputs.bump }}
         tag-prefix: ''
         pre-release-id: ${{ inputs.preRelease }}
         push-tag: 'false'
 
-  build:
-    name: Build and test
-    needs: version
-    permissions:
-      contents: read
-      actions: write
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-    with:
-      srcFolder: '.'
-      solutionFile: PdfViewerLite.slnx
-      minverTagPrefix: ''
-      uploadCodecov: false
-      dotnetVersions: |
-        10.x
-        11.x
-
+  # Native AOT cannot cross-compile, so each operating system publishes its own build.
   publish-windows:
-    name: Publish ${{ matrix.rid }} (${{ needs.version.outputs.version }})
-    needs: [version, build]
+    name: Publish ${{ matrix.rid }}
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -84,14 +69,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         src-folder: '.'
         stamp-version: 'false'
         dotnet-versions: |
           10.x
           11.x
-    # The project deploys the Visual C++ runtime beside the app and moves symbols to artifacts/symbols.
     - name: Publish Native AOT
       run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
     - name: Upload the published app
@@ -101,177 +85,10 @@ jobs:
         path: artifacts/${{ matrix.rid }}
         if-no-files-found: error
 
-  sign-windows-app:
-    name: Sign the Windows apps
-    needs: publish-windows
-    runs-on: ubuntu-latest
-    environment:
-      name: release
-    container:
-      image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
-    env:
-      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
-      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
-      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
-    steps:
-    - name: Download the published apps
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        pattern: app-win-*
-        path: signed
-    # certum-sign matches wildcards in the file name only, so both executables move into one folder for a single token login.
-    - name: Gather the executables
-      run: |
-        mv signed/app-win-x64/pdfviewerlite.exe signed/pdfviewerlite-win-x64.exe
-        mv signed/app-win-arm64/pdfviewerlite.exe signed/pdfviewerlite-win-arm64.exe
-    - name: Sign the executables with jsign
-      uses: glennawatson/actions-common/.github/actions/certum-sign@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-      with:
-        packages-glob: 'signed/pdfviewerlite-*.exe'
-        target-type: authenticode
-    - name: Return the executables
-      run: |
-        mv signed/pdfviewerlite-win-x64.exe signed/app-win-x64/pdfviewerlite.exe
-        mv signed/pdfviewerlite-win-arm64.exe signed/app-win-arm64/pdfviewerlite.exe
-    - name: Upload the signed x64 app
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: app-win-x64-signed
-        path: signed/app-win-x64
-        if-no-files-found: error
-    - name: Upload the signed ARM64 app
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: app-win-arm64-signed
-        path: signed/app-win-arm64
-        if-no-files-found: error
-
-  package-windows:
-    name: Package ${{ matrix.rid }} (${{ needs.version.outputs.version }})
-    needs: [version, sign-windows-app]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-        - rid: win-x64
-          architecture: x64
-        - rid: win-arm64
-          architecture: arm64
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
-    env:
-      RID: ${{ matrix.rid }}
-      VERSION: ${{ needs.version.outputs.version }}
-    steps:
-    - name: Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-    - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-      with:
-        src-folder: '.'
-        stamp-version: 'false'
-        dotnet-versions: |
-          11.x
-    - name: Download the signed app
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        name: app-${{ matrix.rid }}-signed
-        path: artifacts/${{ matrix.rid }}
-    - name: Stage the MSIX payload
-      run: |
-        cp -R "artifacts/$RID" "artifacts/msix-$RID"
-        cp LICENSE "artifacts/msix-$RID/LICENSE"
-        mkdir -p "artifacts/msix-$RID/Assets"
-    - name: Add the MSIX logos
-      run: |
-        cp packaging/linux/icons/hicolor/48x48/apps/net.glennwatson.PdfViewerLite.png "artifacts/msix-$RID/Assets/Square44x44Logo.png"
-        cp packaging/linux/icons/hicolor/256x256/apps/net.glennwatson.PdfViewerLite.png "artifacts/msix-$RID/Assets/Square150x150Logo.png"
-        cp packaging/linux/icons/hicolor/48x48/apps/net.glennwatson.PdfViewerLite.png "artifacts/msix-$RID/Assets/StoreLogo.png"
-    - name: Build the MSIX
-      uses: glennawatson/actions-common/.github/actions/msix-build@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-      with:
-        source: artifacts/msix-${{ matrix.rid }}
-        output: artifacts/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msix
-        identity-name: net.glennwatson.PdfViewerLite
-        publisher: 'CN=Glenn Andrew Watson, O=Glenn Andrew Watson, L=Mooroolbark, S=Victoria, C=AU'
-        version: ${{ needs.version.outputs.version }}
-        architecture: ${{ matrix.architecture }}
-        display-name: Hyper PDF Viewer
-        publisher-display-name: Glenn Watson
-        description: A calm PDF viewer
-        executable: pdfviewerlite.exe
-        application-id: PdfViewerLite
-        square44-logo: Assets/Square44x44Logo.png
-        square150-logo: Assets/Square150x150Logo.png
-        store-logo: Assets/StoreLogo.png
-        min-version: 10.0.19041.0
-        file-types: .pdf
-        file-type-name: PDF document
-    - name: Build the MSI
-      uses: glennawatson/actions-common/.github/actions/msi-build@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-      with:
-        source: artifacts/${{ matrix.rid }}
-        output: artifacts/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msi
-        product-name: Hyper PDF Viewer
-        manufacturer: Glenn Watson
-        version: ${{ needs.version.outputs.version }}
-        upgrade-code: '{0C547842-7023-455E-9807-E4C0CA332DA8}'
-        architecture: ${{ matrix.architecture }}
-        install-folder: 'Glenn Watson\Hyper PDF Viewer'
-        executable: pdfviewerlite.exe
-        icon: packaging/windows/PdfViewerLite.ico
-        homepage: https://github.com/glennawatson/PdfViewerLite
-    # Git Bash's tar cannot write zip files, so this step uses PowerShell, where tar is the Windows bsdtar.
-    - name: Build the portable zip
-      shell: pwsh
-      run: tar -a -cf "artifacts/pdfviewerlite-$env:VERSION-$env:RID.zip" -C artifacts "$env:RID"
-    - name: Upload the Windows packages
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: windows-packages-${{ matrix.rid }}
-        path: |
-          artifacts/pdfviewerlite-*.msix
-          artifacts/pdfviewerlite-*.msi
-          artifacts/pdfviewerlite-*.zip
-        if-no-files-found: error
-
-  sign-windows-installers:
-    name: Sign the Windows installers
-    needs: package-windows
-    runs-on: ubuntu-latest
-    environment:
-      name: release
-    container:
-      image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
-    env:
-      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
-      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
-      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
-    steps:
-    - name: Download the Windows packages
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        pattern: windows-packages-*
-        merge-multiple: true
-        path: signed
-    - name: Sign the MSI and MSIX files with jsign
-      uses: glennawatson/actions-common/.github/actions/certum-sign@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-      with:
-        packages-glob: 'signed/*.msi*'
-        target-type: authenticode
-    - name: Upload the signed Windows packages
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: release-windows
-        path: signed/*
-        if-no-files-found: error
-
   # Publishing and packaging share a job so the Unix file modes survive; artifacts drop them.
   package-linux:
-    name: Package ${{ matrix.rid }} (${{ needs.version.outputs.version }})
-    needs: [version, build]
+    name: Package ${{ matrix.rid }}
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -292,7 +109,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -328,7 +145,7 @@ jobs:
     - name: Stage the AppDir metadata
       run: cp packaging/linux/net.glennwatson.PdfViewerLite.metainfo.xml artifacts/appdir/usr/share/metainfo/net.glennwatson.PdfViewerLite.appdata.xml
     - name: Build the RPM
-      uses: glennawatson/actions-common/.github/actions/rpm-build@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/rpm-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         source: artifacts/stage
         output: artifacts/pdfviewerlite-${{ needs.version.outputs.version }}-1.${{ matrix.rpm-architecture }}.rpm
@@ -357,7 +174,7 @@ jobs:
           /usr/lib/pdfviewerlite
           /usr/share/licenses/pdfviewerlite
     - name: Build the DEB
-      uses: glennawatson/actions-common/.github/actions/deb-build@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/deb-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         source: artifacts/stage
         output: artifacts/pdfviewerlite_${{ needs.version.outputs.version }}_${{ matrix.deb-architecture }}.deb
@@ -383,7 +200,7 @@ jobs:
           libcups2
           libpulse0
     - name: Build the AppImage
-      uses: glennawatson/actions-common/.github/actions/appimage-build@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/appimage-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         appdir: artifacts/appdir
         architecture: ${{ matrix.rpm-architecture }}
@@ -393,7 +210,7 @@ jobs:
     - name: Upload the Linux packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: linux-${{ matrix.rid }}
+        name: packages-${{ matrix.rid }}
         path: |
           artifacts/PdfViewerLite-*.AppImage
           artifacts/pdfviewerlite_*.deb
@@ -401,39 +218,10 @@ jobs:
           artifacts/pdfviewerlite-*.tar.gz
         if-no-files-found: error
 
-  sign-linux:
-    name: Sign the RPM files
-    needs: package-linux
-    runs-on: ubuntu-latest
-    environment:
-      name: release
-    container:
-      image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
-    env:
-      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
-      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
-    steps:
-    - name: Download the Linux packages
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        pattern: linux-*
-        merge-multiple: true
-        path: signed
-    - name: Sign the files in each RPM
-      uses: glennawatson/actions-common/.github/actions/certum-rpm-sign@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-      with:
-        packages-glob: 'signed/*.rpm'
-    - name: Upload the Linux packages
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-      with:
-        name: release-linux
-        path: signed/*
-        if-no-files-found: error
-
   # Publishing and packaging share a job so the Unix file modes survive; artifacts drop them.
   package-macos:
-    name: Package ${{ matrix.rid }} (${{ needs.version.outputs.version }})
-    needs: [version, build]
+    name: Package ${{ matrix.rid }}
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -447,7 +235,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         src-folder: '.'
         stamp-version: 'false'
@@ -458,7 +246,7 @@ jobs:
       run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
     # The .noindex folder stops Spotlight holding files open while the image is built.
     - name: Lay out the app bundle
-      uses: glennawatson/actions-common/.github/actions/macos-app-bundle@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/macos-app-bundle@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         source: artifacts/${{ matrix.rid }}
         output: artifacts/macos-${{ matrix.rid }}.noindex/Hyper PDF Viewer.app
@@ -476,10 +264,8 @@ jobs:
       run: mv "$APP/Contents/MacOS/tessdata" "$APP/Contents/Resources/tessdata"
     - name: Sign the app bundle (ad hoc)
       run: codesign --force --deep --sign - "$APP"
-    - name: Check the app bundle signature
-      run: codesign --verify --deep --strict "$APP"
     - name: Build the DMG
-      uses: glennawatson/actions-common/.github/actions/dmg-build@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/dmg-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         source: artifacts/macos-${{ matrix.rid }}.noindex
         volume-name: Hyper PDF Viewer
@@ -489,32 +275,163 @@ jobs:
     - name: Upload the macOS packages
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
-        name: release-macos-${{ matrix.rid }}
+        name: packages-${{ matrix.rid }}
         path: |
           artifacts/pdfviewerlite-*.dmg
           artifacts/pdfviewerlite-*.app.zip
         if-no-files-found: error
 
-  aur:
-    name: Write the AUR package files
-    needs: [version, sign-linux]
+  # One Linux job signs in to the token once and signs everything. The Windows installers are built here so they
+  # hold the signed executables.
+  sign:
+    name: Sign everything
+    needs: [version, publish-windows, package-linux, package-macos]
     runs-on: ubuntu-latest
+    environment:
+      name: release
+    container:
+      image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
+    env:
+      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
+      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
+      CERTUM_CERT_FINGERPRINT: ${{ secrets.CERTUM_CERT_FINGERPRINT }}
     steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
+        src-folder: '.'
         stamp-version: 'false'
         dotnet-versions: |
           11.x
-    - name: Download the Linux packages
+    - name: Download the x64 Windows app
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: release-linux
-        path: linux
-    - name: Write the AUR PKGBUILD and .SRCINFO
-      uses: glennawatson/actions-common/.github/actions/aur-build@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+        name: app-win-x64
+        path: artifacts/win-x64
+    - name: Download the ARM64 Windows app
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        debs: linux
+        name: app-win-arm64
+        path: artifacts/win-arm64
+    - name: Download the Linux and macOS packages
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      with:
+        pattern: packages-*
+        merge-multiple: true
+        path: release
+    # certum-sign matches wildcards in file names only, so both executables share one folder while they are signed.
+    - name: Gather the executables
+      run: |
+        mkdir -p artifacts/exe
+        mv artifacts/win-x64/pdfviewerlite.exe artifacts/exe/pdfviewerlite-win-x64.exe
+        mv artifacts/win-arm64/pdfviewerlite.exe artifacts/exe/pdfviewerlite-win-arm64.exe
+    - name: Sign the executables and RPMs
+      uses: glennawatson/actions-common/.github/actions/certum-sign@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        authenticode: 'artifacts/exe/*.exe'
+        rpm: 'release/*.rpm'
+    - name: Return the executables
+      run: |
+        mv artifacts/exe/pdfviewerlite-win-x64.exe artifacts/win-x64/pdfviewerlite.exe
+        mv artifacts/exe/pdfviewerlite-win-arm64.exe artifacts/win-arm64/pdfviewerlite.exe
+    - name: Stage the MSIX payloads
+      run: |
+        cp -R artifacts/win-x64 artifacts/msix-win-x64
+        cp -R artifacts/win-arm64 artifacts/msix-win-arm64
+        cp LICENSE artifacts/msix-win-x64/LICENSE
+        cp LICENSE artifacts/msix-win-arm64/LICENSE
+    - name: Add the MSIX logos
+      run: |
+        mkdir -p artifacts/msix-win-x64/Assets
+        cp packaging/linux/icons/hicolor/48x48/apps/net.glennwatson.PdfViewerLite.png artifacts/msix-win-x64/Assets/Square44x44Logo.png
+        cp packaging/linux/icons/hicolor/256x256/apps/net.glennwatson.PdfViewerLite.png artifacts/msix-win-x64/Assets/Square150x150Logo.png
+        cp packaging/linux/icons/hicolor/48x48/apps/net.glennwatson.PdfViewerLite.png artifacts/msix-win-x64/Assets/StoreLogo.png
+    - name: Add the ARM64 MSIX logos
+      run: cp -R artifacts/msix-win-x64/Assets artifacts/msix-win-arm64/Assets
+    - name: Build the x64 MSIX
+      uses: glennawatson/actions-common/.github/actions/msix-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        source: artifacts/msix-win-x64
+        output: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-x64.msix
+        identity-name: net.glennwatson.PdfViewerLite
+        publisher: 'CN=Glenn Andrew Watson, O=Glenn Andrew Watson, L=Mooroolbark, S=Victoria, C=AU'
+        version: ${{ needs.version.outputs.version }}
+        architecture: x64
+        display-name: Hyper PDF Viewer
+        publisher-display-name: Glenn Watson
+        description: A calm PDF viewer
+        executable: pdfviewerlite.exe
+        application-id: PdfViewerLite
+        square44-logo: Assets/Square44x44Logo.png
+        square150-logo: Assets/Square150x150Logo.png
+        store-logo: Assets/StoreLogo.png
+        min-version: 10.0.19041.0
+        file-types: .pdf
+        file-type-name: PDF document
+    - name: Build the ARM64 MSIX
+      uses: glennawatson/actions-common/.github/actions/msix-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        source: artifacts/msix-win-arm64
+        output: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-arm64.msix
+        identity-name: net.glennwatson.PdfViewerLite
+        publisher: 'CN=Glenn Andrew Watson, O=Glenn Andrew Watson, L=Mooroolbark, S=Victoria, C=AU'
+        version: ${{ needs.version.outputs.version }}
+        architecture: arm64
+        display-name: Hyper PDF Viewer
+        publisher-display-name: Glenn Watson
+        description: A calm PDF viewer
+        executable: pdfviewerlite.exe
+        application-id: PdfViewerLite
+        square44-logo: Assets/Square44x44Logo.png
+        square150-logo: Assets/Square150x150Logo.png
+        store-logo: Assets/StoreLogo.png
+        min-version: 10.0.19041.0
+        file-types: .pdf
+        file-type-name: PDF document
+    - name: Build the x64 MSI
+      uses: glennawatson/actions-common/.github/actions/msi-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        source: artifacts/win-x64
+        output: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-x64.msi
+        product-name: Hyper PDF Viewer
+        manufacturer: Glenn Watson
+        version: ${{ needs.version.outputs.version }}
+        upgrade-code: '{0C547842-7023-455E-9807-E4C0CA332DA8}'
+        architecture: x64
+        install-folder: 'Glenn Watson\Hyper PDF Viewer'
+        executable: pdfviewerlite.exe
+        icon: packaging/windows/PdfViewerLite.ico
+        homepage: https://github.com/glennawatson/PdfViewerLite
+    - name: Build the ARM64 MSI
+      uses: glennawatson/actions-common/.github/actions/msi-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        source: artifacts/win-arm64
+        output: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-arm64.msi
+        product-name: Hyper PDF Viewer
+        manufacturer: Glenn Watson
+        version: ${{ needs.version.outputs.version }}
+        upgrade-code: '{0C547842-7023-455E-9807-E4C0CA332DA8}'
+        architecture: arm64
+        install-folder: 'Glenn Watson\Hyper PDF Viewer'
+        executable: pdfviewerlite.exe
+        icon: packaging/windows/PdfViewerLite.ico
+        homepage: https://github.com/glennawatson/PdfViewerLite
+    - name: Zip the x64 app
+      uses: glennawatson/actions-common/.github/actions/zip-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        source: artifacts/win-x64
+        output: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-x64.zip
+    - name: Zip the ARM64 app
+      uses: glennawatson/actions-common/.github/actions/zip-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        source: artifacts/win-arm64
+        output: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-arm64.zip
+    - name: Write the AUR PKGBUILD and .SRCINFO
+      uses: glennawatson/actions-common/.github/actions/aur-build@2e76cc0b20478104b049bb006238732d953a8e2f # main
+      with:
+        debs: release
         name: pdfviewerlite-bin
         version: ${{ needs.version.outputs.version }}
         description: Fast, tabbed PDF viewer
@@ -535,37 +452,12 @@ jobs:
           libpulse: Read Aloud sound through PulseAudio or PipeWire
         maintainer: Glenn Watson
         source-url-template: https://github.com/glennawatson/PdfViewerLite/releases/download/${{ needs.version.outputs.tag }}/{file}
-        output: artifacts/aur
-    - name: Upload the AUR package files
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        output: release
+    - name: Sign the installers and the checksums
+      uses: glennawatson/actions-common/.github/actions/certum-sign@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
-        name: release-aur
-        path: artifacts/aur
-        include-hidden-files: true
-        if-no-files-found: error
-
-  checksums:
-    name: Write and sign the checksums
-    needs: [version, sign-windows-installers, sign-linux, package-macos, aur]
-    runs-on: ubuntu-latest
-    environment:
-      name: release
-    container:
-      image: ghcr.io/reactiveui/certum-signer:latest@sha256:05d52b46c5e62769146f37aae308127ec1d74cfb1209261e35334eaac700dcac
-    env:
-      CERTUM_USER_ID: ${{ secrets.CERTUM_USER_ID }}
-      CERTUM_OTP_URI: ${{ secrets.CERTUM_OTP_URI }}
-    steps:
-    - name: Download the release files
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-      with:
-        pattern: release-*
-        merge-multiple: true
-        path: release
-    - name: Write and sign SHA256SUMS
-      uses: glennawatson/actions-common/.github/actions/certum-checksums-sign@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
-      with:
-        files-glob: 'release/*'
+        authenticode: 'release/*.msi*'
+        checksums: 'release/*'
         certificate-from: release/pdfviewerlite-${{ needs.version.outputs.version }}-win-x64.msi
     - name: Upload the release files
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -576,8 +468,8 @@ jobs:
         if-no-files-found: error
 
   verify-linux:
-    name: Verify the ${{ matrix.rid }} DEB and AppImage
-    needs: [version, sign-linux]
+    name: Verify ${{ matrix.rid }} DEB and AppImage
+    needs: [version, sign]
     strategy:
       fail-fast: false
       matrix:
@@ -592,13 +484,13 @@ jobs:
           architecture: aarch64
     runs-on: ${{ matrix.runner }}
     steps:
-    - name: Download the Linux packages
+    - name: Download the release files
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: release-linux
+        name: release-assets
         path: packages
     - name: Verify the DEB
-      uses: glennawatson/actions-common/.github/actions/deb-verify@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/deb-verify@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         package: packages/pdfviewerlite_${{ needs.version.outputs.version }}_${{ matrix.deb-architecture }}.deb
         name: pdfviewerlite
@@ -608,13 +500,13 @@ jobs:
           /usr/share/applications/net.glennwatson.PdfViewerLite.desktop
           /usr/share/metainfo/net.glennwatson.PdfViewerLite.metainfo.xml
     - name: Verify the AppImage
-      uses: glennawatson/actions-common/.github/actions/appimage-verify@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/appimage-verify@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         package: packages/PdfViewerLite-${{ needs.version.outputs.version }}-${{ matrix.architecture }}.AppImage
 
   verify-rpm:
-    name: Verify the ${{ matrix.rid }} RPM
-    needs: [version, sign-linux]
+    name: Verify ${{ matrix.rid }} RPM
+    needs: [version, sign]
     strategy:
       fail-fast: false
       matrix:
@@ -628,13 +520,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     container: fedora:latest
     steps:
-    - name: Download the Linux packages
+    - name: Download the release files
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: release-linux
+        name: release-assets
         path: packages
     - name: Verify the RPM
-      uses: glennawatson/actions-common/.github/actions/rpm-verify@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/rpm-verify@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-1.${{ matrix.architecture }}.rpm
         name: pdfviewerlite
@@ -645,8 +537,8 @@ jobs:
           /usr/share/metainfo/net.glennwatson.PdfViewerLite.metainfo.xml
 
   verify-windows:
-    name: Verify the ${{ matrix.rid }} MSI and MSIX
-    needs: [version, sign-windows-installers]
+    name: Verify ${{ matrix.rid }} MSI and MSIX
+    needs: [version, sign]
     strategy:
       fail-fast: false
       matrix:
@@ -657,40 +549,40 @@ jobs:
           runner: windows-11-arm
     runs-on: ${{ matrix.runner }}
     steps:
-    - name: Download the signed Windows packages
+    - name: Download the release files
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: release-windows
+        name: release-assets
         path: packages
     - name: Verify the MSI
-      uses: glennawatson/actions-common/.github/actions/msi-verify@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/msi-verify@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msi
         expect-files: |
           %ProgramFiles%\Glenn Watson\Hyper PDF Viewer\pdfviewerlite.exe
     - name: Verify the MSIX
-      uses: glennawatson/actions-common/.github/actions/msix-verify@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/msix-verify@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msix
         identity-name: net.glennwatson.PdfViewerLite
         executable: pdfviewerlite.exe
 
   verify-macos:
-    name: Verify the ${{ matrix.rid }} DMG
-    needs: [version, package-macos]
+    name: Verify ${{ matrix.rid }} DMG
+    needs: [version, sign]
     strategy:
       fail-fast: false
       matrix:
         rid: [osx-arm64, osx-x64]
     runs-on: macos-latest
     steps:
-    - name: Download the macOS packages
+    - name: Download the release files
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
-        name: release-macos-${{ matrix.rid }}
+        name: release-assets
         path: packages
     - name: Verify the DMG
-      uses: glennawatson/actions-common/.github/actions/dmg-verify@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+      uses: glennawatson/actions-common/.github/actions/dmg-verify@2e76cc0b20478104b049bb006238732d953a8e2f # main
       with:
         package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.dmg
         app: Hyper PDF Viewer.app
@@ -698,10 +590,10 @@ jobs:
 
   release:
     name: Create release (${{ needs.version.outputs.version }})
-    needs: [version, checksums, verify-linux, verify-rpm, verify-windows, verify-macos]
+    needs: [version, verify-linux, verify-rpm, verify-windows, verify-macos]
     permissions:
       contents: write
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-create-release.yml@9efdf3ccd6823abb70b8e1437beaab014fe08d01 # main
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-create-release.yml@2e76cc0b20478104b049bb006238732d953a8e2f # main
     with:
       version: ${{ needs.version.outputs.version }}
       tag: ${{ needs.version.outputs.tag }}
