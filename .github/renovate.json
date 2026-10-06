@@ -77,10 +77,7 @@
       "matchManagers": ["github-actions"],
       "matchPackageNames": ["glennawatson/actions-common"],
       "groupName": "shared actions",
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "squash",
-      "platformAutomerge": false
+      "automerge": false
     },
     {
       "matchDatasources": ["docker"],
