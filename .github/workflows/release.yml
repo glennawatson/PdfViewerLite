@@ -557,7 +557,8 @@ jobs:
     - name: Verify the MSI
       uses: glennawatson/actions-common/.github/actions/msi-verify@5b418d6c499a0586b4b21ec2801250c35828da2e # main
       with:
-        package: packages/pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msi
+        # msiexec reads a forward slash as an invalid path character (error 1324), so this path uses a backslash.
+        package: packages\pdfviewerlite-${{ needs.version.outputs.version }}-${{ matrix.rid }}.msi
         expect-files: |
           %ProgramFiles%\Glenn Watson\Hyper PDF Viewer\pdfviewerlite.exe
     - name: Verify the MSIX
