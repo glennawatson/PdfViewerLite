@@ -57,7 +57,6 @@
 
   <ItemGroup Label="Platform / HTTP">
     <PackageVersion Include="Tmds.DBus.Protocol" Version="0.95.1" />
-    <PackageVersion Include="SymSpell" Version="6.7.3" />
     <PackageVersion Include="SkiaSharp" Version="$(SkiaVersion)" />
     <PackageVersion Include="HarfBuzzSharp" Version="$(HarfBuzzVersion)" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="$(HarfBuzzVersion)" />

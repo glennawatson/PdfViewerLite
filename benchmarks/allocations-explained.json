@@ -494,7 +494,27 @@
   {
     "type": "",
     "frame": "PdfViewerLite.Platform.Linux.Spelling.WordListSpellChecker.Suggest(",
-    "reason": "SymSpell builds its candidate lists for each lookup. Corrections are looked up only when the reader opens the menu on a misspelled word, about 2 µs each, against 1.8 ms for scanning the word list."
+    "reason": "The corrections are returned in a new list of five, the list and its array. Copying them into an array of their exact count saved the list but measured 30 to 40 ns slower. Corrections are looked up only when the reader opens the menu on a misspelled word."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Platform.Linux.Spelling.WordListSpellChecker..ctor(",
+    "reason": "Loading a word list reads each word into a set, once per spell checker, when spell checking first starts."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Platform.Linux.Spelling.CorrectionIndex..ctor(",
+    "reason": "The correction index is built once per word list, the first time a correction is asked for: the lower-case words, the per-word lookup marks and the hash directory."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Platform.Linux.Spelling.CorrectionIndex.SortedEntries(",
+    "reason": "Building the correction index makes one packed entry per word delete and a count per hash bucket, once per word list; the entries are dropped once grouped."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Platform.Linux.Spelling.CorrectionIndex.Group(",
+    "reason": "Building the correction index makes the key, start and posting arrays it keeps for the life of the spell checker, once per word list."
   },
   {
     "type": "System.String",
