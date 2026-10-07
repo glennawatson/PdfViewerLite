@@ -37,6 +37,10 @@ public sealed partial class StartView : ReactiveUI.Avalonia.ReactiveUserControl<
         });
     }
 
+    /// <summary>Focuses the Open button.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void FocusOpenButton() => _ = OpenButton.Focus();
+
     /// <summary>Gets the recent documents picked with a click or Enter, never just because the selection moved.</summary>
     /// <param name="recent">The recent list; Events() needs the typed parameter because it cannot see fields the XAML name generator creates.</param>
     /// <returns>

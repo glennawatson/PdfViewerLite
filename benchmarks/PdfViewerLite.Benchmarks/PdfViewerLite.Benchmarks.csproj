@@ -25,5 +25,6 @@
 
   <ItemGroup>
     <Compile Include="..\..\src\PdfViewerLite.App\Services\DesktopBackend.cs" Link="DesktopBackend.cs" />
+    <Compile Include="..\..\src\PdfViewerLite.App\Views\FocusAnnouncementRepair.cs" Link="FocusAnnouncementRepair.cs" />
   </ItemGroup>
 </Project>

@@ -91,6 +91,18 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string GetSelectedText() => Canvas.GetSelectedText();
 
+    /// <summary>Focuses the main content: the Focus Mode text when it is on, otherwise the pages.</summary>
+    internal void FocusMain()
+    {
+        if (ViewModel?.FocusMode.IsOn == true)
+        {
+            FocusPane.FocusFirstControl();
+            return;
+        }
+
+        FocusCanvas();
+    }
+
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -609,7 +621,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(FieldEditor.Events().KeyDown
             .Where(static args => args.Key == Key.Enter && args.KeyModifiers == KeyModifiers.None && args.Source is TextBox { AcceptsReturn: false })
             .SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
-        bindings.Add(FocusLosses(FieldEditor).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
+        bindings.Add(FocusLosses(FieldEditor).Where(static _ => !FocusAnnouncementRepair.IsRepeating).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
         bindings.Add(this.WhenChanged(static v => v.ViewModel!.Forms.EditText, static v => v.ViewModel!.Forms.KeptWordsVersion, static (text, _) => text)
             .SubscribeSafe(UpdateSpelling, OnError));
         bindings.Add(FieldEditor.ObserveRouted(ScrollViewer.ScrollChangedEvent, RoutingStrategies.Bubble, handledEventsToo: true)

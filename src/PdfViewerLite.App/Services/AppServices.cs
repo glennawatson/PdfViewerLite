@@ -77,6 +77,7 @@ public sealed class AppServices : IDisposable
         Downloader = new(Path.Combine(Path.GetTempPath(), "pdfviewerlite-downloads"));
         _theme = new(ThemeResolver.Resolve(Settings, null));
         Speech = SpeechSetup.CreateDefault(platform);
+        FocusAnnouncements = platform.CreateFocusAnnouncementCheck();
         Theme = new(_theme);
         OpenRequests = new(_openRequests);
         SettingsApplied = new(_settingsApplied);
@@ -105,6 +106,9 @@ public sealed class AppServices : IDisposable
 
     /// <summary>Gets the desktop integration.</summary>
     public IDesktopPlatform Platform { get; }
+
+    /// <summary>Gets the check that keyboard focus changes reach the screen reader.</summary>
+    public IFocusAnnouncementCheck FocusAnnouncements { get; }
 
     /// <summary>Gets the recent documents store.</summary>
     public IRecentDocumentStore RecentDocuments => Platform.RecentDocuments;
@@ -250,6 +254,7 @@ public sealed class AppServices : IDisposable
         _speechEngine?.Dispose();
         _audio?.Dispose();
         (_spellChecker as IDisposable)?.Dispose();
+        FocusAnnouncements.Dispose();
     }
 
     /// <summary>Publishes the theme when it changed.</summary>

@@ -13,6 +13,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
@@ -80,6 +81,9 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
                 BindProperties(disposables);
                 BindCommands(disposables);
                 disposables.Add(this.WhenChanged(static v => v.ViewModel!.SelectedTab!.IsPresenting).SubscribeSafe(OnPresentingChanged, OnError));
+                disposables.Add(InputElement.LostFocusEvent.Raised
+                    .Where(static raised => raised.Item2 is FocusChangedEventArgs { NewFocusedElement: null })
+                    .SubscribeSafe(raised => OnFocusLost(raised.Item1), OnError));
                 disposables.Add(Scope.Create(this, static window => window.ReleaseWindows()));
             },
             this.WhenChanged(static view => view.ViewModel));
@@ -619,6 +623,38 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
                 break;
             }
         }
+    }
+
+    /// <summary>
+    /// Waits until the current input is handled, then gives focus back to the main content if it is still lost. Hiding
+    /// or removing the focused control leaves nothing focused, which a screen reader cannot announce and a keyboard
+    /// user cannot see. A screen reader repeat clears focus only for a moment, so it is ignored.
+    /// </summary>
+    /// <param name="sender">The element the loss is being raised on.</param>
+    private void OnFocusLost(object sender)
+    {
+        // The class-wide event reports each step of every window's route; only this window's own step is ours.
+        if (ReferenceEquals(sender, this) && IsActive && !FocusAnnouncementRepair.IsRepeating)
+        {
+            Dispatcher.UIThread.Post(static window => ((MainWindow)window!).RestoreLostFocus(), this, DispatcherPriority.Background);
+        }
+    }
+
+    /// <summary>Focuses the document, or the start page's Open button when no document is open, if focus is still lost.</summary>
+    private void RestoreLostFocus()
+    {
+        if (!IsActive || FocusManager?.GetFocusedElement() is not null)
+        {
+            return;
+        }
+
+        if (ViewModel?.HasTabs == true && FindDocumentView() is { } view)
+        {
+            view.FocusMain();
+            return;
+        }
+
+        StartPage.FocusOpenButton();
     }
 
     /// <summary>Finds the visible document view.</summary>
