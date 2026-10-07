@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics.Tracing;
+using System.Globalization;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Jobs;
@@ -39,8 +40,11 @@ public static class Program
         const ClrTraceEventParser.Keywords keywords = ClrTraceEventParser.Keywords.GC | ClrTraceEventParser.Keywords.Type
             | ClrTraceEventParser.Keywords.GCSampledObjectAllocationHigh | ClrTraceEventParser.Keywords.Stack;
         EventPipeProvider[] providers = [new(ClrTraceEventParser.ProviderName, EventLevel.Verbose, (long)keywords)];
+
+        // The project targets several frameworks; each run builds the benchmarks for the runtime it was started on.
+        var targetFramework = string.Create(CultureInfo.InvariantCulture, $"/p:TargetFramework=net{Environment.Version.Major}.0");
         return DefaultConfig.Instance
-            .AddJob(Job.Default.WithArguments([new MsBuildArgument("/p:TargetFramework=net10.0")]).AsMutator())
+            .AddJob(Job.Default.WithArguments([new MsBuildArgument(targetFramework)]).AsMutator())
             .AddDiagnoser(new EventPipeProfiler(EventPipeProfile.GcVerbose, providers));
     }
 }

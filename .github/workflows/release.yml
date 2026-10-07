@@ -77,7 +77,7 @@ jobs:
           10.x
           11.x
     - name: Publish Native AOT
-      run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
+      run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net11.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
     - name: Upload the published app
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
       with:
@@ -117,7 +117,7 @@ jobs:
           10.x
           11.x
     - name: Publish Native AOT
-      run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
+      run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net11.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
     - name: Stage the installed tree
       run: |
         mkdir -p artifacts/stage/usr/lib artifacts/stage/usr/bin artifacts/stage/usr/share/licenses/pdfviewerlite
@@ -243,7 +243,7 @@ jobs:
           10.x
           11.x
     - name: Publish Native AOT
-      run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net10.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
+      run: dotnet publish src/PdfViewerLite.App/PdfViewerLite.App.csproj -c Release -f net11.0 -r "$RID" -o "artifacts/$RID" "-p:Version=$VERSION" "-p:MinVerVersionOverride=$VERSION"
     # The .noindex folder stops Spotlight holding files open while the image is built.
     - name: Lay out the app bundle
       uses: glennawatson/actions-common/.github/actions/macos-app-bundle@b824c637960b1886a6a30a2526856bbf017661cf # main

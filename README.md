@@ -94,12 +94,12 @@ Linux uses X11 when available, then native Wayland. Native Wayland does not expo
 
 ## Build
 
-Use the SDK in [global.json](global.json) and the .NET 10 runtime. Native AOT needs a native compiler and zlib development files.
+Use the SDK in [global.json](global.json). Everything builds for .NET 10 and .NET 11; releases are Native AOT builds from .NET 11. Native AOT needs a native compiler and zlib development files.
 
 ```bash
 dotnet build PdfViewerLite.slnx
 dotnet test --solution PdfViewerLite.slnx
-dotnet run --project src/PdfViewerLite.App -- some.pdf
+dotnet run -f net11.0 --project src/PdfViewerLite.App -- some.pdf
 scripts/publish-linux.sh linux-x64
 ```
 

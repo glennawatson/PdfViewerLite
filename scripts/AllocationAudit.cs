@@ -1,7 +1,7 @@
 #!/usr/bin/env -S dotnet run --file
 #:package Microsoft.Diagnostics.Tracing.TraceEvent
-#:property TargetFrameworks=net10.0
-#:property TargetFramework=net10.0
+#:property TargetFrameworks=net11.0
+#:property TargetFramework=net11.0
 #:property IsAotCompatible=false
 #:property PublishAot=false
 
