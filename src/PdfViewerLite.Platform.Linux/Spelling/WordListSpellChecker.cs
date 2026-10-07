@@ -4,21 +4,20 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using PdfViewerLite.Core.Spelling;
 
 namespace PdfViewerLite.Platform.Linux.Spelling;
 
 /// <summary>
 /// Checks spelling against a plain word list the desktop installed, one word a line, such as
-/// /usr/share/dict/british-english. Words are looked up in a set; corrections come from SymSpell (MIT), whose index is
+/// /usr/share/dict/british-english. Words are looked up in a set; corrections come from a <see cref="CorrectionIndex"/>
 /// built only the first time a correction is asked for. No word list ships with the app.
 /// </summary>
 [DebuggerDisplay("WordListSpellChecker: {Language}")]
 public sealed class WordListSpellChecker : ISpellChecker
 {
-    /// <summary>The most letters changed between a misspelling and a correction.</summary>
-    private const int MaxEditDistance = 2;
-
     /// <summary>The longest word whose apostrophes are straightened on the stack.</summary>
     private const int MaxStackWord = 64;
 
@@ -35,7 +34,7 @@ public sealed class WordListSpellChecker : ISpellChecker
     private readonly Lock _gate = new();
 
     /// <summary>The correction index, built on first use.</summary>
-    private SymSpell? _index;
+    private CorrectionIndex? _index;
 
     /// <summary>Initializes a new instance of the <see cref="WordListSpellChecker"/> class from a word list file.</summary>
     /// <param name="wordListPath">The word list, or <see langword="null"/> when none was found.</param>
@@ -135,17 +134,23 @@ public sealed class WordListSpellChecker : ISpellChecker
             return [];
         }
 
+        if (word.Length is 0 or > CorrectionIndex.MaxWordLength)
+        {
+            return [];
+        }
+
+        Span<char> lower = stackalloc char[CorrectionIndex.MaxWordLength];
+        lower = lower[..word.AsSpan().ToLowerInvariant(lower)];
         List<string> suggestions = [with(MaxSuggestions)];
         lock (_gate)
         {
-            foreach (var item in Index().Lookup(word.ToLowerInvariant(), SymSpell.Verbosity.Closest, MaxEditDistance))
-            {
-                suggestions.Add(MatchCase(word, item.term));
-                if (suggestions.Count == MaxSuggestions)
-                {
-                    break;
-                }
-            }
+            Index().Lookup(lower, suggestions, MaxSuggestions);
+        }
+
+        var corrections = CollectionsMarshal.AsSpan(suggestions);
+        foreach (ref var correction in corrections)
+        {
+            correction = MatchCase(word, correction);
         }
 
         return suggestions;
@@ -167,21 +172,6 @@ public sealed class WordListSpellChecker : ISpellChecker
 
     /// <summary>Gets the correction index, building it from the words the first time. Callers hold the gate.</summary>
     /// <returns>The index.</returns>
-    private SymSpell Index()
-    {
-        if (_index is { } built)
-        {
-            return built;
-        }
-
-        // SymSpell's defaults suit here: corrections up to two letters away, indexing the first seven letters of each word.
-        var index = new SymSpell(_words.Count);
-        foreach (var word in _words)
-        {
-            _ = index.CreateDictionaryEntry(word.ToLowerInvariant(), 1);
-        }
-
-        _index = index;
-        return index;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private CorrectionIndex Index() => _index ??= new(_words);
 }
