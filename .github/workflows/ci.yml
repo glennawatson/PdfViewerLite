@@ -10,7 +10,7 @@ permissions:
 jobs:
   build:
     name: Build and test
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@2e76cc0b20478104b049bb006238732d953a8e2f # main
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-setup-and-build.yml@b824c637960b1886a6a30a2526856bbf017661cf # main
     with:
       srcFolder: '.'
       solutionFile: PdfViewerLite.slnx
