@@ -40,6 +40,12 @@ public static class TestPdf
     /// <summary>The contents of the embedded file in <see cref="CreateWithAttachment"/>.</summary>
     public static readonly string AttachmentText = "Meeting notes: bring the signed form.";
 
+    /// <summary>The PDF beside a <see cref="CreateWithFileLinks"/> document that its first link opens at page 3.</summary>
+    public static readonly string LinkedDocumentName = "other.pdf";
+
+    /// <summary>The file a <see cref="CreateWithFileLinks"/> document's second link opens with another app.</summary>
+    public static readonly string LaunchedFileName = "notes.txt";
+
     /// <summary>The scale <see cref="CreateWithViewport"/> declares.</summary>
     public static readonly string ViewportScale = "1 in = 10 ft";
 
@@ -331,6 +337,89 @@ public static class TestPdf
         objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
         objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
         var info = Add(objects, $"<< /Title (Scan) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page document with three links stacked down the page: to page 3 of <see cref="LinkedDocumentName"/>
+    /// beside it, to open <see cref="LaunchedFileName"/> with another app, and to a document embedded in this one.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateWithFileLinks()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, HelveticaFont);
+        var content = new StringBuilder();
+        var baseline = PortraitHeight - Margin;
+        AppendText(content, baseline, HeadingSize, "Links to files");
+        string[] actions =
+        [
+            $"<< /S /GoToR /F ({LinkedDocumentName}) /D [2 /Fit] >>",
+            $"<< /S /Launch /F ({LaunchedFileName}) >>",
+            "<< /S /GoToE /T << /R /C /N (inner) >> /D [0 /Fit] >>",
+        ];
+        var annotations = new StringBuilder();
+        foreach (var action in actions)
+        {
+            baseline -= ParagraphGap;
+            AppendText(content, baseline, BodySize, "Open the linked file");
+            var link = Add(objects, $"<< /Type /Annot /Subtype /Link /Rect [{LinkRect(baseline)}] /Border [0 0 0] /A {action} >>");
+            _ = annotations.Append(CultureInfo.InvariantCulture, $"{link} 0 R ");
+        }
+
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R /Annots [{{annotations.ToString().TrimEnd()}}] >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
+        var info = Add(objects, $"<< /Title (Links to files) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page document using everything PdfViewerLite cannot show or run: an XFA form, document JavaScript,
+    /// a field script it does not understand, a media player, a 3D model, and a portfolio cover page with an attached file.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateWithUnsupportedContent()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, HelveticaFont);
+        var file = Add(objects, string.Create(CultureInfo.InvariantCulture, $"""
+            << /Type /EmbeddedFile /Length {AttachmentText.Length} >>
+            stream
+            {AttachmentText}
+            endstream
+            """));
+        var spec = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Type /Filespec /F ({AttachmentName}) /UF ({AttachmentName}) /EF << /F {file} 0 R >> >>"));
+        var script = Add(objects, "<< /S /JavaScript /JS (app.alert\\(\"Hello\"\\);) >>");
+        var widget = Add(objects, $"<< /Type /Annot /Subtype /Widget /FT /Tx /T (Custom) /Rect [72 600 300 624] /P {page} 0 R /AA << /K << /S /JavaScript /JS (checkCustomRules\\(\\);) >> >> >>");
+        var screen = Add(objects, $"<< /Type /Annot /Subtype /Screen /Rect [72 400 300 560] /P {page} 0 R >>");
+        var model = Add(objects, $"<< /Type /Annot /Subtype /3D /Rect [320 400 540 560] /P {page} 0 R >>");
+        var xfa = Add(objects, "<< /Length 9 >>\nstream\n<xdp:xdp>endstream");
+        var content = new StringBuilder();
+        AppendText(content, PortraitHeight - Margin, HeadingSize, "PDF Portfolio");
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R /Annots [{{widget}} 0 R {{screen}} 0 R {{model}} 0 R] >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Catalog /Pages {{pages}} 0 R /AcroForm << /Fields [{{widget}} 0 R] /XFA {{xfa}} 0 R >> /Collection << /View /D >>
+               /Names << /EmbeddedFiles << /Names [({{AttachmentName}}) {{spec}} 0 R] >> /JavaScript << /Names [(init) {{script}} 0 R] >> >> >>
+            """);
+        var info = Add(objects, $"<< /Title (Unsupported content) /Author ({Author}) >>");
         return Serialize(objects, catalog, info);
     }
 

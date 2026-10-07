@@ -87,7 +87,7 @@ public static class Descriptions
     public static readonly string ReadAloud = $"Read the document aloud, starting from this page.{Shortcut}Ctrl+Shift+Y";
 
     /// <summary>The View menu button.</summary>
-    public static readonly string ViewMenu = "Open the View menu to turn pages, change the page layout, read or present.";
+    public static readonly string ViewMenu = "Open the View menu to turn pages, change the page layout, choose how dragging works, read or present.";
 
     /// <summary>The rotate left menu item.</summary>
     public static readonly string RotateLeft = $"Turn the pages a quarter turn to the left.{Shortcut}Ctrl+Left";
@@ -107,6 +107,12 @@ public static class Descriptions
     /// <summary>The Read Mode menu item.</summary>
     public static readonly string ReadMode = $"Put the tool bars and sidebar away so the pages fill the window.{Shortcut}Ctrl+H";
 
+    /// <summary>The Split View menu item.</summary>
+    public static readonly string SplitView = "Show a second view of this document beside the first, to read or compare two places at once. Choose it again to go back to one view.";
+
+    /// <summary>The divider between the two views of a split.</summary>
+    public static readonly string SplitSplitter = "Drag to share the width between the two views.";
+
     /// <summary>The Present menu item.</summary>
     public static readonly string Present = $"Show one page at a time on the full screen. Press Esc to stop.{Shortcut}Shift+F5";
 
@@ -116,8 +122,38 @@ public static class Descriptions
     /// <summary>The page by page menu item.</summary>
     public static readonly string PageByPage = "Show one page, or one pair of pages, at a time instead of scrolling through all the pages.";
 
+    /// <summary>The Select Text tool menu item.</summary>
+    public static readonly string SelectTextTool = "Drag over the pages to select text. Clicks follow links.";
+
+    /// <summary>The Hand tool menu item.</summary>
+    public static readonly string HandTool = "Drag the pages to move them, like moving paper with your hand. Hold Space or the middle mouse button to do this with any tool.";
+
+    /// <summary>The Zoom to Area tool menu item.</summary>
+    public static readonly string ZoomAreaTool = "Drag a box around part of a page to zoom in until it fills the view. Press Esc to stop.";
+
+    /// <summary>The Auto-scroll menu item.</summary>
+    public static readonly string AutoScroll = $"Scroll down by itself at a calm speed. Up and Down change the speed. Press Esc or click to stop.{Shortcut}Ctrl+Shift+H";
+
+    /// <summary>The First Page menu item.</summary>
+    public static readonly string FirstPage = $"Go to the first page. Home also works when the pages have the keyboard.{Shortcut}Ctrl+Home";
+
+    /// <summary>The Last Page menu item.</summary>
+    public static readonly string LastPage = $"Go to the last page. End also works when the pages have the keyboard.{Shortcut}Ctrl+End";
+
+    /// <summary>The auto-scroll bar's Slower button.</summary>
+    public static readonly string AutoScrollSlower = "Make auto-scroll slower. The Down arrow does the same.";
+
+    /// <summary>The auto-scroll bar's Faster button.</summary>
+    public static readonly string AutoScrollFaster = "Make auto-scroll faster. The Up arrow does the same.";
+
+    /// <summary>The auto-scroll bar's Stop button.</summary>
+    public static readonly string AutoScrollStop = "Stop scrolling by itself. Esc or a click on the pages does the same.";
+
     /// <summary>The Document menu button.</summary>
     public static readonly string DocumentMenu = "Open the Document menu to save a copy, reload, find the file or see its details.";
+
+    /// <summary>The Select All menu item.</summary>
+    public static readonly string SelectAll = $"Select all the text on the current page, ready to copy.{Shortcut}Ctrl+A";
 
     /// <summary>The Save As menu item.</summary>
     public static readonly string SaveAs = $"Save a copy of the document with a new name or in a new place.{Shortcut}Ctrl+Shift+S";
@@ -132,7 +168,10 @@ public static class Descriptions
     public static readonly string Properties = $"See details about this document, such as its title, author and size.{Shortcut}Alt+Enter";
 
     /// <summary>The Tools menu button.</summary>
-    public static readonly string ToolsMenu = "Open the Tools menu to measure the page or recognise scanned text.";
+    public static readonly string ToolsMenu = "Open the Tools menu to measure the page, copy an image of part of it or recognise scanned text.";
+
+    /// <summary>The Snapshot tool menu item.</summary>
+    public static readonly string SnapshotTool = "Drag a box around part of a page to copy a sharp image of it. Press Esc to stop.";
 
     /// <summary>The Measure menu item.</summary>
     public static readonly string Measure = $"Measure distances, lengths and areas on the page.{Shortcut}Ctrl+Shift+M";
@@ -189,13 +228,16 @@ public static class Descriptions
     public static readonly string MeasureScale = "Type how the page relates to real size, such as 1 cm = 2 m or 1:100.";
 
     /// <summary>The annotation Undo button.</summary>
-    public static readonly string Undo = $"Remove the last annotation you added.{Shortcut}Ctrl+Z";
+    public static readonly string Undo = $"Undo your last annotation change: adding, deleting, moving, colour, style, note or reply.{Shortcut}Ctrl+Z";
+
+    /// <summary>The annotation Redo button.</summary>
+    public static readonly string Redo = $"Make the annotation change you undid again.{Shortcut}Ctrl+Y or Ctrl+Shift+Z";
 
     /// <summary>The button that closes the annotation tools.</summary>
     public static readonly string AnnotateDone = "Put the annotation tools away.";
 
     /// <summary>The select tool.</summary>
-    public static readonly string SelectTool = "Select text, or click an annotation to pick it.";
+    public static readonly string SelectTool = "Select text, or click an annotation to pick it. Drag a picked annotation or its corner squares to move or resize it; arrow keys nudge it.";
 
     /// <summary>The highlight tool.</summary>
     public static readonly string HighlightTool = "Select text to highlight it.";
@@ -230,6 +272,18 @@ public static class Descriptions
     /// <summary>The line shape.</summary>
     public static readonly string Line = "Draw straight lines. Drag on the page to draw one.";
 
+    /// <summary>The callout tool.</summary>
+    public static readonly string Callout = "Write text with an arrow pointing at something. Drag from the thing to where the text goes.";
+
+    /// <summary>The polygon tool.</summary>
+    public static readonly string Polygon = "Draw a shape with straight sides. Click each corner, then press Enter or double-click.";
+
+    /// <summary>The cloud tool.</summary>
+    public static readonly string Cloud = "Draw a cloud around an area. Click each corner, then press Enter or double-click.";
+
+    /// <summary>The connected lines tool.</summary>
+    public static readonly string PolyLine = "Draw joined straight lines. Click each point, then press Enter or double-click.";
+
     /// <summary>The stamp button.</summary>
     public static readonly string Stamp = "Choose a stamp, then click on the page to place it.";
 
@@ -248,11 +302,44 @@ public static class Descriptions
     /// <summary>The Final stamp.</summary>
     public static readonly string StampFinal = "Use the Final stamp. Click on the page to place it.";
 
-    /// <summary>The Not Approved stamp.</summary>
+    /// <summary>The not approved stamp.</summary>
     public static readonly string StampNotApproved = "Use the Not Approved stamp. Click on the page to place it.";
 
+    /// <summary>The custom stamp item.</summary>
+    public static readonly string StampCustom = "Type your own words for a stamp, then click on the page to place it.";
+
+    /// <summary>The picture stamp item.</summary>
+    public static readonly string StampPicture = "Choose a picture file to use as a stamp, then click on the page to place it.";
+
+    /// <summary>The line width button.</summary>
+    public static readonly string LineWidth = "Choose how thick new drawings, lines and shapes are, and the one you picked.";
+
+    /// <summary>The thin line width.</summary>
+    public static readonly string LineThin = "Use thin lines for new drawings and shapes and the one you picked.";
+
+    /// <summary>The medium line width.</summary>
+    public static readonly string LineMedium = "Use medium lines for new drawings and shapes and the one you picked.";
+
+    /// <summary>The thick line width.</summary>
+    public static readonly string LineThick = "Use thick lines for new drawings and shapes and the one you picked.";
+
+    /// <summary>The text size button.</summary>
+    public static readonly string AnnotationTextSize = "Choose the size of new text and callouts, and of the text you picked.";
+
+    /// <summary>The small text size.</summary>
+    public static readonly string TextSmall = "Use small text for new text and callouts and the one you picked.";
+
+    /// <summary>The medium text size.</summary>
+    public static readonly string TextMedium = "Use medium text for new text and callouts and the one you picked.";
+
+    /// <summary>The large text size.</summary>
+    public static readonly string TextLarge = "Use large text for new text and callouts and the one you picked.";
+
+    /// <summary>The extra large text size.</summary>
+    public static readonly string TextExtraLarge = "Use extra large text for new text and callouts and the one you picked.";
+
     /// <summary>The annotation colour button.</summary>
-    public static readonly string AnnotationColour = "Choose the colour for new highlights, lines and notes, and for the annotation you picked.";
+    public static readonly string AnnotationColour = "Choose the colour for new annotations, drawings and text, and for the annotation you picked.";
 
     /// <summary>The yellow annotation colour.</summary>
     public static readonly string Yellow = "Use yellow for new annotations and the one you picked.";
@@ -265,6 +352,39 @@ public static class Descriptions
 
     /// <summary>The red annotation colour.</summary>
     public static readonly string Red = "Use red for new annotations and the one you picked.";
+
+    /// <summary>The purple annotation colour.</summary>
+    public static readonly string Purple = "Use purple for new annotations and the one you picked.";
+
+    /// <summary>The orange annotation colour.</summary>
+    public static readonly string Orange = "Use orange for new annotations and the one you picked.";
+
+    /// <summary>The grey annotation colour.</summary>
+    public static readonly string Grey = "Use grey for new annotations and the one you picked.";
+
+    /// <summary>The dark blue annotation colour.</summary>
+    public static readonly string DarkBlue = "Use dark blue for new annotations and the one you picked.";
+
+    /// <summary>The comment list's text filter.</summary>
+    public static readonly string AnnotationFilterText = "Type words to show only the comments that contain them.";
+
+    /// <summary>The button that shows the comment list's filters and sort order.</summary>
+    public static readonly string AnnotationFilters = "Show or hide the choices that filter and sort the comment list.";
+
+    /// <summary>The comment list's type filter.</summary>
+    public static readonly string AnnotationTypeFilter = "Show only one type of comment, such as notes or drawings.";
+
+    /// <summary>The comment list's colour filter.</summary>
+    public static readonly string AnnotationColourFilter = "Show only the comments of one colour.";
+
+    /// <summary>The comment list's author filter.</summary>
+    public static readonly string AnnotationAuthorFilter = "Show only the comments one person wrote.";
+
+    /// <summary>The comment list's sort order.</summary>
+    public static readonly string AnnotationSort = "Choose the order of the comment list: by page, newest first, by author or by type.";
+
+    /// <summary>The button that clears the comment list's filters.</summary>
+    public static readonly string ClearAnnotationFilter = "Show every comment again.";
 
     /// <summary>The button that closes the Fill and Sign tools.</summary>
     public static readonly string FillSignDone = "Put the Fill & Sign tools away.";
@@ -314,6 +434,9 @@ public static class Descriptions
     /// <summary>A button that hides a message.</summary>
     public static readonly string DismissMessage = "Hide this message.";
 
+    /// <summary>The Dismiss button on the message about content that cannot be shown.</summary>
+    public static readonly string DismissContentWarning = "Hide this message about parts of the document PdfViewerLite cannot show. It comes back next time the document opens.";
+
     /// <summary>The Reload button on the changed file bar.</summary>
     public static readonly string ReloadChanged = "Load the changed file from the disk.";
 
@@ -358,6 +481,9 @@ public static class Descriptions
 
     /// <summary>The Save Attachment button.</summary>
     public static readonly string SaveAttachment = "Save the chosen attachment as a file.";
+
+    /// <summary>The Open Attachment button.</summary>
+    public static readonly string OpenAttachment = "Open the chosen attached file. A PDF opens in a new tab; other files open in their own app after you agree. Programs are never started.";
 
     /// <summary>The splitter beside the sidebar.</summary>
     public static readonly string SidebarSplitter = "Drag to make the sidebar wider or narrower.";
@@ -413,6 +539,12 @@ public static class Descriptions
     /// <summary>The Open button and menu item.</summary>
     public static readonly string Open = $"Choose PDF files to open.{Shortcut}Ctrl+O";
 
+    /// <summary>The Open Recent menu.</summary>
+    public static readonly string OpenRecent = "Open a document you had open recently. It opens at the page you left it on.";
+
+    /// <summary>The New Window menu item.</summary>
+    public static readonly string NewWindow = $"Open another window showing this document at the same page, to read two places side by side.{Shortcut}Ctrl+N";
+
     /// <summary>The tabs and settings menu button.</summary>
     public static readonly string TabsMenu = "Open the menu for tabs and settings, such as Preferences, page colour and closed tabs.";
 
@@ -457,6 +589,15 @@ public static class Descriptions
 
     /// <summary>The opening zoom list.</summary>
     public static readonly string OpeningZoom = "Choose the zoom for new documents. Fit page shows the whole page. Fit width fills the width.";
+
+    /// <summary>The help for the reopen at last page choice.</summary>
+    public static readonly string ReopenAtLastPage = "When ticked, a document you open again starts at the page you last read in it.";
+
+    /// <summary>The help for the spelling check choice.</summary>
+    public static readonly string CheckSpelling = "When ticked, misspelled words in form fields are underlined. Right-click one for corrections, from this computer's own dictionary.";
+
+    /// <summary>The comment author box.</summary>
+    public static readonly string CommentAuthor = "Type the name shown as the author of your notes, replies and other annotations. Leave it empty to use your user name.";
 
     /// <summary>The Read Aloud voice service list.</summary>
     public static readonly string SpeechEngine = "Choose which voice service reads aloud.";
@@ -508,6 +649,12 @@ public static class Descriptions
 
     /// <summary>The paper size list.</summary>
     public static readonly string PaperSize = "Choose the size of the paper.";
+
+    /// <summary>The print page size (scaling) choice.</summary>
+    public static readonly string PrintScaling = "Choose how big each page prints: filling the paper, at its true size, shrunk only when too big, or at a chosen scale.";
+
+    /// <summary>The custom print scale.</summary>
+    public static readonly string PrintScalePercent = "Set the scale as a percentage of the page's true size, from 10 to 400.";
 
     /// <summary>The print annotations check box.</summary>
     public static readonly string PrintAnnotations = "Print the highlights, notes and other annotations too.";

@@ -188,6 +188,9 @@ public sealed partial class PageCanvas : Control
         // These live as long as the control and only reference it, so they need no owner.
         _ = this.Events().AttachedToVisualTree.SubscribeSafe(_ => Attach(), OnError);
         _ = this.Events().DetachedFromVisualTree.SubscribeSafe(_ => Detach(), OnError);
+
+        // Two fingers on a touch screen zoom the pages (PageCanvas.Pinch.cs).
+        GestureRecognizers.Add(new PinchGestureRecognizer());
     }
 
     /// <summary>Gets or sets the tab to display.</summary>
@@ -299,6 +302,7 @@ public sealed partial class PageCanvas : Control
         DrawPages(context, new(tab, document, tab.RenderHub, viewport, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1, tab.CanvasClient.Advance()));
         DrawAnnotationOverlay(context, tab);
         DrawMeasurement(context, tab);
+        DrawArea(context);
         DrawCaret(context, tab);
     }
 
@@ -400,6 +404,13 @@ public sealed partial class PageCanvas : Control
             this.Events().PointerMoved.SubscribeSafe(e => Guard(HandlePointerMoved, e), OnError),
             this.ObserveRouted(PointerReleasedEvent, handledEventsToo: true).SubscribeSafe(e => Guard(HandlePointerReleased, e), OnError),
             this.Events().KeyDown.SubscribeSafe(e => Guard(HandleKeyDown, e), OnError),
+
+            // Moving around: pinch zoom, and Space held to move the pages (PageCanvas.Pinch.cs, PageCanvas.Hand.cs).
+            this.Events().Pinch.SubscribeSafe(e => Guard(HandlePinch, e), OnError),
+            this.Events().PinchEnded.SubscribeSafe(e => Guard(HandlePinchEnded, e), OnError),
+            this.Events().PointerTouchPadGestureMagnify.SubscribeSafe(e => Guard(HandleMagnify, e), OnError),
+            this.Events().KeyUp.SubscribeSafe(e => Guard(HandleKeyUp, e), OnError),
+            this.Events().LostFocus.SubscribeSafe(_ => ReleaseSpace(), OnError),
         ];
     }
 
@@ -420,6 +431,9 @@ public sealed partial class PageCanvas : Control
             OnError(error);
             (args as PointerEventArgs)?.Pointer.Capture(null);
             _selecting = false;
+            _panning = false;
+            _areaDragging = false;
+            StopAutoScrollFrames();
             InvalidateVisual();
         }
     }
@@ -429,6 +443,7 @@ public sealed partial class PageCanvas : Control
     {
         _controlSubscriptions?.Dispose();
         _controlSubscriptions = null;
+        StopAutoScrollFrames();
         _markPainter?.Dispose();
         _markPainter = null;
         _scrollerSubscriptions?.Dispose();
@@ -463,6 +478,13 @@ public sealed partial class PageCanvas : Control
     {
         ArgumentNullException.ThrowIfNull(e);
         var point = e.GetCurrentPoint(this);
+
+        // Auto-scroll, the hand and area tools, and moving the pages with Space or the middle button (PageCanvas.AutoScroll.cs).
+        if (BeginPageToolPress(e, point))
+        {
+            return;
+        }
+
         if (point.Properties.IsRightButtonPressed)
         {
             ShowContextMenu(point.Position);
@@ -502,7 +524,7 @@ public sealed partial class PageCanvas : Control
     {
         ArgumentNullException.ThrowIfNull(e);
         var position = e.GetPosition(this);
-        if (ContinueMeasure(position) || ContinueStroke(position))
+        if (ContinuePageTool(e, position) || ContinueMeasure(position) || ContinueStroke(position))
         {
             return;
         }
@@ -534,7 +556,7 @@ public sealed partial class PageCanvas : Control
     {
         ArgumentNullException.ThrowIfNull(e);
         e.Pointer.Capture(null);
-        if (EndAnnotationPress(e.GetPosition(this)))
+        if (EndPan(e.GetPosition(this)) || EndArea(e.GetPosition(this)) || EndAnnotationPress(e.GetPosition(this)))
         {
             return;
         }
@@ -559,6 +581,12 @@ public sealed partial class PageCanvas : Control
     private void HandleKeyDown(KeyEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
+        if (HandleNavigationKey(e))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.C && (e.KeyModifiers & KeyModifiers.Control) != 0)
         {
             CopyToClipboard(GetSelectedText());
@@ -566,7 +594,7 @@ public sealed partial class PageCanvas : Control
             return;
         }
 
-        if (!HandlePlacementKey(e) && !HandleMeasureKey(e.Key) && !HandleAnnotationKey(e.Key) && !HandleCaretKey(e) && !HandlePageByPageKey(e))
+        if (!HandlePlacementKey(e) && !HandleMeasureKey(e.Key) && !HandleAnnotationKey(e) && !HandleCaretKey(e) && !HandlePageByPageKey(e))
         {
             return;
         }
@@ -947,6 +975,7 @@ public sealed partial class PageCanvas : Control
         if (_wiredTab is { } old)
         {
             _ = old.CanvasClient.Advance();
+            old.IsAutoScrolling = false;
         }
 
         _wiredTab = tab;
@@ -989,6 +1018,11 @@ public sealed partial class PageCanvas : Control
             tab.WhenChanged(static x => x.IsCaretMode).Skip(1).SubscribeSafe(on => OnCaretModeChanged(tab, on), OnError),
             tab.Annotations.WhenChanged(static x => x.Selected).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
             tab.FillAndSign.WhenChanged(static x => x.Placement).Skip(1).SubscribeSafe(_ => InvalidateVisual(), OnError),
+
+            // Moving around and grabbing content (PageCanvas.Navigation.cs, PageCanvas.AutoScroll.cs, PageCanvas.Area.cs).
+            tab.SelectAllRequests.SubscribeSafe(_ => OnSelectAllRequested(), OnError),
+            tab.WhenChanged(static x => x.IsAutoScrolling).SubscribeSafe(OnAutoScrollChanged, OnError),
+            tab.WhenChanged(static x => x.PageTool).Skip(1).SubscribeSafe(_ => OnPageToolChanged(), OnError),
         ];
         tab.EnsureLoaded();
         var position = tab.Position;

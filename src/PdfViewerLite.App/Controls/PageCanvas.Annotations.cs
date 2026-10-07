@@ -39,7 +39,7 @@ public sealed partial class PageCanvas
     private const int MaxStrokePoints = 4096;
 
     /// <summary>The colour of the live stroke while drawing: the annotation ink colour.</summary>
-    private static readonly IPen StrokePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.FromUInt32(0xFF000000U | AnnotationColors.Ink)), OverlayPenWidth);
+    private static readonly ImmutablePen StrokePen = new(new ImmutableSolidColorBrush(Color.FromUInt32(0xFF000000U | AnnotationColors.Ink)), OverlayPenWidth);
 
     /// <summary>The points of the stroke being drawn, in page space.</summary>
     private readonly List<PagePoint> _stroke = [];
@@ -186,7 +186,7 @@ public sealed partial class PageCanvas
 
         var annotations = tab.Annotations;
         var page = _layout.HitTest(position.X, position.Y);
-        if (PressPlacement(tab, page, position) || BeginShape(tab, page, position, e))
+        if (BeginDrawingTool(tab, page, position, e))
         {
             return true;
         }
@@ -215,10 +215,8 @@ public sealed partial class PageCanvas
 
             case AnnotationTool.Select when page >= 0:
             {
-                var hit = annotations.HitTest(page, ToPage(tab, page, position));
-                annotations.Select(hit);
-                InvalidateVisual();
-                return hit is not null && !TryHitTestCharacter(position, out _, out _);
+                // Movable annotations are dragged to move them; text markup is picked and the text stays selectable.
+                return BeginEdit(tab, page, position, e) || (annotations.Selected is not null && !TryHitTestCharacter(position, out _, out _));
             }
 
             default:
@@ -233,7 +231,8 @@ public sealed partial class PageCanvas
     /// <returns><see langword="true"/> when a stroke is being drawn.</returns>
     private bool ContinueStroke(Point position)
     {
-        if (ContinueShape(position))
+        HoverPolygon(position);
+        if (ContinueShape(position) || ContinueEdit(position))
         {
             return true;
         }
@@ -263,7 +262,7 @@ public sealed partial class PageCanvas
         }
 
         var annotations = tab.Annotations;
-        if (EndShape(tab, position))
+        if (EndShape(tab, position) || EndEdit(tab, position))
         {
             return true;
         }
@@ -404,11 +403,20 @@ public sealed partial class PageCanvas
         ];
     }
 
-    /// <summary>Handles Escape (clear the selection and the pick) and Delete (remove the picked annotation).</summary>
-    /// <param name="key">The key.</param>
-    /// <returns><see langword="true"/> when Delete removed an annotation.</returns>
-    private bool HandleAnnotationKey(Key key)
+    /// <summary>
+    /// Handles the polygon tools' keys, Escape (clear the selection and the pick), Delete (remove the picked
+    /// annotation) and the arrow keys (nudge the picked annotation).
+    /// </summary>
+    /// <param name="e">The key press.</param>
+    /// <returns><see langword="true"/> when the key was used.</returns>
+    private bool HandleAnnotationKey(KeyEventArgs e)
     {
+        var key = e.Key;
+        if (HandlePolygonKey(key) || NudgeSelected(e))
+        {
+            return true;
+        }
+
         if (key == Key.Escape)
         {
             ClearSelection();
@@ -450,7 +458,9 @@ public sealed partial class PageCanvas
     private void DrawAnnotationOverlay(DrawingContext context, DocumentTabViewModel tab)
     {
         DrawShapePreview(context, tab);
+        DrawPolygonPreview(context, tab);
         DrawPlacement(context, tab);
+        DrawEditing(context, tab);
         if (_strokePage >= 0 && _stroke.Count > 1)
         {
             var transform = new PageTransform(_layout.GetPageBounds(_strokePage), _sizes[_strokePage], tab.Rotation, _layout.Options.Scale);

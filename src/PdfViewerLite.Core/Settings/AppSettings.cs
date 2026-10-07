@@ -36,6 +36,9 @@ public sealed class AppSettings
     /// <summary>Gets or sets the interface font size in points, or <see langword="null"/> to follow the desktop.</summary>
     public double? InterfaceFontSizePoints { get; set; }
 
+    /// <summary>Gets or sets the name recorded as the author of new comments, or empty to use the computer's user name.</summary>
+    public string CommentAuthor { get; set; } = string.Empty;
+
     /// <summary>
     /// Gets the signing certificates the user chose to remember, most recently used first. Only the file and who it
     /// names are kept; passwords and private keys are never saved.
@@ -112,6 +115,20 @@ public sealed class AppSettings
 
     /// <summary>Gets or sets a value indicating whether tabs are restored on start.</summary>
     public bool RestoreSession { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether words typed into form fields are checked for spelling.</summary>
+    public bool CheckSpelling { get; set; } = true;
+
+    /// <summary>Gets the words the reader chose to keep, which are never marked as misspelled.</summary>
+    [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+    public List<string> IgnoredWords { get; } = [];
+
+    /// <summary>Gets or sets a value indicating whether a document reopens at the page it was closed at.</summary>
+    public bool ReopenAtLastPage { get; set; } = true;
+
+    /// <summary>Gets the page each recent document was closed at, newest last.</summary>
+    [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+    public List<LastViewedPage> LastPages { get; } = [];
 
     /// <summary>Gets or sets the window width.</summary>
     public double WindowWidth { get; set; } = 1200;

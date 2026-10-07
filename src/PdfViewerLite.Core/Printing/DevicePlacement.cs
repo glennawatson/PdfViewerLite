@@ -9,7 +9,9 @@ namespace PdfViewerLite.Core.Printing;
 
 /// <summary>
 /// Where a page goes on a printer's printable area: at its true size when it fits, otherwise shrunk to fit, centred.
-/// The page is rendered at the device's horizontal resolution and stretched vertically when the vertical one differs.
+/// A wide page on upright paper, or a tall page on sideways paper, is turned a quarter, as print systems turn it, so the
+/// paper's edges keep their meaning for two-sided printing. The page is rendered at the device's horizontal resolution
+/// and stretched vertically when the vertical one differs.
 /// </summary>
 /// <param name="Scale">The render scale in pixels per point.</param>
 /// <param name="Width">The rendered and printed width in device pixels.</param>
@@ -26,6 +28,9 @@ public readonly record struct DevicePlacement(float Scale, int Width, int Height
     /// <summary>Points per inch.</summary>
     private const float PointsPerInch = 72F;
 
+    /// <summary>Gets the turn applied when rendering: none, or a quarter turn counter-clockwise so the page's top meets the paper's left edge.</summary>
+    public PageRotation Rotation { get; init; }
+
     /// <summary>Fits a page onto a printable area.</summary>
     /// <param name="page">The page size in points.</param>
     /// <param name="dpiX">The horizontal resolution.</param>
@@ -37,6 +42,9 @@ public readonly record struct DevicePlacement(float Scale, int Width, int Height
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(dpiX);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(dpiY);
+        var turn = (page.Width > page.Height && printableWidth < printableHeight) || (page.Width < page.Height && printableWidth > printableHeight);
+        var rotation = turn ? PageRotation.Rotate270 : PageRotation.None;
+        page = page.Rotate(rotation);
         var naturalWidth = page.Width / PointsPerInch * dpiX;
         var naturalHeight = page.Height / PointsPerInch * dpiY;
         var shrink = Math.Min(1F, Math.Min(printableWidth / naturalWidth, printableHeight / naturalHeight));
@@ -44,7 +52,7 @@ public readonly record struct DevicePlacement(float Scale, int Width, int Height
         var width = Math.Max(1, (int)MathF.Round(page.Width * scale));
         var height = Math.Max(1, (int)MathF.Round(page.Height * scale));
         var deviceHeight = Math.Max(1, (int)MathF.Round(naturalHeight * shrink));
-        return new(scale, width, height, deviceHeight, (printableWidth - width) / Halves, (printableHeight - deviceHeight) / Halves);
+        return new(scale, width, height, deviceHeight, (printableWidth - width) / Halves, (printableHeight - deviceHeight) / Halves) { Rotation = rotation };
     }
 
     /// <summary>Gets the rows rendered at a time so a band stays within a memory budget.</summary>

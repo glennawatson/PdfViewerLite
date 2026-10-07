@@ -19,6 +19,18 @@ public static class SheetGrid
     /// <summary>Letter height in points.</summary>
     private const float LetterHeight = 792F;
 
+    /// <summary>A3 height in points; its width is the A4 height.</summary>
+    private const float A3Height = 1190.55F;
+
+    /// <summary>A5 width in points; its height is the A4 width.</summary>
+    private const float A5Width = 419.53F;
+
+    /// <summary>Legal height in points; its width is the Letter width.</summary>
+    private const float LegalHeight = 1008F;
+
+    /// <summary>Tabloid height in points; its width is the Letter height.</summary>
+    private const float TabloidHeight = 1224F;
+
     /// <summary>Two pages side by side.</summary>
     private const int Two = 2;
 
@@ -63,7 +75,15 @@ public static class SheetGrid
     /// <param name="height">The height.</param>
     public static void GetSheetSize(PaperSize paper, bool landscape, out float width, out float height)
     {
-        (width, height) = paper == PaperSize.Letter ? (LetterWidth, LetterHeight) : (A4Width, A4Height);
+        (width, height) = paper switch
+        {
+            PaperSize.Letter => (LetterWidth, LetterHeight),
+            PaperSize.A3 => (A4Height, A3Height),
+            PaperSize.A5 => (A5Width, A4Width),
+            PaperSize.Legal => (LetterWidth, LegalHeight),
+            PaperSize.Tabloid => (LetterHeight, TabloidHeight),
+            _ => (A4Width, A4Height),
+        };
         if (landscape)
         {
             (width, height) = (height, width);

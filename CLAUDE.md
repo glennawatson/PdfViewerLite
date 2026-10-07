@@ -6,7 +6,7 @@ PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users 
 
 - Low allocations and low execution time are core requirements. Back every code change with relevant BenchmarkDotNet measurements. Compare baseline and change under the same conditions. Prefer the lowest measured cost that preserves correctness and access.
 - Do not judge performance from source code or subjective impressions. Overlapping timing error bars are inconclusive. Every feature needs a benchmark.
-- Measure allocations with EventPipe and `tools/PdfViewerLite.AllocationAudit`. Never use `MemoryDiagnoser`. Explain every measured allocation in `benchmarks/allocations-explained.json`. The render hot path must not allocate.
+- Measure allocations with EventPipe and `scripts/AllocationAudit.cs`. Never use `MemoryDiagnoser`. Explain every measured allocation in `benchmarks/allocations-explained.json`. The render hot path must not allocate.
 
 ## Implementation
 

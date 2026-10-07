@@ -23,6 +23,18 @@ public sealed class PageExportTests
     /// <summary>The pages in the source document.</summary>
     private const int Pages = 4;
 
+    /// <summary>The characters in the first page's heading, "Page 1".</summary>
+    private const int HeadingLength = 6;
+
+    /// <summary>Half the true size, as a percentage.</summary>
+    private const int HalfScale = 50;
+
+    /// <summary>The share by which printed sizes may differ from the expected scale.</summary>
+    private const double ScaleTolerance = 0.05;
+
+    /// <summary>The index of the test document's wide page.</summary>
+    private const int WidePage = 1;
+
     /// <summary>The third page, exported first.</summary>
     private const int ThirdPage = 2;
 
@@ -190,6 +202,39 @@ public sealed class PageExportTests
         }
     }
 
+    /// <summary>Fitting to paper puts upright pages on upright paper and wide pages on sideways paper.</summary>
+    /// <param name="paper">The chosen paper.</param>
+    /// <returns>A task.</returns>
+    [Test]
+    [Arguments(PaperSize.A4)]
+    [Arguments(PaperSize.Letter)]
+    public async Task FitsEachPageToPaperOfItsOrientation(PaperSize paper)
+    {
+        var source = TestPdf.WriteTempFile(Pages);
+        var exported = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-fit-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            using (var document = new PdfiumEngine().Open(source, null))
+            {
+                await using var stream = File.Create(exported);
+                await Assert.That(((IPageExporter)document).ExportPages([0, WidePage], new(1, paper, true) { FitToPaper = true }, stream)).IsTrue();
+            }
+
+            using var copy = new PdfiumEngine().Open(exported, null);
+            SheetGrid.GetSheetSize(paper, false, out var width, out var height);
+            var sizes = copy.GetPageSizes();
+            PageSize upright = new(width, height);
+            await Assert.That(sizes[0]).IsEqualTo(upright);
+            await Assert.That(sizes[1]).IsEqualTo(upright.Rotate(PageRotation.Rotate90));
+            await Assert.That(copy.GetText(1, 0, copy.GetCharacterCount(1))).Contains("Page 2");
+        }
+        finally
+        {
+            File.Delete(source);
+            File.Delete(exported);
+        }
+    }
+
     /// <summary>Verifies the chosen pages come out in order, with the annotation added before exporting.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -309,6 +354,39 @@ public sealed class PageExportTests
         {
             File.Delete(source);
         }
+    }
+
+    /// <summary>Each scaling choice prints the page at the size it promises, on the chosen paper.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ScalesPagesAsChosen()
+    {
+        var actual = await PrintedTextWidthAsync(PaperSize.A3, PrintScaling.ActualSize, PrintScale.TrueSize);
+        var half = await PrintedTextWidthAsync(PaperSize.A3, PrintScaling.Custom, HalfScale);
+        var fitLarge = await PrintedTextWidthAsync(PaperSize.A3, PrintScaling.FitToPaper, PrintScale.TrueSize);
+        var shrinkLarge = await PrintedTextWidthAsync(PaperSize.A3, PrintScaling.ShrinkOversized, PrintScale.TrueSize);
+        var shrinkSmall = await PrintedTextWidthAsync(PaperSize.A5, PrintScaling.ShrinkOversized, PrintScale.TrueSize);
+
+        await Assert.That(half / actual).IsEqualTo(HalfScale / (double)PrintScale.TrueSize).Within(ScaleTolerance);
+        await Assert.That(fitLarge).IsGreaterThan(actual * (1 + ScaleTolerance));
+        await Assert.That(shrinkLarge).IsEqualTo(actual).Within(actual * ScaleTolerance);
+        await Assert.That(shrinkSmall).IsLessThan(actual * (1 - ScaleTolerance));
+    }
+
+    /// <summary>Exports the first page on a paper with a scaling choice and measures its heading's printed width.</summary>
+    /// <param name="paper">The paper.</param>
+    /// <param name="scaling">The scaling choice.</param>
+    /// <param name="percent">The custom percentage.</param>
+    /// <returns>The heading's width in points.</returns>
+    private static async Task<double> PrintedTextWidthAsync(PaperSize paper, PrintScaling scaling, int percent)
+    {
+        using var copy = await ExportAsync([0], new(1, paper, true) { FitToPaper = true, Scaling = scaling, ScalePercent = percent });
+        SheetGrid.GetSheetSize(paper, false, out var width, out var height);
+        PageSize sheet = new(width, height);
+        await Assert.That(copy.GetPageSizes()[0]).IsEqualTo(sheet);
+        List<PageRect> bounds = [];
+        copy.GetTextBounds(0, 0, HeadingLength, bounds);
+        return bounds.Sum(static rect => (double)rect.Width);
     }
 
     /// <summary>Exports pages of a generated document and opens the result.</summary>

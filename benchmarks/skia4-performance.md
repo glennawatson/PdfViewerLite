@@ -56,7 +56,7 @@ Eighteen saved UI frames were compared with an isolated working Avalonia.Skia/Sk
 
 ```bash
 taskset -c 2 dotnet run -c Release --project "$PWD/benchmarks/PdfViewerLite.Benchmarks/PdfViewerLite.Benchmarks.csproj" -- --filter '*GradientBenchmarks*' '*RectangleBenchmarks*' '*GlyphRunBenchmarks*' --warmupCount 5 --iterationCount 15 --artifacts /tmp/pdf-skia-benchmarks
-dotnet run -c Release --project "$PWD/tools/PdfViewerLite.AllocationAudit" -- /tmp/pdf-skia-benchmarks "$PWD/benchmarks/allocations-explained.json"
+dotnet run --file "$PWD/scripts/AllocationAudit.cs" -- /tmp/pdf-skia-benchmarks "$PWD/benchmarks/allocations-explained.json"
 ```
 
 Raw reports: [gradients](results/skia4/PdfViewerLite.Benchmarks.GradientBenchmarks-report-github.md), [rectangles](results/skia4/PdfViewerLite.Benchmarks.RectangleBenchmarks-report-github.md), [text](results/skia4/PdfViewerLite.Benchmarks.GlyphRunBenchmarks-report-github.md).

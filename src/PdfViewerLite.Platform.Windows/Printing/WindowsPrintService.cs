@@ -42,6 +42,9 @@ public sealed class WindowsPrintService : IPrintService
     /// <summary>The offset of DEVMODEW.dmFields.</summary>
     private const int FieldsOffset = 72;
 
+    /// <summary>The offset of DEVMODEW.dmOrientation.</summary>
+    private const int OrientationOffset = 76;
+
     /// <summary>The offset of DEVMODEW.dmPaperSize.</summary>
     private const int PaperOffset = 78;
 
@@ -54,14 +57,29 @@ public sealed class WindowsPrintService : IPrintService
     /// <summary>The offset of DEVMODEW.dmDuplex.</summary>
     private const int DuplexOffset = 94;
 
-    /// <summary>The DEVMODE fields set: DM_PAPERSIZE, DM_COPIES, DM_COLOR and DM_DUPLEX.</summary>
-    private const uint ChangedFields = 0x2 | 0x100 | 0x800 | 0x1000;
+    /// <summary>The DEVMODE fields set: DM_ORIENTATION, DM_PAPERSIZE, DM_COPIES, DM_COLOR and DM_DUPLEX.</summary>
+    private const uint ChangedFields = 0x1 | 0x2 | 0x100 | 0x800 | 0x1000;
+
+    /// <summary>Upright paper (DMORIENT_PORTRAIT). Duplex edges are named for upright paper, and wide sheets are turned to fit it.</summary>
+    private const short Portrait = 1;
 
     /// <summary>US Letter paper (DMPAPER_LETTER).</summary>
     private const short LetterPaper = 1;
 
     /// <summary>A4 paper (DMPAPER_A4).</summary>
     private const short A4Paper = 9;
+
+    /// <summary>Tabloid paper (DMPAPER_TABLOID).</summary>
+    private const short TabloidPaper = 3;
+
+    /// <summary>Legal paper (DMPAPER_LEGAL).</summary>
+    private const short LegalPaper = 5;
+
+    /// <summary>A3 paper (DMPAPER_A3).</summary>
+    private const short A3Paper = 8;
+
+    /// <summary>A5 paper (DMPAPER_A5).</summary>
+    private const short A5Paper = 11;
 
     /// <summary>Black and white printing (DMCOLOR_MONOCHROME).</summary>
     private const short Monochrome = 1;
@@ -185,6 +203,19 @@ public sealed class WindowsPrintService : IPrintService
         }
     }
 
+    /// <summary>Gets the DEVMODE paper value for a paper size.</summary>
+    /// <param name="paper">The paper.</param>
+    /// <returns>The DMPAPER value.</returns>
+    internal static short GetPaper(PaperSize paper) => paper switch
+    {
+        PaperSize.Letter => LetterPaper,
+        PaperSize.A3 => A3Paper,
+        PaperSize.A5 => A5Paper,
+        PaperSize.Legal => LegalPaper,
+        PaperSize.Tabloid => TabloidPaper,
+        _ => A4Paper,
+    };
+
     /// <summary>Gets the DEVMODE duplex value for a print job.</summary>
     /// <param name="options">The job settings.</param>
     /// <returns>The printer's duplex mode.</returns>
@@ -197,6 +228,20 @@ public sealed class WindowsPrintService : IPrintService
         }
 
         return options.Binding == DuplexBinding.ShortEdge ? ShortEdge : LongEdge;
+    }
+
+    /// <summary>Writes the job's choices into a printer's DEVMODE: upright paper, so the duplex edge names the sheet's own edge.</summary>
+    /// <param name="devMode">The DEVMODEW bytes.</param>
+    /// <param name="options">The job settings.</param>
+    internal static void ApplyChoices(Span<byte> devMode, in PrintJobOptions options)
+    {
+        var fields = MemoryMarshal.Read<uint>(devMode[FieldsOffset..]) | ChangedFields;
+        MemoryMarshal.Write(devMode[FieldsOffset..], in fields);
+        WriteShort(devMode, OrientationOffset, Portrait);
+        WriteShort(devMode, PaperOffset, GetPaper(options.Paper));
+        WriteShort(devMode, CopiesOffset, (short)Math.Clamp(options.Copies, 1, MaxCopies));
+        WriteShort(devMode, ColorOffset, options.Colour ? Colour : Monochrome);
+        WriteShort(devMode, DuplexOffset, GetDuplex(options));
     }
 
     /// <summary>Puts the default printer first, then sorts by name.</summary>
@@ -212,6 +257,13 @@ public sealed class WindowsPrintService : IPrintService
 
         return string.Compare(left.DisplayName, right.DisplayName, StringComparison.CurrentCultureIgnoreCase);
     }
+
+    /// <summary>Writes one DEVMODE value.</summary>
+    /// <param name="devMode">The DEVMODEW bytes.</param>
+    /// <param name="offset">The field's offset.</param>
+    /// <param name="value">The value.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void WriteShort(Span<byte> devMode, int offset, short value) => MemoryMarshal.Write(devMode[offset..], in value);
 
     /// <summary>Shows the Windows print dialog.</summary>
     /// <returns>The chosen printer's device context, or zero when cancelled.</returns>
@@ -290,11 +342,7 @@ public sealed class WindowsPrintService : IPrintService
                     return null;
                 }
 
-                *(uint*)(devMode + FieldsOffset) |= ChangedFields;
-                *(short*)(devMode + PaperOffset) = options.Paper == PaperSize.Letter ? LetterPaper : A4Paper;
-                *(short*)(devMode + CopiesOffset) = (short)Math.Clamp(options.Copies, 1, MaxCopies);
-                *(short*)(devMode + ColorOffset) = options.Colour ? Colour : Monochrome;
-                *(short*)(devMode + DuplexOffset) = GetDuplex(options);
+                ApplyChoices(settings, options);
                 _ = NativeMethods.DocumentProperties(0, printer, options.Printer, devMode, devMode, OutBuffer | InBuffer);
             }
 
@@ -325,7 +373,7 @@ public sealed class WindowsPrintService : IPrintService
             {
                 var bandRows = Math.Min(rows, placement.Height - top);
                 var target = new RenderTarget(buffer.AsSpan(0, stride * bandRows), placement.Width, bandRows, stride);
-                if (!document.Render(new(page, placement.Scale, PageRotation.None, 0, top, flags), target))
+                if (!document.Render(new(page, placement.Scale, placement.Rotation, 0, top, flags), target))
                 {
                     return;
                 }

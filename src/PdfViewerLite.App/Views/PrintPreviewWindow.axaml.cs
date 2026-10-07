@@ -46,6 +46,7 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.FileName, static v => v.Title, static name => $"Print {name}"));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Summary, static v => v.SummaryText.Text));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Sheets, static v => v.SheetList.ItemsSource));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.SelectedSheetIndex, static v => v.SheetList.SelectedIndex));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Targets, static v => v.DestinationBox.ItemsSource));
             disposables.Add(this.Bind(ViewModel, static vm => vm.SelectedTarget, static v => v.DestinationBox.SelectedItem, static target => target, static item => item as PrintTarget));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Copies, static v => v.CopiesBox.Value, static copies => (decimal?)copies, static value => (int)(value ?? 1)));
@@ -65,6 +66,10 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
             disposables.Add(this.Bind(ViewModel, static vm => vm.PagesPerSheetIndex, static v => v.PagesPerSheetBox.SelectedIndex, static i => i, static i => Math.Max(0, i)));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.ShowsPaper, static v => v.PaperRow.IsVisible));
             disposables.Add(this.Bind(ViewModel, static vm => vm.Paper, static v => v.PaperBox.SelectedIndex, static p => (int)p, static i => (PaperSize)Math.Max(0, i)));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.Scaling, static v => v.ScalingBox.SelectedIndex, static s => (int)s, static i => (PrintScaling)Math.Max(0, i)));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.ShowsScaling, static v => v.ScalingRow.IsVisible));
+            disposables.Add(this.Bind(ViewModel, static vm => vm.ScalePercent, static v => v.ScalePercentBox.Value, static p => (decimal?)p, static value => (int)(value ?? PrintScale.TrueSize)));
+            disposables.Add(this.OneWayBind(ViewModel, static vm => vm.ShowsScalePercent, static v => v.ScalePercentRow.IsVisible));
             disposables.Add(this.Bind(ViewModel, static vm => vm.IncludeAnnotations, static v => v.AnnotationsBox.IsChecked, static on => on, static on => on == true));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrinterHint.IsVisible, static d => d == PrintDestination.SystemDialog));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Destination, static v => v.PrintButton.Content, ButtonText));
@@ -110,7 +115,9 @@ public sealed partial class PrintPreviewWindow : ReactiveUI.Avalonia.ReactiveWin
             (BindingBox, BindingLabel),
             (LayoutBox, LayoutLabel),
             (PagesPerSheetBox, PagesPerSheetLabel),
-            (PaperBox, PaperLabel));
+            (PaperBox, PaperLabel),
+            (ScalingBox, ScalingLabel),
+            (ScalePercentBox, ScalePercentLabel));
 
     /// <summary>Gets a request each time Ctrl+Shift+P is pressed.</summary>
     /// <returns>The requests; the declared type matters because InvokeCommand must start from this method's result.</returns>

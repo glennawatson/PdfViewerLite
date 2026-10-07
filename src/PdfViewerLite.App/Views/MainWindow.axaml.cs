@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
@@ -15,6 +16,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
+using PdfViewerLite.Core.Platform;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
@@ -27,6 +29,9 @@ namespace PdfViewerLite.App.Views;
 [DebuggerDisplay("MainWindow: {Title}")]
 public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<MainViewModel>
 {
+    /// <summary>The column of the second view while split.</summary>
+    private const int SecondViewColumn = 2;
+
     /// <summary>How far the pointer must move before a tab drag starts.</summary>
     private const double DragThreshold = 6;
 
@@ -61,6 +66,8 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         TabStrip.ItemTemplate = new FuncDataTemplate<DocumentTabViewModel>(static (_, _) => new TabItemView());
         TabFinderList.ItemTemplate = new FuncDataTemplate<DocumentTabViewModel>(static (_, _) => new TabSummaryView());
         DocumentHost.ContentTemplate = new FuncDataTemplate<DocumentTabViewModel>(static (_, _) => new DocumentView(), true);
+        SplitHost.ContentTemplate = new FuncDataTemplate<DocumentTabViewModel>(static (_, _) => new DocumentView(), true);
+        RecentMenuItem.ItemTemplate = new FuncDataTemplate<RecentDocument>(static (recent, _) => new TextBlock { Text = recent?.FileName });
 
         _ = this.WhenActivated(
             disposables =>
@@ -69,6 +76,7 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
                 BindWindowEvents(disposables);
                 BindTabStrip(disposables, TabStrip);
                 BindTabFinder(disposables, TabFinderList, TabFinderBox, TabFinderButton.Flyout!);
+                BindRecentMenu(disposables, RecentMenuItem, TabsMenuButton.Flyout!);
                 BindProperties(disposables);
                 BindCommands(disposables);
                 disposables.Add(this.WhenChanged(static v => v.ViewModel!.SelectedTab!.IsPresenting).SubscribeSafe(OnPresentingChanged, OnError));
@@ -252,6 +260,33 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         disposables.Add(tabStrip.Events().ContextRequested.SubscribeSafe(OnTabContextRequested, OnError));
     }
 
+    /// <summary>Fills Open Recent from the recent documents, refreshed each time the menu opens.</summary>
+    /// <param name="disposables">Owns the bindings.</param>
+    /// <param name="recentMenu">The Open Recent menu item; Events() needs it typed, as with the tab finder.</param>
+    /// <param name="tabsMenu">The flyout that holds it.</param>
+    private void BindRecentMenu(MultipleDisposable disposables, MenuItem recentMenu, FlyoutBase tabsMenu)
+    {
+        disposables.Add(this.OneWayBind(ViewModel, static vm => vm.RecentDocuments, static v => v.RecentMenuItem.ItemsSource));
+        disposables.Add(this.OneWayBind(ViewModel, static vm => vm.RecentDocuments.Count, static v => v.RecentMenuItem.IsEnabled, static count => count > 0));
+        disposables.Add(recentMenu.Events().ContainerPrepared.SubscribeSafe(args => PrepareRecentItem(args.Container), OnError));
+        disposables.Add(tabsMenu.Events().Opened.SubscribeSafe(_ => ViewModel?.RefreshRecentDocuments(), OnError));
+    }
+
+    /// <summary>Makes a recent document's menu item open it, and says where it is.</summary>
+    /// <param name="container">The menu item.</param>
+    private void PrepareRecentItem(Control container)
+    {
+        if (container is not MenuItem item || item.DataContext is not RecentDocument recent || ViewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        item.Command = viewModel.OpenRecentCommand;
+        item.CommandParameter = recent;
+        ControlHelp.SetText(item, string.Create(CultureInfo.CurrentCulture, $"Open {recent.FileName} from {recent.Folder}."));
+        AutomationProperties.SetName(item, recent.FileName);
+    }
+
     /// <summary>Observes the tab finder flyout: picking a tab, searching and opening.</summary>
     /// <param name="disposables">Owns the subscriptions.</param>
     /// <param name="list">The found tabs list; Events() needs the typed parameters because it cannot see fields the XAML name generator creates.</param>
@@ -282,6 +317,10 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         disposables.Add(this.OneWayBind(ViewModel, static vm => vm.HasTabs, static v => v.StartPage.IsVisible, static hasTabs => !hasTabs));
         disposables.Add(this.OneWayBind(ViewModel, static vm => vm.HasTabs, static v => v.DocumentHost.IsVisible));
         disposables.Add(this.OneWayBind(ViewModel, static vm => vm.SelectedTab, static v => v.DocumentHost.Content));
+        disposables.Add(this.OneWayBind(ViewModel, static vm => vm.SplitTab, static v => v.SplitHost.Content));
+        disposables.Add(this.OneWayBind(ViewModel, static vm => vm.SplitTab, static v => v.SplitHost.IsVisible, static split => split is not null));
+        disposables.Add(this.OneWayBind(ViewModel, static vm => vm.SplitTab, static v => v.SplitSplitter.IsVisible, static split => split is not null));
+        disposables.Add(this.WhenChanged(static v => v.ViewModel!.SplitTab).SubscribeSafe(OnSplitChanged, OnError));
     }
 
     /// <summary>Binds the buttons and menu items to commands, and handles the view model's interactions.</summary>
@@ -301,6 +340,8 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ConfirmInteraction, ConfirmAsync));
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ShowPreferencesInteraction, ShowPreferencesAsync));
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ShowFolderSearchInteraction, ShowFolderSearchAsync));
+        disposables.Add(this.BindInteraction(ViewModel, static vm => vm.NewWindowInteraction, ShowNewWindowAsync));
+        disposables.Add(this.BindCommand(ViewModel, static vm => vm.NewWindowCommand, static v => v.NewWindowMenuItem));
     }
 
     /// <summary>Confirms unsaved edits and saves the session before closing.</summary>
@@ -325,7 +366,11 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
             return;
         }
 
-        viewModel.RememberWindow(Width, Height, WindowState == WindowState.Maximized, WindowState == WindowState.Normal);
+        if (!viewModel.IsSecondaryWindow)
+        {
+            viewModel.RememberWindow(Width, Height, WindowState == WindowState.Maximized, WindowState == WindowState.Normal);
+        }
+
         viewModel.SaveSession();
     }
 
@@ -461,6 +506,26 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
             window.Show(this);
         }
 
+        context.SetOutput(RxVoid.Default);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Shares the width between the two views while split, and gives it all back to the first afterwards.</summary>
+    /// <param name="split">The second view, or <see langword="null"/>.</param>
+    private void OnSplitChanged(DocumentTabViewModel? split) =>
+        DocumentArea.ColumnDefinitions[SecondViewColumn].Width = split is null ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+
+    /// <summary>Shows another window, which releases its view model once closed.</summary>
+    /// <param name="context">The interaction context.</param>
+    /// <returns>A task.</returns>
+    private Task ShowNewWindowAsync(IInteractionContext<MainViewModel, RxVoid> context)
+    {
+        var viewModel = context.Input;
+        var window = new MainWindow { DataContext = viewModel, Width = Width, Height = Height };
+
+        // The new window's view model lives exactly as long as the window, and the Closed event carries neither.
+        _ = window.Events().Closed.Take(1).SubscribeSafe(_ => viewModel.Dispose(), OnError);
+        window.Show();
         context.SetOutput(RxVoid.Default);
         return Task.CompletedTask;
     }

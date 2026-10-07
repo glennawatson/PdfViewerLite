@@ -16,6 +16,9 @@ public sealed class MainViewModelTests
     /// <summary>The number of distinct documents most tests open.</summary>
     private const int TwoTabs = 2;
 
+    /// <summary>The last page of the test documents.</summary>
+    private const int LastPage = Pages - 1;
+
     /// <summary>The first document name.</summary>
     private const string FirstName = "a.pdf";
 
@@ -113,6 +116,63 @@ public sealed class MainViewModelTests
 
         await Assert.That(restored.Tabs.Count).IsEqualTo(TwoTabs);
         await Assert.That(restored.SelectedTab!.FilePath).IsEqualTo(first);
+    }
+
+    /// <summary>Verifies a document reopens at the page it was closed at, unless that is turned off.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ReopensAtLastPage()
+    {
+        using var test = new TestServices();
+        var path = test.CreateDocument(FirstName, Pages);
+        using var main = new MainViewModel(test.Services);
+        main.Open([path]);
+        main.SelectedTab!.ReportPosition(new(LastPage, 0), LastPage);
+        main.CloseTabWithoutAsking(main.SelectedTab);
+
+        main.Open([path]);
+        await Assert.That(main.SelectedTab!.CurrentPageIndex).IsEqualTo(LastPage);
+
+        main.CloseTabWithoutAsking(main.SelectedTab);
+        using (var preferences = new PreferencesViewModel(test.Services))
+        {
+            await Assert.That(preferences.ReopenAtLastPage).IsTrue();
+            preferences.ReopenAtLastPage = false;
+        }
+
+        await Assert.That(test.Services.Settings.ReopenAtLastPage).IsFalse();
+        main.Open([path]);
+        await Assert.That(main.SelectedTab!.CurrentPageIndex).IsEqualTo(0);
+    }
+
+    /// <summary>Verifies New Window shows the selected document at the same page, and leaves the session to the first window.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task OpensNewWindowAtSamePage()
+    {
+        using var test = new TestServices();
+        var first = test.CreateDocument(FirstName, Pages);
+        using var main = new MainViewModel(test.Services);
+        main.Open([first, test.CreateDocument(SecondName, Pages)]);
+        main.SelectedTab = main.Tabs[0];
+        main.SelectedTab.ReportPosition(new(LastPage, 0), LastPage);
+        main.SaveSession();
+        MainViewModel? shown = null;
+        using var handler = main.NewWindowInteraction.RegisterHandler(context =>
+        {
+            shown = context.Input;
+            context.SetOutput(RxVoid.Default);
+        });
+
+        _ = await main.NewWindowCommand.Execute().ToTask();
+        using var window = shown!;
+        await Assert.That(window.IsSecondaryWindow).IsTrue();
+        await Assert.That(window.Tabs.Count).IsEqualTo(1);
+        await Assert.That(window.SelectedTab!.FilePath).IsEqualTo(first);
+        await Assert.That(window.SelectedTab.CurrentPageIndex).IsEqualTo(LastPage);
+
+        window.SaveSession();
+        await Assert.That(test.Services.Settings.Session.Count).IsEqualTo(TwoTabs);
     }
 
     /// <summary>Verifies tabs can be reordered.</summary>

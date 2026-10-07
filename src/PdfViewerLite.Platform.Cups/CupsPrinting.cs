@@ -128,11 +128,24 @@ public static unsafe class CupsPrinting
     internal static (string Name, string Value)[] BuildOptions(in PrintJobOptions options) =>
     [
         ("copies", Math.Clamp(options.Copies, 1, MaxCopies).ToString(CultureInfo.InvariantCulture)),
-        ("media", options.Paper == PaperSize.Letter ? "na_letter_8.5x11in" : "iso_a4_210x297mm"),
+        ("media", GetMedia(options.Paper)),
         ("sides", GetSides(options)),
         ("print-color-mode", options.Colour ? "color" : "monochrome"),
         ("print-scaling", "none"),
     ];
+
+    /// <summary>Gets the PWG media name for a paper size.</summary>
+    /// <param name="paper">The paper.</param>
+    /// <returns>The media option.</returns>
+    internal static string GetMedia(PaperSize paper) => paper switch
+    {
+        PaperSize.Letter => "na_letter_8.5x11in",
+        PaperSize.A3 => "iso_a3_297x420mm",
+        PaperSize.A5 => "iso_a5_148x210mm",
+        PaperSize.Legal => "na_legal_8.5x14in",
+        PaperSize.Tabloid => "na_ledger_11x17in",
+        _ => "iso_a4_210x297mm",
+    };
 
     /// <summary>Gets the CUPS sides value for the chosen duplex edge.</summary>
     /// <param name="options">The job settings.</param>

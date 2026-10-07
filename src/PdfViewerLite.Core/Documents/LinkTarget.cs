@@ -11,7 +11,10 @@ namespace PdfViewerLite.Core.Documents;
 /// <param name="Kind">The kind of target.</param>
 /// <param name="PageIndex">The zero based destination page, or -1.</param>
 /// <param name="Location">The destination point within the page, when specified.</param>
-/// <param name="Uri">The external URI, when <paramref name="Kind"/> is <see cref="LinkTargetKind.Uri"/>.</param>
+/// <param name="Uri">
+/// The external URI for <see cref="LinkTargetKind.Uri"/>, or the file path, as written in the document, for
+/// <see cref="LinkTargetKind.OtherDocument"/> and <see cref="LinkTargetKind.LaunchFile"/>.
+/// </param>
 [DebuggerDisplay("LinkTarget: {Kind} {PageIndex} {Uri}")]
 public readonly record struct LinkTarget(LinkTargetKind Kind, int PageIndex, PagePoint? Location, string? Uri)
 {
@@ -33,4 +36,11 @@ public readonly record struct LinkTarget(LinkTargetKind Kind, int PageIndex, Pag
     /// <param name="uri">The URI.</param>
     /// <returns>The target.</returns>
     public static LinkTarget ForUri(string uri) => new(LinkTargetKind.Uri, -1, null, uri);
+
+    /// <summary>Creates a target in another file.</summary>
+    /// <param name="kind">Whether the file is another PDF or something to open with another app.</param>
+    /// <param name="path">The file, as written in the document.</param>
+    /// <param name="pageIndex">The zero based page in another PDF.</param>
+    /// <returns>The target.</returns>
+    public static LinkTarget ForFile(LinkTargetKind kind, string path, int pageIndex) => new(kind, pageIndex, null, path);
 }

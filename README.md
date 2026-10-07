@@ -17,15 +17,15 @@ Download a package from [GitHub releases](https://github.com/glennawatson/PdfVie
 
 | Task | Options |
 |---|---|
-| Manage documents | Reorder tabs, find tabs, hover previews, restore the session and reopen closed tabs. Open files, password-protected PDFs and web URLs. |
-| Navigate | Thumbnails, bookmarks, page labels, links and back/forward history. |
-| View | Continuous, page-by-page, two-page and cover layouts. Rotate, fit page, fit width or set zoom. Ctrl+wheel zooms around the pointer. |
+| Manage documents | Reorder tabs, find tabs, hover previews, restore the session and reopen closed tabs. Open files, password-protected PDFs and web URLs. Open Recent lists recent files; each reopens at the page you left. |
+| Navigate | Thumbnails, bookmarks, page labels, links and back/forward history. Links to other PDFs open them in a tab. Links to other files ask first; programs never start. |
+| View | Continuous, page-by-page, two-page and cover layouts. Rotate, fit page, fit width or set zoom. Ctrl+wheel or a pinch zooms around the pointer. Zoom to a dragged area, move pages with the Hand tool and auto-scroll at an adjustable speed. Split View shows two places at once; New Window opens another window. |
 | Find text | Match case or whole words. Search one PDF or every PDF in a folder. |
-| Read | Select and copy text. Use caret browsing, Read Mode or presentation. |
-| Inspect | Document properties, layers and attachments. Save attachments where you choose. |
-| Annotate | Highlights, underlines, strike-outs, squiggles, notes, text, ink, shapes, arrows and stamps. Edit, recolour, delete or undo additions. |
-| Review | Browse comments, reply and set review status. |
-| Fill forms | Text fields, check boxes, radio buttons and lists. Tab moves between fields. Save filled forms. Common calculations and formats are supported. |
+| Read | Select and copy text, or all of a page's text. Copy an image of part of a page with Snapshot. Use caret browsing, Read Mode or presentation. |
+| Inspect | Document properties, layers and attachments. Open or save attachments. A message names content the app cannot show, such as XFA forms or 3D. |
+| Annotate | Highlights, underlines, strike-outs, squiggles, notes, text, callouts, ink, shapes, arrows, polygons, clouds and stamps, including your own words or a picture. Move, resize, recolour and restyle comments after placing them. Undo and redo every change. |
+| Review | Browse comments, filter them by text, type, colour or author, sort them, reply and set review status. Set the author name in Preferences. |
+| Fill forms | Text fields, check boxes, radio buttons and lists. Tab moves between fields. Save filled forms. Common calculations and formats are supported. Spelling is checked with the desktop's dictionaries. |
 | Sign | Type or draw a visible signature. Sign with a protected `.p12` or `.pfx` certificate. Check signatures and timestamps. |
 | Recognise text | Add searchable text to scanned pages. Tesseract and English come with the app; other languages download in one click when needed. |
 | Measure | Distance, perimeter and area. Use the drawing's scale or enter your own. Keep measurements on the page. |
@@ -52,7 +52,7 @@ A visible signature is a mark on the page. A certificate signature lets readers 
 ![Print preview with paper, page range and duplex controls](docs/images/print-preview.png)
 
 1. Choose **Print**, then select a printer or **Save as PDF**.
-2. Choose pages, copies, colour and paper. Direct printing fits pages to A4 or Letter.
+2. Choose pages, copies, colour and paper: A4, Letter, A3, A5, Legal or Tabloid. Direct printing fits pages to the paper, or prints them at actual size, shrinks only oversized pages, or uses a custom scale.
 3. For two-sided printing, choose **Long edge** or **Short edge** under **Turn pages**.
 4. Choose several pages per sheet, **Booklet** or **Poster** when needed.
 5. Choose whether to include annotations. Filled form fields always print.
@@ -72,18 +72,25 @@ No single theme suits everyone. Choose the appearance that works for you.
 | Action | Shortcut |
 |---|---|
 | Switch / close tab | Ctrl+Tab / Ctrl+W |
+| New window | Ctrl+N |
 | Reopen closed tabs / find a tab | Ctrl+Shift+T / Ctrl+Shift+A |
 | Next / previous search match | F3 / Shift+F3 |
 | Fit page / Focus Mode | Ctrl+1 / Ctrl+4 |
 | Read Mode / Preferences | Ctrl+H / Ctrl+, |
 | Caret browsing / presentation | F7 / Shift+F5 |
+| First / last page | Home / End (Ctrl+Home / Ctrl+End anywhere) |
+| Select all text on the page | Ctrl+A |
+| Move the pages with any tool | Hold Space or the middle button and drag |
+| Auto-scroll; then slower / faster | Ctrl+Shift+H; Down / Up |
 | Leave the current mode | Escape |
 
 ## Limits
 
-Arbitrary form JavaScript and XFA forms are not supported. Certificate signing needs an unencrypted PDF.
+Arbitrary form JavaScript, XFA forms, multimedia, 3D and portfolio layouts are not supported; the app says when a document uses them. Certificate signing needs an unencrypted PDF.
 
-Linux uses X11 when available, then native Wayland. Native Wayland does not expose the required screen-reader tree. Use X11 for Linux screen-reader access.
+Spell checking uses the Windows and macOS spell checkers. On Linux it uses the installed word lists in `/usr/share/dict`, such as the `wbritish` or `wamerican` package, or a list of your own in `~/.local/share/pdfviewerlite/dictionaries`.
+
+Linux uses X11 when available, then native Wayland. Native Wayland does not expose the required screen-reader tree. Use X11 for Linux screen-reader access. See [screen readers](docs/SCREEN-READERS.md) for navigation and other platform limits.
 
 ## Build
 

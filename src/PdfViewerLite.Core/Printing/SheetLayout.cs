@@ -22,8 +22,14 @@ public readonly record struct SheetLayout(int PagesPerSheet, PaperSize Paper, bo
     /// <summary>Gets how pages are arranged: in order, as a booklet, or as posters.</summary>
     public PrintImposition Imposition { get; init; }
 
-    /// <summary>Gets whether single pages fit the chosen paper for direct printing.</summary>
+    /// <summary>Gets whether single pages are placed on the chosen paper for direct printing.</summary>
     public bool FitToPaper { get; init; }
+
+    /// <summary>Gets how single pages are sized on the paper when <see cref="FitToPaper"/> is set.</summary>
+    public PrintScaling Scaling { get; init; }
+
+    /// <summary>Gets the percentage of true size used with <see cref="PrintScaling.Custom"/>.</summary>
+    public int ScalePercent { get; init; } = PrintScale.TrueSize;
 
     /// <summary>Gets how many sheets across, and down, each poster page takes: 2 makes four sheets a page.</summary>
     public int PosterTiles { get; init; } = DefaultPosterTiles;

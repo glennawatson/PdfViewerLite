@@ -11,6 +11,7 @@ using PdfViewerLite.Core.Ocr;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Speech;
+using PdfViewerLite.Core.Spelling;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
 using PdfViewerLite.Pdfium;
@@ -50,6 +51,9 @@ public sealed class AppServices : IDisposable
 
     /// <summary>The sound output, created when first used.</summary>
     private IAudioOutput? _audio;
+
+    /// <summary>The spell checker, created on first use.</summary>
+    private ISpellChecker? _spellChecker;
 
     /// <summary>The tab reading aloud, so only one speaks at a time.</summary>
     private ReadAloudViewModel? _reader;
@@ -119,6 +123,12 @@ public sealed class AppServices : IDisposable
 
     /// <summary>Gets how the app recognises text and fetches language packs; tests replace it with fakes.</summary>
     public OcrSetup Ocr { get; init; } = OcrSetup.CreateDefault();
+
+    /// <summary>Gets how the spell checker is made; tests replace it with fakes.</summary>
+    public Func<ISpellChecker> CreateSpellChecker { get; init; } = SpellCheckers.Create;
+
+    /// <summary>Gets the spell checker for form fields, made on first use.</summary>
+    public ISpellChecker SpellChecker => _spellChecker ??= CreateSpellChecker();
 
     /// <summary>Gets the sound output shared by every tab.</summary>
     public IAudioOutput Audio => _audio ??= Speech.CreateAudio();
@@ -239,6 +249,7 @@ public sealed class AppServices : IDisposable
         (ThemeSource as IDisposable)?.Dispose();
         _speechEngine?.Dispose();
         _audio?.Dispose();
+        (_spellChecker as IDisposable)?.Dispose();
     }
 
     /// <summary>Publishes the theme when it changed.</summary>

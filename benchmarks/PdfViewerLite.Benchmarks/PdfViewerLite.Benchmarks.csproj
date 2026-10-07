@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\src\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Skia\PdfViewerLite.Skia.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Platform.Cups\PdfViewerLite.Platform.Cups.csproj" />
+    <ProjectReference Include="..\..\src\PdfViewerLite.Platform.Linux\PdfViewerLite.Platform.Linux.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Ocr\PdfViewerLite.Ocr.csproj" />
     <ProjectReference Include="..\..\src\PdfViewerLite.Speech\PdfViewerLite.Speech.csproj" />

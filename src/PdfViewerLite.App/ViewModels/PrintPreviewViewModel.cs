@@ -96,6 +96,11 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
                     static vm => vm.SelectedTarget,
                     static (_, _, _, _, _, _, _) => RxVoid.Default)
                 .SubscribeSafe(OnSettingsChanged, static error => Trace.TraceError(error.ToString())),
+
+            // Scaling changes rebuild too; the first value is the current one, already built above.
+            this.WhenChanged(static vm => vm.Scaling, static vm => vm.ScalePercent, static (_, _) => RxVoid.Default)
+                .Skip(1)
+                .SubscribeSafe(OnScalingChanged, static error => Trace.TraceError(error.ToString())),
         ];
         Answered = Signal.Merge(_confirmed.Select(static _ => true), CancelCommand);
     }
@@ -117,7 +122,7 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
     public ObservableCollection<PrintTarget> Targets { get; } = [SaveAsPdfTarget, SystemDialogTarget];
 
     /// <summary>Gets or sets the chosen destination.</summary>
-    [Reactive(nameof(Destination), nameof(ShowsPaper))]
+    [Reactive(nameof(Destination), nameof(ShowsPaper), nameof(ShowsScaling), nameof(ShowsScalePercent))]
     public partial PrintTarget? SelectedTarget { get; set; }
 
     /// <summary>Gets where the print goes.</summary>
@@ -151,11 +156,11 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
     public partial string CustomPages { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the index into <see cref="PagesPerSheetChoices"/>.</summary>
-    [Reactive(nameof(ShowsPaper))]
+    [Reactive(nameof(ShowsPaper), nameof(ShowsScaling), nameof(ShowsScalePercent))]
     public partial int PagesPerSheetIndex { get; set; }
 
     /// <summary>Gets or sets the index into <see cref="LayoutChoices"/>.</summary>
-    [Reactive(nameof(ShowsPaper))]
+    [Reactive(nameof(ShowsPaper), nameof(ShowsScaling), nameof(ShowsScalePercent))]
     public partial int LayoutIndex { get; set; }
 
     /// <summary>Gets a value indicating whether the paper size matters: for a printer, several pages per sheet, a booklet or a poster.</summary>
@@ -167,6 +172,20 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <summary>Gets or sets the paper used when several pages share a sheet.</summary>
     [Reactive]
     public partial PaperSize Paper { get; set; }
+
+    /// <summary>Gets or sets how each page is sized on the paper when printing straight to a printer.</summary>
+    [Reactive(nameof(ShowsScalePercent))]
+    public partial PrintScaling Scaling { get; set; }
+
+    /// <summary>Gets or sets the percentage of true size used with a custom scale.</summary>
+    [Reactive]
+    public partial int ScalePercent { get; set; } = PrintScale.TrueSize;
+
+    /// <summary>Gets a value indicating whether the scaling choice matters: one page per sheet, in order, to a printer.</summary>
+    public bool ShowsScaling => Destination == PrintDestination.Printer && LayoutIndex == 0 && PagesPerSheetIndex == 0;
+
+    /// <summary>Gets a value indicating whether the custom percentage is shown.</summary>
+    public bool ShowsScalePercent => ShowsScaling && Scaling == PrintScaling.Custom;
 
     /// <summary>Gets or sets a value indicating whether notes, highlights and drawings print.</summary>
     [Reactive]
@@ -186,6 +205,10 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the sheets that will print.</summary>
     public ObservableCollection<PrintPreviewPage> Sheets { get; } = [];
+
+    /// <summary>Gets or sets the chosen sheet, kept in place when the preview is rebuilt; -1 when none is chosen.</summary>
+    [Reactive]
+    public partial int SelectedSheetIndex { get; set; } = -1;
 
     /// <summary>Gets the file that will print, once built.</summary>
     public string? PreviewPath { get; private set; }
@@ -207,7 +230,7 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
         {
             BookletLayout => new SheetLayout(1, Paper, IncludeAnnotations) { Imposition = PrintImposition.Booklet },
             >= FirstPosterLayout => new SheetLayout(1, Paper, IncludeAnnotations) { Imposition = PrintImposition.Poster, PosterTiles = LayoutIndex - FirstPosterLayout + MinPosterTiles },
-            _ => new SheetLayout(perSheet, Paper, IncludeAnnotations) { FitToPaper = Destination == PrintDestination.Printer },
+            _ => new SheetLayout(perSheet, Paper, IncludeAnnotations) { FitToPaper = Destination == PrintDestination.Printer, Scaling = Scaling, ScalePercent = PrintScale.ClampPercent(ScalePercent) },
         };
     }
 
@@ -234,7 +257,7 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
     /// <param name="pages">The pages.</param>
     /// <param name="layout">The sheet layout.</param>
     /// <returns>The file, or <see langword="null"/> on failure.</returns>
-    private static string? Build(IPageExporter exporter, int[] pages, SheetLayout layout)
+    private static string? Build(IPageExporter exporter, int[] pages, in SheetLayout layout)
     {
         var path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-print-{Guid.NewGuid():N}.pdf");
         try
@@ -333,6 +356,16 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
         }
     }
 
+    /// <summary>Rebuilds the preview after the scale changed, only when the scale applies to these sheets.</summary>
+    /// <param name="change">Unused.</param>
+    private void OnScalingChanged(RxVoid change)
+    {
+        if (ShowsScaling)
+        {
+            _ = RebuildAsync();
+        }
+    }
+
     /// <summary>Rebuilds the preview after a setting changed.</summary>
     /// <param name="change">Unused.</param>
     private void OnSettingsChanged(RxVoid change) => _ = RebuildAsync();
@@ -391,6 +424,7 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
         }
 
         IsBuilding = false;
+        var selected = SelectedSheetIndex;
         ClosePreview();
         if (path is null)
         {
@@ -407,6 +441,7 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
             Sheets.Add(new(_preview, i, sizes[i], string.Create(CultureInfo.CurrentCulture, $"{i + 1} of {sizes.Length}")));
         }
 
+        SelectedSheetIndex = Math.Min(selected, sizes.Length - 1);
         Summary = DescribeSheets(sizes.Length);
         IsValid = true;
     }

@@ -24,6 +24,6 @@ public sealed partial class PdfiumDocument : IImageSignatureEditor
         }
 
         using var scope = PdfiumLibrary.EnterScope();
-        return Changed(pageIndex, EditablePage(pageIndex) is { } page ? PdfiumAnnotations.AddImageSignature(_handle, page, bounds, pixels, width, height) : -1);
+        return Changed(pageIndex, EditablePage(pageIndex) is { } page ? PdfiumAnnotations.AddImageSignature(_handle, page, bounds, pixels, width, height, Author) : -1);
     }
 }

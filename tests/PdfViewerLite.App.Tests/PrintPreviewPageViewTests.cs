@@ -40,7 +40,9 @@ public sealed class PrintPreviewPageViewTests
         await Assert.That(await UiWait.UntilAsync(() => preview.IsValid && !preview.IsBuilding)).IsTrue();
         using var view = new PrintPreviewPageView { ViewModel = preview.Sheets[0] with { Size = new(ShortSide, LongSide) } };
         var panel = (StackPanel)view.Content!;
-        var image = (Image)((Border)panel.Children[0]).Child!;
+        var slot = (Panel)panel.Children[0];
+        var image = (Image)((Border)slot.Children[0]).Child!;
+        await Assert.That(slot.Height).IsEqualTo(slot.Width);
         await Assert.That(image.Width).IsEqualTo(ScaledShortSide).Within(SizeTolerance);
         await Assert.That(image.Height).IsEqualTo(ScaledLongSide).Within(SizeTolerance);
         view.ViewModel = preview.Sheets[0] with { Size = new(LongSide, ShortSide), Caption = "Landscape" };

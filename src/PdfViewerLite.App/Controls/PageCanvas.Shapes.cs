@@ -11,7 +11,10 @@ using PdfViewerLite.Core.Geometry;
 
 namespace PdfViewerLite.App.Controls;
 
-/// <summary>Shape tools on the page canvas: a drag draws a rectangle, ellipse, arrow or line, shown as it is dragged.</summary>
+/// <summary>
+/// Shape tools on the page canvas: a drag draws a rectangle, ellipse, arrow or line, shown as it is dragged. The callout
+/// tool is dragged the same way, from what it points at to where its text goes, then asks for the text.
+/// </summary>
 public sealed partial class PageCanvas
 {
     /// <summary>The shortest drag, in points, that draws a shape; shorter drags are taken as stray clicks.</summary>
@@ -28,6 +31,15 @@ public sealed partial class PageCanvas
 
     /// <summary>Where the pointer is now, in page space.</summary>
     private PagePoint _shapeEnd;
+
+    /// <summary>Lets the tools that draw take a press first: placing a signature, dragging a shape, or placing corners.</summary>
+    /// <param name="tab">The tab.</param>
+    /// <param name="page">The page under the pointer, or -1.</param>
+    /// <param name="position">The canvas point.</param>
+    /// <param name="e">The event.</param>
+    /// <returns><see langword="true"/> when one of them used the press.</returns>
+    private bool BeginDrawingTool(DocumentTabViewModel tab, int page, Point position, PointerPressedEventArgs e) =>
+        PressPlacement(tab, page, position) || BeginShape(tab, page, position, e) || PressPolygon(tab, page, position, e);
 
     /// <summary>Starts a shape when a shape tool is active.</summary>
     /// <param name="tab">The tab.</param>
@@ -78,7 +90,17 @@ public sealed partial class PageCanvas
 
         _shapeKind = null;
         _shapeEnd = ToPage(tab, _shapePage, position);
-        if (Math.Abs(_shapeEnd.X - _shapeStart.X) + Math.Abs(_shapeEnd.Y - _shapeStart.Y) >= MinShapeDrag)
+        if (Math.Abs(_shapeEnd.X - _shapeStart.X) + Math.Abs(_shapeEnd.Y - _shapeStart.Y) < MinShapeDrag)
+        {
+            InvalidateVisual();
+            return true;
+        }
+
+        if (kind == AnnotationKind.Callout)
+        {
+            _ = tab.Annotations.AddCalloutAsync(_shapePage, _shapeStart, _shapeEnd);
+        }
+        else
         {
             _ = tab.Annotations.AddShape(_shapePage, kind, _shapeStart, _shapeEnd);
         }

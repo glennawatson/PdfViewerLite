@@ -27,6 +27,12 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial int FPDF_GetFormType(PdfiumDocumentHandle document);
 
+    /// <summary>Native <c>FPDFDoc_GetJavaScriptActionCount</c> entry point.</summary>
+    /// <param name="document">The document.</param>
+    /// <returns>The document-level JavaScript actions, or -1 on error.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFDoc_GetJavaScriptActionCount(PdfiumDocumentHandle document);
+
     /// <summary>Native <c>FORM_OnAfterLoadPage</c> entry point.</summary>
     /// <param name="page">The page.</param>
     /// <param name="form">The form handle.</param>

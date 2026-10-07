@@ -21,6 +21,7 @@ public sealed partial class SignatureMarkWindow : ReactiveUI.Avalonia.ReactiveWi
     public SignatureMarkWindow()
     {
         InitializeComponent();
+        FieldLabels.Link((MarkTextBox, TextLabel));
         _ = this.WhenActivated(disposables =>
         {
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Title, static v => v.Title));

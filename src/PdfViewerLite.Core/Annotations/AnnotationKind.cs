@@ -46,6 +46,18 @@ public enum AnnotationKind
     /// <summary>A straight line drawn on the page.</summary>
     Line = 12,
 
-    /// <summary>A stamp such as "Approved" or "Draft".</summary>
+    /// <summary>A stamp such as "Approved" or "Draft", the person's own words, or a picture.</summary>
     Stamp = 13,
+
+    /// <summary>A text box with a line pointing at something on the page.</summary>
+    Callout = 14,
+
+    /// <summary>A closed shape of straight sides drawn point by point.</summary>
+    Polygon = 15,
+
+    /// <summary>A polygon with a scalloped, cloud-like edge, used to ring an area for review.</summary>
+    Cloud = 16,
+
+    /// <summary>An open run of straight lines drawn point by point.</summary>
+    PolyLine = 17,
 }

@@ -65,10 +65,21 @@ public sealed record AnnotationItemViewModel(PageAnnotation Annotation, string P
     /// <summary>Gets the colour in words, so the sidebar's colour swatch is never the only cue.</summary>
     public string ColorName => AnnotationNames.GetColor(Annotation.Color);
 
-    /// <summary>Gets the item as a screen reader says it: kind, page, status, colour and note.</summary>
+    /// <summary>Gets who wrote the annotation, or "Unknown author" when the file does not say.</summary>
+    public string AuthorName => Annotation.Author.Length > 0 ? Annotation.Author : "Unknown author";
+
+    /// <summary>Gets the line naming the author and, when known, when it was last changed.</summary>
+    public string Details => Annotation.Modified is { } modified
+        ? string.Create(CultureInfo.CurrentCulture, $"{AuthorName} · {modified.ToLocalTime():g}")
+        : AuthorName;
+
+    /// <summary>Gets the words the list's text filter looks through: the kind, note, replies and author.</summary>
+    public string SearchText => string.Create(CultureInfo.CurrentCulture, $"{KindName}\n{Annotation.Contents}\n{RepliesText}\n{AuthorName}");
+
+    /// <summary>Gets the item as a screen reader says it: kind, page, status, colour, note and author.</summary>
     public string SpokenText => Annotation.Contents.Length > 0
-        ? string.Create(CultureInfo.CurrentCulture, $"{Heading}, {ColorName}: {Annotation.Contents}")
-        : string.Create(CultureInfo.CurrentCulture, $"{Heading}, {ColorName}");
+        ? string.Create(CultureInfo.CurrentCulture, $"{Heading}, {ColorName}: {Annotation.Contents}. {Details}")
+        : string.Create(CultureInfo.CurrentCulture, $"{Heading}, {ColorName}. {Details}");
 
     /// <summary>Appends one reply as "author: text"; bare status changes are left out.</summary>
     /// <param name="text">The text so far.</param>

@@ -7,9 +7,10 @@ using PdfViewerLite.Core.Platform;
 
 namespace PdfViewerLite.App.Tests;
 
-/// <summary>A desktop with nothing but a print service.</summary>
+/// <summary>A desktop with nothing but a print service and, optionally, a recent documents list.</summary>
 /// <param name="printer">The print service.</param>
-internal sealed class PrintingPlatform(IPrintService printer) : IDesktopPlatform
+/// <param name="recent">The recent documents, or none.</param>
+internal sealed class PrintingPlatform(IPrintService printer, IRecentDocumentStore? recent = null) : IDesktopPlatform
 {
     /// <summary>The integration printing is added to.</summary>
     private readonly FallbackPlatform _fallback = new();
@@ -24,7 +25,7 @@ internal sealed class PrintingPlatform(IPrintService printer) : IDesktopPlatform
     public IFileManagerLauncher FileManager => _fallback.FileManager;
 
     /// <inheritdoc/>
-    public IRecentDocumentStore RecentDocuments => _fallback.RecentDocuments;
+    public IRecentDocumentStore RecentDocuments => recent ?? _fallback.RecentDocuments;
 
     /// <inheritdoc/>
     public IPrintService Printer => printer;

@@ -18,6 +18,7 @@ internal static class Shortcuts
     private static readonly (KeyGesture Gesture, Func<MainViewModel, ICommand?> Command)[] Table =
     [
         (new(Key.O, KeyModifiers.Control), static vm => vm.OpenCommand),
+        (new(Key.N, KeyModifiers.Control), static vm => vm.NewWindowCommand),
         (new(Key.W, KeyModifiers.Control), static vm => vm.CloseTabCommand),
         (new(Key.F4, KeyModifiers.Control), static vm => vm.CloseTabCommand),
         (new(Key.PageDown, KeyModifiers.Control), static vm => vm.NextTabCommand),
@@ -33,6 +34,8 @@ internal static class Shortcuts
         (new(Key.P, KeyModifiers.Control), static vm => vm.SelectedTab?.PrintCommand),
         (new(Key.P, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.PrintWithSystemDialogCommand),
         (new(Key.Z, KeyModifiers.Control), static vm => vm.SelectedTab?.Annotations.UndoCommand),
+        (new(Key.Y, KeyModifiers.Control), static vm => vm.SelectedTab?.Annotations.RedoCommand),
+        (new(Key.Z, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.Annotations.RedoCommand),
         (new(Key.F, KeyModifiers.Control), static vm => vm.SelectedTab?.FindCommand),
         (new(Key.F3), static vm => vm.SelectedTab?.Search.NextCommand),
         (new(Key.F3, KeyModifiers.Shift), static vm => vm.SelectedTab?.Search.PreviousCommand),
@@ -59,6 +62,7 @@ internal static class Shortcuts
         (new(Key.F5), static vm => vm.SelectedTab?.ReloadCommand),
         (new(Key.F5, KeyModifiers.Shift), static vm => vm.SelectedTab?.PresentCommand),
         (new(Key.H, KeyModifiers.Control), static vm => vm.SelectedTab?.ReadModeCommand),
+        (new(Key.H, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.ToggleAutoScrollCommand),
     ];
 
     /// <summary>Runs the command of the shortcut a key press matches.</summary>

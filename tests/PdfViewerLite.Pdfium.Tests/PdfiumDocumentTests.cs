@@ -101,6 +101,28 @@ public sealed class PdfiumDocumentTests
         await Assert.That(uriLinks.TrueForAll(static l => l.Target.Uri == TestPdf.LinkUri)).IsTrue();
     }
 
+    /// <summary>Verifies links to another PDF, to a file for another app and to an embedded document are read.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ReadsFileLinks()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-file-links-{Guid.NewGuid():N}.pdf");
+        await File.WriteAllBytesAsync(path, TestPdf.CreateWithFileLinks());
+        try
+        {
+            using var document = new PdfiumEngine().Open(path, null);
+            var targets = document.GetLinks(0).Select(static link => link.Target).ToList();
+
+            await Assert.That(targets.Single(static t => t.Kind == LinkTargetKind.OtherDocument)).IsEqualTo(LinkTarget.ForFile(LinkTargetKind.OtherDocument, TestPdf.LinkedDocumentName, ThirdPage));
+            await Assert.That(targets.Single(static t => t.Kind == LinkTargetKind.LaunchFile).Uri).IsEqualTo(TestPdf.LaunchedFileName);
+            await Assert.That(targets.Count(static t => t.Kind == LinkTargetKind.EmbeddedDocument)).IsEqualTo(1);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     /// <summary>Verifies text extraction and hit testing.</summary>
     /// <returns>A task.</returns>
     [Test]

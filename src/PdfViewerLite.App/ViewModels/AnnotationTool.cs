@@ -42,4 +42,16 @@ public enum AnnotationTool
 
     /// <summary>Clicking places the chosen stamp.</summary>
     Stamp = 13,
+
+    /// <summary>Dragging from a point to where the text goes writes a callout pointing at that point.</summary>
+    Callout = 14,
+
+    /// <summary>Clicking adds the corners of a polygon; Enter or a double-click finishes it.</summary>
+    Polygon = 15,
+
+    /// <summary>Clicking adds the corners of a cloud; Enter or a double-click finishes it.</summary>
+    Cloud = 16,
+
+    /// <summary>Clicking adds the points of connected lines; Enter or a double-click finishes them.</summary>
+    PolyLine = 17,
 }

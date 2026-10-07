@@ -18,14 +18,14 @@ internal static class PdfDate
     /// <summary>Parses a PDF date.</summary>
     /// <param name="value">The raw value.</param>
     /// <returns>The date, or <see langword="null"/> when the value cannot be parsed.</returns>
-    internal static DateTimeOffset? Parse(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
+    internal static DateTimeOffset? Parse(string? value) => string.IsNullOrWhiteSpace(value) ? null : Parse(value.AsSpan());
 
-        var span = value.AsSpan().Trim();
+    /// <summary>Parses a PDF date without allocating.</summary>
+    /// <param name="value">The raw value.</param>
+    /// <returns>The date, or <see langword="null"/> when the value cannot be parsed.</returns>
+    internal static DateTimeOffset? Parse(ReadOnlySpan<char> value)
+    {
+        var span = value.Trim();
         if (span.StartsWith("D:", StringComparison.Ordinal))
         {
             span = span[FieldLength..];

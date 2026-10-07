@@ -50,8 +50,7 @@
   <DockPanel x:Name="Root" Background="{DynamicResource FocusBackground}">
     <!-- Quiet, persistent controls: text size, the text settings, and the way back to the pages. -->
     <Border DockPanel.Dock="Top" Classes="toolbar">
-      <DockPanel>
-        <Button x:Name="BackToPagesButton" views:ControlHelp.Text="{x:Static views:Descriptions.BackToPages}" DockPanel.Dock="Right" Content="Back to Pages" />
+      <Grid ColumnDefinitions="*,Auto">
         <StackPanel Orientation="Horizontal" Spacing="2">
           <Button x:Name="SmallerButton" views:ControlHelp.Text="{x:Static views:Descriptions.SmallerText}" Classes="tool" AutomationProperties.Name="Smaller text">
             <TextBlock Classes="label" Text="A−" />
@@ -87,7 +86,8 @@
             </Button.Flyout>
           </Button>
         </StackPanel>
-      </DockPanel>
+        <Button Grid.Column="1" x:Name="BackToPagesButton" views:ControlHelp.Text="{x:Static views:Descriptions.BackToPages}" Content="Back to Pages" />
+      </Grid>
     </Border>
 
     <ScrollViewer x:Name="FocusScroller" HorizontalScrollBarVisibility="Disabled">

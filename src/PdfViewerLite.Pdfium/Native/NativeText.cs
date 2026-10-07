@@ -20,6 +20,15 @@ internal static class NativeText
         return new(terminator >= 0 ? chars[..terminator] : chars);
     }
 
+    /// <summary>Decodes a null terminated UTF-8 byte buffer.</summary>
+    /// <param name="bytes">The bytes, possibly including a terminator.</param>
+    /// <returns>The string.</returns>
+    internal static string FromUtf8(ReadOnlySpan<byte> bytes)
+    {
+        var terminator = bytes.IndexOf((byte)0);
+        return Encoding.UTF8.GetString(terminator >= 0 ? bytes[..terminator] : bytes);
+    }
+
     /// <summary>Decodes a null terminated ASCII byte buffer.</summary>
     /// <param name="bytes">The bytes, possibly including a terminator.</param>
     /// <returns>The string.</returns>

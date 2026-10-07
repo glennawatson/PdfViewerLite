@@ -49,8 +49,20 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
     public PrintPreviewPageView()
     {
         _caption.Classes.Add("secondary");
+
+        // Every sheet takes the same square slot, upright or sideways, so the list never re-estimates where sheets sit.
+        var paper = new Border
+        {
+            Background = Brushes.White,
+            BoxShadow = BoxShadows.Parse("0 1 4 0 #40000000"),
+            Child = _image,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var slot = new Panel { Width = SheetSide, Height = SheetSide };
+        slot.Children.Add(paper);
         var sheet = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new(0, SheetGap) };
-        sheet.Children.Add(new Border { Background = Brushes.White, BoxShadow = BoxShadows.Parse("0 1 4 0 #40000000"), Child = _image });
+        sheet.Children.Add(slot);
         sheet.Children.Add(_caption);
         Content = sheet;
 
