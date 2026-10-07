@@ -101,6 +101,9 @@ public sealed class App : Application
         }
 
         _window = window;
+
+        // Reads the lifetime's live window list each time; there is no state-passing overload to use instead.
+        _lifetime.Add(new FocusAnnouncementRepair(services.FocusAnnouncements, () => desktop.Windows));
         _lifetime.Add(services);
         _lifetime.Add(viewModel);
 

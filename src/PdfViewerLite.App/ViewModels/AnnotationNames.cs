@@ -27,22 +27,15 @@ public static class AnnotationNames
         AnnotationKind.Arrow => "Arrow",
         AnnotationKind.Line => "Line",
         AnnotationKind.Stamp => "Stamp",
+        AnnotationKind.Callout => "Callout",
+        AnnotationKind.Polygon => "Polygon",
+        AnnotationKind.Cloud => "Cloud",
+        AnnotationKind.PolyLine => "Connected lines",
         _ => "Annotation",
     };
 
     /// <summary>Gets the name of an annotation colour.</summary>
     /// <param name="color">The colour.</param>
     /// <returns>The name, or "Custom".</returns>
-    public static string GetColor(uint color)
-    {
-        foreach (var (name, value) in AnnotationColors.All)
-        {
-            if (value == color)
-            {
-                return name;
-            }
-        }
-
-        return color == AnnotationColors.Ink ? "Dark blue" : "Custom";
-    }
+    public static string GetColor(uint color) => AnnotationColors.GetName(color) ?? "Custom";
 }

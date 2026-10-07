@@ -15,4 +15,13 @@ public enum LinkTargetKind
 
     /// <summary>An external URI.</summary>
     Uri = 2,
+
+    /// <summary>A page in another PDF file, named by <see cref="LinkTarget.Uri"/> relative to this one.</summary>
+    OtherDocument = 3,
+
+    /// <summary>A file to open with another app, named by <see cref="LinkTarget.Uri"/> relative to this document.</summary>
+    LaunchFile = 4,
+
+    /// <summary>A document embedded in this one.</summary>
+    EmbeddedDocument = 5,
 }

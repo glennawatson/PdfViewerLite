@@ -129,25 +129,26 @@ public sealed partial class PdfiumDocument : IPageExporter
         SheetGrid.GetSheetSize(layout.Paper, landscape, out var width, out var height);
         if (layout.FitToPaper && layout.PagesPerSheet <= 1)
         {
-            return FitPages(copy, width, height) && WriteDocument(copy, destination, SaveFull);
+            return FitPages(copy, width, height, layout) && WriteDocument(copy, destination, SaveFull);
         }
 
         using var sheets = NativeMethods.FPDF_ImportNPagesToOne(copy, width, height, (nuint)columns, (nuint)rows);
         return !sheets.IsInvalid && WriteDocument(sheets, destination, SaveFull);
     }
 
-    /// <summary>Fits each page inside the paper while retaining its stored orientation.</summary>
+    /// <summary>Fits each page inside the paper, turning the paper sideways for wide pages.</summary>
     /// <param name="document">The flattened print copy.</param>
     /// <param name="width">Paper width.</param>
     /// <param name="height">Paper height.</param>
+    /// <param name="layout">The sheet layout, which says how pages are sized.</param>
     /// <returns>Whether all pages fit.</returns>
-    private static bool FitPages(PdfiumDocumentHandle document, float width, float height)
+    private static bool FitPages(PdfiumDocumentHandle document, float width, float height, in SheetLayout layout)
     {
         var count = NativeMethods.FPDF_GetPageCount(document);
         for (var index = 0; index < count; index++)
         {
             using var page = NativeMethods.FPDF_LoadPage(document, index);
-            if (page.IsInvalid || !FitPage(page, width, height))
+            if (page.IsInvalid || !FitPage(page, width, height, layout.Scaling, layout.ScalePercent))
             {
                 return false;
             }
@@ -156,12 +157,14 @@ public sealed partial class PdfiumDocument : IPageExporter
         return true;
     }
 
-    /// <summary>Scales and centres a page's visible content inside the paper margin.</summary>
+    /// <summary>Sizes and centres a page's visible content on the paper, cutting off whatever falls outside it.</summary>
     /// <param name="page">The flattened page.</param>
     /// <param name="width">Paper width.</param>
     /// <param name="height">Paper height.</param>
+    /// <param name="scaling">How the page is sized.</param>
+    /// <param name="percent">The custom percentage.</param>
     /// <returns>Whether the page was transformed.</returns>
-    private static bool FitPage(PdfiumPageHandle page, float width, float height)
+    private static bool FitPage(PdfiumPageHandle page, float width, float height, PrintScaling scaling, int percent)
     {
         if (NativeMethods.FPDFPage_GetMediaBox(page, out var left, out var bottom, out var right, out var top) == 0)
         {
@@ -181,15 +184,23 @@ public sealed partial class PdfiumDocument : IPageExporter
             return false;
         }
 
-        if ((NativeMethods.FPDFPage_GetRotation(page) & 1) != 0)
+        // Wide content goes on sideways paper, as printers turn it, so it is not shrunk onto an upright sheet.
+        var turned = (NativeMethods.FPDFPage_GetRotation(page) & 1) != 0;
+        var wide = turned ? top - bottom > right - left : right - left > top - bottom;
+        if (wide != turned)
         {
             (width, height) = (height, width);
         }
 
-        var scale = Math.Min((width - (MarginsPerAxis * PrintMargin)) / (right - left), (height - (MarginsPerAxis * PrintMargin)) / (top - bottom));
+        const float Margins = MarginsPerAxis * PrintMargin;
+        var scale = PrintScale.For(scaling, percent, right - left, top - bottom, width - Margins, height - Margins);
         var x = ((width - ((right - left) * scale)) / MarginsPerAxis) - (left * scale);
         var y = ((height - ((top - bottom) * scale)) / MarginsPerAxis) - (bottom * scale);
-        var clip = new FsRectF((left * scale) + x, (top * scale) + y, (right * scale) + x, (bottom * scale) + y);
+        var clip = new FsRectF(
+            Math.Max(0, (left * scale) + x),
+            Math.Min(height, (top * scale) + y),
+            Math.Min(width, (right * scale) + x),
+            Math.Max(0, (bottom * scale) + y));
         if (NativeMethods.FPDFPage_TransFormWithClip(page, new(scale, 0, 0, scale, x, y), clip) == 0)
         {
             return false;

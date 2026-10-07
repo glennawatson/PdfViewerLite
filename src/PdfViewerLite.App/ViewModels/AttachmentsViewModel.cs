@@ -26,6 +26,12 @@ public sealed partial class AttachmentsViewModel : ReactiveObject
     /// <summary>Bytes in a megabyte.</summary>
     private const double Megabyte = Kilobyte * Kilobyte;
 
+    /// <summary>The temporary folder opened attachments are written to.</summary>
+    private const string TempFolderName = "pdfviewerlite-attachments";
+
+    /// <summary>The name used for an attachment with no name of its own.</summary>
+    private const string UnnamedFile = "attachment";
+
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
 
@@ -92,6 +98,50 @@ public sealed partial class AttachmentsViewModel : ReactiveObject
     public bool Save(DocumentAttachment attachment, string path)
     {
         ArgumentNullException.ThrowIfNull(attachment);
+        var saved = Write(attachment, path);
+        if (saved)
+        {
+            _owner.Notice = $"Saved {attachment.Name}.";
+        }
+
+        return saved;
+    }
+
+    /// <summary>Opens an embedded file: a PDF in a new tab, anything else with another app after asking.</summary>
+    /// <param name="attachment">The file.</param>
+    /// <returns><see langword="true"/> when it opened.</returns>
+    public async Task<bool> OpenAsync(DocumentAttachment attachment)
+    {
+        ArgumentNullException.ThrowIfNull(attachment);
+
+        // Each opening gets its own folder, so files with the same name never replace one another.
+        var folder = Path.Combine(Path.GetTempPath(), TempFolderName, Guid.NewGuid().ToString("N"));
+        var name = Path.GetFileName(attachment.Name);
+        try
+        {
+            _ = Directory.CreateDirectory(folder);
+        }
+        catch (IOException ex)
+        {
+            _owner.Notice = $"Could not open {attachment.Name}: {ex.Message}";
+            return false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _owner.Notice = $"Could not open {attachment.Name}: {ex.Message}";
+            return false;
+        }
+
+        var path = Path.Combine(folder, name.Length > 0 ? name : UnnamedFile);
+        return Write(attachment, path) && await _owner.OpenFileAsync(path, 0).ConfigureAwait(true);
+    }
+
+    /// <summary>Writes an embedded file to a path, saying what went wrong when it cannot.</summary>
+    /// <param name="attachment">The file.</param>
+    /// <param name="path">Where to write it.</param>
+    /// <returns><see langword="true"/> when written.</returns>
+    private bool Write(DocumentAttachment attachment, string path)
+    {
         if (_owner.TryGetDocument() is not IAttachmentSource source)
         {
             return false;
@@ -99,14 +149,18 @@ public sealed partial class AttachmentsViewModel : ReactiveObject
 
         try
         {
-            bool saved;
+            bool written;
             using (var stream = File.Create(path))
             {
-                saved = source.SaveAttachment(attachment.Index, stream);
+                written = source.SaveAttachment(attachment.Index, stream);
             }
 
-            _owner.Notice = saved ? $"Saved {attachment.Name}." : $"Could not read {attachment.Name} from the document.";
-            return saved;
+            if (!written)
+            {
+                _owner.Notice = $"Could not read {attachment.Name} from the document.";
+            }
+
+            return written;
         }
         catch (IOException ex)
         {
@@ -117,6 +171,17 @@ public sealed partial class AttachmentsViewModel : ReactiveObject
         {
             _owner.Notice = $"Could not save {attachment.Name}: {ex.Message}";
             return false;
+        }
+    }
+
+    /// <summary>Opens the selected file.</summary>
+    /// <returns>A task.</returns>
+    [ReactiveCommand(CanExecute = nameof(_canSave))]
+    private async Task OpenSelectedAsync()
+    {
+        if (Selected is { } attachment)
+        {
+            _ = await OpenAsync(attachment).ConfigureAwait(true);
         }
     }
 

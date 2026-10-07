@@ -9,18 +9,12 @@
     <ListBox x:Name="SheetList" AutomationProperties.Name="Preview sheets" Grid.Column="0" Classes="sheets" Background="{DynamicResource AppCanvasBackground}" Padding="0,16" />
 
     <Border Grid.Column="1" Background="{DynamicResource AppHeaderBackground}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1,0,0,0">
-      <DockPanel Margin="20">
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,20">
+      <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+        <DockPanel Margin="0,0,0,20">
           <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Classes="secondary" VerticalAlignment="Center" />
           <TextBlock Text="Print" FontSize="18" VerticalAlignment="Center" AutomationProperties.HeadingLevel="1" />
         </DockPanel>
-
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-          <Button x:Name="CancelButton" views:ControlHelp.Text="{x:Static views:Descriptions.Cancel}" Content="Cancel" IsCancel="True" />
-          <Button x:Name="PrintButton" views:ControlHelp.Text="{x:Static views:Descriptions.PrintNext}" Content="Print…" IsDefault="True" />
-        </StackPanel>
-
-        <StackPanel Spacing="14">
+        <StackPanel Grid.Row="1" Spacing="14">
           <Grid ColumnDefinitions="136,*">
             <TextBlock x:Name="DestinationLabel" Text="Destination" VerticalAlignment="Center" />
             <ComboBox x:Name="DestinationBox" views:ControlHelp.Text="{x:Static views:Descriptions.PrintDestination}" AutomationProperties.Name="Destination" Grid.Column="1" HorizontalAlignment="Stretch" />
@@ -71,7 +65,25 @@
             <ComboBox x:Name="PaperBox" views:ControlHelp.Text="{x:Static views:Descriptions.PaperSize}" AutomationProperties.Name="Paper size" Grid.Column="1" HorizontalAlignment="Stretch">
               <ComboBoxItem Content="A4" />
               <ComboBoxItem Content="Letter" />
+              <ComboBoxItem Content="A3" />
+              <ComboBoxItem Content="A5" />
+              <ComboBoxItem Content="Legal" />
+              <ComboBoxItem Content="Tabloid" />
             </ComboBox>
+          </Grid>
+          <Grid x:Name="ScalingRow" ColumnDefinitions="136,*">
+            <TextBlock x:Name="ScalingLabel" Text="Page size" VerticalAlignment="Center" />
+            <ComboBox x:Name="ScalingBox" views:ControlHelp.Text="{x:Static views:Descriptions.PrintScaling}" AutomationProperties.Name="Page size" Grid.Column="1" HorizontalAlignment="Stretch">
+              <ComboBoxItem Content="Fit to paper" />
+              <ComboBoxItem Content="Actual size" />
+              <ComboBoxItem Content="Shrink oversized pages" />
+              <ComboBoxItem Content="Custom scale" />
+            </ComboBox>
+          </Grid>
+          <Grid x:Name="ScalePercentRow" ColumnDefinitions="136,*">
+            <TextBlock x:Name="ScalePercentLabel" Text="Scale (%)" VerticalAlignment="Center" />
+            <NumericUpDown x:Name="ScalePercentBox" views:ControlHelp.Text="{x:Static views:Descriptions.PrintScalePercent}" AutomationProperties.Name="Scale percent" Grid.Column="1"
+                           Minimum="10" Maximum="400" Increment="5" FormatString="0" HorizontalAlignment="Stretch" />
           </Grid>
           <Grid ColumnDefinitions="136,*">
             <TextBlock Text="Options" VerticalAlignment="Center" />
@@ -82,7 +94,11 @@
           <Button x:Name="SystemDialogButton" views:ControlHelp.Text="{x:Static views:Descriptions.SystemPrintDialog}" Classes="link" Margin="0,4,0,0" HorizontalAlignment="Left"
                   Content="Print using system dialog… (Ctrl+Shift+P)" />
         </StackPanel>
-      </DockPanel>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+          <Button x:Name="CancelButton" views:ControlHelp.Text="{x:Static views:Descriptions.Cancel}" Content="Cancel" IsCancel="True" />
+          <Button x:Name="PrintButton" views:ControlHelp.Text="{x:Static views:Descriptions.PrintNext}" Content="Print…" IsDefault="True" />
+        </StackPanel>
+      </Grid>
     </Border>
   </Grid>
 </Window>

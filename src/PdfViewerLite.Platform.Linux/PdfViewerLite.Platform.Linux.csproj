@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Tmds.DBus.Protocol" />
+    <PackageReference Include="SymSpell" />
   </ItemGroup>
 
   <ItemGroup>

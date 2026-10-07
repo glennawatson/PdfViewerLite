@@ -41,10 +41,14 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
     private const uint OpaqueAlpha = 0xFF000000U;
 
+    /// <summary>The misspelled words in the field being edited, reused between checks.</summary>
+    private readonly List<Core.Reading.TextRange> _misspelled = [];
+
     /// <summary>Initializes a new instance of the <see cref="DocumentView"/> class.</summary>
     public DocumentView()
     {
         InitializeComponent();
+        FieldSpelling.Editor = FieldEditor;
         ThumbnailList.ItemTemplate = new FuncDataTemplate<ThumbnailItemViewModel>((_, _) => new ThumbnailItemView { Tab = ViewModel });
         OutlineTree.ItemTemplate = new FuncTreeDataTemplate<OutlineItemViewModel>(static (_, _) => new OutlineItemView(), static item => item.Children);
         SearchResultList.ItemTemplate = new FuncDataTemplate<SearchResultItemViewModel>(static (_, _) => new SearchResultView());
@@ -59,10 +63,12 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         DualLayoutItem.CommandParameter = "Dual";
         CoverLayoutItem.CommandParameter = "DualCover";
         FieldLabels.Link((ScaleBox, ScaleLabel));
+        SetUpAnnotationList();
         _ = this.WhenActivated(disposables =>
         {
             BindToolBar(disposables);
             BindAnnotationTools(disposables);
+            BindAnnotationEditing(disposables);
             BindBars(disposables);
             BindFind(disposables);
             BindSidebar(disposables);
@@ -84,6 +90,18 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <returns>The selected text.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string GetSelectedText() => Canvas.GetSelectedText();
+
+    /// <summary>Focuses the main content: the Focus Mode text when it is on, otherwise the pages.</summary>
+    internal void FocusMain()
+    {
+        if (ViewModel?.FocusMode.IsOn == true)
+        {
+            FocusPane.FocusFirstControl();
+            return;
+        }
+
+        FocusCanvas();
+    }
 
     /// <summary>Reports a failure in a subscription.</summary>
     /// <param name="error">The error.</param>
@@ -182,6 +200,44 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static IObservable<RoutedEventArgs> FocusLosses(Control control) => control.Events().LostFocus;
 
+    /// <summary>Describes a field and the possible spelling mistakes in it, for screen readers.</summary>
+    /// <param name="text">The field's text.</param>
+    /// <param name="misspelled">The misspelled words.</param>
+    /// <returns>The description.</returns>
+    private static string DescribeSpelling(string text, List<Core.Reading.TextRange> misspelled)
+    {
+        if (misspelled.Count == 0)
+        {
+            return Descriptions.FormField;
+        }
+
+        var words = new List<string>(misspelled.Count);
+        foreach (var range in misspelled)
+        {
+            words.Add(text.Substring(range.Start, range.Length));
+        }
+
+        var count = misspelled.Count == 1 ? "1 possible spelling mistake" : string.Create(CultureInfo.CurrentCulture, $"{misspelled.Count} possible spelling mistakes");
+        return string.Create(CultureInfo.CurrentCulture, $"{count}: {string.Join(", ", words)}. Open the menu on a word for corrections. {Descriptions.FormField}");
+    }
+
+    /// <summary>Determines whether a word is one of the marked words.</summary>
+    /// <param name="misspelled">The marked words.</param>
+    /// <param name="word">The word.</param>
+    /// <returns><see langword="true"/> when marked.</returns>
+    private static bool Contains(List<Core.Reading.TextRange> misspelled, Core.Reading.TextRange word)
+    {
+        foreach (var range in misspelled)
+        {
+            if (range == word)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Moves focus to the pages when a part of the view was hidden while it held the focus, so focus is never lost.</summary>
     /// <param name="hidden">The part that was hidden.</param>
     private void KeepFocus(Control hidden)
@@ -241,6 +297,9 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsPresenting, static v => v.Scroller.HorizontalScrollBarVisibility, ScrollBars));
         bindings.Add(this.Bind(ViewModel, static vm => vm.IsCaretMode, static v => v.CaretModeItem.IsChecked, static on => on, static on => on));
         bindings.Add(this.Bind(ViewModel, static vm => vm.IsPageByPage, static v => v.PageByPageItem.IsChecked, static on => on, static on => on));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsSplitView, static v => v.SplitViewItem.IsChecked));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.SplitViewCommand, static v => v.SplitViewItem));
+        BindPageTools(bindings);
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveAsCommand, static v => v.SaveAsItem));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReloadCommand, static v => v.ReloadItem));
         bindings.Add(this.Bind(ViewModel, static vm => vm.SidebarVisible, static v => v.SidebarToggle.IsChecked, static on => on, IsOn));
@@ -263,6 +322,30 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetZoomCommand, static v => v.Zoom150Item, Parameter("150")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetZoomCommand, static v => v.Zoom200Item, Parameter("200")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetZoomCommand, static v => v.Zoom400Item, Parameter("400")));
+    }
+
+    /// <summary>Binds moving around and grabbing content: the drag tools, auto-scroll, the first and last page and select all.</summary>
+    /// <param name="bindings">The bindings.</param>
+    private void BindPageTools(MultipleDisposable bindings)
+    {
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetPageToolCommand, static v => v.SelectTextToolItem, Parameter(PageTool.SelectText)));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetPageToolCommand, static v => v.HandToolItem, Parameter(PageTool.Hand)));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.SetPageToolCommand, static v => v.ZoomAreaToolItem, Parameter(PageTool.ZoomArea)));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ToggleSnapshotToolCommand, static v => v.SnapshotToolItem));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsSelectTextTool, static v => v.SelectTextToolItem.IsChecked));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsHandTool, static v => v.HandToolItem.IsChecked));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsZoomAreaTool, static v => v.ZoomAreaToolItem.IsChecked));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsSnapshotTool, static v => v.SnapshotToolItem.IsChecked));
+        bindings.Add(this.Bind(ViewModel, static vm => vm.IsAutoScrolling, static v => v.AutoScrollItem.IsChecked, static on => on, static on => on));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsAutoScrolling, static v => v.AutoScrollBar.IsVisible));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.AutoScrollText, static v => v.AutoScrollText.Text));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.SlowerAutoScrollCommand, static v => v.AutoScrollSlowerButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FasterAutoScrollCommand, static v => v.AutoScrollFasterButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.StopAutoScrollCommand, static v => v.AutoScrollStopButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FirstPageCommand, static v => v.FirstPageItem));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.LastPageCommand, static v => v.LastPageItem));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.SelectAllCommand, static v => v.SelectAllItem));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.SaveImageInteraction), SaveImageAsync));
     }
 
     /// <summary>Binds the Annotate and Fill &amp; Sign tool rows.</summary>
@@ -462,7 +545,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.Bind(ViewModel, static vm => vm.SelectedOutlineItem, static v => v.OutlineTree.SelectedItem, static item => item, static item => item as OutlineItemViewModel));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.HasOutline, static v => v.NoOutlineText.IsVisible, static has => !has));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsAnnotationsMode, static v => v.AnnotationsPanel.IsVisible));
-        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.Items, static v => v.AnnotationList.ItemsSource));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.VisibleItems, static v => v.AnnotationList.ItemsSource));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.Items.Count, static v => v.NoAnnotationsText.IsVisible, static count => count == 0));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Layers.HasLayers, static v => v.LayersToggle.IsVisible));
         bindings.Add(this.Bind(ViewModel, static vm => vm.IsLayersMode, static v => v.LayersToggle.IsChecked, static on => on, IsOn));
@@ -474,6 +557,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Attachments.Items, static v => v.AttachmentList.ItemsSource));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Attachments.Selected, static v => v.AttachmentList.SelectedItem, static item => item, static item => item as DocumentAttachment));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Attachments.SaveCommand, static v => v.SaveAttachmentButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Attachments.OpenSelectedCommand, static v => v.OpenAttachmentButton));
         bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Attachments.SaveInteraction), SaveAttachmentAsync));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.IsSearchMode, static v => v.SearchResultList.IsVisible));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Search.Results, static v => v.SearchResultList.ItemsSource));
@@ -497,6 +581,11 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     {
         bindings.Add(this.WhenChanged(static v => v.ViewModel).BindTo(this, static v => v.Canvas.Tab));
         bindings.Add(this.WhenChanged(static v => v.ViewModel!.UriRequests).SwitchTo().SubscribeSafe(OpenUri, OnError));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ContentWarning, static v => v.ContentWarningText.Text));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ContentWarning, static v => v.ContentWarningBar.IsVisible, static warning => warning is not null));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissContentWarningCommand, static v => v.DismissContentWarningButton));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.FileLaunchRequests).SwitchMap(static requests => requests).SubscribeSafe(LaunchFile, OnError));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.ConfirmOpenFileInteraction), ConfirmOpenFileAsync));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ErrorMessage, static v => v.ErrorText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ErrorMessage, static v => v.ErrorPanel.IsVisible, static message => message is not null));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.NeedsPassword, static v => v.PasswordPanel.IsVisible));
@@ -532,7 +621,66 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(FieldEditor.Events().KeyDown
             .Where(static args => args.Key == Key.Enter && args.KeyModifiers == KeyModifiers.None && args.Source is TextBox { AcceptsReturn: false })
             .SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
-        bindings.Add(FocusLosses(FieldEditor).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
+        bindings.Add(FocusLosses(FieldEditor).Where(static _ => !FocusAnnouncementRepair.IsRepeating).SubscribeSafe(_ => ViewModel?.Forms.Commit(), OnError));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Forms.EditText, static v => v.ViewModel!.Forms.KeptWordsVersion, static (text, _) => text)
+            .SubscribeSafe(UpdateSpelling, OnError));
+        bindings.Add(FieldEditor.ObserveRouted(ScrollViewer.ScrollChangedEvent, RoutingStrategies.Bubble, handledEventsToo: true)
+            .SubscribeSafe(_ => FieldSpelling.InvalidateVisual(), OnError));
+        bindings.Add(FieldEditor.ObserveRouted(ContextRequestedEvent, RoutingStrategies.Tunnel).SubscribeSafe(OnFieldContextRequested, OnError));
+    }
+
+    /// <summary>Marks the misspelled words in the field being edited, and says how many there are to screen readers.</summary>
+    /// <param name="text">The field's text.</param>
+    private void UpdateSpelling(string text)
+    {
+        if (ViewModel is not { } tab || (tab.Forms.Editing is null && _misspelled.Count == 0))
+        {
+            // No field is being edited and nothing is marked, so there is nothing to check or clear.
+            return;
+        }
+
+        tab.Forms.FindMisspelled(text ?? string.Empty, _misspelled);
+        FieldSpelling.Show(_misspelled);
+        Avalonia.Automation.AutomationProperties.SetHelpText(FieldEditor, DescribeSpelling(text ?? string.Empty, _misspelled));
+    }
+
+    /// <summary>Offers corrections for a misspelled word when the editor's menu is asked for, keeping the normal menu otherwise.</summary>
+    /// <param name="e">The request.</param>
+    private void OnFieldContextRequested(ContextRequestedEventArgs e)
+    {
+        if (ViewModel is not { } tab || FieldEditor.Text is not { Length: > 0 })
+        {
+            return;
+        }
+
+        var index = FieldEditor.CaretIndex;
+        if (SpellingUnderlines.FindPresenter(FieldEditor) is { } presenter && e.TryGetPosition(presenter, out var point))
+        {
+            index = presenter.TextLayout.HitTestPoint(point).TextPosition;
+        }
+
+        var suggestions = tab.Forms.SuggestAt(index, out var word);
+        if (word.IsEmpty || !Contains(_misspelled, word))
+        {
+            return;
+        }
+
+        var misspelled = FieldEditor.Text.Substring(word.Start, word.Length);
+        List<Control> items = [];
+        foreach (var suggestion in suggestions)
+        {
+            items.Add(new MenuItem { Header = suggestion, Command = tab.Forms.CorrectCommand, CommandParameter = new SpellingFix(word, suggestion) });
+        }
+
+        if (items.Count == 0)
+        {
+            items.Add(new MenuItem { Header = "No suggestions", IsEnabled = false });
+        }
+
+        items.Add(new Separator());
+        items.Add(new MenuItem { Header = "_Keep This Spelling", Command = tab.Forms.KeepSpellingCommand, CommandParameter = misspelled });
+        new ContextMenu { ItemsSource = items }.Open(FieldEditor);
+        e.Handled = true;
     }
 
     /// <summary>Places the editor over a field and focuses it, or hides it.</summary>
@@ -542,6 +690,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         if (field is null)
         {
             FieldEditor.IsVisible = false;
+            FieldSpelling.IsVisible = false;
             _ = Canvas.Focus();
             return;
         }
@@ -555,6 +704,11 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         Avalonia.Automation.AutomationProperties.SetName(FieldEditor, string.IsNullOrWhiteSpace(field.Name) ? "Form field" : field.Name);
         FieldEditor.FontSize = Math.Max(MinFieldFontSize, rect.Height * FieldFontShare);
         FieldEditor.IsVisible = true;
+        Avalonia.Controls.Canvas.SetLeft(FieldSpelling, rect.X);
+        Avalonia.Controls.Canvas.SetTop(FieldSpelling, rect.Y);
+        FieldSpelling.Width = rect.Width;
+        FieldSpelling.Height = rect.Height;
+        FieldSpelling.IsVisible = true;
         _ = OnMainThread().SubscribeSafe(_ => FocusFieldEditor(), OnError);
     }
 
@@ -622,6 +776,21 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         context.SetOutput(file?.TryGetLocalPath());
     }
 
+    /// <summary>Asks where to save an image of part of a page, through the desktop's save dialog.</summary>
+    /// <param name="context">The interaction context, holding the suggested file name.</param>
+    /// <returns>A task.</returns>
+    private async Task SaveImageAsync(IInteractionContext<string, string?> context)
+    {
+        if (TopLevel.GetTopLevel(this)?.StorageProvider is not { } storage)
+        {
+            context.SetOutput(null);
+            return;
+        }
+
+        var file = await storage.SaveFilePickerAsync(new() { Title = "Save Image of Area", SuggestedFileName = context.Input, DefaultExtension = "png" });
+        context.SetOutput(file?.TryGetLocalPath());
+    }
+
     /// <summary>Shows the "Sign with Certificate" window.</summary>
     /// <param name="context">The interaction context, holding the request.</param>
     /// <returns>A task.</returns>
@@ -684,6 +853,31 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         };
         menu.Open(source);
         e.Handled = true;
+    }
+
+    /// <summary>Asks before a linked or attached file opens in another app.</summary>
+    /// <param name="context">The file's name in; <see langword="true"/> out to open it.</param>
+    /// <returns>A task.</returns>
+    private async Task ConfirmOpenFileAsync(IInteractionContext<string, bool> context)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+        {
+            context.SetOutput(false);
+            return;
+        }
+
+        ConfirmRequest request = new("Open File", $"Open {context.Input} in another app? Only open files you trust.", "Open File");
+        context.SetOutput(await new ConfirmWindow { ViewModel = new(request) }.ShowDialog<bool>(owner));
+    }
+
+    /// <summary>Opens a file the reader agreed to open with the desktop's default app.</summary>
+    /// <param name="path">The file.</param>
+    private void LaunchFile(string path)
+    {
+        if (TopLevel.GetTopLevel(this)?.Launcher is { } launcher)
+        {
+            _ = launcher.LaunchFileInfoAsync(new(path));
+        }
     }
 
     /// <summary>Opens external links with the desktop's default handler.</summary>

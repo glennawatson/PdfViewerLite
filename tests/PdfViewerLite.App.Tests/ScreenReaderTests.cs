@@ -66,6 +66,8 @@ public sealed class ScreenReaderTests
 
             await Assert.That(NameOf(thumbnails.ContainerFromIndex(0)!)).IsEqualTo("Page 1 of 3");
             await Assert.That(NameOf(thumbnails.ContainerFromIndex(ThirdPage)!)).IsEqualTo("Page 3 of 3");
+            await Assert.That(AutomationProperties.GetPositionInSet(thumbnails.ContainerFromIndex(ThirdPage)!)).IsEqualTo(Pages);
+            await Assert.That(AutomationProperties.GetSizeOfSet(thumbnails.ContainerFromIndex(ThirdPage)!)).IsEqualTo(Pages);
 
             tab.Search.Query = Words;
             await Assert.That(await UiWait.UntilAsync(() => !tab.Search.IsSearching && tab.Search.Results.Count == Pages)).IsTrue();
@@ -73,6 +75,8 @@ public sealed class ScreenReaderTests
             var results = view.FindControl<ListBox>("SearchResultList")!;
             await Assert.That(await UiWait.UntilAsync(() => results.ContainerFromIndex(0) is not null)).IsTrue();
             await Assert.That(NameOf(results.ContainerFromIndex(0)!)).StartsWith("Page 1: ");
+            await Assert.That(AutomationProperties.GetPositionInSet(results.ContainerFromIndex(0)!)).IsEqualTo(1);
+            await Assert.That(AutomationProperties.GetHelpText(results.ContainerFromIndex(0)!)).IsEqualTo(OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ? $"1 of {Pages}" : null);
 
             var strip = window.FindControl<ListBox>("TabStrip")!;
             await Assert.That(NameOf(strip.ContainerFromIndex(0)!)).IsEqualTo(FileName);

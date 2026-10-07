@@ -6,9 +6,9 @@
         Background="{DynamicResource AppWindowBackground}"
         DragDrop.AllowDrop="True">
   <!-- Layout only: bindings, commands and shortcuts are set up in code with ReactiveUI.Binding (MainWindow.axaml.cs). -->
-  <DockPanel>
+  <Grid RowDefinitions="Auto,*,Auto">
     <!-- Tab strip. -->
-    <Border x:Name="TabBar" DockPanel.Dock="Top" Classes="tabbar" AutomationProperties.Name="Tabs" AutomationProperties.LandmarkType="Navigation">
+    <Border x:Name="TabBar" Classes="tabbar" AutomationProperties.Name="Tabs" AutomationProperties.LandmarkType="Navigation">
       <Grid ColumnDefinitions="*,Auto,Auto,Auto">
         <ListBox x:Name="TabStrip" AutomationProperties.Name="Open documents" Classes="tabstrip"
                  ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled">
@@ -43,6 +43,8 @@
           <Button.Flyout>
             <MenuFlyout Placement="BottomEdgeAlignedRight">
               <MenuItem x:Name="OpenMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.Open}" Header="_Open…" InputGesture="Ctrl+O" />
+              <MenuItem x:Name="RecentMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.OpenRecent}" Header="Open _Recent" />
+              <MenuItem x:Name="NewWindowMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.NewWindow}" Header="_New Window" InputGesture="Ctrl+N" />
               <MenuItem x:Name="ReopenMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.ReopenClosedTabs}" Header="_Reopen Closed Tabs" InputGesture="Ctrl+Shift+T" />
               <MenuItem x:Name="SearchFolderMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.SearchFolder}" Header="_Search in Folder…" InputGesture="Ctrl+Shift+F" />
               <Separator />
@@ -55,18 +57,21 @@
         </Button>
       </Grid>
     </Border>
-
-    <Border x:Name="StatusBar" DockPanel.Dock="Bottom" Classes="toolbar" BorderThickness="0,1,0,0" AutomationProperties.Name="Status" AutomationProperties.ControlTypeOverride="StatusBar">
-      <DockPanel>
-        <Button x:Name="DismissStatusButton" views:ControlHelp.Text="{x:Static views:Descriptions.DismissMessage}" DockPanel.Dock="Right" Content="Dismiss" />
+    <Panel Grid.Row="1">
+      <views:StartView x:Name="StartPage" />
+      <!-- The second column holds a second view of the same document while the view is split. -->
+      <Grid x:Name="DocumentArea" ColumnDefinitions="*,Auto,0">
+        <ContentControl x:Name="DocumentHost" />
+        <GridSplitter x:Name="SplitSplitter" Grid.Column="1" Width="6" views:ControlHelp.Text="{x:Static views:Descriptions.SplitSplitter}" AutomationProperties.Name="Split view divider" IsVisible="False" />
+        <ContentControl x:Name="SplitHost" Grid.Column="2" AutomationProperties.Name="Second view" IsVisible="False" />
+      </Grid>
+    </Panel>
+    <Border Grid.Row="2" x:Name="StatusBar" Classes="toolbar" BorderThickness="0,1,0,0" AutomationProperties.Name="Status" AutomationProperties.ControlTypeOverride="StatusBar">
+      <Grid ColumnDefinitions="*,Auto">
         <!-- Downloads and their failures are announced without moving the focus. -->
         <TextBlock x:Name="StatusText" AutomationProperties.LiveSetting="Polite" Margin="6,2" VerticalAlignment="Center" />
-      </DockPanel>
+        <Button Grid.Column="1" x:Name="DismissStatusButton" views:ControlHelp.Text="{x:Static views:Descriptions.DismissMessage}" Content="Dismiss" />
+      </Grid>
     </Border>
-
-    <Panel>
-      <views:StartView x:Name="StartPage" />
-      <ContentControl x:Name="DocumentHost" />
-    </Panel>
-  </DockPanel>
+  </Grid>
 </Window>

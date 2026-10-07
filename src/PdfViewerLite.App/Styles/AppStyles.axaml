@@ -184,6 +184,10 @@
   <Style Selector="Button.tabclose:pointerover">
     <Setter Property="Opacity" Value="1" />
   </Style>
+  <!-- Full strength under the keyboard too, so the focused close button is as clear as a hovered one. -->
+  <Style Selector="Button.tabclose:focus-visible">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
   <Style Selector="Button.tabclose Path.icon">
     <Setter Property="Width" Value="14" />
     <Setter Property="Height" Value="14" />

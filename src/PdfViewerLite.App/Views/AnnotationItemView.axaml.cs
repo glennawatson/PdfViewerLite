@@ -34,6 +34,7 @@ public sealed partial class AnnotationItemView : ReactiveUI.Avalonia.ReactiveUse
     {
         KindText.Text = item?.Heading;
         SummaryText.Text = item?.Summary;
+        DetailsText.Text = item?.Details;
         RepliesText.Text = item?.RepliesText;
         RepliesText.IsVisible = item is { RepliesText.Length: > 0 };
         Swatch.Background = item is null ? null : new SolidColorBrush(Color.FromUInt32(OpaqueAlpha | item.Annotation.Color));

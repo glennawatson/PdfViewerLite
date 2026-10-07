@@ -13,12 +13,12 @@
       <TextBlock x:Name="PreviewPath" Classes="secondary" TextWrapping="Wrap" FontSize="11" />
     </StackPanel>
   </ToolTip.Tip>
-  <DockPanel Background="Transparent">
-    <Button AutomationProperties.Name="Close tab" x:Name="CloseButton" views:ControlHelp.Text="{x:Static views:Descriptions.CloseTab}" DockPanel.Dock="Right" Classes="tabclose">
+  <Grid ColumnDefinitions="Auto,*,Auto" Background="Transparent">
+    <!-- A steady dot marks unsaved annotations or form entries; it never blinks. -->
+    <Ellipse x:Name="UnsavedDot" Classes="unsaved" />
+    <TextBlock Grid.Column="1" x:Name="NameText" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+    <Button Grid.Column="2" AutomationProperties.Name="Close tab" x:Name="CloseButton" views:ControlHelp.Text="{x:Static views:Descriptions.CloseTab}" Classes="tabclose">
       <Path Classes="icon remove" Data="{StaticResource IconClose}" />
     </Button>
-    <!-- A steady dot marks unsaved annotations or form entries; it never blinks. -->
-    <Ellipse x:Name="UnsavedDot" DockPanel.Dock="Left" Classes="unsaved" />
-    <TextBlock x:Name="NameText" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-  </DockPanel>
+  </Grid>
 </UserControl>

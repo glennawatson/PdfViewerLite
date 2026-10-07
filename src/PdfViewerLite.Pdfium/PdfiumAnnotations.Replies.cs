@@ -52,7 +52,7 @@ internal static unsafe partial class PdfiumAnnotations
 
             try
             {
-                if (RepliesTo(page, annotation, index, name))
+                if (!IsRemoved(annotation) && RepliesTo(page, annotation, index, name))
                 {
                     output.Add(new(i, ReadString(annotation, ContentsKey), ReadString(annotation, "T"u8), ParseState(ReadString(annotation, StateKey))));
                 }
@@ -69,8 +69,9 @@ internal static unsafe partial class PdfiumAnnotations
     /// <param name="index">The comment's index.</param>
     /// <param name="contents">The reply's text.</param>
     /// <param name="state">The review status, or none for a plain reply.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The reply's index, or -1.</returns>
-    internal static int AddReply(PdfiumPage page, int index, string contents, ReviewState state)
+    internal static int AddReply(PdfiumPage page, int index, string contents, ReviewState state, string author)
     {
         if (string.IsNullOrWhiteSpace(contents) && state == ReviewState.None)
         {
@@ -104,7 +105,7 @@ internal static unsafe partial class PdfiumAnnotations
             NativeMethods.FPDFPage_CloseAnnot(parent);
         }
 
-        return CreateReply(page, rect, name, contents, state);
+        return CreateReply(page, rect, name, contents, state, author);
     }
 
     /// <summary>Determines whether an annotation is a reply, so it is listed with its comment rather than on its own.</summary>
@@ -136,8 +137,9 @@ internal static unsafe partial class PdfiumAnnotations
     /// <param name="parentName">The comment's unique name.</param>
     /// <param name="contents">The reply's text.</param>
     /// <param name="state">The review status.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The reply's index, or -1.</returns>
-    private static int CreateReply(PdfiumPage page, in FsRectF rect, string parentName, string contents, ReviewState state)
+    private static int CreateReply(PdfiumPage page, in FsRectF rect, string parentName, string contents, ReviewState state, string author)
     {
         var reply = NativeMethods.FPDFPage_CreateAnnot(page.Handle, SubtypeText);
         if (reply == 0)
@@ -149,7 +151,7 @@ internal static unsafe partial class PdfiumAnnotations
         {
             _ = NativeMethods.FPDFAnnot_SetRect(reply, rect);
             _ = NativeMethods.FPDFAnnot_SetFlags(reply, ReplyFlags);
-            _ = SetString(reply, "T"u8, Author);
+            _ = SetString(reply, "T"u8, author);
             _ = SetModified(reply);
             _ = SetString(reply, NameKey, NewName());
             _ = SetString(reply, PendingKey, parentName);

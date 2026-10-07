@@ -17,6 +17,18 @@ public class PrintBenchmarks
     /// <summary>The page count the ranges are read against.</summary>
     private const int RangePageCount = 40;
 
+    /// <summary>The pages in the mixed document: one upright, one wide.</summary>
+    private const int MixedPageCount = 2;
+
+    /// <summary>The printer resolution placed against.</summary>
+    private const int PrinterDpi = 600;
+
+    /// <summary>An upright Letter printable width at 600 DPI.</summary>
+    private const int PrintableWidth = 4_900;
+
+    /// <summary>An upright Letter printable height at 600 DPI.</summary>
+    private const int PrintableHeight = 6_400;
+
     /// <summary>Where the note sits.</summary>
     private static readonly PagePoint NoteAt = new(400, 120);
 
@@ -25,6 +37,9 @@ public class PrintBenchmarks
 
     /// <summary>A filled page fitted to paper before direct printing.</summary>
     private static readonly SheetLayout FittedPage = new(1, PaperSize.A4, true) { FitToPaper = true };
+
+    /// <summary>A filled page at 75% on A3 before direct printing.</summary>
+    private static readonly SheetLayout CustomScaledPage = new(1, PaperSize.A3, true) { FitToPaper = true, Scaling = PrintScaling.Custom, ScalePercent = 75 };
 
     /// <summary>A booklet on A4, without annotations.</summary>
     private static readonly SheetLayout BookletLayout = new SheetLayout(1, PaperSize.A4, false) with { Imposition = PrintImposition.Booklet };
@@ -35,6 +50,15 @@ public class PrintBenchmarks
     /// <summary>The page exported.</summary>
     private static readonly int[] FirstPage = [0];
 
+    /// <summary>The sample document's wide page.</summary>
+    private static readonly int[] WidePage = [1];
+
+    /// <summary>An upright Letter page in points.</summary>
+    private static readonly PageSize UprightPage = new(612, 792);
+
+    /// <summary>A wide Letter page in points.</summary>
+    private static readonly PageSize SidewaysPage = new(792, 612);
+
     /// <summary>The chosen pages, reused.</summary>
     private readonly List<int> _pages = [with(64)];
 
@@ -43,6 +67,12 @@ public class PrintBenchmarks
 
     /// <summary>The document.</summary>
     private OcrDocument _document = null!;
+
+    /// <summary>A document with upright and wide pages.</summary>
+    private OcrDocument _mixed = null!;
+
+    /// <summary>The mixed document's page exporter.</summary>
+    private IPageExporter _mixedExporter = null!;
 
     /// <summary>The document's page exporter.</summary>
     private IPageExporter _exporter = null!;
@@ -57,6 +87,8 @@ public class PrintBenchmarks
         _document = new(TestPdf.CreateForm());
         _editor = (IAnnotationEditor)_document.Document;
         _exporter = (IPageExporter)_document.Document;
+        _mixed = new(TestPdf.Create(MixedPageCount));
+        _mixedExporter = (IPageExporter)_mixed.Document;
         var filler = (IFormFiller)_document.Document;
         List<FormField> fields = [];
         filler.GetFields(0, fields);
@@ -69,6 +101,7 @@ public class PrintBenchmarks
     public void Cleanup()
     {
         _document.Dispose();
+        _mixed.Dispose();
         _copy.Dispose();
     }
 
@@ -100,6 +133,41 @@ public class PrintBenchmarks
         _copy.SetLength(0);
         return _exporter.ExportPages(FirstPage, FittedPage, _copy);
     }
+
+    /// <summary>Writes a wide page fitted to paper, as direct printing does.</summary>
+    /// <returns>Whether it was written.</returns>
+    [Benchmark]
+    public bool ExportFittedWidePage()
+    {
+        _copy.Position = 0;
+        _copy.SetLength(0);
+        return _mixedExporter.ExportPages(WidePage, FittedPage, _copy);
+    }
+
+    /// <summary>Works out a shrink-to-fit scale for a Letter page on A4.</summary>
+    /// <returns>The scale.</returns>
+    [Benchmark]
+    public float ScaleShrinkOversized() => PrintScale.For(PrintScaling.ShrinkOversized, PrintScale.TrueSize, UprightPage.Width, UprightPage.Height, PrintableWidth, PrintableHeight);
+
+    /// <summary>Writes a page at a custom scale on A3, as direct printing does.</summary>
+    /// <returns>Whether it was written.</returns>
+    [Benchmark]
+    public bool ExportCustomScalePage()
+    {
+        _copy.Position = 0;
+        _copy.SetLength(0);
+        return _exporter.ExportPages(FirstPage, CustomScaledPage, _copy);
+    }
+
+    /// <summary>Places an upright page on a Windows printer's upright printable area.</summary>
+    /// <returns>The placed width.</returns>
+    [Benchmark]
+    public int PlaceUprightPage() => DevicePlacement.Fit(UprightPage, PrinterDpi, PrinterDpi, PrintableWidth, PrintableHeight).Width;
+
+    /// <summary>Places a wide page on a Windows printer's upright printable area.</summary>
+    /// <returns>The placed width.</returns>
+    [Benchmark]
+    public int PlaceWidePage() => DevicePlacement.Fit(SidewaysPage, PrinterDpi, PrinterDpi, PrintableWidth, PrintableHeight).Width;
 
     /// <summary>Writes the form's page as a booklet, padded with blank pages.</summary>
     /// <returns>Whether it was written.</returns>

@@ -21,6 +21,12 @@ public sealed class PrintPreviewWindowTests
     /// <summary>The sheets in the scrolling document.</summary>
     private const int PageCount = 80;
 
+    /// <summary>A custom print scale.</summary>
+    private const int CustomPercent = 80;
+
+    /// <summary>The test document's sideways sheet.</summary>
+    private const int WideSheet = 1;
+
     /// <summary>The number of end-to-end scrolls.</summary>
     private const int ScrollCount = 4;
 
@@ -63,6 +69,39 @@ public sealed class PrintPreviewWindowTests
             await Assert.That(binding.SelectedIndex).IsEqualTo((int)DuplexBinding.ShortEdge);
             preview.SelectedTarget = preview.Targets.Single(static target => target.Kind == PrintDestination.SaveAsPdf);
             await Assert.That(await UiWait.UntilAsync(() => !binding.IsEffectivelyVisible)).IsTrue();
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Verifies that printer scaling choices show only where they apply and reach the sheet layout.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ChoosesPrintScaling()
+    {
+        using var test = new TestServices(new PrintingPlatform(new RecordingPrinter()));
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("scaling.pdf", 1)]);
+        using var preview = new PrintPreviewViewModel(main.SelectedTab!, test.Services);
+        var window = new PrintPreviewWindow { ViewModel = preview };
+        window.Show();
+        try
+        {
+            await Assert.That(await UiWait.UntilAsync(() => preview.Destination == PrintDestination.Printer && preview.IsValid && !preview.IsBuilding)).IsTrue();
+            var scaling = window.FindControl<ComboBox>("ScalingBox")!;
+            var percent = window.FindControl<NumericUpDown>("ScalePercentBox")!;
+            await Assert.That(scaling.IsEffectivelyVisible).IsTrue();
+            await Assert.That(percent.IsEffectivelyVisible).IsFalse();
+            scaling.SelectedIndex = (int)PrintScaling.Custom;
+            percent.Value = CustomPercent;
+            await Assert.That(await UiWait.UntilAsync(() => percent.IsEffectivelyVisible && preview.CurrentLayout().ScalePercent == CustomPercent)).IsTrue();
+            await Assert.That(preview.CurrentLayout().Scaling).IsEqualTo(PrintScaling.Custom);
+            window.FindControl<ComboBox>("PaperBox")!.SelectedIndex = (int)PaperSize.Tabloid;
+            await Assert.That(await UiWait.UntilAsync(() => preview.CurrentLayout().Paper == PaperSize.Tabloid && preview.IsValid && !preview.IsBuilding)).IsTrue();
+            preview.LayoutIndex = 1;
+            await Assert.That(await UiWait.UntilAsync(() => !scaling.IsEffectivelyVisible && !percent.IsEffectivelyVisible)).IsTrue();
         }
         finally
         {
@@ -152,4 +191,64 @@ public sealed class PrintPreviewWindowTests
             window.Close();
         }
     }
+
+    /// <summary>
+    /// Verifies that upright and sideways sheets take the same space, so loading and releasing previews while scrolling
+    /// never moves the chosen sheet, and that rebuilding the preview keeps the chosen sheet.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation when the scrolling test exceeds its time limit.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Test]
+    [Timeout(TimeoutMilliseconds)]
+    public async Task ChosenSheetStaysInPlace(CancellationToken cancellationToken)
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("mixed-print.pdf", PageCount)]);
+        using var preview = new PrintPreviewViewModel(main.SelectedTab!, test.Services);
+        var window = new PrintPreviewWindow { ViewModel = preview };
+        window.Show();
+        try
+        {
+            await Assert.That(await UiWait.UntilAsync(() => preview.IsValid && !preview.IsBuilding)).IsTrue();
+            var list = window.FindControl<ListBox>("SheetList")!;
+            var scroll = list.GetVisualDescendants().OfType<ScrollViewer>().First();
+            await Assert.That(preview.Sheets[WideSheet].Size.Width).IsGreaterThan(preview.Sheets[WideSheet].Size.Height);
+            await Assert.That(await UiWait.UntilAsync(() => ShownSheet(list, WideSheet) is not null)).IsTrue();
+            var heights = list.GetVisualDescendants().OfType<ListBoxItem>().Select(static item => item.Bounds.Height).Distinct().ToList();
+            await Assert.That(heights.Count).IsEqualTo(1);
+
+            list.SelectedIndex = WideSheet;
+            await Assert.That(await UiWait.UntilAsync(() => preview.SelectedSheetIndex == WideSheet)).IsTrue();
+            var place = list.ContainerFromIndex(WideSheet)!.Bounds.Top;
+            var extent = scroll.Extent.Height;
+            for (var i = 0; i < ScrollCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                list.ScrollIntoView(preview.Sheets[^1]);
+                await Assert.That(await UiWait.UntilAsync(() => ShownSheet(list, preview.Sheets.Count - 1) is not null)).IsTrue();
+                await Assert.That(scroll.Extent.Height).IsEqualTo(extent);
+                list.ScrollIntoView(preview.Sheets[WideSheet]);
+                await Assert.That(await UiWait.UntilAsync(() => ShownSheet(list, WideSheet)?.GetVisualDescendants().OfType<Image>().Single().Source is not null)).IsTrue();
+                await Assert.That(list.ContainerFromIndex(WideSheet)!.Bounds.Top).IsEqualTo(place);
+                await Assert.That(scroll.Extent.Height).IsEqualTo(extent);
+            }
+
+            preview.IncludeAnnotations = false;
+            await Assert.That(await UiWait.UntilAsync(() => preview.IsValid && !preview.IsBuilding && preview.Sheets.Count == PageCount)).IsTrue();
+            await Assert.That(preview.SelectedSheetIndex).IsEqualTo(WideSheet);
+            await Assert.That(list.SelectedIndex).IsEqualTo(WideSheet);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Finds the view showing a sheet, when it is realised.</summary>
+    /// <param name="list">The sheet list.</param>
+    /// <param name="index">The sheet.</param>
+    /// <returns>The view, or <see langword="null"/>.</returns>
+    private static PrintPreviewPageView? ShownSheet(ListBox list, int index) =>
+        list.ContainerFromIndex(index)?.GetVisualDescendants().OfType<PrintPreviewPageView>().FirstOrDefault();
 }

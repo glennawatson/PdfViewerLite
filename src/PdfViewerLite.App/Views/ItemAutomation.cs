@@ -10,6 +10,7 @@ using Avalonia.VisualTree;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Attachments;
 using PdfViewerLite.Core.Platform;
+using PdfViewerLite.Core.Settings;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.ObservableEvents;
 
@@ -17,7 +18,8 @@ namespace PdfViewerLite.App.Views;
 
 /// <summary>
 /// Names list and tree items for screen readers. Without a name a list item reports its data object, which a screen
-/// reader reads out as a type name, so each kind of item is described in words here.
+/// reader reads out as a type name, so each kind of item is described in words here. Each item also reports its place,
+/// such as 3 of 40, where the desktop's accessibility interface carries it.
 /// </summary>
 internal static class ItemAutomation
 {
@@ -42,8 +44,27 @@ internal static class ItemAutomation
         ArgumentNullException.ThrowIfNull(args);
         var container = args.Container;
         var item = list.ItemFromContainer(container) ?? container.DataContext;
-        AutomationProperties.SetName(container, Describe(item, args.Index, list.Items.Count));
+        var count = list.Items.Count;
+        AutomationProperties.SetName(container, Describe(item, args.Index, count));
+        AutomationProperties.SetPositionInSet(container, args.Index + 1);
+        AutomationProperties.SetSizeOfSet(container, count);
+
+        // Avalonia's Linux and macOS bridges drop the set position, so there it is spoken as the description.
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+        {
+            AutomationProperties.SetHelpText(container, DescribePosition(item, args.Index, count));
+        }
     }
+
+    /// <summary>Puts an item's place in its list into words, unless its name already says it.</summary>
+    /// <param name="item">The item.</param>
+    /// <param name="index">Its zero based position.</param>
+    /// <param name="count">How many items there are.</param>
+    /// <returns>The description, such as "2 of 7", or <see langword="null"/>.</returns>
+    internal static string? DescribePosition(object? item, int index, int count) =>
+        count <= 0 || item is ThumbnailItemViewModel
+            ? null
+            : string.Create(CultureInfo.CurrentCulture, $"{index + 1} of {count}");
 
     /// <summary>Names the list or tree item that shows a view.</summary>
     /// <param name="view">The item's view.</param>
@@ -81,6 +102,7 @@ internal static class ItemAutomation
         PrintPreviewPage sheet => string.Create(CultureInfo.CurrentCulture, $"Sheet {sheet.Caption}"),
         PrintTarget target => target.Label,
         OutlineItemViewModel entry => entry.Title,
+        RememberedCertificate certificate => DescribeCertificate(certificate),
         string text => text,
         _ => count > 0 ? string.Create(CultureInfo.CurrentCulture, $"Item {index + 1} of {count}") : null,
     };
@@ -104,6 +126,12 @@ internal static class ItemAutomation
     /// <returns>The description.</returns>
     internal static string DescribeTab(string fileName, bool unsaved) =>
         unsaved ? string.Create(CultureInfo.CurrentCulture, $"{fileName}, unsaved changes") : fileName;
+
+    /// <summary>Describes a remembered certificate by who it names and where it is.</summary>
+    /// <param name="certificate">The certificate.</param>
+    /// <returns>The description.</returns>
+    internal static string DescribeCertificate(RememberedCertificate? certificate) =>
+        certificate is null ? string.Empty : string.Create(CultureInfo.CurrentCulture, $"{certificate.Subject} ({Path.GetFileName(certificate.Path)})");
 
     /// <summary>Describes a file by its name and folder.</summary>
     /// <param name="fileName">The file name.</param>

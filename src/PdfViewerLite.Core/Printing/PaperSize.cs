@@ -12,4 +12,16 @@ public enum PaperSize
 
     /// <summary>US Letter, 8.5 × 11 in.</summary>
     Letter = 1,
+
+    /// <summary>ISO A3, 297 × 420 mm.</summary>
+    A3 = 2,
+
+    /// <summary>ISO A5, 148 × 210 mm.</summary>
+    A5 = 3,
+
+    /// <summary>US Legal, 8.5 × 14 in.</summary>
+    Legal = 4,
+
+    /// <summary>US Tabloid, 11 × 17 in.</summary>
+    Tabloid = 5,
 }

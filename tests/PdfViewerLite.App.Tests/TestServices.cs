@@ -57,6 +57,7 @@ internal sealed class TestServices : IDisposable
         {
             Speech = speech.CreateSetup(Directory),
             Ocr = ocr?.CreateSetup(packs) ?? OcrSetup.CreateDefault() with { LanguageDirectory = packs, DownloadPacks = new FakeOcr(true).DownloadAsync },
+            CreateSpellChecker = static () => FakeSpellChecker.Instance,
         };
     }
 

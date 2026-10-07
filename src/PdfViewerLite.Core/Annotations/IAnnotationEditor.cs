@@ -15,6 +15,9 @@ public interface IAnnotationEditor
     /// <summary>Gets a value indicating whether the document has changes that are not saved.</summary>
     bool HasUnsavedChanges { get; }
 
+    /// <summary>Gets or sets the name recorded as the author of new annotations and replies; the person's user name by default.</summary>
+    string Author { get; set; }
+
     /// <summary>Appends the annotations on a page, skipping links, form fields and pop-ups.</summary>
     /// <param name="pageIndex">The zero based page index.</param>
     /// <param name="output">The list receiving the annotations.</param>
@@ -75,6 +78,34 @@ public interface IAnnotationEditor
     /// <returns>The new annotation's index, or -1.</returns>
     int AddStamp(int pageIndex, PagePoint location, string label, uint color);
 
+    /// <summary>Places a picture as a stamp, keeping its transparency.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="bounds">The picture's bounds in page space.</param>
+    /// <param name="pixels">Tightly packed, unpremultiplied BGRA pixels, in rows from top to bottom.</param>
+    /// <param name="width">The picture width in pixels.</param>
+    /// <param name="height">The picture height in pixels.</param>
+    /// <returns>The new annotation's index, or -1.</returns>
+    int AddImageStamp(int pageIndex, PageRect bounds, ReadOnlySpan<byte> pixels, int width, int height);
+
+    /// <summary>Draws a polygon, a cloud or a run of lines through points.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="kind"><see cref="AnnotationKind.Polygon"/>, <see cref="AnnotationKind.Cloud"/> or <see cref="AnnotationKind.PolyLine"/>.</param>
+    /// <param name="vertices">The corners in order; a polygon or cloud closes back to the first.</param>
+    /// <param name="color">The colour as 0xRRGGBB.</param>
+    /// <param name="width">The line width in points.</param>
+    /// <returns>The new annotation's index, or -1.</returns>
+    int AddPolygon(int pageIndex, AnnotationKind kind, ReadOnlySpan<PagePoint> vertices, uint color, float width);
+
+    /// <summary>Writes text in a framed box with a line and arrow pointing at something on the page.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="target">The point the arrow points at.</param>
+    /// <param name="location">The top-left corner of the text.</param>
+    /// <param name="text">The text; line breaks start new lines.</param>
+    /// <param name="fontSize">The font size in points.</param>
+    /// <param name="color">The colour as 0xRRGGBB.</param>
+    /// <returns>The new annotation's index, or -1.</returns>
+    int AddCallout(int pageIndex, PagePoint target, PagePoint location, string text, float fontSize, uint color);
+
     /// <summary>Appends the replies to a comment and its review status changes, oldest first.</summary>
     /// <param name="pageIndex">The zero based page index.</param>
     /// <param name="index">The comment's annotation index.</param>
@@ -103,7 +134,41 @@ public interface IAnnotationEditor
     /// <returns><see langword="true"/> when changed.</returns>
     bool SetContents(int pageIndex, int index, string contents);
 
-    /// <summary>Removes an annotation.</summary>
+    /// <summary>
+    /// Moves or resizes an annotation. Drawings, lines and polygons are redrawn through their moved points; other
+    /// annotations scale their appearance into the new bounds. Text markup follows its text and cannot be moved.
+    /// </summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="index">The annotation index.</param>
+    /// <param name="bounds">The new bounds in page space.</param>
+    /// <returns><see langword="true"/> when changed.</returns>
+    bool SetBounds(int pageIndex, int index, PageRect bounds);
+
+    /// <summary>Changes the line width of a drawing, shape, line or polygon.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="index">The annotation index.</param>
+    /// <param name="width">The line width in points.</param>
+    /// <returns><see langword="true"/> when changed.</returns>
+    bool SetLineWidth(int pageIndex, int index, float width);
+
+    /// <summary>Changes the text size of a text box or callout written by this viewer.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="index">The annotation index.</param>
+    /// <param name="fontSize">The font size in points.</param>
+    /// <returns><see langword="true"/> when changed.</returns>
+    bool SetFontSize(int pageIndex, int index, float fontSize);
+
+    /// <summary>
+    /// Takes an annotation off the page, or puts it back. A removed annotation keeps its index, is no longer listed or
+    /// drawn, and is left out when the document is saved, so removing can be undone even after saving.
+    /// </summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="index">The annotation index.</param>
+    /// <param name="removed">Whether the annotation is removed.</param>
+    /// <returns><see langword="true"/> when changed.</returns>
+    bool SetRemoved(int pageIndex, int index, bool removed);
+
+    /// <summary>Removes an annotation for good; the indexes of later annotations on the page shift down.</summary>
     /// <param name="pageIndex">The zero based page index.</param>
     /// <param name="index">The annotation index.</param>
     /// <returns><see langword="true"/> when removed.</returns>

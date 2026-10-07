@@ -98,6 +98,18 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
     [Reactive]
     public partial string TimestampServer { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets the name recorded as the author of new comments; empty uses the computer's user name.</summary>
+    [Reactive]
+    public partial string CommentAuthor { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether a document opens again at the page last read in it.</summary>
+    [Reactive]
+    public partial bool ReopenAtLastPage { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether form fields underline misspelled words.</summary>
+    [Reactive]
+    public partial bool CheckSpelling { get; set; }
+
     /// <summary>Gets or sets the Azure Speech region.</summary>
     [Reactive]
     public partial string AzureRegion { get; set; } = string.Empty;
@@ -160,6 +172,9 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         SpeechEngine = Math.Max(0, Array.IndexOf(SpeechEngineChoices, settings.SpeechEngine));
         AzureKey = settings.AzureSpeechKey;
         TimestampServer = settings.TimestampServer;
+        CommentAuthor = settings.CommentAuthor;
+        ReopenAtLastPage = settings.ReopenAtLastPage;
+        CheckSpelling = settings.CheckSpelling;
         AzureRegion = settings.AzureSpeechRegion;
         ColorScheme = (int)settings.ColorScheme;
         PageTone = (int)settings.PageTone;
@@ -169,6 +184,15 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         Motion = (int)settings.Motion;
         Caret = (int)settings.Caret;
         FontSize = settings.InterfaceFontSizePoints is { } points ? Math.Max(0, Array.IndexOf(FontSizes, points)) : 0;
+    }
+
+    /// <summary>Writes later changes of the reading and commenting choices to the settings.</summary>
+    /// <param name="settings">The settings.</param>
+    private void FollowReading(AppSettings settings)
+    {
+        Follow(this.WhenChanged(static x => x.CommentAuthor), author => settings.CommentAuthor = author);
+        Follow(this.WhenChanged(static x => x.ReopenAtLastPage), reopen => settings.ReopenAtLastPage = reopen);
+        Follow(this.WhenChanged(static x => x.CheckSpelling), check => settings.CheckSpelling = check);
     }
 
     /// <summary>Writes each later change of a choice to the settings, re-themes and saves.</summary>
@@ -196,6 +220,7 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
             settings.TimestampServer = trimmed;
             TimestampServer = trimmed;
         });
+        FollowReading(settings);
         Follow(this.WhenChanged(static x => x.AzureRegion), region =>
         {
             var trimmed = region.Trim().ToLowerInvariant();

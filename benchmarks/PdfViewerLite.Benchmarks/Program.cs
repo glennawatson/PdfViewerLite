@@ -18,7 +18,7 @@ public static class Program
     /// <summary>
     /// Entry point; pass BenchmarkDotNet arguments such as <c>--filter *</c>. Allocations are measured only through
     /// EventPipe: every run writes a .nettrace per benchmark sampling each allocation with its stack, which
-    /// <c>tools/PdfViewerLite.AllocationAudit</c> reads and checks against <c>benchmarks/allocations-explained.json</c>.
+    /// <c>scripts/AllocationAudit.cs</c> reads and checks against <c>benchmarks/allocations-explained.json</c>.
     /// </summary>
     /// <param name="args">The arguments.</param>
     public static void Main(string[] args)

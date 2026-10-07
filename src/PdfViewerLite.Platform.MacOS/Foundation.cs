@@ -13,7 +13,13 @@ internal static unsafe class Foundation
     /// <summary>Creates a Core Foundation string, which is also an NSString.</summary>
     /// <param name="value">The text.</param>
     /// <returns>The string; release it with <see cref="NativeMethods.Release"/>.</returns>
-    internal static nint CreateString(string value)
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    internal static nint CreateString(string value) => CreateString(value.AsSpan());
+
+    /// <summary>Creates a Core Foundation string from characters, which is also an NSString.</summary>
+    /// <param name="value">The text.</param>
+    /// <returns>The string; release it with <see cref="NativeMethods.Release"/>.</returns>
+    internal static nint CreateString(ReadOnlySpan<char> value)
     {
         fixed (char* characters = value)
         {

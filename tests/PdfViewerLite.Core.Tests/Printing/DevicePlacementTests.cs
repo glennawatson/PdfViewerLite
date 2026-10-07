@@ -30,6 +30,36 @@ public sealed class DevicePlacementTests
     /// <summary>A Letter page in points.</summary>
     private static readonly Geometry.PageSize Letter = new(612, 792);
 
+    /// <summary>A wide page is turned a quarter counter-clockwise to fill upright paper, as print systems turn it.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task TurnsWidePagesOntoUprightPaper()
+    {
+        var placement = DevicePlacement.Fit(new(Letter.Height, Letter.Width), Dpi, Dpi, LetterWidth, LetterHeight);
+
+        await Assert.That(placement.Rotation).IsEqualTo(Geometry.PageRotation.Rotate270);
+        await Assert.That(placement.Width).IsEqualTo(LetterWidth);
+        await Assert.That(placement.Height).IsEqualTo(LetterHeight);
+        await Assert.That(placement.Left).IsEqualTo(0);
+        await Assert.That(placement.Top).IsEqualTo(0);
+    }
+
+    /// <summary>Pages that match the paper's orientation are not turned, whichever way the paper faces.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task KeepsMatchingOrientation()
+    {
+        var upright = DevicePlacement.Fit(Letter, Dpi, Dpi, LetterWidth, LetterHeight);
+        var sideways = DevicePlacement.Fit(new(Letter.Height, Letter.Width), Dpi, Dpi, LetterHeight, LetterWidth);
+        var tallOnSideways = DevicePlacement.Fit(Letter, Dpi, Dpi, LetterHeight, LetterWidth);
+
+        await Assert.That(upright.Rotation).IsEqualTo(Geometry.PageRotation.None);
+        await Assert.That(sideways.Rotation).IsEqualTo(Geometry.PageRotation.None);
+        await Assert.That(sideways.Width).IsEqualTo(LetterHeight);
+        await Assert.That(tallOnSideways.Rotation).IsEqualTo(Geometry.PageRotation.Rotate270);
+        await Assert.That(tallOnSideways.Width).IsEqualTo(LetterHeight);
+    }
+
     /// <summary>A page that fits is printed at its true size, centred.</summary>
     /// <returns>A task.</returns>
     [Test]

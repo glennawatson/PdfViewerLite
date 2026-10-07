@@ -25,6 +25,9 @@ public sealed class AccessibilityTests
     /// <summary>The most tab stops followed before giving up.</summary>
     private const int MaxTabStops = 400;
 
+    /// <summary>The rounding allowed when comparing where controls sit, in pixels.</summary>
+    private const double LayoutTolerance = 1;
+
     /// <summary>The prefix of a fallback name made from a control's type.</summary>
     private const string AvaloniaNamespace = "Avalonia.";
 
@@ -155,20 +158,7 @@ public sealed class AccessibilityTests
             // Back is only enabled, and so only reachable, once there is a jump to return from.
             main.SelectedTab!.GoToPage(1);
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            var visited = new List<Avalonia.Input.IInputElement>();
-            for (var step = 0; step < MaxTabStops; step++)
-            {
-                window.KeyPress(Avalonia.Input.Key.Tab, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Tab, null);
-                window.KeyRelease(Avalonia.Input.Key.Tab, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Tab, null);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                var current = window.FocusManager?.GetFocusedElement();
-                if (current is null || visited.Contains(current))
-                {
-                    break;
-                }
-
-                visited.Add(current);
-            }
+            var visited = TabStops(window);
 
             var missed = new List<string>();
             foreach (var visual in view.GetVisualDescendants())
@@ -189,6 +179,82 @@ public sealed class AccessibilityTests
         {
             window.Close();
         }
+    }
+
+    /// <summary>
+    /// Tab follows reading order: along each row from left to right and down the window, never back up to a row
+    /// above, in the document window with its tool rows open and in the print window.
+    /// </summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task TabFollowsReadingOrder()
+    {
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument("order.pdf", Pages)]);
+        var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
+        window.Show();
+        using var preview = new PrintPreviewViewModel(main.SelectedTab!, test.Services);
+        var print = new PrintPreviewWindow { ViewModel = preview, Width = WindowWidth, Height = WindowHeight };
+        try
+        {
+            _ = await FindDocumentViewAsync(window);
+            var tab = main.SelectedTab!;
+            tab.ReadAloud.IsOpen = true;
+            tab.Annotations.IsAnnotating = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            await Assert.That(string.Join("; ", ReadingOrderBreaks(window, TabStops(window)))).IsEqualTo(string.Empty);
+
+            print.Show();
+            _ = await UiWait.UntilAsync(() => preview.IsValid && !preview.IsBuilding);
+            await Assert.That(string.Join("; ", ReadingOrderBreaks(print, TabStops(print)))).IsEqualTo(string.Empty);
+        }
+        finally
+        {
+            print.Close();
+            window.Close();
+        }
+    }
+
+    /// <summary>Presses Tab until focus comes back round, listing each control reached.</summary>
+    /// <param name="window">The window.</param>
+    /// <returns>The controls in the order Tab reached them.</returns>
+    internal static List<Avalonia.Input.IInputElement> TabStops(Window window)
+    {
+        var visited = new List<Avalonia.Input.IInputElement>();
+        for (var step = 0; step < MaxTabStops; step++)
+        {
+            window.KeyPress(Avalonia.Input.Key.Tab, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Tab, null);
+            window.KeyRelease(Avalonia.Input.Key.Tab, Avalonia.Input.RawInputModifiers.None, Avalonia.Input.PhysicalKey.Tab, null);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var current = window.FocusManager?.GetFocusedElement();
+            if (current is null || visited.Contains(current))
+            {
+                break;
+            }
+
+            visited.Add(current);
+        }
+
+        return visited;
+    }
+
+    /// <summary>Lists each step of Tab that goes back left along a row or up to an earlier row.</summary>
+    /// <param name="window">The window.</param>
+    /// <param name="stops">The controls in Tab order.</param>
+    /// <returns>Each backward step, as the two controls' names.</returns>
+    internal static List<string> ReadingOrderBreaks(Window window, List<Avalonia.Input.IInputElement> stops)
+    {
+        var breaks = new List<string>();
+        for (var i = 1; i < stops.Count; i++)
+        {
+            if (stops[i - 1] is Control from && stops[i] is Control to && GoesBack(from, to, window))
+            {
+                breaks.Add($"{from.Name ?? from.GetType().Name} -> {to.Name ?? to.GetType().Name}");
+            }
+        }
+
+        return breaks;
     }
 
     /// <summary>Lists the interactive controls without an accessible name.</summary>
@@ -216,6 +282,29 @@ public sealed class AccessibilityTests
 
         return unnamed;
     }
+
+    /// <summary>Determines whether a step of Tab goes back left along a row or up to an earlier row.</summary>
+    /// <param name="from">The control left.</param>
+    /// <param name="to">The control reached.</param>
+    /// <param name="window">The window.</param>
+    /// <returns><see langword="true"/> when the step goes against reading order.</returns>
+    private static bool GoesBack(Control from, Control to, Window window)
+    {
+        if (ScreenBounds(from, window) is not { } a || ScreenBounds(to, window) is not { } b)
+        {
+            return false;
+        }
+
+        var sameRow = a.Top < b.Center.Y && b.Center.Y < a.Bottom && b.Top < a.Center.Y && a.Center.Y < b.Bottom;
+        return (sameRow && b.Left < a.Left - LayoutTolerance) || b.Bottom <= a.Top + LayoutTolerance;
+    }
+
+    /// <summary>Gets where a control sits in its window.</summary>
+    /// <param name="control">The control.</param>
+    /// <param name="window">The window.</param>
+    /// <returns>The bounds, or <see langword="null"/> when it is not in the window.</returns>
+    private static Rect? ScreenBounds(Control control, Window window) =>
+        control.TranslatePoint(default, window) is { } origin ? new Rect(origin, control.Bounds.Size) : null;
 
     /// <summary>Waits for the document view to appear.</summary>
     /// <param name="window">The window.</param>

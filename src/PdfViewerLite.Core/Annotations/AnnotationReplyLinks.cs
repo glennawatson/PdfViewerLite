@@ -9,26 +9,44 @@ using PdfViewerLite.Core.Signatures.Signing;
 namespace PdfViewerLite.Core.Annotations;
 
 /// <summary>
-/// Links replies to the comments they answer when a document is saved. A reply records the comment it answers by
-/// name (<c>/NM</c>) while it is being edited, under <see cref="PendingKey"/>, because PDFium cannot write the
-/// reference PDF needs; on save, an incremental update replaces that with the standard <c>/IRT</c> reference and
-/// <c>/RT /R</c>, so every reader shows the thread.
+/// Finishes annotations when a document is saved, writing what PDFium cannot. A reply records the comment it answers
+/// by name (<c>/NM</c>) while it is being edited, under <see cref="PendingKey"/>; on save, an incremental update
+/// replaces that with the standard <c>/IRT</c> reference and <c>/RT /R</c>, so every reader shows the thread. An
+/// annotation marked under <see cref="RemovedKey"/> is left out of its page, and entries kept as text under
+/// <see cref="EntriesKey"/> (names, arrays and dictionaries such as a polygon's <c>/Vertices</c>) are written as real
+/// entries in place of any older values.
 /// </summary>
 public static class AnnotationReplyLinks
 {
+    /// <summary>The length of a dictionary's opening <c>&lt;&lt;</c>.</summary>
+    private const int OpenerLength = 2;
+
     /// <summary>Gets the key holding the name of the comment a reply answers until the file is saved.</summary>
     public static string PendingKey => Encoding.ASCII.GetString(PendingName);
+
+    /// <summary>Gets the key marking an annotation that was removed but is kept, hidden, so removing it can be undone.</summary>
+    public static string RemovedKey => Encoding.ASCII.GetString(RemovedName);
+
+    /// <summary>Gets the key holding entries, as PDF text, to write into an annotation when the file is saved.</summary>
+    public static string EntriesKey => Encoding.ASCII.GetString(EntriesName);
 
     /// <summary>Gets the pending key's name without its slash.</summary>
     private static ReadOnlySpan<byte> PendingName => "PVLInReplyTo"u8;
 
-    /// <summary>Links every pending reply in a saved file.</summary>
+    /// <summary>Gets the removed key's name without its slash.</summary>
+    private static ReadOnlySpan<byte> RemovedName => "PVLRemoved"u8;
+
+    /// <summary>Gets the entries key's name without its slash.</summary>
+    private static ReadOnlySpan<byte> EntriesName => "PVLEntries"u8;
+
+    /// <summary>Links every pending reply in a saved file, leaves out removed annotations and writes pending entries.</summary>
     /// <param name="file">The saved file.</param>
-    /// <returns>The file with an incremental update linking the replies, or the same bytes when there is nothing to link or the file cannot be read.</returns>
+    /// <returns>The file with an incremental update finishing the annotations, or the same bytes when there is nothing to do or the file cannot be read.</returns>
     public static byte[] Link(byte[] file)
     {
         ArgumentNullException.ThrowIfNull(file);
-        if (file.AsSpan().IndexOf(PendingName) < 0)
+        var span = file.AsSpan();
+        if (span.IndexOf(PendingName) < 0 && span.IndexOf(RemovedName) < 0 && span.IndexOf(EntriesName) < 0)
         {
             return file;
         }
@@ -72,8 +90,9 @@ public static class AnnotationReplyLinks
     }
 
     /// <summary>
-    /// Links the pending replies on one page. PDFium writes new annotations inline in the page's <c>/Annots</c> array,
-    /// and <c>/IRT</c> needs a reference, so on a page with replies every inline annotation becomes an object of its own.
+    /// Finishes the annotations on one page. PDFium writes new annotations inline in the page's <c>/Annots</c> array,
+    /// and <c>/IRT</c> needs a reference, so on a page with pending work every inline annotation becomes an object of
+    /// its own.
     /// </summary>
     /// <param name="structure">The file structure.</param>
     /// <param name="pageNumber">The page's object number.</param>
@@ -90,7 +109,7 @@ public static class AnnotationReplyLinks
 
         var annots = PdfReader.Resolve(structure, page, annotsAt);
         var items = ReadAnnotations(structure, annots.Span);
-        if (!items.Exists(static item => ReadText(item.Body, PendingName).Length > 0))
+        if (!items.Exists(static item => IsPending(item.Body.Span)))
         {
             return;
         }
@@ -111,22 +130,7 @@ public static class AnnotationReplyLinks
             }
         }
 
-        var references = new StringBuilder("[");
-        foreach (var (number, body, inline) in items)
-        {
-            _ = references.Append(CultureInfo.InvariantCulture, $"{number} 0 R ");
-            var parent = ReadText(body, PendingName);
-            if (parent.Length > 0 && names.TryGetValue(parent, out var parentNumber))
-            {
-                objects[number] = Linked(body, parentNumber);
-            }
-            else if (inline)
-            {
-                objects[number] = Encoding.Latin1.GetString(body.Span);
-            }
-        }
-
-        var array = references.Append(']').ToString();
+        var array = FinishAnnotations(items, names, objects);
         if (PdfSyntax.TryReadReference(page.Span, annotsAt, out var arrayNumber))
         {
             objects[arrayNumber] = array;
@@ -135,6 +139,36 @@ public static class AnnotationReplyLinks
         {
             objects[pageNumber] = PdfEditing.AddEntry(PdfEditing.RemoveKey(page.Span, "Annots"u8), $"/Annots {array}");
         }
+    }
+
+    /// <summary>Finishes each kept annotation of a page and lists the kept ones, leaving out removed annotations.</summary>
+    /// <param name="items">The page's annotations, each with its own number.</param>
+    /// <param name="names">The object number of each named annotation.</param>
+    /// <param name="objects">Receives the rewritten annotations.</param>
+    /// <returns>The page's new <c>/Annots</c> array.</returns>
+    private static string FinishAnnotations(List<(int Number, ReadOnlyMemory<byte> Body, bool Inline)> items, Dictionary<string, int> names, SortedDictionary<int, string> objects)
+    {
+        var references = new StringBuilder("[");
+        foreach (var (number, body, inline) in items)
+        {
+            if (ReadText(body, RemovedName).Length > 0)
+            {
+                continue;
+            }
+
+            _ = references.Append(CultureInfo.InvariantCulture, $"{number} 0 R ");
+            var parent = ReadText(body, PendingName);
+            if (parent.Length > 0 && names.TryGetValue(parent, out var parentNumber))
+            {
+                objects[number] = Linked(Encoding.Latin1.GetBytes(Finish(body)), parentNumber);
+            }
+            else if (inline || IsPending(body.Span))
+            {
+                objects[number] = Finish(body);
+            }
+        }
+
+        return references.Append(']').ToString();
     }
 
     /// <summary>Reads a page's annotations: referenced ones with their numbers, inline ones with -1.</summary>
@@ -171,13 +205,43 @@ public static class AnnotationReplyLinks
         return items;
     }
 
+    /// <summary>Determines whether an annotation has work left for saving.</summary>
+    /// <param name="body">The annotation's dictionary.</param>
+    /// <returns><see langword="true"/> for a pending reply, a removed or restored annotation, or pending entries.</returns>
+    private static bool IsPending(ReadOnlySpan<byte> body) =>
+        PdfSyntax.FindKey(body, 0, PendingName) >= 0 || PdfSyntax.FindKey(body, 0, RemovedName) >= 0 || PdfSyntax.FindKey(body, 0, EntriesName) >= 0;
+
+    /// <summary>Drops the removed mark of a kept annotation, and writes its pending entries in place of any older values.</summary>
+    /// <param name="body">The annotation's dictionary.</param>
+    /// <returns>The finished dictionary.</returns>
+    private static string Finish(ReadOnlyMemory<byte> body)
+    {
+        var entries = ReadText(body, EntriesName);
+        var text = PdfEditing.RemoveKey(Encoding.Latin1.GetBytes(PdfEditing.RemoveKey(body.Span, RemovedName)), EntriesName);
+        if (entries.Length == 0)
+        {
+            return text;
+        }
+
+        var wrapped = Encoding.Latin1.GetBytes($"<<{entries}>>");
+        var index = PdfSyntax.SkipSpace(wrapped, OpenerLength);
+        while (index < wrapped.Length && wrapped[index] == (byte)'/')
+        {
+            var nameEnd = PdfSyntax.TokenEnd(wrapped, index + 1);
+            text = PdfEditing.RemoveKey(Encoding.Latin1.GetBytes(text), wrapped.AsSpan((index + 1)..nameEnd));
+            index = PdfSyntax.SkipSpace(wrapped, PdfSyntax.ValueEnd(wrapped, PdfSyntax.SkipSpace(wrapped, nameEnd)));
+        }
+
+        return PdfEditing.AddEntry(text, entries);
+    }
+
     /// <summary>Rewrites a reply with a standard reference to its comment in place of the pending name.</summary>
     /// <param name="body">The reply's dictionary.</param>
     /// <param name="parentNumber">The comment's object number.</param>
     /// <returns>The rewritten dictionary.</returns>
-    private static string Linked(ReadOnlyMemory<byte> body, int parentNumber)
+    private static string Linked(ReadOnlySpan<byte> body, int parentNumber)
     {
-        var withoutPending = Encoding.Latin1.GetBytes(PdfEditing.RemoveKey(body.Span, PendingName));
+        var withoutPending = Encoding.Latin1.GetBytes(PdfEditing.RemoveKey(body, PendingName));
         var withoutOld = PdfEditing.RemoveKey(Encoding.Latin1.GetBytes(PdfEditing.RemoveKey(withoutPending, "IRT"u8)), "RT"u8);
         return PdfEditing.AddEntry(withoutOld, string.Create(CultureInfo.InvariantCulture, $"/IRT {parentNumber} 0 R /RT /R"));
     }

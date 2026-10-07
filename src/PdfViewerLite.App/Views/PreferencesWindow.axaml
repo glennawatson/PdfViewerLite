@@ -9,7 +9,7 @@
   <StackPanel Margin="20" Spacing="16">
     <TextBlock Classes="secondary" TextWrapping="Wrap"
                Text="Changes apply straight away and are kept for next time." />
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
+    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock x:Name="SchemeLabel" Grid.Row="0" VerticalAlignment="Center" Text="Colour scheme" />
       <ComboBox AutomationProperties.Name="Colour scheme" x:Name="SchemeBox" views:ControlHelp.Text="{x:Static views:Descriptions.ColourScheme}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock x:Name="PageToneLabel" Grid.Row="1" VerticalAlignment="Center" Text="PDF page colour" />
@@ -26,7 +26,13 @@
       <ComboBox AutomationProperties.Name="Interface text size" x:Name="FontSizeBox" views:ControlHelp.Text="{x:Static views:Descriptions.InterfaceTextSize}" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Stretch" />
       <TextBlock x:Name="OpeningZoomLabel" Grid.Row="7" VerticalAlignment="Center" Text="Opening zoom" />
       <ComboBox AutomationProperties.Name="Opening zoom" x:Name="OpeningZoomBox" views:ControlHelp.Text="{x:Static views:Descriptions.OpeningZoom}" Grid.Row="7" Grid.Column="1" HorizontalAlignment="Stretch" />
+      <TextBlock x:Name="CommentAuthorLabel" Grid.Row="8" VerticalAlignment="Center" Text="Author name for comments" />
+      <TextBox AutomationProperties.Name="Author name for comments" x:Name="CommentAuthorBox" views:ControlHelp.Text="{x:Static views:Descriptions.CommentAuthor}" Grid.Row="8" Grid.Column="1" PlaceholderText="Leave empty to use your user name" />
     </Grid>
+    <StackPanel Spacing="6">
+      <CheckBox AutomationProperties.Name="Open documents at the last page read" x:Name="ReopenAtLastPageBox" views:ControlHelp.Text="{x:Static views:Descriptions.ReopenAtLastPage}" Content="Open documents at the last page read" />
+      <CheckBox AutomationProperties.Name="Check spelling in form fields" x:Name="CheckSpellingBox" views:ControlHelp.Text="{x:Static views:Descriptions.CheckSpelling}" Content="Check spelling in form fields" />
+    </StackPanel>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock x:Name="SpeechEngineLabel" Grid.Row="0" VerticalAlignment="Center" Text="Read Aloud voice" />
       <ComboBox AutomationProperties.Name="Read Aloud voice" x:Name="SpeechEngineBox" views:ControlHelp.Text="{x:Static views:Descriptions.SpeechEngine}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
@@ -39,19 +45,19 @@
     </Grid>
     <!-- Text recognition languages: tick the languages to read; each row downloads or removes its own pack. -->
     <StackPanel Spacing="6">
-      <TextBlock Text="Text recognition languages" />
+      <TextBlock Text="Text recognition languages" AutomationProperties.HeadingLevel="2" />
       <TextBlock x:Name="OcrNote" Classes="secondary" TextWrapping="Wrap" />
       <ScrollViewer MaxHeight="220" HorizontalScrollBarVisibility="Disabled">
         <ItemsControl x:Name="OcrLanguageList" AutomationProperties.Name="Text recognition languages" />
       </ScrollViewer>
-      <DockPanel>
-        <Button x:Name="StopLanguageDownloadButton" DockPanel.Dock="Right" Content="Stop Download"
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock x:Name="OcrStatusText" Classes="secondary" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <ProgressBar Grid.Column="1" x:Name="OcrDownloadProgress" Width="120" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0"
+                     AutomationProperties.Name="Language pack download progress" />
+        <Button Grid.Column="2" x:Name="StopLanguageDownloadButton" Content="Stop Download"
                 AutomationProperties.Name="Stop download"
                 views:ControlHelp.Text="{x:Static views:Descriptions.StopLanguageDownload}" />
-        <ProgressBar x:Name="OcrDownloadProgress" DockPanel.Dock="Right" Width="120" Minimum="0" Maximum="1" VerticalAlignment="Center" Margin="8,0"
-                     AutomationProperties.Name="Language pack download progress" />
-        <TextBlock x:Name="OcrStatusText" Classes="secondary" VerticalAlignment="Center" TextWrapping="Wrap" />
-      </DockPanel>
+      </Grid>
     </StackPanel>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock x:Name="TimestampServerLabel" Grid.Row="0" VerticalAlignment="Center" Text="Timestamp server" />

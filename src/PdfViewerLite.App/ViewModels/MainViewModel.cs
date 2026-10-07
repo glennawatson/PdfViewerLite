@@ -62,7 +62,7 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
             services.OpenRequests.SubscribeSafe(path => Open([path]), OnError),
             services.SettingsApplied.SubscribeSafe(_ => PageToneEnabled = services.Settings.PageToneEnabled, OnError),
             this.WhenChanged(static x => x.TabQuery).Skip(1).SubscribeSafe(_ => RefreshFoundTabs(), OnError),
-            this.WhenChanged(static x => x.SelectedTab).Skip(1).SubscribeSafe(static tab => tab?.EnsureLoaded(), OnError),
+            this.WhenChanged(static x => x.SelectedTab).Skip(1).SubscribeSafe(OnSelectedTabChanged, OnError),
             this.WhenChanged(static x => x.PageToneEnabled).Skip(1).SubscribeSafe(ApplyPageTone, OnError),
         ];
     }
@@ -139,6 +139,16 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the requests to open the tab finder.</summary>
     public AsObservableSignal<RxVoid> TabFinderRequests { get; }
 
+    /// <summary>Gets the second view of the selected document while the view is split, or <see langword="null"/>.</summary>
+    [Reactive]
+    public partial DocumentTabViewModel? SplitTab { get; private set; }
+
+    /// <summary>Gets the interaction that shows another window, given its view model.</summary>
+    public Interaction<MainViewModel, RxVoid> NewWindowInteraction { get; } = new();
+
+    /// <summary>Gets a value indicating whether this is a window opened from another, which leaves the session to the first window.</summary>
+    public bool IsSecondaryWindow { get; init; }
+
     /// <summary>Gets the interaction that shows the Search in Folder window.</summary>
     public Interaction<FolderSearchViewModel, RxVoid> ShowFolderSearchInteraction { get; } = new();
 
@@ -162,7 +172,7 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
             var path = ToLocalPath(item);
             if (path is not null)
             {
-                last = OpenOrFind(path, 0);
+                last = OpenOrFind(path, StartPage(path));
             }
         }
 
@@ -216,13 +226,25 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
         SelectedTab = selected ?? (Tabs.Count > 0 ? Tabs[0] : null);
     }
 
-    /// <summary>Records the open tabs and saves settings.</summary>
+    /// <summary>Records the open tabs and saves settings. Another window only records where its documents were left.</summary>
     public void SaveSession()
     {
+        if (IsSecondaryWindow)
+        {
+            foreach (var tab in Tabs)
+            {
+                RememberPage(tab);
+            }
+
+            _services.SaveSettings();
+            return;
+        }
+
         var session = _services.Settings.Session;
         session.Clear();
         foreach (var tab in Tabs)
         {
+            RememberPage(tab);
             session.Add(new() { FilePath = tab.FilePath, PageIndex = Math.Max(0, tab.CurrentPageIndex), IsSelected = tab == SelectedTab });
         }
 
@@ -365,8 +387,15 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Reloads the recent documents list.</summary>
     public void RefreshRecentDocuments()
     {
+        var latest = _services.RecentDocuments.GetRecent(RecentCount);
+        if (SameDocuments(latest))
+        {
+            // Nothing changed since the list was last shown, so the menu and start page keep their items.
+            return;
+        }
+
         RecentDocuments.Clear();
-        foreach (var recent in _services.RecentDocuments.GetRecent(RecentCount))
+        foreach (var recent in latest)
         {
             RecentDocuments.Add(recent);
         }
@@ -377,6 +406,7 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
     {
         _subscriptions.Dispose();
         _tabFinderRequests.Dispose();
+        SplitTab?.Dispose();
         foreach (var tab in Tabs)
         {
             tab.Dispose();
@@ -408,6 +438,97 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
         return Path.IsPathRooted(item) || !item.Contains("://", StringComparison.Ordinal) ? Path.GetFullPath(item) : null;
     }
 
+    /// <summary>Splits the view of a document in two, beside each other, or puts the second view away.</summary>
+    /// <param name="tab">The document's first view, or its second view.</param>
+    private void ToggleSplit(DocumentTabViewModel tab)
+    {
+        if (SplitTab is not null)
+        {
+            CloseSplit();
+            return;
+        }
+
+        // The second view shares the open document, so edits made in either view are in the one file.
+        var split = new DocumentTabViewModel(tab.Source, _services) { PageTone = PageTone, OpenDocument = OpenLinked, ToggleSplitView = ToggleSplit, IsSecondaryView = true };
+        split.ReportPosition(tab.Position, tab.CurrentPageIndex);
+        split.EnsureLoaded();
+        tab.IsSplitView = true;
+        split.IsSplitView = true;
+        SplitTab = split;
+    }
+
+    /// <summary>Loads the newly selected document, and puts away a second view of another one.</summary>
+    /// <param name="tab">The selected tab.</param>
+    private void OnSelectedTabChanged(DocumentTabViewModel? tab)
+    {
+        if (SplitTab is { } split && !ReferenceEquals(split.Source, tab?.Source))
+        {
+            CloseSplit();
+        }
+
+        tab?.EnsureLoaded();
+    }
+
+    /// <summary>Puts the second view away.</summary>
+    private void CloseSplit()
+    {
+        if (SplitTab is not { } split)
+        {
+            return;
+        }
+
+        SplitTab = null;
+        foreach (var tab in Tabs)
+        {
+            tab.IsSplitView = false;
+        }
+
+        split.Dispose();
+    }
+
+    /// <summary>Determines whether the recent documents shown already match the latest list.</summary>
+    /// <param name="latest">The latest list.</param>
+    /// <returns><see langword="true"/> when nothing changed.</returns>
+    private bool SameDocuments(IReadOnlyList<RecentDocument> latest)
+    {
+        if (latest.Count != RecentDocuments.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < latest.Count; i++)
+        {
+            if (latest[i] != RecentDocuments[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Opens a PDF a link or attachment points to, at a page, in a tab beside the current one.</summary>
+    /// <param name="path">The full path.</param>
+    /// <param name="pageIndex">The zero-based page.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void OpenLinked(string path, int pageIndex) => OpenAt(path, pageIndex, string.Empty);
+
+    /// <summary>Gets the page a document opens at: where it was last closed, when that is wanted.</summary>
+    /// <param name="path">The full path.</param>
+    /// <returns>The zero-based page.</returns>
+    private int StartPage(string path) =>
+        _services.Settings.ReopenAtLastPage ? LastPages.Find(_services.Settings.LastPages, path) : 0;
+
+    /// <summary>Records the page a tab shows, so the document reopens there.</summary>
+    /// <param name="tab">The tab.</param>
+    private void RememberPage(DocumentTabViewModel tab)
+    {
+        if (tab.FilePath.Length > 0)
+        {
+            LastPages.Remember(_services.Settings.LastPages, tab.FilePath, tab.CurrentPageIndex);
+        }
+    }
+
     /// <summary>Finds an open tab for a file or opens a new one.</summary>
     /// <param name="path">The full path.</param>
     /// <param name="pageIndex">The page to show in a new tab.</param>
@@ -422,7 +543,7 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
             }
         }
 
-        var tab = new DocumentTabViewModel(_services.Pool.Create(path, null), _services) { PageTone = PageTone };
+        var tab = new DocumentTabViewModel(_services.Pool.Create(path, null), _services) { PageTone = PageTone, OpenDocument = OpenLinked, ToggleSplitView = ToggleSplit };
         if (pageIndex > 0)
         {
             tab.ReportPosition(new(pageIndex, 0), pageIndex);
@@ -587,6 +708,12 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
         }
 
         var wasSelected = tab == SelectedTab;
+        if (tab.IsSplitView)
+        {
+            CloseSplit();
+        }
+
+        RememberPage(tab);
         Tabs.RemoveAt(index);
         tab.Dispose();
         _services.Pool.Remove(tab.Source);
@@ -628,6 +755,20 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void TogglePageTone() => PageToneEnabled = !PageToneEnabled;
+
+    /// <summary>Opens another window, showing the selected document at the same page.</summary>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    private async Task NewWindowAsync()
+    {
+        var window = new MainViewModel(_services) { IsSecondaryWindow = true, PageToneEnabled = PageToneEnabled };
+        if (SelectedTab is { } current && current.FilePath.Length > 0)
+        {
+            window.OpenAt(current.FilePath, Math.Max(0, current.CurrentPageIndex), string.Empty);
+        }
+
+        _ = await NewWindowInteraction.Handle(window).ToTask().ConfigureAwait(true);
+    }
 
     /// <summary>Opens a recent document.</summary>
     /// <param name="recent">The document.</param>

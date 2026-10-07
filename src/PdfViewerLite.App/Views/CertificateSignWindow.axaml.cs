@@ -24,9 +24,10 @@ public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.Reactive
     {
         InitializeComponent();
         FieldLabels.Link((CertificateBox, CertificateLabel), (PasswordBox, PasswordLabel), (ReasonBox, ReasonLabel), (LocationBox, LocationLabel));
-        RememberedBox.ItemTemplate = new FuncDataTemplate<RememberedCertificate>(static (certificate, _) => new TextBlock { Text = Describe(certificate) });
+        RememberedBox.ItemTemplate = new FuncDataTemplate<RememberedCertificate>(static (certificate, _) => new TextBlock { Text = ItemAutomation.DescribeCertificate(certificate) });
         _ = this.WhenActivated(disposables =>
         {
+            disposables.Add(ItemAutomation.NameItems(RememberedBox));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.Remembered, static v => v.RememberedBox.ItemsSource));
             disposables.Add(this.Bind(ViewModel, static vm => vm.SelectedCertificate, static v => v.RememberedBox.SelectedItem, static chosen => chosen, static item => item as RememberedCertificate));
             disposables.Add(this.OneWayBind(ViewModel, static vm => vm.HasRemembered, static v => v.RememberedRow.IsVisible));
@@ -57,12 +58,6 @@ public sealed partial class CertificateSignWindow : ReactiveUI.Avalonia.Reactive
                 .SubscribeSafe(_ => RetryPassword(this), OnError));
         });
     }
-
-    /// <summary>Describes a remembered certificate by who it names and where it is.</summary>
-    /// <param name="certificate">The certificate.</param>
-    /// <returns>The description.</returns>
-    private static string Describe(RememberedCertificate? certificate) =>
-        certificate is null ? string.Empty : $"{certificate.Subject} ({Path.GetFileName(certificate.Path)})";
 
     /// <summary>Focuses the password box and selects what was typed, so a wrong password can be typed again.</summary>
     /// <param name="window">The window.</param>

@@ -162,6 +162,23 @@ internal sealed class PdfiumPage : IDisposable
                 return LinkTarget.ForUri(NativeText.FromAscii(buffer));
             }
 
+            case PdfActionType.RemoteGoTo:
+            {
+                var destination = NativeMethods.FPDFAction_GetDest(document, action);
+                var page = destination == 0 ? 0 : Math.Max(0, NativeMethods.FPDFDest_GetDestPageIndex(document, destination));
+                return ReadFilePath(action) is { Length: > 0 } path ? LinkTarget.ForFile(LinkTargetKind.OtherDocument, path, page) : LinkTarget.None;
+            }
+
+            case PdfActionType.Launch:
+            {
+                return ReadFilePath(action) is { Length: > 0 } path ? LinkTarget.ForFile(LinkTargetKind.LaunchFile, path, 0) : LinkTarget.None;
+            }
+
+            case PdfActionType.EmbeddedGoTo:
+            {
+                return new(LinkTargetKind.EmbeddedDocument, -1, null, null);
+            }
+
             default:
             {
                 return LinkTarget.None;
@@ -223,6 +240,26 @@ internal sealed class PdfiumPage : IDisposable
         return _links;
     }
 
+    /// <summary>Reads the file a launch or remote go-to action names.</summary>
+    /// <param name="action">The action.</param>
+    /// <returns>The path as written in the document, or <see langword="null"/>.</returns>
+    private static unsafe string? ReadFilePath(nint action)
+    {
+        var length = (int)NativeMethods.FPDFAction_GetFilePath(action, null, default).Value;
+        if (length <= 1)
+        {
+            return null;
+        }
+
+        var buffer = new byte[length];
+        fixed (byte* p = buffer)
+        {
+            _ = NativeMethods.FPDFAction_GetFilePath(action, p, new((uint)length));
+        }
+
+        return NativeText.FromUtf8(buffer);
+    }
+
     /// <summary>Adds the link annotations.</summary>
     /// <param name="links">The output list.</param>
     private void AddAnnotationLinks(List<PageLink> links)
@@ -235,10 +272,12 @@ internal sealed class PdfiumPage : IDisposable
                 continue;
             }
 
-            var target = ResolveDestination(_document, NativeMethods.FPDFLink_GetDest(_document, link), _documentPageSizes);
+            // The action comes first: PDFium also reports a link to another or an embedded file's page as a
+            // destination, which would otherwise send the reader to that page number in this document.
+            var target = ResolveAction(_document, NativeMethods.FPDFLink_GetAction(link), _documentPageSizes);
             if (target.Kind == LinkTargetKind.None)
             {
-                target = ResolveAction(_document, NativeMethods.FPDFLink_GetAction(link), _documentPageSizes);
+                target = ResolveDestination(_document, NativeMethods.FPDFLink_GetDest(_document, link), _documentPageSizes);
             }
 
             if (target.Kind != LinkTargetKind.None)

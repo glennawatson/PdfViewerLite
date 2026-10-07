@@ -60,6 +60,26 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
     internal static partial nint SendIndex(nint receiver, nint selector, nuint index);
 
+    /// <summary>Native <c>objc_msgSend</c> for <c>checkSpellingOfString:startingAt:</c>, which returns an NSRange in registers.</summary>
+    /// <param name="receiver">The spell checker.</param>
+    /// <param name="selector">The selector.</param>
+    /// <param name="text">The NSString.</param>
+    /// <param name="start">Where to start.</param>
+    /// <returns>The first misspelled word, or a location of NSNotFound.</returns>
+    [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
+    internal static partial CoreFoundationRange SendCheckSpelling(nint receiver, nint selector, nint text, nint start);
+
+    /// <summary>Native <c>objc_msgSend</c> for <c>guessesForWordRange:inString:language:inSpellDocumentWithTag:</c>.</summary>
+    /// <param name="receiver">The spell checker.</param>
+    /// <param name="selector">The selector.</param>
+    /// <param name="range">The word's range in the string.</param>
+    /// <param name="text">The NSString.</param>
+    /// <param name="language">The language, or null for the reader's.</param>
+    /// <param name="tag">The spell document tag, 0 for none.</param>
+    /// <returns>An autoreleased NSArray of NSString guesses, or null.</returns>
+    [LibraryImport(ObjectiveC, EntryPoint = "objc_msgSend")]
+    internal static partial nint SendGuesses(nint receiver, nint selector, CoreFoundationRange range, nint text, nint language, nint tag);
+
     /// <summary>Native <c>objc_autoreleasePoolPush</c>.</summary>
     /// <returns>The pool.</returns>
     [LibraryImport(ObjectiveC, EntryPoint = "objc_autoreleasePoolPush")]

@@ -24,11 +24,27 @@ internal static unsafe partial class PdfiumAnnotations
     /// <param name="pixels">The straight-alpha BGRA image.</param>
     /// <param name="width">The image width.</param>
     /// <param name="height">The image height.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The annotation index, or -1.</returns>
-    internal static int AddImageSignature(PdfiumDocumentHandle document, PdfiumPage page, PageRect bounds, ReadOnlySpan<byte> pixels, int width, int height)
+    internal static int AddImageSignature(PdfiumDocumentHandle document, PdfiumPage page, PageRect bounds, ReadOnlySpan<byte> pixels, int width, int height, string author)
     {
         var image = CreateImage(document, pixels, width, height);
-        return image == 0 ? -1 : AppendImage(page, bounds, image);
+        return image == 0 ? -1 : AppendImage(page, bounds, image, SignatureSubject, author);
+    }
+
+    /// <summary>Copies a picture into a stamp. The caller holds the PDFium lock.</summary>
+    /// <param name="document">The document.</param>
+    /// <param name="page">The page.</param>
+    /// <param name="bounds">The bounds in viewer page coordinates.</param>
+    /// <param name="pixels">The straight-alpha BGRA image.</param>
+    /// <param name="width">The image width.</param>
+    /// <param name="height">The image height.</param>
+    /// <param name="author">The author recorded.</param>
+    /// <returns>The annotation index, or -1.</returns>
+    internal static int AddImageStamp(PdfiumDocumentHandle document, PdfiumPage page, PageRect bounds, ReadOnlySpan<byte> pixels, int width, int height, string author)
+    {
+        var image = CreateImage(document, pixels, width, height);
+        return image == 0 ? -1 : AppendImage(page, bounds, image, StampSubject, author);
     }
 
     /// <summary>Creates an image object that owns a copy of the pixels.</summary>
@@ -68,12 +84,14 @@ internal static unsafe partial class PdfiumAnnotations
         return 0;
     }
 
-    /// <summary>Positions the image and transfers ownership to a removable signature.</summary>
+    /// <summary>Positions the image and transfers ownership to a removable stamp.</summary>
     /// <param name="page">The page.</param>
     /// <param name="bounds">The bounds in viewer page coordinates.</param>
     /// <param name="image">The image owned by this method.</param>
+    /// <param name="subject">What the stamp is: a signature or a picture stamp.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The annotation index, or -1.</returns>
-    private static int AppendImage(PdfiumPage page, PageRect bounds, nint image)
+    private static int AppendImage(PdfiumPage page, PageRect bounds, nint image, string subject, string author)
     {
         var annotation = NativeMethods.FPDFPage_CreateAnnot(page.Handle, SubtypeStamp);
         if (annotation == 0)
@@ -90,7 +108,7 @@ internal static unsafe partial class PdfiumAnnotations
             PdfBounds rectangle = default;
             rectangle.Add(page, new(bounds.Left, bounds.Top));
             rectangle.Add(page, new(bounds.Right, bounds.Bottom));
-            Finish(annotation, rectangle.ToRect(0), AnnotationColors.Ink, string.Empty, SignatureSubject);
+            Finish(annotation, rectangle.ToRect(0), AnnotationColors.Ink, string.Empty, subject, author);
             appended = NativeMethods.FPDFAnnot_AppendObject(annotation, image) != 0;
             return appended ? index : -1;
         }

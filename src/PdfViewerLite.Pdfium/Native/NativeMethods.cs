@@ -233,6 +233,14 @@ internal static unsafe partial class NativeMethods
     [LibraryImport(Library)]
     internal static partial CULong FPDFAction_GetURIPath(PdfiumDocumentHandle document, nint action, void* buffer, CULong length);
 
+    /// <summary>Native <c>FPDFAction_GetFilePath</c> entry point.</summary>
+    /// <param name="action">The launch or remote go-to action.</param>
+    /// <param name="buffer">The UTF-8 output buffer.</param>
+    /// <param name="length">The buffer length.</param>
+    /// <returns>The required length including the terminator, or 0.</returns>
+    [LibraryImport(Library)]
+    internal static partial CULong FPDFAction_GetFilePath(nint action, void* buffer, CULong length);
+
     /// <summary>Native <c>FPDFDest_GetDestPageIndex</c> entry point.</summary>
     /// <param name="document">The document.</param>
     /// <param name="destination">The destination.</param>

@@ -465,5 +465,40 @@
     "type": "System.String",
     "frame": "PdfViewerLite.Pdfium.PdfiumForm.ReadUtf16(",
     "reason": "A form field's name, value or script is read from PDFium as a new string; when fields are listed after an edit, or scripts are read once."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Core.Documents.LinkedFiles.Resolve(",
+    "reason": "Following a link to another file builds that file's full path, once per click on the link. Nothing here runs while pages draw."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Core.Documents.LinkedFiles.ToNativeSeparators(",
+    "reason": "A link written with the other system's folder separators is rewritten once per click so the file can be found; a path that already uses this system's separators is returned as it is."
+  },
+  {
+    "type": "PdfViewerLite.Core.Settings.LastViewedPage",
+    "frame": "PdfViewerLite.Core.Settings.LastPages.Remember(",
+    "reason": "Closing a tab at a new page records one small entry in the settings; an unchanged newest entry is kept without allocating."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Documents.ContentWarnings.Build(",
+    "reason": "The message about content that cannot be shown is built once per combination of parts and then reused for every document."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumForm.HasUnknownScripts(",
+    "reason": "Judging whether a field's script is one PdfViewerLite runs means reading the script text, once per field in the background check made when a document opens."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Platform.Linux.Spelling.WordListSpellChecker.Suggest(",
+    "reason": "SymSpell builds its candidate lists for each lookup. Corrections are looked up only when the reader opens the menu on a misspelled word, about 2 µs each, against 1.8 ms for scanning the word list."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.Native.NativeMethods.FPDF_GetSignatureCount(",
+    "reason": "The first call to a native entry point probes the library path while binding it; one string for the life of the process."
   }
 ]

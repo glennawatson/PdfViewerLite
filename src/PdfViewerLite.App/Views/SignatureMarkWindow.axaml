@@ -35,10 +35,10 @@
         <TextBlock x:Name="ImageNameText" VerticalAlignment="Center" />
       </StackPanel>
       <CheckBox x:Name="RemovePaperCheck" Content="Remove white paper" views:ControlHelp.Text="{x:Static views:Descriptions.RemovePaper}" />
-      <TextBlock x:Name="ImageErrorText" TextWrapping="Wrap" />
+      <TextBlock x:Name="ImageErrorText" AutomationProperties.LiveSetting="Assertive" TextWrapping="Wrap" />
     </StackPanel>
 
-    <TextBlock Text="Preview" />
+    <TextBlock Text="Preview" AutomationProperties.HeadingLevel="2" />
     <Border Background="{DynamicResource AppSignaturePaperBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="3" Height="96">
       <controls:SignatureMarkPreview x:Name="Preview" />
     </Border>

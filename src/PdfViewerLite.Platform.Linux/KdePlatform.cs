@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Speech;
+using PdfViewerLite.Platform.Linux.Accessibility;
 using PdfViewerLite.Platform.Linux.Audio;
 using PdfViewerLite.Platform.Linux.DBus;
 using PdfViewerLite.Platform.Linux.Kde;
@@ -43,6 +44,10 @@ public sealed class KdePlatform : IDesktopPlatform
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public string? GetLaunchActivationToken() => SingleInstanceHost.GetLaunchActivationToken();
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IFocusAnnouncementCheck CreateFocusAnnouncementCheck() => new AtSpiFocusAnnouncementCheck();
 
     /// <inheritdoc/>
     public Task<bool> TryForwardAsync(OpenRequest request)

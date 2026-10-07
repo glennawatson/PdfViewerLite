@@ -67,13 +67,14 @@ internal static partial class PdfiumAnnotations
     /// <param name="end">Where the drag ended.</param>
     /// <param name="color">The colour.</param>
     /// <param name="width">The line width.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The annotation index, or -1.</returns>
-    internal static int AddShape(PdfiumPage page, AnnotationKind kind, PagePoint start, PagePoint end, uint color, float width) => kind switch
+    internal static int AddShape(PdfiumPage page, AnnotationKind kind, PagePoint start, PagePoint end, uint color, float width, string author) => kind switch
     {
-        AnnotationKind.Rectangle => AddBox(page, SubtypeSquare, start, end, color, width),
-        AnnotationKind.Ellipse => AddBox(page, SubtypeCircle, start, end, color, width),
-        AnnotationKind.Arrow => AddArrow(page, start, end, color, width),
-        AnnotationKind.Line => AddInk(page, [start, end], [StrokePoints], color, width, LineSubject),
+        AnnotationKind.Rectangle => AddBox(page, SubtypeSquare, start, end, color, width, author),
+        AnnotationKind.Ellipse => AddBox(page, SubtypeCircle, start, end, color, width, author),
+        AnnotationKind.Arrow => AddArrow(page, start, end, color, width, author),
+        AnnotationKind.Line => AddInk(page, [start, end], [StrokePoints], color, width, LineSubject, author),
         _ => -1,
     };
 
@@ -84,8 +85,9 @@ internal static partial class PdfiumAnnotations
     /// <param name="location">The top-left corner.</param>
     /// <param name="label">The word.</param>
     /// <param name="color">The colour.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The annotation index, or -1.</returns>
-    internal static int AddStamp(PdfiumDocumentHandle document, PdfiumFontHandle font, PdfiumPage page, PagePoint location, string label, uint color)
+    internal static int AddStamp(PdfiumDocumentHandle document, PdfiumFontHandle font, PdfiumPage page, PagePoint location, string label, uint color, string author)
     {
         if (string.IsNullOrWhiteSpace(label))
         {
@@ -110,7 +112,7 @@ internal static partial class PdfiumAnnotations
             _ = NativeMethods.FPDFPageObj_SetStrokeColor(frame, (color >> RedShift) & ChannelMask, (color >> GreenShift) & ChannelMask, color & ChannelMask, Opaque);
 
             // The stamp's appearance box comes from its rectangle, so set it before appending the objects.
-            Finish(annotation, textBounds.ToRect(StampPadding + StampFrame), color, label, StampSubject);
+            Finish(annotation, textBounds.ToRect(StampPadding + StampFrame), color, label, StampSubject, author);
             _ = NativeMethods.FPDFAnnot_AppendObject(annotation, frame);
             _ = NativeMethods.FPDFAnnot_AppendObject(annotation, text);
             return NativeMethods.FPDFPage_GetAnnotIndex(page.Handle, annotation);
@@ -128,8 +130,9 @@ internal static partial class PdfiumAnnotations
     /// <param name="end">The opposite corner.</param>
     /// <param name="color">The colour.</param>
     /// <param name="width">The line width.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The annotation index, or -1.</returns>
-    private static int AddBox(PdfiumPage page, int subtype, PagePoint start, PagePoint end, uint color, float width)
+    private static int AddBox(PdfiumPage page, int subtype, PagePoint start, PagePoint end, uint color, float width, string author)
     {
         var annotation = NativeMethods.FPDFPage_CreateAnnot(page.Handle, subtype);
         if (annotation == 0)
@@ -143,7 +146,7 @@ internal static partial class PdfiumAnnotations
             bounds.Add(page, start);
             bounds.Add(page, end);
             _ = NativeMethods.FPDFAnnot_SetBorder(annotation, 0, 0, width);
-            Finish(annotation, bounds.ToRect(width * Half), color, string.Empty, null);
+            Finish(annotation, bounds.ToRect(width * Half), color, string.Empty, null, author);
             return NativeMethods.FPDFPage_GetAnnotIndex(page.Handle, annotation);
         }
         finally
@@ -158,8 +161,9 @@ internal static partial class PdfiumAnnotations
     /// <param name="point">The point.</param>
     /// <param name="color">The colour.</param>
     /// <param name="width">The line width.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The annotation index, or -1.</returns>
-    private static int AddArrow(PdfiumPage page, PagePoint tail, PagePoint point, uint color, float width)
+    private static int AddArrow(PdfiumPage page, PagePoint tail, PagePoint point, uint color, float width, string author)
     {
         var dx = tail.X - point.X;
         var dy = tail.Y - point.Y;
@@ -180,7 +184,7 @@ internal static partial class PdfiumAnnotations
         points[5] = Toward(point, angle - ArrowHeadAngle, head);
         Span<int> strokes = stackalloc int[ArrowStrokes];
         strokes.Fill(StrokePoints);
-        return AddInk(page, points, strokes, color, width, ArrowSubject);
+        return AddInk(page, points, strokes, color, width, ArrowSubject, author);
     }
 
     /// <summary>Gets the point a distance away in a direction.</summary>
@@ -198,8 +202,9 @@ internal static partial class PdfiumAnnotations
     /// <param name="color">The colour.</param>
     /// <param name="width">The line width.</param>
     /// <param name="subject">What the strokes are.</param>
+    /// <param name="author">The author recorded.</param>
     /// <returns>The annotation index, or -1.</returns>
-    private static int AddInk(PdfiumPage page, ReadOnlySpan<PagePoint> points, ReadOnlySpan<int> strokeLengths, uint color, float width, string subject)
+    private static int AddInk(PdfiumPage page, ReadOnlySpan<PagePoint> points, ReadOnlySpan<int> strokeLengths, uint color, float width, string subject, string author)
     {
         var annotation = NativeMethods.FPDFPage_CreateAnnot(page.Handle, SubtypeInk);
         if (annotation == 0)
@@ -219,7 +224,7 @@ internal static partial class PdfiumAnnotations
             }
 
             _ = NativeMethods.FPDFAnnot_SetBorder(annotation, 0, 0, width);
-            Finish(annotation, bounds.ToRect(width), color, string.Empty, subject);
+            Finish(annotation, bounds.ToRect(width), color, string.Empty, subject, author);
             AppendInkAppearance(annotation, path, color, width);
             return NativeMethods.FPDFPage_GetAnnotIndex(page.Handle, annotation);
         }

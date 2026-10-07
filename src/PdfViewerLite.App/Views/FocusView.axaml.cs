@@ -114,6 +114,10 @@ public sealed partial class FocusView : ReactiveUI.Avalonia.ReactiveUserControl<
         });
     }
 
+    /// <summary>Focuses the first control, so focus lands in Focus Mode when it opens.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void FocusFirstControl() => _ = BackToPagesButton.Focus();
+
     /// <summary>Gets the page views currently realised, top to bottom.</summary>
     /// <returns>The views.</returns>
     internal List<FocusPageView> PageViews()

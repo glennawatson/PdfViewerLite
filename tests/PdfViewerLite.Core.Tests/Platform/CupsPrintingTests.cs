@@ -65,6 +65,19 @@ public sealed class CupsPrintingTests
         await Assert.That(options[SidesOption]).IsEqualTo(expected);
     }
 
+    /// <summary>Verifies every paper size reaches CUPS as its PWG media name.</summary>
+    /// <param name="paper">The paper.</param>
+    /// <param name="expected">The media name.</param>
+    /// <returns>A task.</returns>
+    [Test]
+    [Arguments(PaperSize.A4, "iso_a4_210x297mm")]
+    [Arguments(PaperSize.Letter, "na_letter_8.5x11in")]
+    [Arguments(PaperSize.A3, "iso_a3_297x420mm")]
+    [Arguments(PaperSize.A5, "iso_a5_148x210mm")]
+    [Arguments(PaperSize.Legal, "na_legal_8.5x14in")]
+    [Arguments(PaperSize.Tabloid, "na_ledger_11x17in")]
+    public async Task NamesEveryPaper(PaperSize paper, string expected) => await Assert.That(CupsPrinting.GetMedia(paper)).IsEqualTo(expected);
+
     /// <summary>Verifies listing printers works, returning none rather than failing when no print server is running.</summary>
     /// <returns>A task.</returns>
     [Test]

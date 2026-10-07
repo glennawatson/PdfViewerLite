@@ -97,6 +97,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>The measuring tool, once used.</summary>
     private MeasureViewModel? _measure;
 
+    /// <summary>The annotation state, created on first use.</summary>
+    private AnnotationsViewModel? _annotations;
+
     /// <summary>The document's pages in reading order, once asked for.</summary>
     private ReadingDocument? _reading;
 
@@ -353,7 +356,10 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     public AttachmentsViewModel Attachments => field ??= new(this);
 
     /// <summary>Gets the annotation state.</summary>
-    public AnnotationsViewModel Annotations => field ??= new(this);
+    public AnnotationsViewModel Annotations => _annotations ??= new(this);
+
+    /// <summary>Gets the name recorded as the author of new comments: the one chosen in Preferences, or empty for the user name.</summary>
+    public string CommentAuthor => _services.Settings.CommentAuthor;
 
     /// <summary>Gets the measuring tool.</summary>
     public MeasureViewModel Measure => _measure ??= new(this);
@@ -513,6 +519,12 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
             case LinkTargetKind.Uri when Uri.TryCreate(target.Uri, UriKind.Absolute, out var uri):
             {
                 _uriRequests.OnNext(uri);
+                break;
+            }
+
+            case LinkTargetKind.OtherDocument or LinkTargetKind.LaunchFile or LinkTargetKind.EmbeddedDocument:
+            {
+                NavigateToFile(target);
                 break;
             }
 
@@ -761,13 +773,16 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _textRecognition?.Dispose();
         _layers?.Dispose();
         _measure?.Dispose();
+        _annotations?.Dispose();
         _fileWatch?.Dispose();
         Search.Dispose();
         _navigationRequests.Dispose();
         _uriRequests.Dispose();
+        _fileLaunchRequests.Dispose();
         _documentChanges.Dispose();
         _pageEdits.Dispose();
         _copyRequests.Dispose();
+        _selectAllRequests.Dispose();
         RenderHub.Scheduler.Invalidate(Source.Id);
         RenderHub.Cache.RemoveDocument(Source.Id);
         _ = CanvasClient.Advance();
@@ -826,11 +841,16 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         PageCount = sizes.Length;
         IsLoaded = true;
         PageEntry = GetPageDisplay(CurrentPageIndex);
-        _services.RecentDocuments.Add(FilePath);
         Signatures.Refresh();
         Attachments.Refresh();
         Layers.Refresh();
-        WatchFile();
+        if (!IsSecondaryView)
+        {
+            _services.RecentDocuments.Add(FilePath);
+            _ = CheckContentAsync(document);
+            WatchFile();
+        }
+
         _documentChanges.OnNext(RxVoid.Default);
     }
 

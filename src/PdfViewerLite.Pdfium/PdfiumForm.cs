@@ -182,6 +182,12 @@ internal sealed unsafe class PdfiumForm : IDisposable
         }
     }
 
+    /// <summary>Determines whether a widget carries JavaScript beyond the formats and sums PdfViewerLite understands.</summary>
+    /// <param name="annotation">The widget.</param>
+    /// <returns><see langword="true"/> when a script would be needed that is not run.</returns>
+    internal bool HasUnknownScripts(nint annotation) =>
+        HasForm && (IsUnknown(annotation, KeystrokeEvent) || IsUnknown(annotation, FormatEvent) || IsUnknown(annotation, ValidateEvent) || IsUnknown(annotation, CalculateEvent));
+
     /// <summary>Replaces a text field's text.</summary>
     /// <param name="page">The page.</param>
     /// <param name="index">The widget index.</param>
@@ -293,6 +299,13 @@ internal sealed unsafe class PdfiumForm : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static CULong ReadScript((PdfiumFormHandle Form, nint Annotation, int Event) target, void* buffer, CULong length) =>
         NativeMethods.FPDFAnnot_GetFormAdditionalActionJavaScript(target.Form, target.Annotation, target.Event, buffer, length);
+
+    /// <summary>Determines whether one of a widget's scripts is present but not understood.</summary>
+    /// <param name="annotation">The widget.</param>
+    /// <param name="formEvent">The script's event.</param>
+    /// <returns><see langword="true"/> for a script that is not run.</returns>
+    private bool IsUnknown(nint annotation, int formEvent) =>
+        ReadUtf16((_handle, annotation, formEvent), &ReadScript) is { Length: > 0 } script && ReferenceEquals(FormScript.Parse(script), FormScript.None);
 
     /// <summary>Reads one widget's scripts.</summary>
     /// <param name="pageIndex">The page.</param>
