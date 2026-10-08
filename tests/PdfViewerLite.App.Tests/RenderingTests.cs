@@ -271,7 +271,9 @@ public sealed class RenderingTests
             tab.SidebarMode = SidebarMode.Annotations;
             _ = tab.Annotations.MarkText(AnnotationKind.Highlight, new Dictionary<int, List<PageRect>> { [0] = lines }, AnnotationColors.Sand);
             await tab.Annotations.AddNoteAsync(0, NoteAt);
-            _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > ExpectedTiles && test.Services.RenderHub.Scheduler.QueueLength == 0);
+
+            // The comment sidebar narrows the pages, so fewer tiles show than in a full window; settled is enough.
+            await Assert.That(await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > 0 && test.Services.RenderHub.Scheduler.QueueLength == 0)).IsTrue();
             using var frame = window.CaptureRenderedFrame();
             Save(frame, "annotate.png");
 

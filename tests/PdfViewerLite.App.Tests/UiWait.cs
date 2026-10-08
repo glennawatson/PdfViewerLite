@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Avalonia.Headless;
 using Avalonia.Threading;
 
@@ -11,16 +12,22 @@ namespace PdfViewerLite.App.Tests;
 /// <summary>Pumps the headless dispatcher and renderer until a condition holds.</summary>
 internal static class UiWait
 {
-    /// <summary>The default timeout.</summary>
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    /// <summary>
+    /// The longest wait. A wait returns as soon as its condition holds, so this only bounds a stuck test; it is long
+    /// enough for a slow shared runner rendering and searching under load.
+    /// </summary>
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>How long to sleep between pumps.</summary>
     private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(10);
 
-    /// <summary>Runs dispatcher jobs until <paramref name="condition"/> is true or the timeout expires.</summary>
-    /// <param name="condition">The condition.</param>
-    /// <returns><see langword="true"/> when the condition held.</returns>
-    internal static async Task<bool> UntilAsync(Func<bool> condition)
+    /// <summary>Runs dispatcher jobs until <paramref name="condition"/> is true.</summary>
+    /// <param name="condition">The condition, which must come to hold; a wait cannot show that something does not happen.</param>
+    /// <param name="file">The calling file, filled in by the compiler.</param>
+    /// <param name="line">The calling line, filled in by the compiler.</param>
+    /// <returns><see langword="true"/>, once the condition holds.</returns>
+    /// <exception cref="TimeoutException">The condition did not hold within the timeout.</exception>
+    internal static async Task<bool> UntilAsync(Func<bool> condition, [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
     {
         var start = Stopwatch.GetTimestamp();
         while (Stopwatch.GetElapsedTime(start) < DefaultTimeout)
@@ -35,6 +42,7 @@ internal static class UiWait
             await Task.Delay(PumpInterval);
         }
 
-        return condition();
+        // A wait that runs out fails here, naming the caller, instead of costing its whole timeout and passing.
+        return condition() ? true : throw new TimeoutException($"The condition at {Path.GetFileName(file)}:{line} did not hold within {DefaultTimeout.TotalSeconds} seconds.");
     }
 }
