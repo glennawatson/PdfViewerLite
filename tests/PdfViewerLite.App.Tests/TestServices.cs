@@ -87,4 +87,15 @@ internal sealed class TestServices : IDisposable
         File.WriteAllBytes(path, TestPdf.Create(pageCount));
         return path;
     }
+
+    /// <summary>Writes a document from its bytes.</summary>
+    /// <param name="name">The file name.</param>
+    /// <param name="bytes">The PDF.</param>
+    /// <returns>The path.</returns>
+    internal string CreateDocument(string name, byte[] bytes)
+    {
+        var path = Path.Combine(Directory, name);
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
 }

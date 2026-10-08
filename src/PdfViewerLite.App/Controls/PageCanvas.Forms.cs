@@ -4,6 +4,8 @@
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Geometry;
@@ -13,6 +15,15 @@ namespace PdfViewerLite.App.Controls;
 /// <summary>Form fields on the page canvas: clicking a field fills it, and the editor overlay is placed from here.</summary>
 public sealed partial class PageCanvas
 {
+    /// <summary>The width of the field focus ring.</summary>
+    private const double FocusRingWidth = 2;
+
+    /// <summary>How far outside the field the focus ring sits.</summary>
+    private const double FocusRingGap = 3;
+
+    /// <summary>Gets the canvas units per point at the current zoom, for sizing an editor placed on a page.</summary>
+    internal double PageScale => _layout.Options.Scale;
+
     /// <summary>Converts a rectangle on a page to canvas coordinates, for placing an editor over a field.</summary>
     /// <param name="page">The page.</param>
     /// <param name="bounds">The rectangle in page space.</param>
@@ -57,6 +68,77 @@ public sealed partial class PageCanvas
         }
 
         new ContextMenu { ItemsSource = items, Placement = PlacementMode.Pointer }.Open(this);
+    }
+
+    /// <summary>
+    /// Moves between form fields with Tab and Shift+Tab, ticks the focused box with Space, opens a focused list with
+    /// Enter, and drops the field focus with Escape. Tab only moves between fields while filling in a form, so it still
+    /// leaves the pages otherwise, and past the last field.
+    /// </summary>
+    /// <param name="e">The key press.</param>
+    /// <returns><see langword="true"/> when a field took the key.</returns>
+    private bool HandleFormKey(KeyEventArgs e)
+    {
+        if (Tab is not { Forms: { HasForm: true } forms } tab)
+        {
+            return false;
+        }
+
+        var focused = forms.Focused;
+        return e.Key switch
+        {
+            Key.Tab when focused is not null || tab.FillAndSign.IsActive => MoveField(forms, (e.KeyModifiers & KeyModifiers.Shift) != 0),
+            Key.Space when focused is not null => forms.PressFocused() && Redraw(),
+            Key.Enter when focused is { Kind: FormFieldKind.ComboBox or FormFieldKind.ListBox } => OpenChoices(forms, focused),
+            Key.Escape when focused is not null => forms.ClearFocus() && Redraw(),
+            _ => false,
+        };
+    }
+
+    /// <summary>Moves the field focus, scrolling the field into view.</summary>
+    /// <param name="forms">The form state.</param>
+    /// <param name="backwards">Whether to move to the previous field.</param>
+    /// <returns><see langword="true"/> when a field took the focus.</returns>
+    private bool MoveField(FormsViewModel forms, bool backwards)
+    {
+        if (forms.CommitAndMove(backwards) is not { } field)
+        {
+            return false;
+        }
+
+        Tab?.NavigateTo(new(field.PageIndex, field.Bounds, 0));
+        return Redraw();
+    }
+
+    /// <summary>Opens the choices of a focused list.</summary>
+    /// <param name="forms">The form state.</param>
+    /// <param name="field">The field.</param>
+    /// <returns>Always <see langword="true"/>.</returns>
+    private bool OpenChoices(FormsViewModel forms, FormField field)
+    {
+        ShowChoices(forms, field);
+        return true;
+    }
+
+    /// <summary>Redraws the canvas after a key changed what it shows.</summary>
+    /// <returns>Always <see langword="true"/>.</returns>
+    private bool Redraw()
+    {
+        InvalidateVisual();
+        return true;
+    }
+
+    /// <summary>Draws a ring around the field with the keyboard focus, so it is clear where Space and Tab act.</summary>
+    /// <param name="context">The drawing context.</param>
+    /// <param name="tab">The tab.</param>
+    private void DrawFieldFocus(DrawingContext context, DocumentTabViewModel tab)
+    {
+        if (tab.Forms.Focused is not { } field || tab.Forms.Editing is not null || (uint)field.PageIndex >= (uint)_sizes.Length)
+        {
+            return;
+        }
+
+        context.DrawRectangle(null, new Pen((_currentHitPen ?? StrokePen).Brush, FocusRingWidth), GetCanvasRect(field.PageIndex, field.Bounds).Inflate(FocusRingGap));
     }
 
     /// <summary>Determines whether a canvas point is over a fillable field.</summary>

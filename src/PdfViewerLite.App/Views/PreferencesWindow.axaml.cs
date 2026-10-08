@@ -86,6 +86,7 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
         disposables.Add(this.Bind(ViewModel, static vm => vm.CommentAuthor, static v => v.CommentAuthorBox.Text));
         disposables.Add(this.Bind(ViewModel, static vm => vm.ReopenAtLastPage, static v => v.ReopenAtLastPageBox.IsChecked));
         disposables.Add(this.Bind(ViewModel, static vm => vm.CheckSpelling, static v => v.CheckSpellingBox.IsChecked));
+        disposables.Add(this.Bind(ViewModel, static vm => vm.ShowPreviewOnlyFonts, static v => v.PreviewOnlyFontsBox.IsChecked));
         disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyLabel.IsVisible));
         disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureKeyBox.IsVisible));
         disposables.Add(this.OneWayBind(ViewModel, static vm => vm.UsesAzure, static v => v.AzureRegionLabel.IsVisible));

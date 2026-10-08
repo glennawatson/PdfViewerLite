@@ -26,7 +26,7 @@ public sealed partial class FillAndSignViewModel : ReactiveObject
     public static readonly string PlacingHint = "Arrow keys move it; hold Shift for small steps. + and − resize it. Page Up and Page Down change page. Enter places it. Escape cancels.";
 
     /// <summary>The hint shown while filling forms.</summary>
-    public static readonly string FillingHint = "Click a form field to fill it in.";
+    public static readonly string FillingHint = "Click a form field to fill it in, or click anywhere on the page and type. Tab moves between fields.";
 
     /// <summary>The owning tab.</summary>
     private readonly DocumentTabViewModel _owner;
@@ -341,9 +341,23 @@ public sealed partial class FillAndSignViewModel : ReactiveObject
     [ReactiveCommand]
     private void Start()
     {
+        // As on paper, clicking anywhere types there; form fields are still filled by clicking them.
         Annotations.IsAnnotating = false;
-        Annotations.Tool = AnnotationTool.Select;
+        Annotations.Tool = AnnotationTool.Text;
         IsActive = true;
+    }
+
+    /// <summary>Shows the tools when hidden and hides them when shown, as the Fill &amp; Sign button does.</summary>
+    [ReactiveCommand]
+    private void Toggle()
+    {
+        if (IsActive)
+        {
+            Done();
+            return;
+        }
+
+        Start();
     }
 
     /// <summary>Hides the tools, cancelling any placing.</summary>
@@ -351,6 +365,7 @@ public sealed partial class FillAndSignViewModel : ReactiveObject
     private void Done()
     {
         _ = Cancel();
+        _ = Annotations.CommitText();
         Annotations.Tool = AnnotationTool.Select;
         IsActive = false;
     }

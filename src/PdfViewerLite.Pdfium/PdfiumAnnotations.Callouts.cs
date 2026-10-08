@@ -163,7 +163,9 @@ internal static partial class PdfiumAnnotations
 
             kind = GetStampKind(annotation);
             text = ReadString(annotation, TextKey);
-            if (text.Length == 0 || kind is not (AnnotationKind.TextBox or AnnotationKind.Callout))
+
+            // Formatted text boxes are laid out again by writing them anew, so their fonts and settings are kept.
+            if (text.Length == 0 || kind is not (AnnotationKind.TextBox or AnnotationKind.Callout) || HasFormat(annotation))
             {
                 return false;
             }

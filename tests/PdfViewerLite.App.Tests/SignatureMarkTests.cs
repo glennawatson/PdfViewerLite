@@ -512,13 +512,13 @@ public sealed class SignatureMarkTests
         where T : Control =>
         root.GetVisualDescendants().OfType<T>().FirstOrDefault(control => control.Name == name) ?? throw new InvalidOperationException($"{name} not found.");
 
-    /// <summary>Confirms the print preview once its sheets are ready.</summary>
+    /// <summary>Confirms the print preview once its sheets are ready and the printers are listed, so the job goes to the printer.</summary>
     /// <param name="context">The interaction context.</param>
     /// <returns>A task.</returns>
     private static async Task ConfirmWhenReadyAsync(IInteractionContext<PrintPreviewViewModel, bool> context)
     {
         var preview = context.Input;
-        for (var i = 0; i < WaitSteps && !(preview.IsValid && !preview.IsBuilding); i++)
+        for (var i = 0; i < WaitSteps && !(preview.IsValid && !preview.IsBuilding && preview.Destination == PrintDestination.Printer); i++)
         {
             await Task.Delay(WaitStep);
         }

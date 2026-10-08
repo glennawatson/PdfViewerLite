@@ -32,6 +32,7 @@
     <StackPanel Spacing="6">
       <CheckBox AutomationProperties.Name="Open documents at the last page read" x:Name="ReopenAtLastPageBox" views:ControlHelp.Text="{x:Static views:Descriptions.ReopenAtLastPage}" Content="Open documents at the last page read" />
       <CheckBox AutomationProperties.Name="Check spelling in form fields" x:Name="CheckSpellingBox" views:ControlHelp.Text="{x:Static views:Descriptions.CheckSpelling}" Content="Check spelling in form fields" />
+      <CheckBox AutomationProperties.Name="Offer fonts that cannot be saved in PDFs" x:Name="PreviewOnlyFontsBox" views:ControlHelp.Text="{x:Static views:Descriptions.PreviewOnlyFonts}" Content="Offer fonts that cannot be saved in PDFs (shown on screen, saved as Helvetica, Times or Courier)" />
     </StackPanel>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock x:Name="SpeechEngineLabel" Grid.Row="0" VerticalAlignment="Center" Text="Read Aloud voice" />

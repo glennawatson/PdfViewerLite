@@ -255,7 +255,7 @@ public static class Descriptions
     public static readonly string NoteTool = "Click on the page to add a sticky note.";
 
     /// <summary>The text tool.</summary>
-    public static readonly string TextTool = "Click on the page to write text on it.";
+    public static readonly string TextTool = "Click on the page and type. Click or double-click text to change it.";
 
     /// <summary>The shape button.</summary>
     public static readonly string Shape = "Choose a shape, then drag on the page to draw it.";
@@ -778,6 +778,73 @@ public static class Descriptions
 
     /// <summary>The pages, read out by screen readers only so hovering the pages shows no tooltip.</summary>
     public static readonly string Pages = "The document's pages. Page Up and Page Down move a page at a time. F7 turns on a text cursor for the arrow keys. The value is the current page's text.";
+
+    /// <summary>The text typed on the page.</summary>
+    public static readonly string PageText = $"Type here. Enter starts a new line, a click elsewhere keeps the text and Escape cancels.{Shortcut}Ctrl+Enter";
+
+    /// <summary>The font family box.</summary>
+    public static readonly string FontFamily = "Choose the font of the text you type, or of the text you picked. Each font is shown in its own letters.";
+
+    /// <summary>The font size box.</summary>
+    public static readonly string FontSize = "Choose or type the text size in points.";
+
+    /// <summary>The smaller text button.</summary>
+    public static readonly string ShrinkPageText = "Make the text one point smaller.";
+
+    /// <summary>The larger text button.</summary>
+    public static readonly string GrowPageText = "Make the text one point larger.";
+
+    /// <summary>The bold button.</summary>
+    public static readonly string BoldText = "Make the text bold, or not. Shortcut: Ctrl+B while typing.";
+
+    /// <summary>The italic button.</summary>
+    public static readonly string ItalicText = "Make the text italic, or not. Shortcut: Ctrl+I while typing.";
+
+    /// <summary>The underline button.</summary>
+    public static readonly string UnderlineText = "Underline the text, or not. Shortcut: Ctrl+U while typing.";
+
+    /// <summary>The align left button.</summary>
+    public static readonly string AlignLeft = "Start each line at the left of the text box.";
+
+    /// <summary>The centre button.</summary>
+    public static readonly string AlignCenter = "Centre each line in the text box.";
+
+    /// <summary>The align right button.</summary>
+    public static readonly string AlignRight = "End each line at the right of the text box.";
+
+    /// <summary>The text colour button.</summary>
+    public static readonly string TextColour = "Choose the colour of the text you type, or of the text you picked.";
+
+    /// <summary>The spacing button.</summary>
+    public static readonly string TextSpacing = "Choose the space between lines and between letters.";
+
+    /// <summary>The text properties button.</summary>
+    public static readonly string TextProperties = "Set every text setting with exact numbers, including comb boxes and the wrap width.";
+
+    /// <summary>The finish text button.</summary>
+    public static readonly string FinishText = "Keep the text you are typing. Shortcut: Ctrl+Enter.";
+
+    /// <summary>The add text tool in Fill and Sign.</summary>
+    public static readonly string AddText = "Click anywhere on the page and type, as on paper. Click a form field to fill it in.";
+
+    /// <summary>The text box in the text properties window.</summary>
+    public static readonly string TextPropertiesText = "The text. Enter starts a new line.";
+
+    /// <summary>The alignment box.</summary>
+    public static readonly string TextAlignment = "Choose where lines sit across the text box.";
+
+    /// <summary>The wrap width box.</summary>
+    public static readonly string WrapWidth = "The width lines wrap at, in points. 0 lets the box grow as you type.";
+
+    /// <summary>The comb boxes box.</summary>
+    public static readonly string CombBoxes = "Put one letter in each of this many evenly spaced boxes, as on forms with a box per letter. 0 writes running text.";
+
+    /// <summary>The apply button of the text properties window.</summary>
+    public static readonly string ApplyTextProperties = "Use these settings for the text.";
+
+    /// <summary>The preview only fonts preference.</summary>
+    public static readonly string PreviewOnlyFonts =
+        "Some fonts' licences forbid copying them into documents. When this is on, you can type in them on screen; the saved PDF uses the closest built in font, so the font is never copied.";
 
     /// <summary>Joins an explanation to its shortcut.</summary>
     private const string Shortcut = " Shortcut: ";

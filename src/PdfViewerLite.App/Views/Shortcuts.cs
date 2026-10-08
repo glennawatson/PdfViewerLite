@@ -65,12 +65,34 @@ internal static class Shortcuts
         (new(Key.H, KeyModifiers.Control | KeyModifiers.Shift), static vm => vm.SelectedTab?.ToggleAutoScrollCommand),
     ];
 
+    /// <summary>
+    /// The shortcuts that are also text editing keys: undo and redo, italic, moving by word and to the start or end. In a
+    /// text box they belong to the text, so typing on the page never rotates it, changes its tone or undoes a comment.
+    /// </summary>
+    private static readonly KeyGesture[] TextEditingKeys =
+    [
+        new(Key.Z, KeyModifiers.Control),
+        new(Key.Y, KeyModifiers.Control),
+        new(Key.Z, KeyModifiers.Control | KeyModifiers.Shift),
+        new(Key.I, KeyModifiers.Control),
+        new(Key.Left, KeyModifiers.Control),
+        new(Key.Right, KeyModifiers.Control),
+        new(Key.Home, KeyModifiers.Control),
+        new(Key.End, KeyModifiers.Control),
+    ];
+
     /// <summary>Runs the command of the shortcut a key press matches.</summary>
     /// <param name="viewModel">The view model.</param>
     /// <param name="e">The key press.</param>
+    /// <param name="inText">Whether a text box has the keyboard, so text editing keys are left to it.</param>
     /// <returns><see langword="true"/> when a shortcut ran.</returns>
-    internal static bool TryRun(MainViewModel viewModel, KeyEventArgs e)
+    internal static bool TryRun(MainViewModel viewModel, KeyEventArgs e, bool inText)
     {
+        if (inText && IsTextEditingKey(e))
+        {
+            return false;
+        }
+
         foreach (var (gesture, find) in Table)
         {
             if (!gesture.Matches(e) || find(viewModel) is not { } command || !command.CanExecute(null))
@@ -80,6 +102,22 @@ internal static class Shortcuts
 
             command.Execute(null);
             return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Gets whether a key press is a text editing key.</summary>
+    /// <param name="e">The key press.</param>
+    /// <returns><see langword="true"/> when a text box should have it.</returns>
+    private static bool IsTextEditingKey(KeyEventArgs e)
+    {
+        foreach (var gesture in TextEditingKeys)
+        {
+            if (gesture.Matches(e))
+            {
+                return true;
+            }
         }
 
         return false;

@@ -50,11 +50,6 @@ public sealed partial class DocumentView
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetLineWidthCommand, static v => v.ThinLineItem, Parameter("Thin")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetLineWidthCommand, static v => v.MediumLineItem, Parameter("Medium")));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetLineWidthCommand, static v => v.ThickLineItem, Parameter("Thick")));
-        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.FontSizeName, static v => v.TextSizeText.Text));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetFontSizeCommand, static v => v.SmallTextItem, Parameter("Small")));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetFontSizeCommand, static v => v.MediumTextItem, Parameter("Medium")));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetFontSizeCommand, static v => v.LargeTextItem, Parameter("Large")));
-        bindings.Add(this.BindCommand(ViewModel, static vm => vm.Annotations.SetFontSizeCommand, static v => v.ExtraLargeTextItem, Parameter("Extra large")));
         bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.Annotations.ChoosePictureInteraction), ChoosePictureAsync));
         BindAnnotationFilters(bindings);
     }

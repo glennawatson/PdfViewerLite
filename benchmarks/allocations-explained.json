@@ -520,5 +520,95 @@
     "type": "System.String",
     "frame": "PdfViewerLite.Pdfium.Native.NativeMethods.FPDF_GetSignatureCount(",
     "reason": "The first call to a native entry point probes the library path while binding it; one string for the life of the process."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Text.Fonts.FontSubsetter.",
+    "reason": "Subsetting builds the new font program PDFium embeds: the renumbered glyph, metric and cmap tables and the assembled file. It runs when a text box in an installed font is written, once per 128-character block of new letters, never while typing or drawing. SubsetFont measures about 1 ms for a paragraph."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Text.Fonts.CharacterMap.Map(",
+    "reason": "Lists the characters a font maps while its subset's cmap is built, once per subset."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Core.Forms.Detection.FlatFormFinder.Find(",
+    "reason": "The page and grey buffers are rented from ArrayPool and returned after each read. The trace shows two rents in the whole run, when the pool first fills; every later read reuses them. Detect itself allocates nothing."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Text.FreeTextStyle.",
+    "reason": "Writing a text box makes its /DA, /DS and /RC values once per commit; PDFium copies them into the annotation. Reading a foreign FreeText makes its format once."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Text.TextFormatCodec.Write(",
+    "reason": "The format record kept with a text box: one string per commit, built in a stack buffer."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Text.TextFormatCodec.TryRead(",
+    "reason": "Reading a text box back to edit it makes the one TextFormat it returns. Settings are parsed into a struct first, so only the final record is allocated."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Core.Text.TextFormatCodec+<>c.",
+    "reason": "An installed font's family name read from a text box's record; built-in family names are reused."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Text.TextFormat.Clamped(",
+    "reason": "A format with values out of range is copied once with usable ones; formats already in range are returned as they are."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.WriteTextBoxKeys(",
+    "reason": "The text and record strings stored in the annotation, once per commit."
+  },
+  {
+    "type": "System.String",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.FreeTextEntries(",
+    "reason": "The standard free text entries, written as one string of exact length once per commit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumAnnotations.GetTextBox(",
+    "reason": "Reading a text box returns its text and a TextBoxContent; the format record is decoded from a pooled buffer without a string."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumFonts.Resolve(",
+    "reason": "Resolving the font for a commit returns the chosen TextFont and its base font name; loaded fonts and shapers are cached."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Text.Fonts.FontCatalog.Find(",
+    "reason": "Finding an installed face returns a FontMatch describing the face and any synthetic bold or italic, once per commit."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.Save(",
+    "reason": "When text boxes, replies or removed comments are pending, the save is written into a pooled buffer (PooledWriteStream, returned after the save) so AnnotationReplyLinks can turn kept entries into standard PDF. Saving is a user action, not a frame or keystroke."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.WriteBlock(",
+    "reason": "PDFium's write callback copies each block into the stream the caller passed to Save; a growing MemoryStream destination grows here. Saves with pending work write into a pooled buffer instead."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Pdfium.PdfiumDocument.WriteFinished(",
+    "reason": "The one exact copy of the saved file that the PDF reader parses to finish pending annotations, made only when the file has pending work. It replaced a growing MemoryStream, its ToArray copy and a concatenated copy of the file; the update is now written after the file instead."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "PdfViewerLite.Pdfium.PooledWriteStream.",
+    "reason": "The save buffer is rented from the shared pool and returned when the save ends; the trace shows the pool's first rent, which later saves reuse."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.CertificateSigningBenchmarks.Sign",
+    "reason": "PdfSigner.Sign is inlined into the signing benchmark methods, so its allocations carry their names: the signed copy of the file and its incremental update as strings and bytes, and the CMS signature's ASN.1 reader and writer state. They are the same work the PdfSigner and PdfUpdateWriter entries explain, once per signature, which is a user action."
   }
 ]

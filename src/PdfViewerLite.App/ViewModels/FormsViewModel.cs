@@ -45,6 +45,10 @@ public sealed partial class FormsViewModel : ReactiveObject
     [Reactive]
     public partial FormField? Editing { get; private set; }
 
+    /// <summary>Gets the field with the keyboard focus, from Tab and Shift+Tab, or <see langword="null"/>.</summary>
+    [Reactive]
+    public partial FormField? Focused { get; private set; }
+
     /// <summary>Gets or sets the text in the open editor.</summary>
     [Reactive]
     public partial string EditText { get; set; } = string.Empty;
@@ -82,6 +86,7 @@ public sealed partial class FormsViewModel : ReactiveObject
     public bool Activate(FormField field)
     {
         ArgumentNullException.ThrowIfNull(field);
+        Focused = field;
         switch (field.Kind)
         {
             case FormFieldKind.Text:
@@ -153,11 +158,30 @@ public sealed partial class FormsViewModel : ReactiveObject
     /// <summary>Closes the editor without changing the field.</summary>
     public void Cancel() => Editing = null;
 
+    /// <summary>Clears the keyboard focus from a field, as Escape does on the page.</summary>
+    /// <returns><see langword="true"/> when a field had the focus.</returns>
+    public bool ClearFocus()
+    {
+        var had = Focused is not null;
+        Focused = null;
+        return had;
+    }
+
     /// <summary>Commits the editor and opens the next text field, in page order, as Tab does.</summary>
     /// <returns>The next field, or <see langword="null"/> when there is none.</returns>
-    public FormField? CommitAndMoveNext()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public FormField? CommitAndMoveNext() => CommitAndMove(false);
+
+    /// <summary>
+    /// Commits the editor and moves to the next or previous fillable field in page order, as Tab and Shift+Tab do: a
+    /// text field opens its editor, other fields take the keyboard focus. Past the last field nothing is focused, so
+    /// Tab can leave the pages.
+    /// </summary>
+    /// <param name="backwards">Whether to move to the previous field.</param>
+    /// <returns>The field moved to, the refused field when its value was not accepted, or <see langword="null"/>.</returns>
+    public FormField? CommitAndMove(bool backwards)
     {
-        var current = Editing;
+        var current = Editing ?? Focused;
         Commit();
         if (Editing is { } refused)
         {
@@ -165,28 +189,34 @@ public sealed partial class FormsViewModel : ReactiveObject
             return refused;
         }
 
-        if (current is null || Filler is not { } filler)
+        var next = FindNeighbour(current, backwards);
+        Focus(next);
+        return next;
+    }
+
+    /// <summary>Gives a field the keyboard focus: a text field opens its editor; other fields show a focus ring.</summary>
+    /// <param name="field">The field, or <see langword="null"/> to clear the focus.</param>
+    public void Focus(FormField? field)
+    {
+        Focused = field;
+        if (field?.Kind == FormFieldKind.Text)
         {
-            return null;
+            _ = Activate(field);
+        }
+    }
+
+    /// <summary>Acts on the focused field as Space does: ticks a check box or chooses a radio button.</summary>
+    /// <returns><see langword="true"/> when the field took the key.</returns>
+    public bool PressFocused()
+    {
+        if (Focused is not { Kind: FormFieldKind.CheckBox or FormFieldKind.RadioButton } focused || FindCurrent(focused) is not { } field)
+        {
+            return false;
         }
 
-        for (var page = current.PageIndex; page < _owner.PageCount; page++)
-        {
-            _scratch.Clear();
-            filler.GetFields(page, _scratch);
-            foreach (var field in _scratch)
-            {
-                if (field.Kind != FormFieldKind.Text || field.IsReadOnly || (page == current.PageIndex && field.Index <= current.Index))
-                {
-                    continue;
-                }
-
-                _ = Activate(field);
-                return field;
-            }
-        }
-
-        return null;
+        var handled = Activate(field);
+        Focused = FindCurrent(field);
+        return handled;
     }
 
     /// <summary>
@@ -229,6 +259,12 @@ public sealed partial class FormsViewModel : ReactiveObject
         }
     }
 
+    /// <summary>Determines whether a field can be moved to with the keyboard and filled in.</summary>
+    /// <param name="field">The field.</param>
+    /// <returns><see langword="true"/> for fields that are not read-only and that the viewer fills.</returns>
+    private static bool IsFillable(FormField field) =>
+        !field.IsReadOnly && field.Kind is FormFieldKind.Text or FormFieldKind.CheckBox or FormFieldKind.RadioButton or FormFieldKind.ComboBox or FormFieldKind.ListBox;
+
     /// <summary>Explains why a typed value is refused by its field's keystroke or validate script.</summary>
     /// <param name="scripts">The field's scripts.</param>
     /// <param name="text">The typed value.</param>
@@ -253,6 +289,72 @@ public sealed partial class FormsViewModel : ReactiveObject
     [ReactiveCommand]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void ChooseOption(FormChoice choice) => Choose(choice.Field, choice.Option);
+
+    /// <summary>Finds the fillable field after or before one, in page order, or the first or last when there is none.</summary>
+    /// <param name="current">The current field, or <see langword="null"/>.</param>
+    /// <param name="backwards">Whether to look backwards.</param>
+    /// <returns>The field, or <see langword="null"/> past either end.</returns>
+    private FormField? FindNeighbour(FormField? current, bool backwards)
+    {
+        var all = FillableFields();
+        var at = current is null ? -1 : all.FindIndex(field => field.PageIndex == current.PageIndex && field.Index == current.Index);
+        if (current is null || at < 0)
+        {
+            return all.Count == 0 ? null : all[backwards ? ^1 : 0];
+        }
+
+        var next = at + (backwards ? -1 : 1);
+        return (uint)next < (uint)all.Count ? all[next] : null;
+    }
+
+    /// <summary>Lists every field that can be filled in, in page order.</summary>
+    /// <returns>The fields.</returns>
+    private List<FormField> FillableFields()
+    {
+        var all = new List<FormField>();
+        if (Filler is not { HasForm: true } filler)
+        {
+            return all;
+        }
+
+        for (var page = 0; page < _owner.PageCount; page++)
+        {
+            _scratch.Clear();
+            filler.GetFields(page, _scratch);
+            foreach (var field in _scratch)
+            {
+                if (IsFillable(field))
+                {
+                    all.Add(field);
+                }
+            }
+        }
+
+        return all;
+    }
+
+    /// <summary>Reads a field again, with its current value.</summary>
+    /// <param name="field">The field.</param>
+    /// <returns>The field as it is now, or <see langword="null"/>.</returns>
+    private FormField? FindCurrent(FormField field)
+    {
+        if (Filler is not { } filler)
+        {
+            return null;
+        }
+
+        _scratch.Clear();
+        filler.GetFields(field.PageIndex, _scratch);
+        foreach (var candidate in _scratch)
+        {
+            if (candidate.Index == field.Index)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>Reads every field's value by name.</summary>
     /// <param name="filler">The form.</param>

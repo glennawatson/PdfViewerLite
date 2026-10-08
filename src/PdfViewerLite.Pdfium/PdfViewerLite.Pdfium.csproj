@@ -11,6 +11,8 @@
     <PackageReference Include="bblanchon.PDFium.Linux" />
     <PackageReference Include="bblanchon.PDFium.Win32" />
     <PackageReference Include="bblanchon.PDFium.macOS" />
+    <PackageReference Include="HarfBuzzSharp" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
   </ItemGroup>
 
   <ItemGroup>

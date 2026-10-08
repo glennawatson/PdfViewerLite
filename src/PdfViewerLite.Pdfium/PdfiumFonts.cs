@@ -12,7 +12,7 @@ namespace PdfViewerLite.Pdfium;
 /// allocates nothing after the first time. Callers hold the PDFium lock.
 /// </summary>
 [DebuggerDisplay("PdfiumFonts: Fonts")]
-internal sealed unsafe class PdfiumFonts : IDisposable
+internal sealed unsafe partial class PdfiumFonts : IDisposable
 {
     /// <summary>The font for text boxes.</summary>
     private PdfiumFontHandle? _text;
@@ -34,6 +34,7 @@ internal sealed unsafe class PdfiumFonts : IDisposable
         _signature?.Dispose();
         _text = null;
         _signature = null;
+        DisposeTextFonts();
     }
 
     /// <summary>Gets the font for text boxes or signatures, loading it on first use.</summary>

@@ -110,6 +110,10 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
     [Reactive]
     public partial bool CheckSpelling { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether fonts that cannot be saved in a PDF are offered for typing, shown on screen only.</summary>
+    [Reactive]
+    public partial bool ShowPreviewOnlyFonts { get; set; }
+
     /// <summary>Gets or sets the Azure Speech region.</summary>
     [Reactive]
     public partial string AzureRegion { get; set; } = string.Empty;
@@ -175,6 +179,7 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         CommentAuthor = settings.CommentAuthor;
         ReopenAtLastPage = settings.ReopenAtLastPage;
         CheckSpelling = settings.CheckSpelling;
+        ShowPreviewOnlyFonts = settings.ShowPreviewOnlyFonts;
         AzureRegion = settings.AzureSpeechRegion;
         ColorScheme = (int)settings.ColorScheme;
         PageTone = (int)settings.PageTone;
@@ -193,6 +198,7 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         Follow(this.WhenChanged(static x => x.CommentAuthor), author => settings.CommentAuthor = author);
         Follow(this.WhenChanged(static x => x.ReopenAtLastPage), reopen => settings.ReopenAtLastPage = reopen);
         Follow(this.WhenChanged(static x => x.CheckSpelling), check => settings.CheckSpelling = check);
+        Follow(this.WhenChanged(static x => x.ShowPreviewOnlyFonts), show => settings.ShowPreviewOnlyFonts = show);
     }
 
     /// <summary>Writes each later change of a choice to the settings, re-themes and saves.</summary>
