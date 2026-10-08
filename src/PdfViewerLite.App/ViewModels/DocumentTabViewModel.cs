@@ -16,7 +16,6 @@ using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Printing;
 using PdfViewerLite.Core.Reading;
 using PdfViewerLite.Core.Rendering;
-using PdfViewerLite.Core.Settings;
 using ReactiveUI;
 using ReactiveUI.Binding;
 using ReactiveUI.Primitives;
@@ -862,29 +861,6 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         }
 
         _documentChanges.OnNext(RxVoid.Default);
-    }
-
-    /// <summary>Starts watching the file for changes.</summary>
-    private void WatchFile() =>
-        _fileWatch ??= FileChanges.Watch(FilePath)
-            .ObserveOn(RxSchedulers.MainThreadScheduler)
-            .SubscribeSafe(_ => OnFileChanged(), static ex => Trace.TraceError(ex.ToString()));
-
-    /// <summary>Reloads a changed file, or offers to, depending on the user's choice. Unsaved edits are never discarded silently.</summary>
-    private void OnFileChanged()
-    {
-        if (Environment.TickCount64 - Interlocked.Read(ref _savedAt) < SelfSaveWindowMilliseconds)
-        {
-            return;
-        }
-
-        if (_services.Settings.FileChangeAction == FileChangeAction.AskToReload || Source.HasUnsavedChanges)
-        {
-            HasPendingReload = true;
-            return;
-        }
-
-        Reload();
     }
 
     /// <summary>

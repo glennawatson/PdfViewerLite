@@ -5,6 +5,7 @@
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Layout;
+using PdfViewerLite.Core.Settings;
 using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Tests;
@@ -120,6 +121,31 @@ public sealed class DocumentTabViewModelTests
         _ = await tab.RotateLeftCommand.Execute().ToTask();
         _ = await tab.RotateLeftCommand.Execute().ToTask();
         await Assert.That(tab.Rotation).IsEqualTo(PageRotation.Rotate270);
+    }
+
+    /// <summary>
+    /// Verifies a change notice for a file that has not changed since it opened is ignored, as macOS can report a write
+    /// made just before watching began, while a real change still offers to reload.
+    /// </summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task IgnoresChangeNoticesForAnUnchangedFile()
+    {
+        using var test = new TestServices();
+        test.Services.Settings.FileChangeAction = FileChangeAction.AskToReload;
+        using var main = new MainViewModel(test.Services);
+        var path = test.CreateDocument(DocumentName, Pages);
+        main.Open([path]);
+        var tab = main.SelectedTab!;
+        await Assert.That(await UiWait.UntilAsync(() => tab.IsLoaded)).IsTrue();
+
+        tab.OnFileChanged();
+        var unchanged = tab.HasPendingReload;
+        await File.AppendAllTextAsync(path, "\n% edited elsewhere\n");
+        tab.OnFileChanged();
+
+        await Assert.That(unchanged).IsFalse();
+        await Assert.That(tab.HasPendingReload).IsTrue();
     }
 
     /// <summary>
