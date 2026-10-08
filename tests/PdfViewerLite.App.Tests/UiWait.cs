@@ -23,11 +23,12 @@ internal static class UiWait
 
     /// <summary>Runs dispatcher jobs until <paramref name="condition"/> is true.</summary>
     /// <param name="condition">The condition, which must come to hold; a wait cannot show that something does not happen.</param>
+    /// <param name="state">Describes the state the condition reads, for the timeout message, or <see langword="null"/>.</param>
     /// <param name="file">The calling file, filled in by the compiler.</param>
     /// <param name="line">The calling line, filled in by the compiler.</param>
     /// <returns><see langword="true"/>, once the condition holds.</returns>
     /// <exception cref="TimeoutException">The condition did not hold within the timeout.</exception>
-    internal static async Task<bool> UntilAsync(Func<bool> condition, [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
+    internal static async Task<bool> UntilAsync(Func<bool> condition, Func<string>? state = null, [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
     {
         var start = Stopwatch.GetTimestamp();
         while (Stopwatch.GetElapsedTime(start) < DefaultTimeout)
@@ -43,6 +44,6 @@ internal static class UiWait
         }
 
         // A wait that runs out fails here, naming the caller, instead of costing its whole timeout and passing.
-        return condition() ? true : throw new TimeoutException($"The condition at {Path.GetFileName(file)}:{line} did not hold within {DefaultTimeout.TotalSeconds} seconds.");
+        return condition() ? true : throw new TimeoutException($"The condition at {Path.GetFileName(file)}:{line} did not hold within {DefaultTimeout.TotalSeconds} seconds. {state?.Invoke()}");
     }
 }

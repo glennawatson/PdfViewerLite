@@ -48,6 +48,7 @@ public sealed class ScreenReaderTests
     /// <summary>Every list and tree item in the sidebar and tab strip says what it is, never a type name.</summary>
     /// <returns>A task.</returns>
     [Test]
+    [Repeat(10)]
     public async Task ListItemsHaveSpokenNames()
     {
         using var test = new TestServices();
@@ -70,7 +71,10 @@ public sealed class ScreenReaderTests
             await Assert.That(AutomationProperties.GetSizeOfSet(thumbnails.ContainerFromIndex(ThirdPage)!)).IsEqualTo(Pages);
 
             tab.Search.Query = Words;
-            await Assert.That(await UiWait.UntilAsync(() => !tab.Search.IsSearching && tab.Search.Results.Count == Pages)).IsTrue();
+            await Assert.That(await UiWait.UntilAsync(
+                () => !tab.Search.IsSearching && tab.Search.Results.Count == Pages,
+                () => $"Query '{tab.Search.Query}', searching {tab.Search.IsSearching}, results {tab.Search.Results.Count}, status '{tab.Search.Status}', "
+                    + $"page {tab.CurrentPageIndex}, loaded {tab.IsLoaded}, closed {tab.TryGetDocument()?.IsDisposed}.")).IsTrue();
             tab.IsSearchMode = true;
             var results = view.FindControl<ListBox>("SearchResultList")!;
             await Assert.That(await UiWait.UntilAsync(() => results.ContainerFromIndex(0) is not null)).IsTrue();
