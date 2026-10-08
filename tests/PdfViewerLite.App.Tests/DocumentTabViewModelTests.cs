@@ -122,6 +122,35 @@ public sealed class DocumentTabViewModelTests
         await Assert.That(tab.Rotation).IsEqualTo(PageRotation.Rotate270);
     }
 
+    /// <summary>
+    /// Verifies a search started again part way through keeps nothing from the run it replaced: the page the old run
+    /// was reading when it was cancelled is not added to the new results.
+    /// </summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task RestartedSearchKeepsOnlyItsOwnResults()
+    {
+        const int rounds = 100;
+        using var test = new TestServices();
+        using var main = new MainViewModel(test.Services);
+        main.Open([test.CreateDocument(DocumentName, Pages)]);
+        var tab = main.SelectedTab!;
+        tab.Search.Query = "lazy dog";
+        _ = await UiWait.UntilAsync(() => !tab.Search.IsSearching && tab.Search.Results.Count == Pages);
+
+        var counts = new List<int>(rounds);
+        for (var i = 0; i < rounds; i++)
+        {
+            // The second start cancels the first while the thread pool is often already reading its first page.
+            tab.Search.Refresh();
+            tab.Search.Refresh();
+            _ = await UiWait.UntilAsync(() => !tab.Search.IsSearching && tab.Search.Results.Count >= Pages);
+            counts.Add(tab.Search.Results.Count);
+        }
+
+        await Assert.That(counts.FindAll(static count => count != Pages)).IsEmpty();
+    }
+
     /// <summary>Verifies search finds results incrementally and moves between them.</summary>
     /// <returns>A task.</returns>
     [Test]

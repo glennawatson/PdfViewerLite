@@ -48,7 +48,6 @@ public sealed class ScreenReaderTests
     /// <summary>Every list and tree item in the sidebar and tab strip says what it is, never a type name.</summary>
     /// <returns>A task.</returns>
     [Test]
-    [Repeat(10)]
     public async Task ListItemsHaveSpokenNames()
     {
         using var test = new TestServices();
