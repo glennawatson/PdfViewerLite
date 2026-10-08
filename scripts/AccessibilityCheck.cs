@@ -1,6 +1,4 @@
 #!/usr/bin/env -S dotnet run --file
-#:property TargetFrameworks=net10.0
-#:property TargetFramework=net10.0
 #:property IsAotCompatible=false
 #:property PublishAot=false
 
@@ -185,27 +183,17 @@ namespace PdfViewerLite.Scripts
         /// <exception cref="InvalidOperationException">busctl fails or returns no reply.</exception>
         private static async Task<JsonDocument> CallAsync(string address, string application, string command, string path, string member)
         {
-            var start = new ProcessStartInfo("busctl") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
-            start.ArgumentList.Add($"--address={address}");
-            start.ArgumentList.Add("--json=short");
-            start.ArgumentList.Add("--timeout=3");
-            start.ArgumentList.Add(command);
-            start.ArgumentList.Add(application);
-            start.ArgumentList.Add(path);
-            start.ArgumentList.Add(Accessible);
-            start.ArgumentList.Add(member);
-            using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start busctl.");
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync().ConfigureAwait(false);
-            var output = await outputTask.ConfigureAwait(false);
-            var error = await errorTask.ConfigureAwait(false);
-            if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output) || !string.IsNullOrWhiteSpace(error))
+            var result = await Process.RunAndCaptureTextAsync(
+                "busctl",
+                [$"--address={address}", "--json=short", "--timeout=3", command, application, path, Accessible, member]).ConfigureAwait(false);
+
+            // A signal or a non-zero exit both mean busctl gave no usable reply.
+            if (result.ExitStatus is not { ExitCode: 0, Signal: null } || string.IsNullOrWhiteSpace(result.StandardOutput) || !string.IsNullOrWhiteSpace(result.StandardError))
             {
-                throw new InvalidOperationException($"busctl {member} failed: {error}");
+                throw new InvalidOperationException($"busctl {member} failed: {result.StandardError}");
             }
 
-            return JsonDocument.Parse(output);
+            return JsonDocument.Parse(result.StandardOutput);
         }
 
         /// <summary>The accumulated accessibility inspection.</summary>

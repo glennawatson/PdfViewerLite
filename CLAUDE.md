@@ -11,7 +11,7 @@ PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users 
 ## Implementation
 
 - Prefer sealed records for data snapshots. Prefer readonly record structs for small values. Use classes for mutable state, services and owned lifetimes. Record collection equality follows the collection's own equality.
-- Libraries target `net10.0;net11.0`. The app, UI tests and benchmarks target `net10.0`. Use `global.json`. Package versions belong in `Directory.Packages.props`.
+- Every project targets `net10.0;net11.0`: libraries, the app, tests and benchmarks. Native AOT publishes from `net11.0`. Use `global.json`. Package versions belong in `Directory.Packages.props`.
 - Shipped code must be trim and Native AOT safe. Use generated JSON, bindings and HTTP clients. Avoid reflection and activation APIs that require unreferenced code.
 - XAML is layout and styling only. Views implement `IViewFor<T>`. Use theme resources and visible action labels.
 - Views bind in the constructor inside `this.WhenActivated(disposables => ...)`. Use `OneWayBind` and `Bind` for view model to view, `BindCommand` for commands and `BindInteraction` or `RegisterHandler` for interactions. Use `WhenChanged` only to react to a change, not to copy a value into a control. Bind through the view's `ViewModel` path, never a view model captured at activation. Rx operators use `static` lambdas that read from the value they receive, not captured state. A capturing lambda is a last resort when no static form exists; comment why at the lambda. Exception: a terminal `SubscribeSafe` callback may capture `this` to call an instance member (`SubscribeSafe(_ => Close(), OnError)`), because Primitives has no state-passing `SubscribeSafe` yet; do not use `DoWith` plus an empty subscriber to avoid it.
@@ -27,7 +27,7 @@ PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users 
 ```bash
 dotnet build PdfViewerLite.slnx
 dotnet test --solution PdfViewerLite.slnx
-dotnet run -c Release --project benchmarks/PdfViewerLite.Benchmarks -- --filter '*RelevantBenchmark*'
+dotnet run -c Release -f net11.0 --project benchmarks/PdfViewerLite.Benchmarks -- --filter '*RelevantBenchmark*'
 scripts/audit-allocations.sh '*RelevantBenchmark*'
 scripts/publish-linux.sh linux-x64
 ```
