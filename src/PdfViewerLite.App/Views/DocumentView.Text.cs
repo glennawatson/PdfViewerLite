@@ -208,8 +208,9 @@ public sealed partial class DocumentView
             return;
         }
 
-        RestylePageTextEditor();
+        // Shown first, so the editor lays its text out and its baseline can be lined up with the written one.
         PageTextEditor.IsVisible = true;
+        RestylePageTextEditor();
         _ = OnMainThread().SubscribeSafe(_ => FocusPageText(), OnError);
     }
 
@@ -254,7 +255,7 @@ public sealed partial class DocumentView
         editor.MaxLength = format.CombCells;
         editor.AcceptsReturn = format.CombCells == 0;
         SpacePageTextLetters(format, edit.WrapWidth * scale);
-        PlacePageTextEditor(edit, tab.Rotation);
+        PlacePageTextEditor(edit, tab.Rotation, (tab.Annotations.GetTypedTextBaseline() * scale) - EditorBaseline());
         PageTextUnderline.IsVisible = format.IsUnderline;
         PageTextUnderline.InvalidateVisual();
     }
@@ -287,16 +288,31 @@ public sealed partial class DocumentView
         editor.Width = width + (cell - advance) + editor.BorderThickness.Left + editor.BorderThickness.Right;
     }
 
-    /// <summary>Moves the editor to the text box's top-left corner and turns it with the page.</summary>
+    /// <summary>
+    /// Gets how far below the editor's top its first baseline is drawn. The editor lays text out with the screen font's
+    /// own metrics, which may differ from those of the font the text is written in.
+    /// </summary>
+    /// <returns>The baseline's depth in device independent pixels, or <see cref="double.NaN"/> before the editor has a layout.</returns>
+    private double EditorBaseline()
+    {
+        var editor = PageTextEditor;
+        editor.ApplyTemplate();
+        editor.Measure(Size.Infinity);
+        return SpellingUnderlines.FindPresenter(editor) is { TextLayout.TextLines: [var first, ..] }
+            ? editor.BorderThickness.Top + editor.Padding.Top + first.Baseline
+            : double.NaN;
+    }
+
+    /// <summary>
+    /// Moves the editor to the text box's top-left corner, shifted so its text sits where it will be written, and turns
+    /// it with the page.
+    /// </summary>
     /// <param name="edit">The text being typed.</param>
     /// <param name="rotation">The page rotation.</param>
-    private void PlacePageTextEditor(TextEditSession edit, PageRotation rotation)
+    /// <param name="drop">How far the editor moves down its own lines so its baseline meets the written one, or NaN to leave it.</param>
+    private void PlacePageTextEditor(TextEditSession edit, PageRotation rotation, double drop)
     {
         var anchor = Canvas.PageToCanvas(edit.Page, edit.Location);
-        Avalonia.Controls.Canvas.SetLeft(PageTextEditor, anchor.X);
-        Avalonia.Controls.Canvas.SetTop(PageTextEditor, anchor.Y);
-        Avalonia.Controls.Canvas.SetLeft(PageTextUnderline, anchor.X);
-        Avalonia.Controls.Canvas.SetTop(PageTextUnderline, anchor.Y);
         var turns = rotation switch
         {
             PageRotation.Rotate90 => 1,
@@ -304,6 +320,20 @@ public sealed partial class DocumentView
             PageRotation.Rotate270 => ThreeQuarterTurns,
             _ => 0,
         };
+
+        // The border sits outside the text, so the editor also moves back by its width; both shifts turn with the page.
+        var (across, down) = (-PageTextEditor.BorderThickness.Left, double.IsFinite(drop) ? drop : 0);
+        var shift = turns switch
+        {
+            1 => new Point(-down, across),
+            HalfTurn => new Point(-across, -down),
+            ThreeQuarterTurns => new Point(down, -across),
+            _ => new Point(across, down),
+        };
+        Avalonia.Controls.Canvas.SetLeft(PageTextEditor, anchor.X + shift.X);
+        Avalonia.Controls.Canvas.SetTop(PageTextEditor, anchor.Y + shift.Y);
+        Avalonia.Controls.Canvas.SetLeft(PageTextUnderline, anchor.X);
+        Avalonia.Controls.Canvas.SetTop(PageTextUnderline, anchor.Y);
         PageTextEditor.RenderTransform = turns == 0 ? null : new RotateTransform(turns * QuarterTurn);
         PageTextUnderline.RenderTransform = PageTextEditor.RenderTransform;
     }

@@ -167,6 +167,10 @@ public sealed partial class AnnotationsViewModel
     /// <summary>Gets the text box editor, or <see langword="null"/> when the document cannot hold text boxes.</summary>
     private ITextBoxEditor? TextBoxes => _owner.TryGetDocument() as ITextBoxEditor;
 
+    /// <summary>Gets how far below the top of the text being typed its first baseline will be written, in points.</summary>
+    /// <returns>The baseline's depth, or <see cref="float.NaN"/> when it is not known.</returns>
+    public float GetTypedTextBaseline() => TextBoxes?.GetFirstBaseline(EditingText ?? string.Empty, CurrentTextFormat) ?? float.NaN;
+
     /// <summary>Offers the installed font families, with or without the preview only ones as the preference says.</summary>
     public void RefreshFontFamilies()
     {

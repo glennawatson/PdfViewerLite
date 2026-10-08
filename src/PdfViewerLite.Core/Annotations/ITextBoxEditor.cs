@@ -27,4 +27,13 @@ public interface ITextBoxEditor
     /// <param name="index">The annotation index.</param>
     /// <returns>The content, or <see langword="null"/> when the annotation is not editable text.</returns>
     TextBoxContent? GetTextBox(int pageIndex, int index);
+
+    /// <summary>
+    /// Gets how far below a text box's top its first baseline is written, in points, in the font the text would be
+    /// written in. An editor showing the text lines its own baseline up with this so the text does not move when kept.
+    /// </summary>
+    /// <param name="text">The text, which picks a fallback font when the chosen one lacks some of it.</param>
+    /// <param name="format">How the text looks.</param>
+    /// <returns>The baseline's depth, or <see cref="float.NaN"/> when no font can be loaded.</returns>
+    float GetFirstBaseline(string text, TextFormat format);
 }

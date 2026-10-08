@@ -5,6 +5,7 @@
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Text;
 using PdfViewerLite.Core.Text.Fonts;
+using PdfViewerLite.Core.Text.Layout;
 
 namespace PdfViewerLite.Pdfium;
 
@@ -45,5 +46,15 @@ public sealed partial class PdfiumDocument
     {
         using var scope = PdfiumLibrary.EnterScope();
         return EditablePage(pageIndex) is { } page ? PdfiumAnnotations.GetTextBox(page, index) : null;
+    }
+
+    /// <inheritdoc/>
+    public float GetFirstBaseline(string text, TextFormat format)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(format);
+        var clamped = format.Clamped();
+        using var scope = PdfiumLibrary.EnterScope();
+        return _fonts.Resolve(clamped, text) is { } font ? TextBoxLayout.FirstBaseline(clamped, font.Shaper) : float.NaN;
     }
 }

@@ -8,6 +8,7 @@ using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Printing;
 using PdfViewerLite.Core.Text;
+using PdfViewerLite.Core.Text.Fonts;
 using PdfViewerLite.TestAssets;
 
 namespace PdfViewerLite.Pdfium.Tests;
@@ -185,6 +186,49 @@ public sealed class TextBoxTests
         await Assert.That(document.GetTextBox(0, comb)!.Format.CombCells).IsEqualTo(Cells);
     }
 
+    /// <summary>
+    /// Text in a font installed on this machine is embedded as a subset, saved, and reopens for editing with its
+    /// family, so each operating system's own fonts go through PDFium.
+    /// </summary>
+    /// <returns>A task.</returns>
+    /// <exception cref="TUnit.Core.Exceptions.SkipTestException">A Linux machine has no installed font with plain Latin letters.</exception>
+    [Test]
+    public async Task SavesInAnInstalledSystemFont()
+    {
+        var catalog = FontCatalog.System;
+        var family = catalog.Faces.FirstOrDefault(static face => face is { IsBold: false, IsItalic: false } && HasLetters(face, Sentence))?.Family;
+        if (family is null && !OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS())
+        {
+            throw new TUnit.Core.Exceptions.SkipTestException("No installed font has plain Latin letters.");
+        }
+
+        using var test = new TestDocument(1);
+        var document = (PdfiumDocument)test.Document;
+        document.FontCatalog = catalog;
+        var format = new TextFormat(family ?? string.Empty, Size, Blue);
+        _ = document.AddTextBox(0, At, 0, Sentence, format);
+        var bytes = Save(document);
+        using var reopened = Reopen(bytes, out var path);
+        try
+        {
+            ((PdfiumDocument)reopened).FontCatalog = catalog;
+            var annotations = new List<PageAnnotation>();
+            ((IAnnotationEditor)reopened).GetAnnotations(0, annotations);
+            var content = ((ITextBoxEditor)reopened).GetTextBox(0, annotations[0].Index);
+
+            await Assert.That(family).IsNotNull();
+            await Assert.That(Encoding.Latin1.GetString(bytes)).Contains(FontFile);
+            await Assert.That(content!.Text).IsEqualTo(Sentence);
+            await Assert.That(content.Format.FontFamily).IsEqualTo(family);
+            await Assert.That(HasInk(reopened, content.Bounds)).IsTrue();
+            await Assert.That(FlattenedText(reopened)).Contains(Sentence);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     /// <summary>Free text written by another program reads back with its text, size, colour, weight and alignment.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -258,6 +302,29 @@ public sealed class TextBoxTests
         var document = new PdfiumEngine().Open(path, null);
         ((PdfiumDocument)document).FontCatalog = TestFont.Catalog;
         return document;
+    }
+
+    /// <summary>Determines whether a face can be loaded and has every letter of some text.</summary>
+    /// <param name="face">The face.</param>
+    /// <param name="text">The text.</param>
+    /// <returns><see langword="true"/> when it has them all.</returns>
+    private static bool HasLetters(FontFace face, string text)
+    {
+        var font = FontProgram.Load(face);
+        if (font is null)
+        {
+            return false;
+        }
+
+        foreach (var letter in text)
+        {
+            if (letter != ' ' && font.GlyphFor(letter) == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>Renders the first page and checks a box holds some ink.</summary>

@@ -86,8 +86,8 @@ public sealed class TextEditingUiTests
     /// <summary>The pause between checks that tiles have stopped arriving.</summary>
     private static readonly TimeSpan SettlePause = TimeSpan.FromMilliseconds(150);
 
-    /// <summary>Where the preview is compared, in page space.</summary>
-    private static readonly PagePoint PreviewAt = new(100, 400);
+    /// <summary>Where the preview is compared, in page space; at twice the size it stays well inside the window.</summary>
+    private static readonly PagePoint PreviewAt = new(100, 150);
 
     /// <summary>Where text is typed, in page space.</summary>
     private static readonly PagePoint TypeAt = new(120, 200);
@@ -372,6 +372,8 @@ public sealed class TextEditingUiTests
             window.KeyTextInput(PreviewWords);
             await Settle(test);
             var area = new Rect(ToWindow(canvas, window, PreviewAt), ToWindow(canvas, window, new(PreviewAt.X + PreviewWidth, PreviewAt.Y + Size + Size))).Deflate(BorderInset);
+            TestContext.Current?.Output.WriteLine($"window {window.Bounds.Size}, area {area}");
+            await Assert.That(new Rect(window.Bounds.Size).Contains(area)).IsTrue();
             var typing = InkBounds(window, area);
             Save(window, "text-preview-typing.png");
             _ = annotations.CommitText();
@@ -455,8 +457,11 @@ public sealed class TextEditingUiTests
         using var frame = window.CaptureRenderedFrame()!;
         using var locked = frame.Lock();
         var scale = locked.Size.Width / window.Bounds.Width;
-        var (left, top) = ((int)(area.X * scale), (int)(area.Y * scale));
-        var (right, bottom) = ((int)(area.Right * scale), (int)(area.Bottom * scale));
+
+        // The frame is read through a raw pointer, so the scan stays inside it even when the area runs off the window.
+        var (left, top) = (Math.Max(0, (int)(area.X * scale)), Math.Max(0, (int)(area.Y * scale)));
+        var right = Math.Min(Math.Min(locked.Size.Width, locked.RowBytes / PixelBytes), (int)(area.Right * scale));
+        var bottom = Math.Min(locked.Size.Height, (int)(area.Bottom * scale));
         var (minX, minY, maxX, maxY) = (int.MaxValue, int.MaxValue, -1, -1);
         unsafe
         {

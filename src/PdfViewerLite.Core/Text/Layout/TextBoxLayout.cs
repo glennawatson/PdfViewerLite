@@ -61,6 +61,21 @@ public sealed class TextBoxLayout
     /// <summary>Gets the line height, in points.</summary>
     public float LineHeight { get; private set; }
 
+    /// <summary>
+    /// Gets how far below the box's top the first baseline sits, in points. Each line is a box of the line height with
+    /// the font's extent centred in it, as in CSS.
+    /// </summary>
+    /// <param name="format">How the text looks.</param>
+    /// <param name="shaper">The font's shaper.</param>
+    /// <returns>The baseline's depth.</returns>
+    public static float FirstBaseline(TextFormat format, ITextShaper shaper)
+    {
+        ArgumentNullException.ThrowIfNull(format);
+        ArgumentNullException.ThrowIfNull(shaper);
+        var size = format.FontSize;
+        return (((size * format.LineSpacing) - ((shaper.Ascent - shaper.Descent) * size)) * Half) + (shaper.Ascent * size);
+    }
+
     /// <summary>Lays text out.</summary>
     /// <param name="text">The text; line breaks start new paragraphs.</param>
     /// <param name="format">How the text looks.</param>
@@ -77,9 +92,7 @@ public sealed class TextBoxLayout
         UnderlineOffset = -shaper.UnderlinePosition * size;
         UnderlineThickness = shaper.UnderlineThickness * size;
 
-        // Each line is a box of the line height with the font's extent centred in it, as in CSS and on-screen editors.
-        var firstBaseline = ((LineHeight - ((shaper.Ascent - shaper.Descent) * size)) * Half) + (shaper.Ascent * size);
-        var context = new LineContext(format, firstBaseline, Math.Max(wrapWidth, 0));
+        var context = new LineContext(format, FirstBaseline(format, shaper), Math.Max(wrapWidth, 0));
         if (format.CombCells > 0 && wrapWidth > 0)
         {
             LayoutComb(text, format, shaper, context);
