@@ -244,6 +244,12 @@ public sealed partial class SearchViewModel : ReactiveObject, IDisposable
         {
             await foreach (var page in DocumentSearch.SearchAsync(document, query, options, Math.Max(0, startPage), cancellationToken))
             {
+                // A page read before a newer search cancelled this one still arrives; the results now belong to the newer search.
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 var list = new List<SearchHit>(page.Hits.Count);
                 foreach (var hit in page.Hits)
                 {

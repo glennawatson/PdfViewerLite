@@ -65,7 +65,9 @@ public sealed class FileLinkTests
 
         await Assert.That(await UiWait.UntilAsync(() => asked is not null)).IsTrue();
         await Assert.That(asked).IsEqualTo(TestPdf.LaunchedFileName);
-        await Assert.That(await UiWait.UntilAsync(() => launched is not null)).IsEqualTo(agree);
+
+        // Opening the same file directly returns once the answer is acted on, so a refusal needs no wait for a launch that never comes.
+        await Assert.That(await tab.OpenFileAsync(notes, 0)).IsEqualTo(agree);
         await Assert.That(launched).IsEqualTo(agree ? notes : null);
     }
 
