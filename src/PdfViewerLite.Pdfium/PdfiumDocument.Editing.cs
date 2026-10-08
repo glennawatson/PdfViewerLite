@@ -234,18 +234,31 @@ public sealed partial class PdfiumDocument
         else
         {
             // Replies name the comment they answer, removed annotations are kept hidden, and some entries are kept as
-            // text until saved; finish them with standard PDF on the way out.
-            using var buffer = new MemoryStream();
+            // text until saved; finish them with standard PDF on the way out. The file is written into a pooled buffer
+            // that the update is read from, so the file is never copied, and the update is appended after it.
+            using var buffer = new PooledWriteStream();
             if (!WriteDocument(_handle, buffer, flags))
             {
                 return false;
             }
 
-            destination.Write(AnnotationReplyLinks.Link(buffer.ToArray()));
+            WriteFinished(buffer.Written, destination);
         }
 
         Volatile.Write(ref _unsavedChanges, 0);
         return true;
+    }
+
+    /// <summary>Writes a saved file, followed by the update that finishes its annotations when it has any to finish.</summary>
+    /// <param name="written">The file as PDFium wrote it.</param>
+    /// <param name="destination">The stream.</param>
+    private static void WriteFinished(ReadOnlyMemory<byte> written, Stream destination)
+    {
+        destination.Write(written.Span);
+        if (AnnotationReplyLinks.HasPendingWork(written.Span))
+        {
+            destination.Write(AnnotationReplyLinks.CreateUpdate(written));
+        }
     }
 
     /// <summary>Writes a document into a stream. Callers hold the PDFium lock.</summary>

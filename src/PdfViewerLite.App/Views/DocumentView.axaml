@@ -379,20 +379,6 @@
               </MenuFlyout>
             </Button.Flyout>
           </Button>
-          <Button AutomationProperties.Name="Text size" x:Name="TextSizeButton" views:ControlHelp.Text="{x:Static views:Descriptions.AnnotationTextSize}" Classes="tool">
-            <StackPanel Orientation="Horizontal">
-              <Path Classes="icon edit" Data="{StaticResource IconTextSize}" />
-              <TextBlock x:Name="TextSizeText" Classes="label" Text="Text" />
-            </StackPanel>
-            <Button.Flyout>
-              <MenuFlyout>
-                <MenuItem x:Name="SmallTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSmall}" Header="_Small" />
-                <MenuItem x:Name="MediumTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextMedium}" Header="_Medium" />
-                <MenuItem x:Name="LargeTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextLarge}" Header="_Large" />
-                <MenuItem x:Name="ExtraLargeTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextExtraLarge}" Header="_Extra Large" />
-              </MenuFlyout>
-            </Button.Flyout>
-          </Button>
         </WrapPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal">
           <Button AutomationProperties.Name="Undo" x:Name="UndoButton" views:ControlHelp.Text="{x:Static views:Descriptions.Undo}" Classes="tool">
@@ -425,6 +411,12 @@
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel>
           <WrapPanel>
+            <ToggleButton AutomationProperties.Name="Add Text" x:Name="AddTextTool" views:ControlHelp.Text="{x:Static views:Descriptions.AddText}" Classes="tool">
+              <StackPanel Orientation="Horizontal">
+                <Path Classes="icon add" Data="{StaticResource IconText}" />
+                <TextBlock Classes="label" Text="Add Text" />
+              </StackPanel>
+            </ToggleButton>
             <Button AutomationProperties.Name="Signature…" x:Name="SignatureButton" views:ControlHelp.Text="{x:Static views:Descriptions.SignatureMark}" Classes="tool">
               <StackPanel Orientation="Horizontal">
                 <Path Classes="icon edit" Data="{StaticResource IconSignature}" />
@@ -493,6 +485,100 @@
           </StackPanel>
         </Button>
       </Grid>
+    </Border>
+
+    <!--
+      Text format: shown with the Annotate and Fill & Sign tools, so it stays in one place. It shows the format of the
+      text being typed or picked, and changing it changes that text straight away.
+    -->
+    <Border x:Name="TextFormatBar" DockPanel.Dock="Top" Classes="toolbar subbar" AutomationProperties.Name="Text format" AutomationProperties.ControlTypeOverride="ToolBar">
+      <WrapPanel Orientation="Horizontal">
+        <TextBlock x:Name="FontFamilyLabel" Classes="secondary" Text="Font" VerticalAlignment="Center" Margin="6,0,4,0" />
+        <ComboBox x:Name="FontFamilyBox" views:ControlHelp.Text="{x:Static views:Descriptions.FontFamily}" Width="190" VerticalAlignment="Center" MaxDropDownHeight="420" />
+        <TextBlock x:Name="FontSizeLabel" Classes="secondary" Text="Size" VerticalAlignment="Center" Margin="10,0,4,0" />
+        <ComboBox x:Name="FontSizeBox" views:ControlHelp.Text="{x:Static views:Descriptions.FontSize}" IsEditable="True" Width="76" VerticalAlignment="Center" />
+        <Button AutomationProperties.Name="Smaller text" x:Name="SmallerTextButton" views:ControlHelp.Text="{x:Static views:Descriptions.ShrinkPageText}" Classes="tool">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon edit" Data="{StaticResource IconZoomOut}" />
+            <TextBlock Classes="label" Text="Smaller" />
+          </StackPanel>
+        </Button>
+        <Button AutomationProperties.Name="Larger text" x:Name="LargerTextButton" views:ControlHelp.Text="{x:Static views:Descriptions.GrowPageText}" Classes="tool">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon edit" Data="{StaticResource IconZoomIn}" />
+            <TextBlock Classes="label" Text="Larger" />
+          </StackPanel>
+        </Button>
+        <Rectangle Classes="separator" />
+        <ToggleButton AutomationProperties.Name="Bold" x:Name="BoldToggle" views:ControlHelp.Text="{x:Static views:Descriptions.BoldText}" Classes="tool">
+          <TextBlock Classes="label" Text="Bold" FontWeight="Bold" />
+        </ToggleButton>
+        <ToggleButton AutomationProperties.Name="Italic" x:Name="ItalicToggle" views:ControlHelp.Text="{x:Static views:Descriptions.ItalicText}" Classes="tool">
+          <TextBlock Classes="label" Text="Italic" FontStyle="Italic" />
+        </ToggleButton>
+        <ToggleButton AutomationProperties.Name="Underline text" x:Name="UnderlineToggle" views:ControlHelp.Text="{x:Static views:Descriptions.UnderlineText}" Classes="tool">
+          <TextBlock Classes="label" Text="Underline" TextDecorations="Underline" />
+        </ToggleButton>
+        <Rectangle Classes="separator" />
+        <ToggleButton AutomationProperties.Name="Align left" x:Name="AlignLeftToggle" views:ControlHelp.Text="{x:Static views:Descriptions.AlignLeft}" Classes="tool">
+          <TextBlock Classes="label" Text="Left" />
+        </ToggleButton>
+        <ToggleButton AutomationProperties.Name="Centre" x:Name="AlignCenterToggle" views:ControlHelp.Text="{x:Static views:Descriptions.AlignCenter}" Classes="tool">
+          <TextBlock Classes="label" Text="Centre" />
+        </ToggleButton>
+        <ToggleButton AutomationProperties.Name="Align right" x:Name="AlignRightToggle" views:ControlHelp.Text="{x:Static views:Descriptions.AlignRight}" Classes="tool">
+          <TextBlock Classes="label" Text="Right" />
+        </ToggleButton>
+        <Rectangle Classes="separator" />
+        <Button AutomationProperties.Name="Text colour" x:Name="TextColourButton" views:ControlHelp.Text="{x:Static views:Descriptions.TextColour}" Classes="tool">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <Border x:Name="TextColourSwatch" Classes="swatch" />
+            <TextBlock x:Name="TextColourText" VerticalAlignment="Center" />
+          </StackPanel>
+          <Button.Flyout>
+            <MenuFlyout>
+              <MenuItem x:Name="BlackTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextColour}" Header="_Black" />
+              <MenuItem x:Name="DarkBlueTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextColour}" Header="_Dark Blue" />
+              <MenuItem x:Name="BlueTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextColour}" Header="B_lue" />
+              <MenuItem x:Name="RedTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextColour}" Header="_Red" />
+              <MenuItem x:Name="GreenTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextColour}" Header="_Green" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+        <Button AutomationProperties.Name="Spacing" x:Name="SpacingButton" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Classes="tool">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon edit" Data="{StaticResource IconLineWidth}" />
+            <TextBlock x:Name="SpacingText" Classes="label" Text="Spacing" />
+          </StackPanel>
+          <Button.Flyout>
+            <MenuFlyout>
+              <MenuItem Header="Line spacing" IsEnabled="False" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" />
+              <MenuItem x:Name="SingleSpacingItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="_Single" />
+              <MenuItem x:Name="NormalSpacingItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="_Normal" />
+              <MenuItem x:Name="OneHalfSpacingItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="One and a _Half" />
+              <MenuItem x:Name="DoubleSpacingItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="_Double" />
+              <Separator />
+              <MenuItem Header="Letter spacing" IsEnabled="False" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" />
+              <MenuItem x:Name="TightLettersItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="_Tight" />
+              <MenuItem x:Name="NormalLettersItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="N_ormal Letters" />
+              <MenuItem x:Name="WideLettersItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="_Wide" />
+              <MenuItem x:Name="WiderLettersItem" views:ControlHelp.Text="{x:Static views:Descriptions.TextSpacing}" Header="Wi_der" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+        <Button AutomationProperties.Name="Text Properties…" x:Name="TextPropertiesButton" views:ControlHelp.Text="{x:Static views:Descriptions.TextProperties}" Classes="tool">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon edit" Data="{StaticResource IconTextSize}" />
+            <TextBlock Classes="label" Text="Properties…" />
+          </StackPanel>
+        </Button>
+        <Button AutomationProperties.Name="Finish Text" x:Name="FinishTextButton" views:ControlHelp.Text="{x:Static views:Descriptions.FinishText}" Classes="tool">
+          <StackPanel Orientation="Horizontal">
+            <Path Classes="icon nav" Data="{StaticResource IconDone}" />
+            <TextBlock Classes="label" Text="Finish Text" />
+          </StackPanel>
+        </Button>
+      </WrapPanel>
     </Border>
 
     <!-- Shown for digitally signed documents. Signatures are checked only when asked, as checking may go online. -->
@@ -746,8 +832,12 @@
             <!-- The text field editor sits exactly over the field being filled in. -->
             <Canvas x:Name="FieldOverlay">
               <TextBox x:Name="FieldEditor" views:ControlHelp.Text="{x:Static views:Descriptions.FormField}" AutomationProperties.Name="Form field" Classes="field" IsVisible="False" />
+              <!-- Text typed on the page sits where it will be written, in its own font, size and colour. -->
+              <TextBox x:Name="PageTextEditor" views:ControlHelp.Text="{x:Static views:Descriptions.PageText}" AutomationProperties.Name="Text on page" Classes="pagetext" AcceptsReturn="True" IsVisible="False" />
               <!-- Marks misspelled words under the editor's text; the pointer passes through it to the editor. -->
               <controls:SpellingUnderlines x:Name="FieldSpelling" IsHitTestVisible="False" IsVisible="False" Stroke="{DynamicResource AppIconRemove}" />
+              <!-- Underlines the typed text, which the editor cannot do itself; the pointer passes through it. -->
+              <controls:PageTextUnderline x:Name="PageTextUnderline" IsHitTestVisible="False" RenderTransformOrigin="0%,0%" />
             </Canvas>
           </Panel>
         </ScrollViewer>

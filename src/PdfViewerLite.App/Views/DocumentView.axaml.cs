@@ -38,6 +38,9 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <summary>The editor font size as a share of the field height.</summary>
     private const double FieldFontShare = 0.6;
 
+    /// <summary>Halves the room around a comb letter, to centre it in its box.</summary>
+    private const double HalfCell = 0.5;
+
     /// <summary>Opaque alpha in 0xAARRGGBB.</summary>
     private const uint OpaqueAlpha = 0xFF000000U;
 
@@ -49,6 +52,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     {
         InitializeComponent();
         FieldSpelling.Editor = FieldEditor;
+        PageTextUnderline.Editor = PageTextEditor;
         ThumbnailList.ItemTemplate = new FuncDataTemplate<ThumbnailItemViewModel>((_, _) => new ThumbnailItemView { Tab = ViewModel });
         OutlineTree.ItemTemplate = new FuncTreeDataTemplate<OutlineItemViewModel>(static (_, _) => new OutlineItemView(), static item => item.Children);
         SearchResultList.ItemTemplate = new FuncDataTemplate<SearchResultItemViewModel>(static (_, _) => new SearchResultView());
@@ -64,6 +68,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         CoverLayoutItem.CommandParameter = "DualCover";
         FieldLabels.Link((ScaleBox, ScaleLabel));
         SetUpAnnotationList();
+        SetUpTextFormat();
         _ = this.WhenActivated(disposables =>
         {
             BindToolBar(disposables);
@@ -75,6 +80,8 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
             BindPages(disposables);
             BindWindowCommands(disposables);
             BindFieldEditor(disposables);
+            BindTextFormat(disposables);
+            BindPageTextEditor(disposables);
             disposables.Add(OnMainThread().SubscribeSafe(_ => FocusCanvas(), OnError));
         });
     }
@@ -272,7 +279,8 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveCommand, static v => v.SaveButton));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.HasUnsavedChanges, static v => v.SaveButton.IsVisible));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Annotations.IsAnnotating, static v => v.AnnotateToggle.IsChecked, static on => on, IsOn));
-        bindings.Add(this.Bind(ViewModel, static vm => vm.FillAndSign.IsActive, static v => v.FillSignToggle.IsChecked, static on => on, IsOn));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.FillAndSign.IsActive, static v => v.FillSignToggle.IsChecked, static on => on));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.FillAndSign.ToggleCommand, static v => v.FillSignToggle));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.CanAnnotate, static v => v.AnnotateToggle.IsEnabled));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.Annotations.CanAnnotate, static v => v.FillSignToggle.IsEnabled));
         bindings.Add(this.Bind(ViewModel, static vm => vm.Search.IsOpen, static v => v.FindToggle.IsChecked, static on => on, IsOn));
@@ -614,6 +622,9 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
     {
         bindings.Add(this.Bind(ViewModel, static vm => vm.Forms.EditText, static v => v.FieldEditor.Text, static text => text, static text => text ?? string.Empty));
         bindings.Add(this.WhenChanged(static v => v.ViewModel!.Forms.Editing).SubscribeSafe(ShowFieldEditor, OnError));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Forms.Focused).SubscribeSafe(_ => Canvas.InvalidateVisual(), OnError));
+        bindings.Add(this.WhenChanged(static v => v.ViewModel!.Annotations.RegionsVersion, static v => v.ViewModel!.Annotations.Tool, static (version, _) => version)
+            .SubscribeSafe(_ => Canvas.InvalidateVisual(), OnError));
         bindings.Add(EscapePresses(FieldEditor).SubscribeSafe(_ => ViewModel?.Forms.Cancel(), OnError));
         bindings.Add(FieldEditor.ObserveRouted(InputElement.KeyDownEvent, RoutingStrategies.Tunnel).Where(static args => args.Key == Key.Tab).SubscribeSafe(OnFieldTab, OnError));
 
@@ -700,9 +711,11 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         Avalonia.Controls.Canvas.SetTop(FieldEditor, rect.Y);
         FieldEditor.Width = rect.Width;
         FieldEditor.Height = rect.Height;
-        FieldEditor.AcceptsReturn = field.IsMultiline;
+        FieldEditor.AcceptsReturn = field.IsMultiline && !field.IsComb;
         Avalonia.Automation.AutomationProperties.SetName(FieldEditor, string.IsNullOrWhiteSpace(field.Name) ? "Form field" : field.Name);
-        FieldEditor.FontSize = Math.Max(MinFieldFontSize, rect.Height * FieldFontShare);
+        FieldEditor.FontSize = field.FontSize > 0 ? field.FontSize * Canvas.PageScale : Math.Max(MinFieldFontSize, rect.Height * FieldFontShare);
+        FieldEditor.MaxLength = field.MaxLength;
+        SpaceCombLetters(field, rect.Width);
         FieldEditor.IsVisible = true;
         Avalonia.Controls.Canvas.SetLeft(FieldSpelling, rect.X);
         Avalonia.Controls.Canvas.SetTop(FieldSpelling, rect.Y);
@@ -712,12 +725,40 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         _ = OnMainThread().SubscribeSafe(_ => FocusFieldEditor(), OnError);
     }
 
-    /// <summary>Moves to the next text field on Tab.</summary>
+    /// <summary>Spreads a comb field's letters one to a box, in a fixed width font; other fields type normally.</summary>
+    /// <param name="field">The field.</param>
+    /// <param name="width">The field's width on the canvas.</param>
+    private void SpaceCombLetters(Core.Forms.FormField field, double width)
+    {
+        if (!field.IsComb)
+        {
+            FieldEditor.ClearValue(TemplatedControl.LetterSpacingProperty);
+            FieldEditor.ClearValue(TemplatedControl.FontFamilyProperty);
+            FieldEditor.ClearValue(TextBox.PaddingProperty);
+            return;
+        }
+
+        var font = PageFonts.Get(Core.Text.StandardFontFamilies.Mono);
+        var cell = width / field.MaxLength;
+        var advance = new FormattedText("0", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface(font), FieldEditor.FontSize, null).WidthIncludingTrailingWhitespace;
+        FieldEditor.FontFamily = font;
+        FieldEditor.LetterSpacing = cell - advance;
+        FieldEditor.Padding = new((cell - advance) * HalfCell, 0, 0, 0);
+    }
+
+    /// <summary>Moves to the next field on Tab, or the previous one on Shift+Tab.</summary>
     /// <param name="e">The key press.</param>
     private void OnFieldTab(KeyEventArgs e)
     {
         e.Handled = true;
-        _ = ViewModel?.Forms.CommitAndMoveNext();
+        if (ViewModel?.Forms.CommitAndMove((e.KeyModifiers & KeyModifiers.Shift) != 0) is not { } next || next.Kind == Core.Forms.FormFieldKind.Text)
+        {
+            return;
+        }
+
+        // The editor closes for a box or list, so the pages take the keys that fill it in.
+        ViewModel.NavigateTo(new(next.PageIndex, next.Bounds, 0));
+        Canvas.InvalidateVisual();
     }
 
     /// <summary>Shows the window that makes a signature or initials.</summary>

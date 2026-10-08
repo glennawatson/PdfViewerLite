@@ -33,4 +33,17 @@ public sealed record FormField(
     int SelectedOption,
     bool IsReadOnly,
     bool IsRequired,
-    bool IsMultiline);
+    bool IsMultiline)
+{
+    /// <summary>Gets the most characters a text field takes, or 0 for no limit.</summary>
+    public int MaxLength { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether a text field is a comb: its width is split into <see cref="MaxLength"/> equal
+    /// boxes, one character each, as on forms printed with a box per letter.
+    /// </summary>
+    public bool IsComb { get; init; }
+
+    /// <summary>Gets the size the field's text is drawn at, in points, or 0 when it fits the text to the field.</summary>
+    public float FontSize { get; init; }
+}

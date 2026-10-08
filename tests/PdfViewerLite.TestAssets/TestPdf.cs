@@ -34,6 +34,9 @@ public static class TestPdf
     /// <summary>The document author.</summary>
     public static readonly string Author = "Glenn Watson";
 
+    /// <summary>The text of the typewriter annotation in <see cref="CreateWithFreeText"/>.</summary>
+    public static readonly string ForeignText = "Typed elsewhere";
+
     /// <summary>The file name of the embedded file in <see cref="CreateWithAttachment"/>.</summary>
     public static readonly string AttachmentName = "notes.txt";
 
@@ -138,6 +141,9 @@ public static class TestPdf
 
     /// <summary>The body font size.</summary>
     private const int BodySize = 12;
+
+    /// <summary>How far below the top the printed form's label sits, in points.</summary>
+    private const int FlatLabelDepth = 200;
 
     /// <summary>The distance between body lines.</summary>
     private const int LineHeight = 20;
@@ -420,6 +426,129 @@ public static class TestPdf
                /Names << /EmbeddedFiles << /Names [({{AttachmentName}}) {{spec}} 0 R] >> /JavaScript << /Names [(init) {{script}} 0 R] >> >> >>
             """);
         var info = Add(objects, $"<< /Title (Unsupported content) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page document holding typewriter text written by another program: red, bold, centred 14 point
+    /// Helvetica reading <see cref="ForeignText"/>, described only by its default appearance and style.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateWithFreeText()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, HelveticaFont);
+        var note = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /FreeText /IT /FreeTextTypeWriter /Rect [72 600 300 640] /P {{page}} 0 R /F 4
+               /Contents ({{ForeignText}}) /DA (/Helv 14 Tf 1 0 0 rg) /DS (font: bold 14pt Helvetica; text-align:center) >>
+            """));
+        var content = new StringBuilder();
+        AppendText(content, PortraitHeight - Margin, HeadingSize, "Typed");
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R /Annots [{{note}} 0 R] >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
+        var info = Add(objects, $"<< /Title (Typed) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page form for keyboard filling: a text field "Name", a six box comb field "Code" limited to six
+    /// characters, a check box "Agree", and a radio group "Size" with the choices Small and Large, in that order.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateCombForm()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, HelveticaFont);
+        var zapf = Add(objects, "<< /Type /Font /Subtype /Type1 /BaseFont /ZapfDingbats >>");
+        const string tick = "q 0 g BT /ZaDb 12 Tf 2 3 Td (4) Tj ET Q";
+        var on = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /XObject /Subtype /Form /BBox [0 0 16 16]
+               /Resources << /Font << /ZaDb {{zapf}} 0 R >> >> /Length {{tick.Length}} >>
+            stream
+            {{tick}}
+            endstream
+            """));
+        var off = Add(objects, "<< /Type /XObject /Subtype /Form /BBox [0 0 16 16] /Length 0 >>\nstream\n\nendstream");
+        var name = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /FT /Tx /T (Name) /Rect [72 650 300 674] /P {{page}} 0 R /F 4 /DA (/Helv 12 Tf 0 g) >>
+            """));
+        var code = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /FT /Tx /Ff 16777216 /MaxLen 6 /T (Code) /Rect [72 610 192 634] /P {{page}} 0 R /F 4 /DA (/Helv 12 Tf 0 g) >>
+            """));
+        var agree = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /FT /Btn /T (Agree) /Rect [72 570 88 586] /P {{page}} 0 R /F 4 /V /Off /AS /Off
+               /AP << /N << /Yes {{on}} 0 R /Off {{off}} 0 R >> >> >>
+            """));
+        var size = Reserve(objects);
+        var small = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /Parent {{size}} 0 R /Rect [72 530 88 546] /P {{page}} 0 R /F 4 /AS /Off
+               /AP << /N << /Small {{on}} 0 R /Off {{off}} 0 R >> >> >>
+            """));
+        var large = Add(objects, string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Annot /Subtype /Widget /Parent {{size}} 0 R /Rect [120 530 136 546] /P {{page}} 0 R /F 4 /AS /Off
+               /AP << /N << /Large {{on}} 0 R /Off {{off}} 0 R >> >> >>
+            """));
+        objects[size - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /FT /Btn /Ff 49152 /T (Size) /V /Off /Kids [{small} 0 R {large} 0 R] >>");
+        var content = new StringBuilder();
+        AppendText(content, PortraitHeight - Margin, HeadingSize, "Keyboard form");
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R
+               /Annots [{{name}} 0 R {{code}} 0 R {{agree}} 0 R {{small}} 0 R {{large}} 0 R] >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Catalog /Pages {{pages}} 0 R
+               /AcroForm << /Fields [{{name}} 0 R {{code}} 0 R {{agree}} 0 R {{size}} 0 R] /NeedAppearances true /DA (/Helv 12 Tf 0 g)
+                            /DR << /Font << /Helv {{font}} 0 R /ZaDb {{zapf}} 0 R >> >> >> >>
+            """);
+        var info = Add(objects, $"<< /Title (Keyboard form) /Author ({Author}) >>");
+        return Serialize(objects, catalog, info);
+    }
+
+    /// <summary>
+    /// Creates a one page printed form with no fillable fields: "Name" with a line to write on from (100, 192) to
+    /// (300, 192), a box from (100, 240) to (300, 265), and a row of six character boxes from (100, 320) to
+    /// (220, 340), in page points from the top-left.
+    /// </summary>
+    /// <returns>The PDF bytes.</returns>
+    public static byte[] CreateFlatForm()
+    {
+        var objects = new List<string>();
+        var catalog = Reserve(objects);
+        var pages = Reserve(objects);
+        var page = Reserve(objects);
+        var font = Add(objects, HelveticaFont);
+        var content = new StringBuilder();
+        AppendText(content, PortraitHeight - FlatLabelDepth, BodySize, "Name");
+        _ = content.Append("0 G 1 w 100 600 m 300 600 l S\n");
+        _ = content.Append("100 527 200 25 re S\n");
+        _ = content.Append("100 452 120 20 re S\n");
+        _ = content.Append("120 452 m 120 472 l S 140 452 m 140 472 l S 160 452 m 160 472 l S 180 452 m 180 472 l S 200 452 m 200 472 l S\n");
+
+        var stream = content.ToString();
+        var contentId = Add(objects, string.Create(CultureInfo.InvariantCulture, $"<< /Length {Encoding.ASCII.GetByteCount(stream)} >>\nstream\n{stream}endstream"));
+        objects[page - 1] = string.Create(CultureInfo.InvariantCulture, $$"""
+            << /Type /Page /Parent {{pages}} 0 R /MediaBox [0 0 {{PortraitWidth}} {{PortraitHeight}}]
+               /Resources << /Font << /F1 {{font}} 0 R >> >> /Contents {{contentId}} 0 R >>
+            """);
+        objects[pages - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{page} 0 R] /Count 1 >>");
+        objects[catalog - 1] = string.Create(CultureInfo.InvariantCulture, $"<< /Type /Catalog /Pages {pages} 0 R >>");
+        var info = Add(objects, $"<< /Title (Printed form) /Author ({Author}) >>");
         return Serialize(objects, catalog, info);
     }
 

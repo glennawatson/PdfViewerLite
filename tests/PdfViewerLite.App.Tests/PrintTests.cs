@@ -162,13 +162,13 @@ public sealed class PrintTests
         await Assert.That(printer.PageCount).IsEqualTo(bookletSheets);
     }
 
-    /// <summary>Confirms the preview once its sheets are ready.</summary>
+    /// <summary>Confirms the preview once its sheets are ready and the printers are listed, so the job goes to the printer.</summary>
     /// <param name="context">The interaction context.</param>
     /// <returns>A task.</returns>
     private static async Task ConfirmWhenReadyAsync(IInteractionContext<PrintPreviewViewModel, bool> context)
     {
         var preview = context.Input;
-        _ = await WaitAsync(() => preview.IsValid && !preview.IsBuilding);
+        _ = await WaitAsync(() => preview.IsValid && !preview.IsBuilding && preview.Destination == PrintDestination.Printer);
         context.SetOutput(true);
     }
 

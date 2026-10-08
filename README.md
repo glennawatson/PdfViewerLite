@@ -25,7 +25,7 @@ Download a package from [GitHub releases](https://github.com/glennawatson/PdfVie
 | Inspect | Document properties, layers and attachments. Open or save attachments. A message names content the app cannot show, such as XFA forms or 3D. |
 | Annotate | Highlights, underlines, strike-outs, squiggles, notes, text, callouts, ink, shapes, arrows, polygons, clouds and stamps, including your own words or a picture. Move, resize, recolour and restyle comments after placing them. Undo and redo every change. |
 | Review | Browse comments, filter them by text, type, colour or author, sort them, reply and set review status. Set the author name in Preferences. |
-| Fill forms | Text fields, check boxes, radio buttons and lists. Tab moves between fields. Save filled forms. Common calculations and formats are supported. Spelling is checked with the desktop's dictionaries. |
+| Fill forms | Text fields, check boxes, radio buttons, lists and one-letter-per-box fields. Tab and Shift+Tab move between fields; Space ticks. On printed forms, lines, boxes and letter boxes are outlined and text snaps to them. Save filled forms. Common calculations and formats are supported. Spelling is checked with the desktop's dictionaries. |
 | Sign | Type or draw a visible signature. Sign with a protected `.p12` or `.pfx` certificate. Check signatures and timestamps. |
 | Recognise text | Add searchable text to scanned pages. Tesseract and English come with the app; other languages download in one click when needed. |
 | Measure | Distance, perimeter and area. Use the drawing's scale or enter your own. Keep measurements on the page. |
@@ -43,7 +43,13 @@ An optional online voice uses your own key. It sends the requested text to that 
 
 ## Fill and sign
 
-Choose **Fill & Sign** to type or draw a signature. Fill interactive fields directly on the page. Use **Annotate → Text** to write on a flat form. Save the document when finished.
+Choose **Fill & Sign** to type or draw a signature. Click a field to fill it, or click anywhere else to type there. Save the document when finished.
+
+On a printed form, the Text tool outlines the lines and boxes it finds. Click one to type fitted to it; a row of letter boxes takes one letter per box. Hold Alt to place text freely.
+
+Typing happens on the page, with no dialog. The format row sets the font, size, bold, italic, underline, alignment, colour and spacing, and changes show at once. Double-click text, or press F2 or Enter, to edit it again. Drag to move it, or drag a handle to rewrap it. **Text Properties…** sets everything in one window.
+
+Text is saved as a standard typewriter comment, so other readers can show and edit it. Installed fonts are embedded as a subset of the letters used. A font whose licence forbids embedding is hidden unless **Offer fonts that cannot be saved in PDFs** is on in Preferences; that text is saved in the closest built-in font.
 
 A visible signature is a mark on the page. A certificate signature lets readers check who signed and whether the file changed. Choose **Sign with Certificate** for that. Set a timestamp server in Preferences if needed.
 
@@ -82,6 +88,9 @@ No single theme suits everyone. Choose the appearance that works for you.
 | Select all text on the page | Ctrl+A |
 | Move the pages with any tool | Hold Space or the middle button and drag |
 | Auto-scroll; then slower / faster | Ctrl+Shift+H; Down / Up |
+| Finish typing / cancel typing | Ctrl+Enter or Tab / Escape |
+| Bold / italic / underline while typing | Ctrl+B / Ctrl+I / Ctrl+U |
+| Edit picked text | F2 or Enter |
 | Leave the current mode | Escape |
 
 ## Limits

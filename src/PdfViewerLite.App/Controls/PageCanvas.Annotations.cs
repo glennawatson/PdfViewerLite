@@ -50,11 +50,15 @@ public sealed partial class PageCanvas
     /// <summary>The page a click tool was pressed on, or -1.</summary>
     private int _clickPage = -1;
 
+    /// <summary>Whether the click fits text to a place to write; Alt places it freely.</summary>
+    private bool _clickSnaps = true;
+
     /// <summary>Runs a click tool: adds a note, text or a stamp where the page was clicked.</summary>
     /// <param name="tab">The tab.</param>
     /// <param name="clicked">The page.</param>
     /// <param name="point">The point, in page space.</param>
-    private static void RunClickTool(DocumentTabViewModel tab, int clicked, PagePoint point)
+    /// <param name="snaps">Whether text clicked into a place to write fits it; Alt turns this off.</param>
+    private static void RunClickTool(DocumentTabViewModel tab, int clicked, PagePoint point, bool snaps)
     {
         switch (tab.Annotations.Tool)
         {
@@ -66,7 +70,7 @@ public sealed partial class PageCanvas
 
             case AnnotationTool.Text:
             {
-                _ = tab.Annotations.AddTextAsync(clicked, point);
+                RunTextTool(tab.Annotations, clicked, point, snaps);
                 break;
             }
 
@@ -83,6 +87,25 @@ public sealed partial class PageCanvas
         }
     }
 
+    /// <summary>
+    /// Clicking a text box edits it where it is; clicking a place to write on a printed form types fitted to it;
+    /// clicking anywhere else starts typing there.
+    /// </summary>
+    /// <param name="annotations">The annotation state.</param>
+    /// <param name="page">The page.</param>
+    /// <param name="point">The point, in page space.</param>
+    /// <param name="snaps">Whether text fits a place to write.</param>
+    private static void RunTextTool(AnnotationsViewModel annotations, int page, PagePoint point, bool snaps)
+    {
+        if (annotations.HitTest(page, point) is { Kind: AnnotationKind.TextBox } box)
+        {
+            _ = annotations.EditText(box);
+            return;
+        }
+
+        _ = snaps && annotations.RegionAt(page, point) is { } region ? annotations.BeginInRegion(page, region) : annotations.BeginText(page, point, 0);
+    }
+
     /// <summary>Builds the menu for an annotation: its note, its colour and removing it.</summary>
     /// <param name="annotations">The annotation state.</param>
     /// <param name="annotation">The annotation.</param>
@@ -96,16 +119,27 @@ public sealed partial class PageCanvas
             Header = "C_olour",
             ItemsSource = ColorItems(annotations.RecolorAnnotationCommand, annotation, static (picked, color) => new AnnotationColorChoice(picked, color)),
         };
-        return
+        List<Control> items = [new MenuItem { Header = name, IsEnabled = false }];
+        if (annotation.Kind == AnnotationKind.TextBox)
+        {
+            // A text box's contents are its text, edited on the page rather than as a note.
+            items.Add(Item("_Edit Text", "Enter", annotations.EditSelectedTextCommand, null, true));
+            items.Add(Item("Text _Properties…", null, annotations.EditTextPropertiesCommand, null, true));
+        }
+        else
+        {
+            items.Add(Item(annotation.Contents.Length > 0 ? "_Edit Note…" : "Add _Note…", null, annotations.EditNoteCommand, null, true));
+        }
+
+        items.AddRange(
         [
-            new MenuItem { Header = name, IsEnabled = false },
-            Item(annotation.Contents.Length > 0 ? "_Edit Note…" : "Add _Note…", null, annotations.EditNoteCommand, null, true),
             Item("_Reply…", null, annotations.ReplyCommand, null, true),
             new MenuItem { Header = "_Status", ItemsSource = StatusItems(annotations, annotation) },
             colour,
             new Separator(),
             Item($"_Delete {name}", "Delete", annotations.DeleteCommand, null, true),
-        ];
+        ]);
+        return items;
     }
 
     /// <summary>Builds the menu for blank page: add a note or text where the pointer is.</summary>
@@ -121,7 +155,7 @@ public sealed partial class PageCanvas
             Item("_Read Aloud from Here", null, tab.ReadAloud.ReadFromPointCommand, location, true),
             new Separator(),
             Item("Add _Note Here…", null, annotations.AddNoteHereCommand, location, editable),
-            Item("Add _Text Here…", null, annotations.AddTextHereCommand, location, editable),
+            Item("_Type Text Here", null, annotations.TypeTextHereCommand, location, editable),
             new Separator(),
             Item("_Annotate…", null, annotations.StartCommand, null, editable),
         ];
@@ -202,21 +236,22 @@ public sealed partial class PageCanvas
                 return true;
             }
 
-            case AnnotationTool.Note or AnnotationTool.Text or AnnotationTool.Stamp when page >= 0:
+            case AnnotationTool.Text when page >= 0 && TryActivateField(tab, page, position):
             {
-                _clickPage = page;
+                // Form fields are filled in, not typed over.
                 return true;
             }
 
-            case AnnotationTool.Select when page >= 0 && TryActivateField(tab, page, position):
+            case AnnotationTool.Note or AnnotationTool.Text or AnnotationTool.Stamp when page >= 0:
             {
+                _clickPage = page;
+                _clickSnaps = (e.KeyModifiers & KeyModifiers.Alt) == 0;
                 return true;
             }
 
             case AnnotationTool.Select when page >= 0:
             {
-                // Movable annotations are dragged to move them; text markup is picked and the text stays selectable.
-                return BeginEdit(tab, page, position, e) || (annotations.Selected is not null && !TryHitTestCharacter(position, out _, out _));
+                return BeginSelectPress(tab, page, position, e);
             }
 
             default:
@@ -224,6 +259,27 @@ public sealed partial class PageCanvas
                 return false;
             }
         }
+    }
+
+    /// <summary>Handles a press with the select tool: fills a field, edits double-clicked text, or picks and drags an annotation.</summary>
+    /// <param name="tab">The tab.</param>
+    /// <param name="page">The page pressed.</param>
+    /// <param name="position">The canvas point.</param>
+    /// <param name="e">The event.</param>
+    /// <returns><see langword="true"/> when the press was handled.</returns>
+    private bool BeginSelectPress(DocumentTabViewModel tab, int page, Point position, PointerPressedEventArgs e)
+    {
+        if (TryActivateField(tab, page, position))
+        {
+            return true;
+        }
+
+        // Double-clicking text on the page edits it there. Movable annotations are dragged to move them; text markup is
+        // picked and the text stays selectable.
+        var annotations = tab.Annotations;
+        return e.ClickCount >= DoubleClick && annotations.HitTest(page, ToPage(tab, page, position)) is { Kind: AnnotationKind.TextBox } box
+            ? annotations.EditText(box)
+            : BeginEdit(tab, page, position, e) || (annotations.Selected is not null && !TryHitTestCharacter(position, out _, out _));
     }
 
     /// <summary>Adds a point to the stroke being drawn.</summary>
@@ -289,7 +345,7 @@ public sealed partial class PageCanvas
 
         var clicked = _clickPage;
         _clickPage = -1;
-        RunClickTool(tab, clicked, ToPage(tab, clicked, position));
+        RunClickTool(tab, clicked, ToPage(tab, clicked, position), _clickSnaps);
         return true;
     }
 
@@ -424,6 +480,11 @@ public sealed partial class PageCanvas
             return false;
         }
 
+        if (EditPickedText(e))
+        {
+            return true;
+        }
+
         if (key != Key.Delete || Tab?.Annotations is not { Selected: { } selected } annotations)
         {
             return false;
@@ -432,6 +493,13 @@ public sealed partial class PageCanvas
         annotations.Delete(selected);
         return true;
     }
+
+    /// <summary>Edits the picked text box on Enter or F2, as a spreadsheet edits its cell.</summary>
+    /// <param name="e">The key press.</param>
+    /// <returns><see langword="true"/> when editing started.</returns>
+    private bool EditPickedText(KeyEventArgs e) =>
+        e.Key is Key.Enter or Key.F2 && e.KeyModifiers == KeyModifiers.None && Tab?.Annotations is { Selected.Kind: AnnotationKind.TextBox } annotations
+        && annotations.EditText(annotations.Selected);
 
     /// <summary>Puts text on the clipboard.</summary>
     /// <param name="text">The text.</param>
@@ -461,6 +529,7 @@ public sealed partial class PageCanvas
         DrawPolygonPreview(context, tab);
         DrawPlacement(context, tab);
         DrawEditing(context, tab);
+        DrawFieldFocus(context, tab);
         if (_strokePage >= 0 && _stroke.Count > 1)
         {
             var transform = new PageTransform(_layout.GetPageBounds(_strokePage), _sizes[_strokePage], tab.Rotation, _layout.Options.Scale);

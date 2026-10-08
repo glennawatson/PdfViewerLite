@@ -45,10 +45,27 @@ public static class AnnotationReplyLinks
     public static byte[] Link(byte[] file)
     {
         ArgumentNullException.ThrowIfNull(file);
-        var span = file.AsSpan();
-        if (span.IndexOf(PendingName) < 0 && span.IndexOf(RemovedName) < 0 && span.IndexOf(EntriesName) < 0)
+        var update = CreateUpdate(file);
+        return update.Length == 0 ? file : [.. file, .. update];
+    }
+
+    /// <summary>Gets whether a saved file has replies, removed annotations or entries still to finish.</summary>
+    /// <param name="file">The saved file.</param>
+    /// <returns><see langword="true"/> when <see cref="CreateUpdate"/> has work to do.</returns>
+    public static bool HasPendingWork(ReadOnlySpan<byte> file) =>
+        file.IndexOf(PendingName) >= 0 || file.IndexOf(RemovedName) >= 0 || file.IndexOf(EntriesName) >= 0;
+
+    /// <summary>
+    /// Makes the incremental update that links pending replies, leaves out removed annotations and writes pending
+    /// entries. Appending it to the file finishes the annotations, so the file itself is never copied.
+    /// </summary>
+    /// <param name="file">The saved file, which may be a view of a pooled buffer; it is only read.</param>
+    /// <returns>The update, or an empty array when there is nothing to do or the file cannot be read.</returns>
+    public static byte[] CreateUpdate(ReadOnlyMemory<byte> file)
+    {
+        if (!HasPendingWork(file.Span))
         {
-            return file;
+            return [];
         }
 
         try
@@ -70,11 +87,11 @@ public static class AnnotationReplyLinks
                 LinkPage(structure, pageNumber, objects, ref size);
             }
 
-            return objects.Count == 0 ? file : [.. file, .. PdfUpdateWriter.Serialize(structure, objects, root, size)];
+            return objects.Count == 0 ? [] : PdfUpdateWriter.Serialize(structure, objects, root, size);
         }
         catch (InvalidDataException)
         {
-            return file;
+            return [];
         }
     }
 

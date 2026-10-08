@@ -213,6 +213,31 @@
     <Setter Property="CornerRadius" Value="0" />
   </Style>
 
+  <!-- Text typed on the page: no padding or rounding, so the letters sit exactly where they are written. -->
+  <!-- Help shows in the app's own text, never the letter spacing, weight or slant of the text being typed under it. -->
+  <Style Selector="ToolTip">
+    <Setter Property="LetterSpacing" Value="0" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="FontStyle" Value="Normal" />
+  </Style>
+
+  <Style Selector="TextBox.pagetext">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="4" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+    <Setter Property="RenderTransformOrigin" Value="0%,0%" />
+  </Style>
+  <!-- The theme recolours a focused or hovered text box; on the page it keeps the paper colour so it reads as the page. -->
+  <Style Selector="TextBox.pagetext:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{TemplateBinding Background}" />
+  </Style>
+  <Style Selector="TextBox.pagetext:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{TemplateBinding Background}" />
+  </Style>
+
   <Style Selector="TextBlock.secondary">
     <Setter Property="Foreground" Value="{DynamicResource AppSecondaryForeground}" />
   </Style>

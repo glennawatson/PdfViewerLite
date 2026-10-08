@@ -103,6 +103,12 @@ public sealed partial class AnnotationsViewModel
             return false;
         }
 
+        // A text box made wider or narrower wraps its text to the new width instead of stretching it.
+        if (RewrapTextBox(annotation, bounds))
+        {
+            return true;
+        }
+
         if (EditorForChange() is not { } editor || !editor.SetBounds(annotation.PageIndex, annotation.Index, bounds))
         {
             return false;

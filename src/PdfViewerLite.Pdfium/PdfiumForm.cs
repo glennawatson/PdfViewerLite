@@ -54,6 +54,9 @@ internal sealed unsafe class PdfiumForm : IDisposable
     /// <summary>The multi-line text field flag.</summary>
     private const int FlagMultiline = 1 << 12;
 
+    /// <summary>The comb text field flag: one character per box.</summary>
+    private const int FlagComb = 1 << 24;
+
     /// <summary>The form environment; invalid when the document has no form.</summary>
     private readonly PdfiumFormHandle _handle;
 
@@ -235,6 +238,17 @@ internal sealed unsafe class PdfiumForm : IDisposable
     /// <returns>The kind.</returns>
     private static FormFieldKind ToKind(int type) => type is >= (int)FormFieldKind.PushButton and <= (int)FormFieldKind.Signature ? (FormFieldKind)type : FormFieldKind.Unknown;
 
+    /// <summary>Reads a text field's character limit.</summary>
+    /// <param name="annotation">The widget.</param>
+    /// <returns>The limit, or 0 for none.</returns>
+    private static int ReadMaxLength(nint annotation)
+    {
+        fixed (byte* key = "MaxLen"u8)
+        {
+            return NativeMethods.FPDFAnnot_GetNumberValue(annotation, key, out var length) != 0 && length > 0 ? (int)length : 0;
+        }
+    }
+
     /// <summary>Reads a UTF-16 string through a sizing call followed by a filling call.</summary>
     /// <typeparam name="TState">The reader's state.</typeparam>
     /// <param name="state">The state.</param>
@@ -334,10 +348,23 @@ internal sealed unsafe class PdfiumForm : IDisposable
         var target = (_handle, annotation);
         var name = ReadUtf16(target, &ReadName);
         var value = ReadUtf16(target, &ReadValue);
-        var optionCount = kind is FormFieldKind.ComboBox or FormFieldKind.ListBox ? Math.Max(0, NativeMethods.FPDFAnnot_GetOptionCount(_handle, annotation)) : 0;
-        var options = optionCount == 0 ? [] : new string[optionCount];
-        var selected = -1;
-        for (var i = 0; i < optionCount; i++)
+        var options = ReadOptions(annotation, kind, out var selected);
+        var isChecked = kind is FormFieldKind.CheckBox or FormFieldKind.RadioButton && NativeMethods.FPDFAnnot_IsChecked(_handle, annotation) != 0;
+        var field = new FormField(page.Index, index, name, kind, bounds, value, isChecked, options, selected, (flags & FlagReadOnly) != 0, (flags & FlagRequired) != 0, (flags & FlagMultiline) != 0);
+        return kind == FormFieldKind.Text ? WithTextLayout(field, annotation, flags) : field;
+    }
+
+    /// <summary>Reads a choice field's options and the selected one.</summary>
+    /// <param name="annotation">The widget.</param>
+    /// <param name="kind">The field's kind.</param>
+    /// <param name="selected">Receives the selected option, or -1.</param>
+    /// <returns>The options, or none for other kinds.</returns>
+    private string[] ReadOptions(nint annotation, FormFieldKind kind, out int selected)
+    {
+        selected = -1;
+        var count = kind is FormFieldKind.ComboBox or FormFieldKind.ListBox ? Math.Max(0, NativeMethods.FPDFAnnot_GetOptionCount(_handle, annotation)) : 0;
+        var options = count == 0 ? [] : new string[count];
+        for (var i = 0; i < count; i++)
         {
             options[i] = ReadUtf16((_handle, annotation, i), &ReadOption);
             if (selected < 0 && NativeMethods.FPDFAnnot_IsOptionSelected(_handle, annotation, i) != 0)
@@ -346,8 +373,23 @@ internal sealed unsafe class PdfiumForm : IDisposable
             }
         }
 
-        var isChecked = kind is FormFieldKind.CheckBox or FormFieldKind.RadioButton && NativeMethods.FPDFAnnot_IsChecked(_handle, annotation) != 0;
-        return new(page.Index, index, name, kind, bounds, value, isChecked, options, selected, (flags & FlagReadOnly) != 0, (flags & FlagRequired) != 0, (flags & FlagMultiline) != 0);
+        return options;
+    }
+
+    /// <summary>Adds a text field's character limit, comb boxes and text size.</summary>
+    /// <param name="field">The field.</param>
+    /// <param name="annotation">The widget.</param>
+    /// <param name="flags">The field's flags.</param>
+    /// <returns>The field with its text layout.</returns>
+    private FormField WithTextLayout(FormField field, nint annotation, int flags)
+    {
+        var maxLength = ReadMaxLength(annotation);
+        return field with
+        {
+            MaxLength = maxLength,
+            IsComb = maxLength > 0 && (flags & FlagComb) != 0,
+            FontSize = NativeMethods.FPDFAnnot_GetFontSize(_handle, annotation, out var size) != 0 && size > 0 ? size : 0,
+        };
     }
 
     /// <summary>Focuses a widget, runs an edit on it, then removes the focus so PDFium commits the value.</summary>

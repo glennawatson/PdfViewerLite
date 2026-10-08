@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 
 namespace PdfViewerLite.Core.Signatures.Signing;
 
@@ -49,9 +50,8 @@ internal static class PdfReader
     /// <param name="file">The file.</param>
     /// <returns>The structure.</returns>
     /// <exception cref="InvalidDataException">The file is too damaged to read.</exception>
-    internal static PdfStructure Read(byte[] file)
+    internal static PdfStructure Read(ReadOnlyMemory<byte> file)
     {
-        ArgumentNullException.ThrowIfNull(file);
         try
         {
             var structure = ReadCrossReferences(file);
@@ -68,6 +68,20 @@ internal static class PdfReader
         return PdfRepair.Rebuild(file);
     }
 
+    /// <summary>Makes a structure over a file's bytes, using the array behind them when they start it.</summary>
+    /// <param name="file">The file.</param>
+    /// <param name="entries">The object locations.</param>
+    /// <param name="trailer">The trailer dictionary.</param>
+    /// <param name="startXref">The offset of the newest cross-reference section, or -1.</param>
+    /// <param name="repaired">Whether the locations were rebuilt by scanning a damaged file.</param>
+    /// <returns>The structure.</returns>
+    internal static PdfStructure Structure(ReadOnlyMemory<byte> file, Dictionary<int, XrefEntry> entries, byte[] trailer, long startXref, bool repaired)
+    {
+        // A view that does not start its array, which callers here never pass, is copied once.
+        var buffer = MemoryMarshal.TryGetArray(file, out var segment) && segment.Offset == 0 ? segment.Array! : file.ToArray();
+        return new(buffer, file.Length, entries, trailer, startXref) { Repaired = repaired };
+    }
+
     /// <summary>Gets the decoded bytes of an object stream.</summary>
     /// <param name="structure">The file structure.</param>
     /// <param name="number">The object stream's number.</param>
@@ -80,8 +94,8 @@ internal static class PdfReader
             return cached;
         }
 
-        var dictionary = SkipObjectHeader(structure.File, (int)structure.Entries[number].Location);
-        var decoded = DecodeStream(structure.File, dictionary, structure);
+        var dictionary = SkipObjectHeader(structure.File.Span, (int)structure.Entries[number].Location);
+        var decoded = DecodeStream(structure.File.Span, dictionary, structure);
         structure.ObjectStreams[number] = decoded;
         return decoded;
     }
@@ -102,13 +116,14 @@ internal static class PdfReader
         if (entry.Type == 1)
         {
             var file = structure.File;
-            var value = SkipObjectHeader(file, (int)entry.Location);
-            return file.AsMemory(value, PdfSyntax.ValueEnd(file, value) - value);
+            var value = SkipObjectHeader(file.Span, (int)entry.Location);
+            return file.Slice(value, PdfSyntax.ValueEnd(file.Span, value) - value);
         }
 
         var stream = GetObjectStream(structure, (int)entry.Location);
-        var dictionary = SkipObjectHeader(structure.File, (int)structure.Entries[(int)entry.Location].Location);
-        _ = PdfSyntax.ReadLong(structure.File, PdfSyntax.FindKey(structure.File, dictionary, "First"u8), out var first);
+        var container = structure.File.Span;
+        var dictionary = SkipObjectHeader(container, (int)structure.Entries[(int)entry.Location].Location);
+        _ = PdfSyntax.ReadLong(container, PdfSyntax.FindKey(container, dictionary, "First"u8), out var first);
         var header = 0;
         long objectOffset = -1;
         for (var i = 0; i <= entry.Index && header >= 0; i++)
@@ -137,12 +152,13 @@ internal static class PdfReader
             : data.Slice(index, PdfSyntax.ValueEnd(data.Span, index) - index);
 
     /// <summary>Reads the structure from the file's cross-reference sections.</summary>
-    /// <param name="file">The file.</param>
+    /// <param name="memory">The file.</param>
     /// <returns>The structure.</returns>
     /// <exception cref="InvalidDataException">The file's cross-reference information is damaged.</exception>
-    private static PdfStructure ReadCrossReferences(byte[] file)
+    private static PdfStructure ReadCrossReferences(ReadOnlyMemory<byte> memory)
     {
-        var marker = file.AsSpan().LastIndexOf("startxref"u8);
+        var file = memory.Span;
+        var marker = file.LastIndexOf("startxref"u8);
         if (marker < 0 || PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, marker + "startxref"u8.Length), out var start) < 0)
         {
             throw new InvalidDataException("The file has no cross-reference information.");
@@ -167,7 +183,7 @@ internal static class PdfReader
             PushReference(file, dictionary, "XRefStm"u8, pending);
         }
 
-        return trailer is null ? throw new InvalidDataException("The file's cross-reference information is damaged.") : new(file, entries, trailer, start);
+        return trailer is null ? throw new InvalidDataException("The file's cross-reference information is damaged.") : Structure(memory, entries, trailer, start, false);
     }
 
     /// <summary>Queues the section a trailer key points at.</summary>
@@ -175,7 +191,7 @@ internal static class PdfReader
     /// <param name="dictionary">The trailer.</param>
     /// <param name="key">The key.</param>
     /// <param name="pending">The sections still to read.</param>
-    private static void PushReference(byte[] file, byte[] dictionary, ReadOnlySpan<byte> key, Stack<long> pending)
+    private static void PushReference(ReadOnlySpan<byte> file, byte[] dictionary, ReadOnlySpan<byte> key, Stack<long> pending)
     {
         var value = PdfSyntax.FindKey(dictionary, 0, key);
         if (value >= 0 && PdfSyntax.ReadLong(dictionary, value, out var offset) >= 0 && offset < file.Length)
@@ -189,10 +205,10 @@ internal static class PdfReader
     /// <param name="offset">The section's offset.</param>
     /// <param name="entries">The entries so far.</param>
     /// <returns>The section's trailer dictionary.</returns>
-    private static byte[] ReadSection(byte[] file, int offset, Dictionary<int, XrefEntry> entries)
+    private static byte[] ReadSection(ReadOnlySpan<byte> file, int offset, Dictionary<int, XrefEntry> entries)
     {
         var index = PdfSyntax.SkipSpace(file, offset);
-        return file.AsSpan(index).StartsWith("xref"u8) ? ReadTable(file, index + "xref"u8.Length, entries) : ReadStream(file, index, entries);
+        return file[index..].StartsWith("xref"u8) ? ReadTable(file, index + "xref"u8.Length, entries) : ReadStream(file, index, entries);
     }
 
     /// <summary>Reads a classic cross-reference table and its trailer.</summary>
@@ -201,15 +217,15 @@ internal static class PdfReader
     /// <param name="entries">The entries so far.</param>
     /// <returns>The trailer dictionary.</returns>
     /// <exception cref="InvalidDataException">The table is damaged.</exception>
-    private static byte[] ReadTable(byte[] file, int index, Dictionary<int, XrefEntry> entries)
+    private static byte[] ReadTable(ReadOnlySpan<byte> file, int index, Dictionary<int, XrefEntry> entries)
     {
         while (true)
         {
             index = PdfSyntax.SkipSpace(file, index);
-            if (file.AsSpan(index).StartsWith("trailer"u8))
+            if (file[index..].StartsWith("trailer"u8))
             {
                 var dictionary = PdfSyntax.SkipSpace(file, index + "trailer"u8.Length);
-                return file[dictionary..PdfSyntax.ValueEnd(file, dictionary)];
+                return file[dictionary..PdfSyntax.ValueEnd(file, dictionary)].ToArray();
             }
 
             index = PdfSyntax.ReadLong(file, index, out var first);
@@ -240,10 +256,10 @@ internal static class PdfReader
     /// <param name="index">The stream object's first byte.</param>
     /// <param name="entries">The entries so far.</param>
     /// <returns>The stream's dictionary, which serves as the trailer.</returns>
-    private static byte[] ReadStream(byte[] file, int index, Dictionary<int, XrefEntry> entries)
+    private static byte[] ReadStream(ReadOnlySpan<byte> file, int index, Dictionary<int, XrefEntry> entries)
     {
         var dictionary = SkipObjectHeader(file, index);
-        var trailer = file[dictionary..PdfSyntax.ValueEnd(file, dictionary)];
+        var trailer = file[dictionary..PdfSyntax.ValueEnd(file, dictionary)].ToArray();
         Span<int> widths = stackalloc int[XrefFields];
         var cursor = PdfSyntax.FindKey(file, dictionary, "W"u8) + 1;
         for (var i = 0; i < XrefFields; i++)
@@ -261,7 +277,7 @@ internal static class PdfReader
             return trailer;
         }
 
-        var ranges = file.AsSpan(indexArray + 1, PdfSyntax.ValueEnd(file, indexArray) - indexArray - Brackets);
+        var ranges = file.Slice(indexArray + 1, PdfSyntax.ValueEnd(file, indexArray) - indexArray - Brackets);
         var rangeCursor = 0;
         var row = 0;
         while (true)
@@ -319,12 +335,12 @@ internal static class PdfReader
     /// <param name="offset">The object's offset.</param>
     /// <returns>The value's first byte.</returns>
     /// <exception cref="InvalidDataException">The header is missing.</exception>
-    private static int SkipObjectHeader(byte[] file, int offset)
+    private static int SkipObjectHeader(ReadOnlySpan<byte> file, int offset)
     {
         var index = PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, offset), out _);
         index = index < 0 ? -1 : PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, index), out _);
         index = index < 0 ? -1 : PdfSyntax.SkipSpace(file, index);
-        if (index < 0 || index >= file.Length || !file.AsSpan(index).StartsWith("obj"u8))
+        if (index < 0 || index >= file.Length || !file[index..].StartsWith("obj"u8))
         {
             throw new InvalidDataException($"No object at offset {offset}.");
         }
@@ -339,11 +355,11 @@ internal static class PdfReader
     /// <returns>The decoded bytes.</returns>
     /// <exception cref="NotSupportedException">The stream uses a filter other than Flate.</exception>
     /// <exception cref="InvalidDataException">The stream is damaged.</exception>
-    private static byte[] DecodeStream(byte[] file, int dictionary, PdfStructure? structure)
+    private static byte[] DecodeStream(ReadOnlySpan<byte> file, int dictionary, PdfStructure? structure)
     {
         var end = PdfSyntax.ValueEnd(file, dictionary);
         var index = PdfSyntax.SkipSpace(file, end);
-        if (!file.AsSpan(index).StartsWith("stream"u8))
+        if (!file[index..].StartsWith("stream"u8))
         {
             throw new InvalidDataException("A stream is damaged.");
         }
@@ -353,17 +369,17 @@ internal static class PdfReader
         var length = ReadLength(file, dictionary, structure);
         if (length < 0 || index + length > file.Length)
         {
-            length = file.AsSpan(index).IndexOf("endstream"u8);
+            length = file[index..].IndexOf("endstream"u8);
         }
 
-        var raw = file.AsSpan(index, (int)length);
+        var raw = file.Slice(index, (int)length);
         var filter = PdfSyntax.FindKey(file, dictionary, "Filter"u8);
         if (filter < 0)
         {
             return raw.ToArray();
         }
 
-        var filterText = file.AsSpan(filter, PdfSyntax.ValueEnd(file, filter) - filter);
+        var filterText = file.Slice(filter, PdfSyntax.ValueEnd(file, filter) - filter);
         if (filterText.IndexOf("FlateDecode"u8) < 0 || filterText.Count((byte)'/') > 1)
         {
             throw new NotSupportedException("This PDF stores its structure in a way the signer does not support yet.");
@@ -382,7 +398,7 @@ internal static class PdfReader
     /// <param name="dictionary">The stream dictionary.</param>
     /// <param name="structure">The structure, or <see langword="null"/>.</param>
     /// <returns>The length, or -1 when unknown.</returns>
-    private static long ReadLength(byte[] file, int dictionary, PdfStructure? structure)
+    private static long ReadLength(ReadOnlySpan<byte> file, int dictionary, PdfStructure? structure)
     {
         var value = PdfSyntax.FindKey(file, dictionary, "Length"u8);
         if (value < 0)
@@ -404,7 +420,7 @@ internal static class PdfReader
     /// <param name="dictionary">The stream dictionary.</param>
     /// <param name="data">The inflated bytes.</param>
     /// <returns>The original bytes.</returns>
-    private static byte[] Unpredict(byte[] file, int dictionary, byte[] data)
+    private static byte[] Unpredict(ReadOnlySpan<byte> file, int dictionary, byte[] data)
     {
         var columns = GetPngColumns(file, dictionary);
         if (columns <= 0)
@@ -427,7 +443,7 @@ internal static class PdfReader
     /// <param name="file">The file.</param>
     /// <param name="dictionary">The stream dictionary.</param>
     /// <returns>The columns, or 0 when the stream is not PNG-predicted.</returns>
-    private static int GetPngColumns(byte[] file, int dictionary)
+    private static int GetPngColumns(ReadOnlySpan<byte> file, int dictionary)
     {
         var parameters = PdfSyntax.FindKey(file, dictionary, "DecodeParms"u8);
         if (parameters < 0 || file[parameters] != (byte)'<')

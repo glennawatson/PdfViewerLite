@@ -18,7 +18,7 @@ internal static class PdfRepair
     internal static bool IsConsistent(PdfStructure structure)
     {
         ArgumentNullException.ThrowIfNull(structure);
-        var file = structure.File;
+        var file = structure.File.Span;
         foreach (var (number, entry) in structure.Entries)
         {
             if (entry.Type == XrefEntry.InUse && (entry.Location < 0 || entry.Location >= file.Length || ObjectNumberAt(file, (int)entry.Location) != number))
@@ -36,12 +36,12 @@ internal static class PdfRepair
     }
 
     /// <summary>Rebuilds a structure by scanning the whole file for <c>N G obj</c> headers.</summary>
-    /// <param name="file">The file.</param>
+    /// <param name="memory">The file.</param>
     /// <returns>The rebuilt structure, marked as repaired.</returns>
     /// <exception cref="InvalidDataException">No catalog can be found.</exception>
-    internal static PdfStructure Rebuild(byte[] file)
+    internal static PdfStructure Rebuild(ReadOnlyMemory<byte> memory)
     {
-        ArgumentNullException.ThrowIfNull(file);
+        var file = memory.Span;
         var entries = new Dictionary<int, XrefEntry>();
         var catalog = -1;
         for (var i = 0; i < file.Length; i++)
@@ -56,7 +56,7 @@ internal static class PdfRepair
             catalog = IsType(file, i, "Catalog"u8) ? number : catalog;
         }
 
-        var structure = new PdfStructure(file, entries, FindTrailer(file, catalog), -1) { Repaired = true };
+        var structure = PdfReader.Structure(memory, entries, FindTrailer(file, catalog), -1, true);
         AddCompressedObjects(structure);
         return structure;
     }
@@ -66,17 +66,16 @@ internal static class PdfRepair
     /// <param name="catalog">The catalog's object number, or -1.</param>
     /// <returns>The trailer dictionary.</returns>
     /// <exception cref="InvalidDataException">Neither a trailer nor a catalog exists.</exception>
-    private static byte[] FindTrailer(byte[] file, int catalog)
+    private static byte[] FindTrailer(ReadOnlySpan<byte> file, int catalog)
     {
-        var span = file.AsSpan();
-        var end = span.Length;
-        while (end > 0 && span[..end].LastIndexOf("trailer"u8) is var at and >= 0)
+        var end = file.Length;
+        while (end > 0 && file[..end].LastIndexOf("trailer"u8) is var at and >= 0)
         {
             var dictionary = PdfSyntax.SkipSpace(file, at + "trailer"u8.Length);
             var trailer = file[dictionary..PdfSyntax.ValueEnd(file, dictionary)];
             if (trailer.Length > 1 && PdfSyntax.FindKey(trailer, 0, "Root"u8) >= 0)
             {
-                return trailer;
+                return trailer.ToArray();
             }
 
             end = at;
@@ -91,7 +90,7 @@ internal static class PdfRepair
     /// <param name="structure">The structure being rebuilt.</param>
     private static void AddCompressedObjects(PdfStructure structure)
     {
-        var file = structure.File;
+        var file = structure.File.Span;
         var containers = new List<int>();
         foreach (var (number, entry) in structure.Entries)
         {
@@ -134,12 +133,12 @@ internal static class PdfRepair
     /// <param name="file">The file.</param>
     /// <param name="offset">Where the header should start.</param>
     /// <returns>The number, or -1 when there is no header there.</returns>
-    private static int ObjectNumberAt(byte[] file, int offset)
+    private static int ObjectNumberAt(ReadOnlySpan<byte> file, int offset)
     {
         var index = PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, offset), out var number);
         index = index < 0 || index >= file.Length || !PdfSyntax.IsSpace(file[index]) ? -1 : PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, index), out _);
         index = index < 0 ? -1 : PdfSyntax.SkipSpace(file, index);
-        var isHeader = index >= 0 && file.AsSpan(index).StartsWith("obj"u8) && (index + "obj"u8.Length >= file.Length || !char.IsAsciiLetterOrDigit((char)file[index + "obj"u8.Length]));
+        var isHeader = index >= 0 && file[index..].StartsWith("obj"u8) && (index + "obj"u8.Length >= file.Length || !char.IsAsciiLetterOrDigit((char)file[index + "obj"u8.Length]));
         return isHeader && number <= int.MaxValue ? (int)number : -1;
     }
 
@@ -147,7 +146,7 @@ internal static class PdfRepair
     /// <param name="file">The file.</param>
     /// <param name="index">The index.</param>
     /// <returns><see langword="true"/> when a token starts there.</returns>
-    private static bool IsTokenStart(byte[] file, int index) =>
+    private static bool IsTokenStart(ReadOnlySpan<byte> file, int index) =>
         char.IsAsciiDigit((char)file[index]) && (index == 0 || PdfSyntax.IsSpace(file[index - 1]) || PdfSyntax.IsDelimiter(file[index - 1]));
 
     /// <summary>Determines whether the object at an offset is a dictionary whose <c>/Type</c> is a name.</summary>
@@ -155,7 +154,7 @@ internal static class PdfRepair
     /// <param name="offset">The object's offset.</param>
     /// <param name="type">The type name without its slash.</param>
     /// <returns><see langword="true"/> when it is.</returns>
-    private static bool IsType(byte[] file, int offset, ReadOnlySpan<byte> type)
+    private static bool IsType(ReadOnlySpan<byte> file, int offset, ReadOnlySpan<byte> type)
     {
         var index = PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, offset), out _);
         index = index < 0 ? -1 : PdfSyntax.ReadLong(file, PdfSyntax.SkipSpace(file, index), out _);
@@ -166,6 +165,6 @@ internal static class PdfRepair
         }
 
         var value = PdfSyntax.FindKey(file, index, "Type"u8);
-        return value >= 0 && value < file.Length && file[value] == (byte)'/' && file.AsSpan(value + 1, PdfSyntax.TokenEnd(file, value + 1) - value - 1).SequenceEqual(type);
+        return value >= 0 && value < file.Length && file[value] == (byte)'/' && file.Slice(value + 1, PdfSyntax.TokenEnd(file, value + 1) - value - 1).SequenceEqual(type);
     }
 }

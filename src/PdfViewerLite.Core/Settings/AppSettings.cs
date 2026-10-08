@@ -119,6 +119,12 @@ public sealed class AppSettings
     /// <summary>Gets or sets a value indicating whether words typed into form fields are checked for spelling.</summary>
     public bool CheckSpelling { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether fonts that cannot be saved in a PDF, by their licence or outlines, are
+    /// offered for text. Text in them shows on screen in that font and is saved in the closest built in font.
+    /// </summary>
+    public bool ShowPreviewOnlyFonts { get; set; }
+
     /// <summary>Gets the words the reader chose to keep, which are never marked as misspelled.</summary>
     [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
     public List<string> IgnoredWords { get; } = [];

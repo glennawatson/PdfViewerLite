@@ -189,4 +189,20 @@ internal static unsafe partial class NativeMethods
     /// <returns>Non-zero when selected.</returns>
     [LibraryImport(Library)]
     internal static partial int FPDFAnnot_IsOptionSelected(PdfiumFormHandle form, nint annotation, int index);
+
+    /// <summary>Native <c>FPDFAnnot_GetFontSize</c> entry point: the font size a field's text is drawn at, 0 for auto.</summary>
+    /// <param name="form">The form.</param>
+    /// <param name="annotation">The widget.</param>
+    /// <param name="value">Receives the size.</param>
+    /// <returns>Non-zero on success.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_GetFontSize(PdfiumFormHandle form, nint annotation, out float value);
+
+    /// <summary>Native <c>FPDFAnnot_GetNumberValue</c> entry point: reads a number from the annotation's dictionary.</summary>
+    /// <param name="annotation">The annotation.</param>
+    /// <param name="key">The null terminated key.</param>
+    /// <param name="value">Receives the number.</param>
+    /// <returns>Non-zero when the key holds a number.</returns>
+    [LibraryImport(Library)]
+    internal static partial int FPDFAnnot_GetNumberValue(nint annotation, byte* key, out float value);
 }

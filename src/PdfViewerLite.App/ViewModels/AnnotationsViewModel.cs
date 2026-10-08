@@ -90,6 +90,12 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
                 .Skip(1)
                 .SubscribeSafe(_ => ApplyFilter(), OnError),
         ];
+        foreach (var subscription in WatchTextFormat())
+        {
+            _subscriptions.Add(subscription);
+        }
+
+        _ = LoadFontFamiliesAsync();
     }
 
     /// <summary>Gets the stamps offered, in menu order.</summary>
@@ -198,7 +204,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
     public string LineWidthName => $"Line: {NameOf(LineWidths, LineWidth)}";
 
     /// <summary>Gets or sets the text size of new text boxes and callouts, in points.</summary>
-    [Reactive(nameof(FontSizeName))]
+    [Reactive(nameof(FontSizeName), nameof(CurrentTextFormat))]
     public partial float FontSize { get; set; } = MediumText;
 
     /// <summary>Gets the text size's name, shown on its button.</summary>
@@ -628,6 +634,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
     [ReactiveCommand]
     private void Done()
     {
+        _ = CommitText();
         Tool = AnnotationTool.Select;
         IsAnnotating = false;
     }

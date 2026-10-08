@@ -301,6 +301,7 @@ public sealed partial class PageCanvas : Control
         var viewport = new Rect(_scroller.Offset.X, _scroller.Offset.Y, _scroller.Viewport.Width, _scroller.Viewport.Height);
         DrawPages(context, new(tab, document, tab.RenderHub, viewport, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1, tab.CanvasClient.Advance()));
         DrawAnnotationOverlay(context, tab);
+        DrawRegions(context, tab, viewport);
         DrawMeasurement(context, tab);
         DrawArea(context);
         DrawCaret(context, tab);
@@ -524,6 +525,7 @@ public sealed partial class PageCanvas : Control
     {
         ArgumentNullException.ThrowIfNull(e);
         var position = e.GetPosition(this);
+        HoverRegion(position);
         if (ContinuePageTool(e, position) || ContinueMeasure(position) || ContinueStroke(position))
         {
             return;
@@ -581,7 +583,9 @@ public sealed partial class PageCanvas : Control
     private void HandleKeyDown(KeyEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
-        if (HandleNavigationKey(e))
+
+        // A focused form field takes Space and Tab before they scroll or move between pages.
+        if (HandleFormKey(e) || HandleNavigationKey(e))
         {
             e.Handled = true;
             return;

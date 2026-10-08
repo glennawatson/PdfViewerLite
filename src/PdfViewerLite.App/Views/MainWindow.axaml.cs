@@ -589,7 +589,7 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
             return;
         }
 
-        if (Shortcuts.TryRun(viewModel, e))
+        if (Shortcuts.TryRun(viewModel, e, FocusManager?.GetFocusedElement() is TextBox))
         {
             e.Handled = true;
             return;

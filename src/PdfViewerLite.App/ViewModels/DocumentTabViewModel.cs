@@ -149,10 +149,17 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _subscriptions.Add(this.WhenChanged(static x => x.SelectedOutlineItem)
             .Skip(1)
             .SubscribeSafe(OnOutlineItemSelected, OnError));
+        _isTextFormatShownHelper = this.WhenChanged(static vm => vm.Annotations.IsAnnotating, static vm => vm.FillAndSign.IsActive, static (annotating, filling) => annotating || filling)
+            .ToProperty(this, static vm => vm.IsTextFormatShown);
+        _subscriptions.Add(_isTextFormatShownHelper);
     }
 
     /// <summary>Gets the width of the hover preview of a tab.</summary>
     public static double PreviewWidth => PreviewSize;
+
+    /// <summary>Gets a value indicating whether the text format row is shown: with the Annotate and Fill &amp; Sign tools.</summary>
+    [ObservableAsProperty]
+    public partial bool IsTextFormatShown { get; }
 
     /// <summary>Gets the requests for the canvas to scroll.</summary>
     public AsObservableSignal<NavigationRequest> NavigationRequests{ get; }
@@ -360,6 +367,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
 
     /// <summary>Gets the name recorded as the author of new comments: the one chosen in Preferences, or empty for the user name.</summary>
     public string CommentAuthor => _services.Settings.CommentAuthor;
+
+    /// <summary>Gets a value indicating whether fonts that cannot be saved in a PDF are offered for typing.</summary>
+    public bool ShowPreviewOnlyFonts => _services.Settings.ShowPreviewOnlyFonts;
 
     /// <summary>Gets the measuring tool.</summary>
     public MeasureViewModel Measure => _measure ??= new(this);
