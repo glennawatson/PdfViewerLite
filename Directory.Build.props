@@ -29,13 +29,15 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors>nullable;CS4014</WarningsAsErrors>
     <Deterministic>true</Deterministic>
+    <!-- Only HyperPdfLibrary ships as a NuGet package; it opts back in. -->
+    <IsPackable>false</IsPackable>
 
     <IsTestProject Condition="'$(IsTestProject)' == ''">$([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectName)', '(^|\.)Tests$'))</IsTestProject>
     <IsBenchmarkProject Condition="'$(IsBenchmarkProject)' == ''">$(MSBuildProjectName.EndsWith('Benchmarks'))</IsBenchmarkProject>
   </PropertyGroup>
 
   <!-- .NET 11 compiles async methods to runtime async state machines. -->
-  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
+  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0')) and '$(DisableRuntimeAsync)' != 'true'">
     <Features>$(Features);runtime-async=on</Features>
   </PropertyGroup>
 

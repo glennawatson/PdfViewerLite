@@ -173,11 +173,11 @@ public sealed class WindowsPrintService : IPrintService
     }
 
     /// <inheritdoc/>
-    public Task<PrintOutcome> SubmitAsync(string filePath, string title, PrintJobOptions options, CancellationToken cancellationToken)
+    public async Task<PrintOutcome> SubmitAsync(string filePath, string title, PrintJobOptions options, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(filePath);
         ArgumentNullException.ThrowIfNull(title);
-        return Task.Run(() => Submit(filePath, title, options, cancellationToken), cancellationToken);
+        return await Task.Run(() => SubmitJobAsync(filePath, title, options, cancellationToken), cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -194,7 +194,7 @@ public sealed class WindowsPrintService : IPrintService
 
         try
         {
-            var outcome = await Task.Run(() => Print(deviceContext, filePath, title, false, cancellationToken), cancellationToken).ConfigureAwait(false);
+            var outcome = await Task.Run(() => PrintDocumentAsync(deviceContext, filePath, title, false, cancellationToken), cancellationToken).ConfigureAwait(false);
             return outcome.Sent;
         }
         finally
@@ -406,24 +406,45 @@ public sealed class WindowsPrintService : IPrintService
         }
     }
 
+    /// <summary>Creates a device context with the selected printer settings.</summary>
+    /// <param name="printer">The printer name.</param>
+    /// <param name="settings">The merged DEVMODE.</param>
+    /// <returns>The device context, or zero on failure.</returns>
+    private static unsafe nint CreateDeviceContext(string printer, byte[] settings)
+    {
+        fixed (byte* devMode = settings)
+        {
+            return NativeMethods.CreateDC("WINSPOOL", printer, null, devMode);
+        }
+    }
+
+    /// <summary>Starts a named spooler job.</summary>
+    /// <param name="deviceContext">The printer's device context.</param>
+    /// <param name="title">The job title.</param>
+    /// <returns>The job identifier, or a non-positive error.</returns>
+    private static unsafe int StartDocument(nint deviceContext, string title)
+    {
+        fixed (char* name = title)
+        {
+            var info = new DocumentInfo((nint)name);
+            return NativeMethods.StartDoc(deviceContext, &info);
+        }
+    }
+
     /// <summary>Sends a document straight to a printer.</summary>
     /// <param name="filePath">The PDF.</param>
     /// <param name="title">The job title.</param>
     /// <param name="options">The printer and choices.</param>
     /// <param name="cancellationToken">Stops between pages.</param>
     /// <returns>What happened.</returns>
-    private unsafe PrintOutcome Submit(string filePath, string title, in PrintJobOptions options, CancellationToken cancellationToken)
+    private async Task<PrintOutcome> SubmitJobAsync(string filePath, string title, PrintJobOptions options, CancellationToken cancellationToken)
     {
         if (BuildSettings(options) is not { } settings)
         {
             return new(false, $"The printer {options.Printer} could not be opened.");
         }
 
-        nint deviceContext;
-        fixed (byte* devMode = settings)
-        {
-            deviceContext = NativeMethods.CreateDC("WINSPOOL", options.Printer, null, devMode);
-        }
+        var deviceContext = CreateDeviceContext(options.Printer, settings);
 
         if (deviceContext == 0)
         {
@@ -432,7 +453,7 @@ public sealed class WindowsPrintService : IPrintService
 
         try
         {
-            return Print(deviceContext, filePath, title, !options.Colour, cancellationToken);
+            return await PrintDocumentAsync(deviceContext, filePath, title, !options.Colour, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -447,16 +468,11 @@ public sealed class WindowsPrintService : IPrintService
     /// <param name="grayscale">Whether to draw in grey.</param>
     /// <param name="cancellationToken">Stops between pages, cancelling the job.</param>
     /// <returns>What happened.</returns>
-    private unsafe PrintOutcome Print(nint deviceContext, string filePath, string title, bool grayscale, CancellationToken cancellationToken)
+    private async Task<PrintOutcome> PrintDocumentAsync(nint deviceContext, string filePath, string title, bool grayscale, CancellationToken cancellationToken)
     {
         using var document = _engine.Open(filePath, null);
         var sizes = document.GetPageSizes();
-        int job;
-        fixed (char* name = title)
-        {
-            var info = new DocumentInfo((nint)name);
-            job = NativeMethods.StartDoc(deviceContext, &info);
-        }
+        var job = StartDocument(deviceContext, title);
 
         if (job <= 0)
         {
@@ -469,19 +485,28 @@ public sealed class WindowsPrintService : IPrintService
             NativeMethods.GetDeviceCaps(deviceContext, HorizontalResolution),
             NativeMethods.GetDeviceCaps(deviceContext, VerticalResolution));
         var flags = RenderFlags.Printing | RenderFlags.Annotations | (grayscale ? RenderFlags.Grayscale : RenderFlags.None);
-        for (var page = 0; page < sizes.Length; page++)
+        try
         {
-            if (cancellationToken.IsCancellationRequested || NativeMethods.StartPage(deviceContext) <= 0)
+            for (var page = 0; page < sizes.Length; page++)
             {
-                _ = NativeMethods.AbortDoc(deviceContext);
-                return new(false, "Printing stopped.");
+                await document.PreparePageAsync(page, cancellationToken).ConfigureAwait(false);
+                if (cancellationToken.IsCancellationRequested || NativeMethods.StartPage(deviceContext) <= 0)
+                {
+                    _ = NativeMethods.AbortDoc(deviceContext);
+                    return new(false, "Printing stopped.");
+                }
+
+                DrawPage(deviceContext, document, page, sizes[page], device, flags);
+                _ = NativeMethods.EndPage(deviceContext);
             }
 
-            DrawPage(deviceContext, document, page, sizes[page], device, flags);
-            _ = NativeMethods.EndPage(deviceContext);
+            return NativeMethods.EndDoc(deviceContext) > 0 ? new(true, string.Empty) : new(false, "The printer did not finish the job.");
         }
-
-        return NativeMethods.EndDoc(deviceContext) > 0 ? new(true, string.Empty) : new(false, "The printer did not finish the job.");
+        catch
+        {
+            _ = NativeMethods.AbortDoc(deviceContext);
+            throw;
+        }
     }
 
     /// <summary>A printer's resolution and printable area.</summary>

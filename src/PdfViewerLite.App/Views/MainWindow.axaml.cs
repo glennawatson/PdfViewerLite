@@ -343,6 +343,8 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ShowPropertiesInteraction, ShowPropertiesAsync));
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ConfirmInteraction, ConfirmAsync));
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ShowPreferencesInteraction, ShowPreferencesAsync));
+        disposables.Add(this.BindCommand(ViewModel, static vm => vm.LicencesCommand, static v => v.LicencesMenuItem));
+        disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ShowLicencesInteraction, ShowLicencesAsync));
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.ShowFolderSearchInteraction, ShowFolderSearchAsync));
         disposables.Add(this.BindInteraction(ViewModel, static vm => vm.NewWindowInteraction, ShowNewWindowAsync));
         disposables.Add(this.BindCommand(ViewModel, static vm => vm.NewWindowCommand, static v => v.NewWindowMenuItem));
@@ -483,6 +485,15 @@ public sealed partial class MainWindow : ReactiveUI.Avalonia.ReactiveWindow<Main
     private async Task ShowPreferencesAsync(IInteractionContext<PreferencesViewModel, RxVoid> context)
     {
         await new PreferencesWindow { ViewModel = context.Input }.ShowDialog(this);
+        context.SetOutput(RxVoid.Default);
+    }
+
+    /// <summary>Shows the About and Licences window.</summary>
+    /// <param name="context">The interaction context.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowLicencesAsync(IInteractionContext<LicencesViewModel, RxVoid> context)
+    {
+        await new LicencesWindow { ViewModel = context.Input }.ShowDialog(this);
         context.SetOutput(RxVoid.Default);
     }
 

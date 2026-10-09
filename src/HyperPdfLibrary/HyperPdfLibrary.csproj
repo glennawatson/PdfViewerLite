@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>A fully managed, allocation-conscious PDF reader, renderer and annotation writer. Rasterises through SkiaSharp.</Description>
+    <RootNamespace>HyperPdfLibrary</RootNamespace>
+    <!-- Without optimisation, Roslyn builds a new T[] on every access of a "static ReadOnlySpan<T> X => [...]" table
+         whose T is wider than a byte (measured: 72 bytes per access, 1.3 GB per page in the JBIG2 decoder). Tests build
+         Debug, so they would measure the engine's allocations wrongly. Release is unaffected. -->
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <!-- NuGet package. Authors, licence and repository come from Directory.Build.props; MinVer sets the version. -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>HyperPdfLibrary</PackageId>
+    <Title>HyperPdfLibrary</Title>
+    <PackageTags>pdf;pdf-renderer;pdf-parser;pdf-text;annotations;skiasharp;aot</PackageTags>
+    <PackageProjectUrl>https://github.com/glennawatson/PdfViewerLite</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- The PDB is embedded in the assembly (DebugType embedded), so there is no separate symbol package. -->
+    <IncludeSymbols>false</IncludeSymbols>
+    <EnablePackageValidation>true</EnablePackageValidation>
+  </PropertyGroup>
+
+  <!-- .NET 11 packages such as System.Security.Cryptography.Pkcs ship as RC under the go-live licence, so a stable
+       pack of a net11-targeting package trips NU5104. Directory.Build.props has already set TargetFrameworks here. -->
+  <PropertyGroup Condition="$(TargetFrameworks.Contains('net11.0'))">
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
+  </PropertyGroup>
+
+  <!-- The NuGet package can be loaded by Mono hosts (Blazor WebAssembly, some mobile targets) that may not run
+       runtime-async methods, so packing keeps compiler state machines. The viewer never targets WebAssembly, so the
+       build it references keeps the runtime async that Directory.Build.props turns on for net11.0.
+       `dotnet pack` sets _IsPacking; HyperPdfPackageBuild=true forces the package codegen in any other build, and the
+       NuGet release workflow (which builds before it packs) is detected from GITHUB_WORKFLOW_REF. -->
+  <PropertyGroup Condition="'$(_IsPacking)' == 'true' or '$(HyperPdfPackageBuild)' == 'true' or $(GITHUB_WORKFLOW_REF.Contains('/release-nuget.yml'))">
+    <Features>$(Features.Replace('runtime-async=on', 'runtime-async=off'))</Features>
+  </PropertyGroup>
+
+  <!-- Recompile when the runtime-async setting changes between a viewer build and a pack in the same folder. -->
+  <ItemGroup>
+    <CoreCompileCache Include="$(Features)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../docs/hyperpdf/PACKAGE-README.md" Pack="true" PackagePath="README.md" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../../HyperPDFViewerIcon.png" Pack="true" PackagePath="icon.png" Visible="false" />
+    <None Include="Fonts\Data\CMaps\LICENSE.txt" Pack="true" PackagePath="CMaps-LICENSE.txt" Visible="false" />
+    <None Include="Fonts\Data\Faces\LICENSE.txt" Pack="true" PackagePath="Faces-LICENSE.txt" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="Refit" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\Data\CMaps\LICENSE.txt" LogicalName="HyperPdfLibrary.CMaps.LICENSE.txt" />
+    <EmbeddedResource Include="Fonts\Data\Faces\LICENSE.txt" LogicalName="HyperPdfLibrary.Faces.LICENSE.txt" />
+  </ItemGroup>
+
+  <!-- The notices of what the library ships: its packages and the font and CMap resource packs. The nupkg carries them as THIRD-PARTY-NOTICES.md. -->
+  <PropertyGroup>
+    <NoticesResourceName>HyperPdfLibrary.ThirdPartyNotices.md</NoticesResourceName>
+    <NoticesComponents>open-font-pack;adobe-cmaps</NoticesComponents>
+  </PropertyGroup>
+  <Import Project="..\..\licenses\ThirdPartyNotices.targets" />
+  <ItemGroup>
+    <None Include="$(NoticesFile)" Pack="true" PackagePath="THIRD-PARTY-NOTICES.md" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="HyperPdfLibrary.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.HyperPdf" />
+    <InternalsVisibleTo Include="PdfViewerLite.HyperPdf.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.Benchmarks" />
+  </ItemGroup>
+</Project>

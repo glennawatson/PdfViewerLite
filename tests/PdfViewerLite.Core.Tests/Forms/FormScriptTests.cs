@@ -15,6 +15,24 @@ public sealed class FormScriptTests
     /// <summary>The position of the currency-first flag.</summary>
     private const int CurrencyFirstArgument = 5;
 
+    /// <summary>The year of the date parsed.</summary>
+    private const int ParsedYear = 2026;
+
+    /// <summary>The month of the date parsed.</summary>
+    private const int ParsedMonth = 3;
+
+    /// <summary>The day of the date parsed.</summary>
+    private const int ParsedDay = 7;
+
+    /// <summary>The end of a selection inside "12345".</summary>
+    private const int SelectionEnd = 3;
+
+    /// <summary>The end of "12345".</summary>
+    private const int ValueEnd = 5;
+
+    /// <summary>A position past the end of "123".</summary>
+    private const int PastEnd = 9;
+
     /// <summary>The tolerance of calculated results.</summary>
     private const double Tolerance = 1e-9;
 
@@ -53,6 +71,12 @@ public sealed class FormScriptTests
     [Arguments("AFPercent_Format(1, 0);", "0.256", "25.6%")]
     [Arguments("AFDate_FormatEx(\"dd/mm/yyyy\");", "2026-03-07", "07/03/2026")]
     [Arguments("AFDate_FormatEx(\"mmm d, yyyy\");", "2026-03-07", "Mar 7, 2026")]
+    [Arguments("AFDate_Format(2);", "2026-03-07", "03/07/26")]
+    [Arguments("AFDate_Format(6);", "2026-03-07", "07-Mar-26")]
+    [Arguments("AFDate_Format(11);", "2026-03-07", "March 7, 2026")]
+    [Arguments("AFTime_FormatEx(\"HH:MM:ss\");", "13:45:09", "13:45:09")]
+    [Arguments("AFTime_Format(1);", "13:45", "1:45 PM")]
+    [Arguments("AFTime_Format(0);", "9:05 AM", "09:05")]
     [Arguments("AFSpecial_Format(2);", "0412345678", "(041) 234-5678")]
     [Arguments("AFSpecial_Format(3);", "123456789", "123-45-6789")]
     public async Task Formats(string script, string value, string expected) =>
@@ -74,6 +98,48 @@ public sealed class FormScriptTests
         await Assert.That(FormScriptEngine.Accepts(zip, "40000")).IsTrue();
         await Assert.That(FormScriptEngine.Accepts(zip, "4000")).IsFalse();
         await Assert.That(FormScriptEngine.Accepts(FormScript.None, "anything")).IsTrue();
+    }
+
+    /// <summary>Time fields accept real times in their format and refuse other text.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ChecksTimes()
+    {
+        var time = FormScript.Parse("AFTime_KeystrokeEx(\"h:MM tt\");");
+        var indexed = FormScript.Parse("AFTime_Keystroke(2);");
+
+        await Assert.That(time.Function).IsEqualTo(FormScriptFunction.Time);
+        await Assert.That(FormScriptEngine.Accepts(time, "1:45 PM")).IsTrue();
+        await Assert.That(FormScriptEngine.Accepts(time, "25:61")).IsFalse();
+        await Assert.That(FormScriptEngine.Accepts(indexed, "13:45:09")).IsTrue();
+        await Assert.That(FormScriptEngine.Accepts(indexed, "noon")).IsFalse();
+    }
+
+    /// <summary>A helper call ahead of the field's real call does not hide it.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task SkipsHelperCalls()
+    {
+        var script = FormScript.Parse("var merged = AFMergeChange(event); AFNumber_Keystroke(2, 0, 0, 0, \"\", true);");
+
+        await Assert.That(script.Function).IsEqualTo(FormScriptFunction.Number);
+        await Assert.That(FormScript.Parse("AFMergeChange(event);").Function).IsEqualTo(FormScriptFunction.Unknown);
+    }
+
+    /// <summary><c>AFParseDateEx</c> and <c>AFMergeChange</c> are available as engine helpers.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ParsesDatesAndMergesChanges()
+    {
+        var parsed = FormScriptEngine.TryParseDate("07/03/2026", "dd/mm/yyyy", out var date);
+
+        await Assert.That(parsed).IsTrue();
+        DateTimeOffset expected = new(ParsedYear, ParsedMonth, ParsedDay, 0, 0, 0, TimeSpan.Zero);
+        await Assert.That(date).IsEqualTo(expected);
+        await Assert.That(FormScriptEngine.TryParseDate("32/03/2026", "dd/mm/yyyy", out _)).IsFalse();
+        await Assert.That(FormScriptEngine.MergeChange("12345", 1, SelectionEnd, "ab")).IsEqualTo("1ab45");
+        await Assert.That(FormScriptEngine.MergeChange("12345", ValueEnd, ValueEnd, "6")).IsEqualTo("123456");
+        await Assert.That(FormScriptEngine.MergeChange("123", PastEnd, 0, "x")).IsEqualTo("x");
     }
 
     /// <summary>A range validation accepts values within its limits and explains a refusal.</summary>

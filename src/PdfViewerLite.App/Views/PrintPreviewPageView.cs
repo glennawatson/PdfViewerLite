@@ -42,6 +42,9 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <summary>The sizing subscription, owned until disposal so unloaded sheets can be measured.</summary>
     private readonly MultipleDisposable _sizing;
 
+    /// <summary>The current visible sheet's preparation.</summary>
+    private CancellationTokenSource? _preparation;
+
     /// <summary>The rendered sheet.</summary>
     private WriteableBitmap? _bitmap;
 
@@ -72,8 +75,9 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
         // A sheet is an immutable record, so the view follows which one it shows.
         _ = this.WhenActivated(disposables =>
         {
-            disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(Show, OnError));
+            disposables.Add(this.WhenChanged(static v => v.ViewModel).SubscribeSafe(PrepareAndShow, OnError));
             disposables.Add(EmptyDisposable.Instance.DisposeWith(ReleaseBitmap));
+            disposables.Add(EmptyDisposable.Instance.DisposeWith(StopPreparation));
         });
     }
 
@@ -81,6 +85,7 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
     public void Dispose()
     {
         _sizing.Dispose();
+        StopPreparation();
         ReleaseBitmap();
     }
 
@@ -88,6 +93,62 @@ public sealed class PrintPreviewPageView : ReactiveUI.Avalonia.ReactiveUserContr
     /// <param name="error">The error.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void OnError(Exception error) => Trace.TraceError(error.ToString());
+
+    /// <summary>Prepares only the sheet this view currently displays.</summary>
+    /// <param name="sheet">The visible sheet.</param>
+    private void PrepareAndShow(PrintPreviewPage? sheet)
+    {
+        StopPreparation();
+        Show(null);
+        _caption.Text = sheet?.Caption;
+        if (sheet is null || sheet.Document.IsDisposed)
+        {
+            return;
+        }
+
+        var source = new CancellationTokenSource();
+        _preparation = source;
+        _ = ShowAfterPreparationAsync(sheet, source);
+    }
+
+    /// <summary>Renders a prepared sheet if the view still displays it.</summary>
+    /// <param name="sheet">The requested sheet.</param>
+    /// <param name="source">Cancels preparation when the view changes or deactivates.</param>
+    /// <returns>A task completing after the sheet is drawn or cancelled.</returns>
+    private async Task ShowAfterPreparationAsync(PrintPreviewPage sheet, CancellationTokenSource source)
+    {
+        try
+        {
+            await sheet.Document.PreparePageAsync(sheet.PageIndex, source.Token).ConfigureAwait(true);
+            if (ReferenceEquals(_preparation, source) && ReferenceEquals(ViewModel, sheet))
+            {
+                Show(sheet);
+            }
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested)
+        {
+            // Changing sheets or closing the view cancels the old sheet's preparation.
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            OnError(error);
+        }
+        finally
+        {
+            if (ReferenceEquals(_preparation, source))
+            {
+                StopPreparation();
+            }
+        }
+    }
+
+    /// <summary>Cancels preparation for a sheet the view no longer displays.</summary>
+    private void StopPreparation()
+    {
+        _preparation?.Cancel();
+        _preparation?.Dispose();
+        _preparation = null;
+    }
 
     /// <summary>Renders a sheet as it will print: white paper, annotations included.</summary>
     /// <param name="sheet">The sheet.</param>

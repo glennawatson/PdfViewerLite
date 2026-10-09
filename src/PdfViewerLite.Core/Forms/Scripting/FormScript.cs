@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -20,6 +22,27 @@ namespace PdfViewerLite.Core.Forms.Scripting;
 [DebuggerDisplay("FormScript: {Function}({Arguments.Count} arguments)")]
 public sealed partial record FormScript(FormScriptFunction Function, IReadOnlyList<string> Arguments, IReadOnlyList<string> Fields, string Expression)
 {
+    /// <summary>The built-in form functions the engine runs, by name.</summary>
+    private static readonly Dictionary<string, FormScriptFunction> Functions = new(StringComparer.Ordinal)
+    {
+        ["AFNumber_Format"] = FormScriptFunction.Number,
+        ["AFNumber_Keystroke"] = FormScriptFunction.Number,
+        ["AFPercent_Format"] = FormScriptFunction.Percent,
+        ["AFPercent_Keystroke"] = FormScriptFunction.Percent,
+        ["AFDate_Format"] = FormScriptFunction.Date,
+        ["AFDate_Keystroke"] = FormScriptFunction.Date,
+        ["AFDate_FormatEx"] = FormScriptFunction.Date,
+        ["AFDate_KeystrokeEx"] = FormScriptFunction.Date,
+        ["AFTime_Format"] = FormScriptFunction.Time,
+        ["AFTime_Keystroke"] = FormScriptFunction.Time,
+        ["AFTime_FormatEx"] = FormScriptFunction.Time,
+        ["AFTime_KeystrokeEx"] = FormScriptFunction.Time,
+        ["AFSpecial_Format"] = FormScriptFunction.Special,
+        ["AFSpecial_Keystroke"] = FormScriptFunction.Special,
+        ["AFRange_Validate"] = FormScriptFunction.Range,
+        ["AFSimple_Calculate"] = FormScriptFunction.Simple,
+    };
+
     /// <summary>Gets the script used when there is none, or it is not understood.</summary>
     public static FormScript None { get; } = new(FormScriptFunction.Unknown, [], [], string.Empty);
 
@@ -35,33 +58,9 @@ public sealed partial record FormScript(FormScriptFunction Function, IReadOnlyLi
 
         // PDF form editors write simplified field notation between these markers, ahead of the JavaScript it generates.
         var notation = NotationPattern().Match(javaScript);
-        if (notation.Success)
-        {
-            return new(FormScriptFunction.Expression, [], [], notation.Groups["expression"].Value.Trim());
-        }
-
-        var call = CallPattern().Match(javaScript);
-        if (!call.Success)
-        {
-            return None;
-        }
-
-        var function = FunctionOf(call.Groups["name"].Value);
-        if (function == FormScriptFunction.Unknown)
-        {
-            return None;
-        }
-
-        var arguments = new List<string>();
-        var fields = new List<string>();
-        ReadArguments(call.Groups["args"].Value, arguments, fields);
-        if (function == FormScriptFunction.Simple && fields.Count == 0 && arguments.Count > 1)
-        {
-            // The fields can also be one comma-separated string.
-            fields.AddRange(arguments[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
-        }
-
-        return new(function, arguments, fields, string.Empty);
+        return notation.Success
+            ? new(FormScriptFunction.Expression, [], [], notation.Groups["expression"].Value.Trim())
+            : FindCall(javaScript);
     }
 
     /// <summary>Gets an argument as a number, or a fallback when it is missing or not a number.</summary>
@@ -82,19 +81,86 @@ public sealed partial record FormScript(FormScriptFunction Function, IReadOnlyLi
     /// <returns>The flag; false when missing.</returns>
     public bool Flag(int index) => index < Arguments.Count && Arguments[index] is "true" or not ("false" or "0" or "");
 
+    /// <summary>
+    /// Finds the first call that sets a field's behaviour. Helpers such as <c>AFMergeChange</c> and <c>AFParseDateEx</c>
+    /// can come before it, and are skipped.
+    /// </summary>
+    /// <param name="javaScript">The field action's JavaScript.</param>
+    /// <returns>The recognised script, or <see cref="None"/>.</returns>
+    private static FormScript FindCall(string javaScript)
+    {
+        foreach (var call in (IEnumerable<Match>)CallPattern().Matches(javaScript))
+        {
+            var name = call.Groups["name"].Value;
+            var function = FunctionOf(name);
+            if (function != FormScriptFunction.Unknown)
+            {
+                return ReadCall(function, name, call.Groups["args"].Value);
+            }
+        }
+
+        return None;
+    }
+
+    /// <summary>Reads the arguments of a recognised call.</summary>
+    /// <param name="function">The function.</param>
+    /// <param name="name">The function's name.</param>
+    /// <param name="text">The text between the call's parentheses.</param>
+    /// <returns>The script.</returns>
+    private static FormScript ReadCall(FormScriptFunction function, string name, string text)
+    {
+        var arguments = new List<string>();
+        var fields = new List<string>();
+        ReadArguments(text, arguments, fields);
+        if (function == FormScriptFunction.Simple && fields.Count == 0 && arguments.Count > 1)
+        {
+            // The fields can also be one comma-separated string.
+            fields.AddRange(arguments[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        ResolveIndexedFormat(name, arguments);
+        return new(function, arguments, fields, string.Empty);
+    }
+
+    /// <summary>Reads the first argument as a whole number.</summary>
+    /// <param name="arguments">The arguments.</param>
+    /// <returns>The number; 0 when there is none.</returns>
+    private static int ReadIndex(List<string> arguments) =>
+        arguments.Count > 0 && int.TryParse(arguments[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
+
+    /// <summary>
+    /// Replaces the number that <c>AFDate_Format</c>, <c>AFDate_Keystroke</c>, <c>AFTime_Format</c> and <c>AFTime_Keystroke</c>
+    /// take with the format it stands for, as the engine only deals in format strings.
+    /// </summary>
+    /// <param name="name">The function's name.</param>
+    /// <param name="arguments">The arguments, changed in place.</param>
+    private static void ResolveIndexedFormat(string name, List<string> arguments)
+    {
+        if (IndexedFormat(name, ReadIndex(arguments)) is not { } format)
+        {
+            return;
+        }
+
+        arguments.Clear();
+        arguments.Add(format);
+    }
+
+    /// <summary>Gets the format a numbered style of a date or time function stands for.</summary>
+    /// <param name="name">The function's name.</param>
+    /// <param name="index">The style number.</param>
+    /// <returns>The format; <see langword="null"/> for functions that do not pick a format by number.</returns>
+    private static string? IndexedFormat(string name, int index) => name switch
+    {
+        "AFDate_Format" or "AFDate_Keystroke" => FormDates.DateFormatOf(index),
+        "AFTime_Format" or "AFTime_Keystroke" => FormDates.TimeFormatOf(index),
+        _ => null,
+    };
+
     /// <summary>Maps a built-in form function's name to what it does.</summary>
     /// <param name="name">The function's name.</param>
     /// <returns>The function, or unknown.</returns>
-    private static FormScriptFunction FunctionOf(string name) => name switch
-    {
-        "AFNumber_Format" or "AFNumber_Keystroke" => FormScriptFunction.Number,
-        "AFPercent_Format" or "AFPercent_Keystroke" => FormScriptFunction.Percent,
-        "AFDate_FormatEx" or "AFDate_KeystrokeEx" => FormScriptFunction.Date,
-        "AFSpecial_Format" or "AFSpecial_Keystroke" => FormScriptFunction.Special,
-        "AFRange_Validate" => FormScriptFunction.Range,
-        "AFSimple_Calculate" => FormScriptFunction.Simple,
-        _ => FormScriptFunction.Unknown,
-    };
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static FormScriptFunction FunctionOf(string name) => Functions.GetValueOrDefault(name, FormScriptFunction.Unknown);
 
     /// <summary>Splits a call's arguments into literals, gathering the strings of a <c>new Array(...)</c> as field names.</summary>
     /// <param name="text">The text between the call's parentheses.</param>

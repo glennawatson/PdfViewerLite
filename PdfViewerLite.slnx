@@ -3,9 +3,11 @@
     <Project Path="benchmarks/PdfViewerLite.Benchmarks/PdfViewerLite.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/HyperPdfLibrary/HyperPdfLibrary.csproj" />
     <Project Path="src/PdfViewerLite.App/PdfViewerLite.App.csproj" />
     <Project Path="src/PdfViewerLite.Core/PdfViewerLite.Core.csproj" />
     <Project Path="src/PdfViewerLite.Http/PdfViewerLite.Http.csproj" />
+    <Project Path="src/PdfViewerLite.HyperPdf/PdfViewerLite.HyperPdf.csproj" />
     <Project Path="src/PdfViewerLite.Ocr/PdfViewerLite.Ocr.csproj" />
     <Project Path="src/PdfViewerLite.Pdfium/PdfViewerLite.Pdfium.csproj" />
     <Project Path="src/PdfViewerLite.Speech/PdfViewerLite.Speech.csproj" />
@@ -16,6 +18,8 @@
     <Project Path="src/PdfViewerLite.Skia/PdfViewerLite.Skia.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/HyperPdfLibrary.Tests/HyperPdfLibrary.Tests.csproj" />
+    <Project Path="tests/PdfViewerLite.HyperPdf.Tests/PdfViewerLite.HyperPdf.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.App.Tests/PdfViewerLite.App.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.Compatibility.Tests/PdfViewerLite.Compatibility.Tests.csproj" />
     <Project Path="tests/PdfViewerLite.Core.Tests/PdfViewerLite.Core.Tests.csproj" />

@@ -1,0 +1,19 @@
+<Project>
+  <!--
+    Embeds the project's checked-in third-party notices (licenses/notices/<project>.md) as the resource named in
+    NoticesResourceName. The files are generated, not written by hand: after a package or component change, run
+    scripts/GenerateThirdPartyNotices.cs (its header gives the arguments) with the project's assets file and the
+    components listed in the project's NoticesComponents. Generating during the build is avoided on purpose:
+    multi-target and solution builds would run the script concurrently and race on its output. A test fails when a
+    shipped package is missing from the notices, so a stale file is caught.
+  -->
+  <PropertyGroup>
+    <NoticesRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..'))</NoticesRoot>
+    <NoticesFile>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'notices', '$(MSBuildProjectName).md'))</NoticesFile>
+    <NoticesResourceName Condition="'$(NoticesResourceName)' == ''">$(RootNamespace).ThirdPartyNotices.md</NoticesResourceName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="$(NoticesFile)" LogicalName="$(NoticesResourceName)" Visible="false" />
+  </ItemGroup>
+</Project>

@@ -43,6 +43,7 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
         CaretBox.ItemsSource = PreferencesViewModel.CaretOptions;
         FontSizeBox.ItemsSource = PreferencesViewModel.FontSizeOptions;
         SpeechEngineBox.ItemsSource = PreferencesViewModel.SpeechEngineOptions;
+        PdfEngineBox.ItemsSource = PreferencesViewModel.PdfEngineOptions;
 
         OcrLanguageList.ItemTemplate = new FuncDataTemplate<OcrLanguageItemViewModel>(static (_, _) => new OcrLanguageItemView());
         FieldLabels.Link(
@@ -56,6 +57,7 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
             (OpeningZoomBox, OpeningZoomLabel),
             (CommentAuthorBox, CommentAuthorLabel),
             (SpeechEngineBox, SpeechEngineLabel),
+            (PdfEngineBox, PdfEngineLabel),
             (AzureKeyBox, AzureKeyLabel),
             (AzureRegionBox, AzureRegionLabel),
             (TimestampServerBox, TimestampServerLabel));
@@ -79,6 +81,7 @@ public sealed partial class PreferencesWindow : ReactiveUI.Avalonia.ReactiveWind
         disposables.Add(this.Bind(ViewModel, static vm => vm.Motion, static v => v.MotionBox.SelectedIndex));
         disposables.Add(this.Bind(ViewModel, static vm => vm.Caret, static v => v.CaretBox.SelectedIndex));
         disposables.Add(this.Bind(ViewModel, static vm => vm.FontSize, static v => v.FontSizeBox.SelectedIndex));
+        disposables.Add(this.Bind(ViewModel, static vm => vm.PdfEngine, static v => v.PdfEngineBox.SelectedIndex));
         disposables.Add(this.Bind(ViewModel, static vm => vm.SpeechEngine, static v => v.SpeechEngineBox.SelectedIndex));
         disposables.Add(this.Bind(ViewModel, static vm => vm.AzureKey, static v => v.AzureKeyBox.Text));
         disposables.Add(this.Bind(ViewModel, static vm => vm.AzureRegion, static v => v.AzureRegionBox.Text));

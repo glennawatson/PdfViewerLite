@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\PdfViewerLite.Core.Tests\Fakes\FakeDocument.cs" Link="Fakes\FakeDocument.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia.Headless" />
   </ItemGroup>
 </Project>

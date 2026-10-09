@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Connects the managed HyperPdfLibrary engine to PdfViewerLite.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HyperPdfLibrary\HyperPdfLibrary.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PdfViewerLite.HyperPdf.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.Benchmarks" />
+    <InternalsVisibleTo Include="PdfViewerLite.App.Tests" />
+  </ItemGroup>
+</Project>

@@ -43,6 +43,9 @@ internal sealed class FakeDocument : IDocument
     /// <summary>Gets or sets an event every render waits on before drawing.</summary>
     internal ManualResetEventSlim? Gate { get; set; }
 
+    /// <summary>Gets or sets asynchronous page preparation.</summary>
+    internal Func<int, CancellationToken, ValueTask>? Preparation { get; set; }
+
     /// <summary>Gets or sets the text of every page.</summary>
     internal string PageText { get; set; } = "alpha beta alpha";
 
@@ -57,6 +60,10 @@ internal sealed class FakeDocument : IDocument
 
     /// <inheritdoc/>
     public IReadOnlyList<OutlineNode> GetOutline() => [];
+
+    /// <inheritdoc/>
+    public ValueTask PreparePageAsync(int pageIndex, CancellationToken cancellationToken) =>
+        Preparation?.Invoke(pageIndex, cancellationToken) ?? ValueTask.CompletedTask;
 
     /// <inheritdoc/>
     public bool Render(in PageRenderInfo info, RenderTarget target)

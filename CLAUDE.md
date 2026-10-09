@@ -10,7 +10,10 @@ PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users 
 
 ## Implementation
 
+- Put behaviour in focused static classes with helper methods that operate on records holding the state. Never grow one type and split it across partial files; `partial` is only for source generators. Callers compose the focused helpers directly; change the downstream code instead of adding a facade.
 - Prefer sealed records for data snapshots. Prefer readonly record structs for small values. Use classes for mutable state, services and owned lifetimes. Record collection equality follows the collection's own equality.
+- Never use value tuple types: not as return types, fields, parameters, collection elements, or `(a, b) = (b, a)` swaps. Name the shape with a positional record (`record struct` for small values, `record` for reference data). Prefer positional syntax. On hot paths, use readonly record structs that stay on the stack or in pooled arrays, so they allocate nothing.
+- Keep deconstruction. Positional records deconstruct, so write `var (key, value) = entry;` and `foreach (var (key, value) in entries)` wherever it reads better than member access.
 - Every project targets `net10.0;net11.0`: libraries, the app, tests and benchmarks. Native AOT publishes from `net11.0`. Use `global.json`. Package versions belong in `Directory.Packages.props`.
 - Shipped code must be trim and Native AOT safe. Use generated JSON, bindings and HTTP clients. Avoid reflection and activation APIs that require unreferenced code.
 - XAML is layout and styling only. Views implement `IViewFor<T>`. Use theme resources and visible action labels.
@@ -18,7 +21,30 @@ PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users 
 - View models derive from `ReactiveObject`. Use ReactiveUI.SourceGenerators: `[Reactive]` partial properties, `[ReactiveCommand]` methods, and ReactiveUI.Binding's `[ObservableAsProperty]` with `ToProperty` for derived values. Put side effects in `WhenChanged` subscriptions, not setters.
 - Notifications use ReactiveUI.Primitives observables and `SubscribeSafe`. Own subscriptions with `MultipleDisposable`. Observe events with ReactiveUI.Primitives.ObservableEvents `Events()`; never subscribe with `+=`. Do not block on async.
 - HTTP goes through Refit clients with generated JSON contexts.
+- Write byte-first and span-based code on hot paths: UTF-8 bytes, pooled buffers, SIMD where measured to help, and early exits. Shared caches are thread-safe; publish them with `Volatile` or `Interlocked`, or guard them with a `Lock`.
+- Use the newest .NET 11 APIs, such as span `ZLibDecoder`/`ZLibEncoder` and `ReadOnlyMemoryStream`. Keep every `#if NET11_0_OR_GREATER` branch in a small static helper in the project's `Compat/` folder, with the .NET 10 fallback behind the same signature. Feature code calls the helper.
+- C# 15 is on: unions, `[with(...)]` collection arguments, `field`, `allows ref struct`. Unions compile on `net10.0` through a `UnionAttribute`/`IUnion` polyfill in `Compat/`. Use them only for reference-type cases, because value cases box.
+- Analyzer habits:
+  - Only 0, 1 and -1 inline; name other numbers as constants. Hex data tables are fine.
+  - Keep methods small: complexity 10, cognitive complexity 15. Use table-driven dispatch.
+  - No `x++` inside an expression.
+  - Members of internal types are internal.
+  - Use overloads, not optional parameters.
+  - Braced switch sections.
+  - Run `dotnet format analyzers --diagnostics <ids>` for mechanical fixes.
 - Hold `PdfiumLibrary.EnterScope()` for every PDFium call. Keep native resources owned and disposed.
+
+## HyperPdfLibrary
+
+- `src/HyperPdfLibrary` is the managed PDF engine; `src/PdfViewerLite.HyperPdf` adapts it to the app's interfaces. Neither references PDFium; `EngineIndependenceTests` checks this. The app picks an engine per open (Preferences, or `PDFVIEWERLITE_ENGINE=hyperpdf|pdfium`).
+- Match PDFium's behaviour, since the app ships on it. Use pdf.js where PDFium is clearly wrong. Add parity tests comparing both engines through `EnginePair`.
+- Read leniently, write strictly. Open and recover malformed files where possible, but every file the library writes must conform to ISO 32000 (and to any PDF/A or PDF/UA level the file claims). Saving fixes what can be fixed in the parts it writes, such as wrong `/Length`, broken cross-reference data, missing required keys and invalid boxes. The viewer tells the user in plain words when a file was damaged and repaired on open, and what saving will fix. Never add a feature that needs non-conforming output.
+- Where PDFium blocks a standards feature (PDF 2.0, PDF/A, PDF/UA, PDF/R, XFDF, XMP), follow the standard. Keep a way to get PDFium-compatible output so parity tests still compare. PDFium stays a selectable engine and the test baseline.
+- Read references in `~/source/pdf` (pdfium, pdf.js, pdfbox, qpdf, pdfpig) for behaviour only. MuPDF, Poppler and FreeType are copyleft: read them, never copy them. PdfPig is not a model for .NET code.
+- The engine parses UTF-8 bytes directly and its types are thread-safe: documents are used from many render threads at once.
+- The public API is async-first: every public operation has an async form taking a `CancellationToken` (`ValueTask` where results are often ready, `IAsyncEnumerable` for long walks). Async methods prefetch the bytes they need with real async I/O, then run the synchronous core inline under a `PdfCancellation` scope, so cancelling stops CPU work as well as reads; spans and `ref struct`s never cross an `await`, and the library never uses `Task.Run`. Long loops check the token cheaply (per chunk, segment or operator batch, never per byte, never allocating). The sync API stays the fast path for warm calls. Callers that may wait on I/O or need to cancel (open, first page, search, save, tab switches) use the async forms. The NuGet package builds without runtime async so Mono hosts can load it; the app builds with it.
+- Text is UTF-8 by default: byte constants use `u8` literals, and parsing, XML and exports work in UTF-8. Use UTF-16 only where the PDF spec requires it (UTF-16BE text strings before PDF 2.0, ToUnicode CMap values, font name and cmap tables). Write new PDF text strings as PDFDocEncoding when they fit; otherwise UTF-8 with its prefix in PDF 2.0 files, UTF-16BE in earlier versions. Saving preserves existing encodings: unchanged strings and packets keep their bytes, and an edited value keeps the encoding of the value it replaces (UTF-16BE stays UTF-16BE).
+- XML (XMP, XFDF, XFA packets) is processed by streaming only: forward-only `XmlReader`/`XmlWriter` over the bytes, DTDs prohibited, no resolver, bounded size. Never `XDocument`, `XmlDocument` or LINQ to XML.
 - Follow the analyzers and existing C# style. Document members, name constants and use explicit enum values. Fix warnings; do not add suppressions. The existing tools-only SST1449 exception is authorised.
 - Use .NET tools only. Use Roslyn for structural C# edits. Run single-file tools with `dotnet run --file`. Keep docs short. Keep research sources and limits. Add no attribution trailers or generated-by footers.
 

@@ -22,6 +22,9 @@ public static class FormScriptEngine
     /// <summary>The date format used when a date script gives none.</summary>
     private const string DefaultDateFormat = "mm/dd/yyyy";
 
+    /// <summary>The time format used when a time script gives none.</summary>
+    private const string DefaultTimeFormat = "HH:MM";
+
     /// <summary>The position of the negative style of <c>AFNumber_Format</c>.</summary>
     private const int NegativeArgument = 2;
 
@@ -63,9 +66,43 @@ public static class FormScriptEngine
             FormScriptFunction.Percent when FormNumbers.TryParse(value.Replace("%", string.Empty, StringComparison.Ordinal), out var number) =>
                 FormNumbers.Format(number * Hundred, (int)format.Number(0, DefaultDecimals), (int)format.Number(1, 0), 0, "%", false),
             FormScriptFunction.Date when FormDates.TryParse(value, format.Text(0, DefaultDateFormat), out var date) => FormDates.Format(date, format.Text(0, DefaultDateFormat)),
+            FormScriptFunction.Time when FormDates.TryParseTime(value, format.Text(0, DefaultTimeFormat), out var time) => FormDates.Format(time, format.Text(0, DefaultTimeFormat)),
             FormScriptFunction.Special => FormatSpecial((int)format.Number(0, 0), value),
             _ => value,
         };
+    }
+
+    /// <summary>Reads a date as <c>AFParseDateEx</c> does: in the given format first, then in common forms.</summary>
+    /// <param name="text">The text.</param>
+    /// <param name="format">The PDF form date format, for example <c>dd/mm/yyyy</c>.</param>
+    /// <param name="value">The date.</param>
+    /// <returns><see langword="true"/> when the text is a date.</returns>
+    public static bool TryParseDate(string? text, string format, out DateTimeOffset value)
+    {
+        ArgumentNullException.ThrowIfNull(format);
+        var parsed = FormDates.TryParse(text, format, out var date);
+
+        // Form dates carry no zone, so the value is the date as written, at midnight or the time given.
+        value = parsed ? new(DateTime.SpecifyKind(date, DateTimeKind.Unspecified), TimeSpan.Zero) : default;
+        return parsed;
+    }
+
+    /// <summary>
+    /// Merges a typed change into a field's value, as <c>AFMergeChange</c> does: the change replaces the selected text, or
+    /// goes at the caret when nothing is selected. The positions are clamped to the value.
+    /// </summary>
+    /// <param name="value">The value before the change.</param>
+    /// <param name="selectionStart">The start of the selection.</param>
+    /// <param name="selectionEnd">The end of the selection.</param>
+    /// <param name="change">The typed text.</param>
+    /// <returns>The value with the change in it.</returns>
+    public static string MergeChange(string value, int selectionStart, int selectionEnd, string change)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(change);
+        var start = Math.Clamp(Math.Min(selectionStart, selectionEnd), 0, value.Length);
+        var end = Math.Clamp(Math.Max(selectionStart, selectionEnd), start, value.Length);
+        return string.Concat(value.AsSpan(0, start), change, value.AsSpan(end));
     }
 
     /// <summary>Checks a value typed into a field, as its keystroke script asks.</summary>
@@ -85,6 +122,7 @@ public static class FormScriptEngine
         {
             FormScriptFunction.Number or FormScriptFunction.Percent => FormNumbers.TryParse(value.Replace("%", string.Empty, StringComparison.Ordinal), out _) && IsNumeric(value),
             FormScriptFunction.Date => FormDates.TryParse(value, keystroke.Text(0, DefaultDateFormat), out _),
+            FormScriptFunction.Time => FormDates.TryParseTime(value, keystroke.Text(0, DefaultTimeFormat), out _),
             FormScriptFunction.Special => Digits(value).Length == Digits(SpecialPattern((int)keystroke.Number(0, 0))).Length,
             _ => true,
         };

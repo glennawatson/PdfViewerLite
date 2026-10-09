@@ -128,6 +128,8 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         PageTone = services.CurrentTheme.PageTone;
         _canGoBack = this.WhenChanged(static vm => vm.CanGoBack);
         _canGoForward = this.WhenChanged(static vm => vm.CanGoForward);
+        _canOptimize = this.WhenChanged(static vm => vm.CanOptimize);
+        _canRedact = this.WhenChanged(static vm => vm.CanRedact);
 
         NavigationRequests = new(_navigationRequests);
         UriRequests = new(_uriRequests);
@@ -853,10 +855,13 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         Signatures.Refresh();
         Attachments.Refresh();
         Layers.Refresh();
+        RefreshOptimize(document);
+        RefreshRedaction(document);
         if (!IsSecondaryView)
         {
             _services.RecentDocuments.Add(FilePath);
             _ = CheckContentAsync(document);
+            CheckRepairs(document);
             WatchFile();
         }
 
@@ -1107,6 +1112,8 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     {
         PageEntry = GetPageDisplay(pageIndex);
         SelectedThumbnail = pageIndex >= 0 && pageIndex < Thumbnails.Count ? Thumbnails[pageIndex] : null;
+        Forms.OnPageShown(pageIndex);
+        CheckRepairsOfOpenDocument();
     }
 
     /// <summary>Refreshes the annotation list when its panel is opened.</summary>

@@ -14,6 +14,9 @@ public sealed partial class PdfiumDocument
     /// <summary>The fields of each page read so far, dropped whenever any field changes (a field can recalculate others).</summary>
     private readonly Dictionary<int, FormField[]> _fieldCache = [];
 
+    /// <summary>The tint drawn over fillable fields; guarded by the PDFium lock.</summary>
+    private FormHighlight _highlight = FormHighlight.Default;
+
     /// <inheritdoc/>
     public bool HasForm
     {
@@ -21,6 +24,23 @@ public sealed partial class PdfiumDocument
         {
             using var scope = PdfiumLibrary.EnterScope();
             return !IsDisposed && _form.HasForm;
+        }
+    }
+
+    /// <inheritdoc/>
+    public FormHighlight Highlight
+    {
+        get => _highlight;
+        set
+        {
+            using var scope = PdfiumLibrary.EnterScope();
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            _highlight = value;
+            _form.SetHighlight(value);
         }
     }
 

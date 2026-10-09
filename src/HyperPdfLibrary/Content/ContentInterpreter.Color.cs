@@ -1,0 +1,322 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using HyperPdfLibrary.Graphics;
+using HyperPdfLibrary.Graphics.Colors;
+using HyperPdfLibrary.Graphics.Shadings;
+using HyperPdfLibrary.Objects;
+using HyperPdfLibrary.Rendering;
+using SkiaSharp;
+
+namespace HyperPdfLibrary.Content;
+
+/// <content>Colour operators and patterns.</content>
+internal sealed partial class ContentInterpreter
+{
+    /// <summary>The paint type of an uncoloured tiling pattern.</summary>
+    private const int UncoloredPaintType = 2;
+
+    /// <summary>The pattern type of a shading pattern.</summary>
+    private const int ShadingPatternType = 2;
+
+    /// <summary>The ratio between neighbouring pattern resolutions, and the divisor that averages two axis scales.</summary>
+    private const float PatternScaleBase = 2;
+
+    /// <summary>The smallest power-of-two pattern scale kept.</summary>
+    private const int MinPatternExponent = -8;
+
+    /// <summary>The largest power-of-two pattern scale kept.</summary>
+    private const int MaxPatternExponent = 8;
+
+    /// <summary>Handles <c>g</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetFillGray(ContentInterpreter self, ref ContentReader reader) => self.SetDeviceColor(false, PdfColorSpace.DeviceGray, ref reader);
+
+    /// <summary>Handles <c>G</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetStrokeGray(ContentInterpreter self, ref ContentReader reader) => self.SetDeviceColor(true, PdfColorSpace.DeviceGray, ref reader);
+
+    /// <summary>Handles <c>rg</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetFillRgb(ContentInterpreter self, ref ContentReader reader) => self.SetDeviceColor(false, PdfColorSpace.DeviceRgb, ref reader);
+
+    /// <summary>Handles <c>RG</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetStrokeRgb(ContentInterpreter self, ref ContentReader reader) => self.SetDeviceColor(true, PdfColorSpace.DeviceRgb, ref reader);
+
+    /// <summary>Handles <c>k</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetFillCmyk(ContentInterpreter self, ref ContentReader reader) => self.SetDeviceColor(false, PdfColorSpace.DeviceCmyk, ref reader);
+
+    /// <summary>Handles <c>K</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetStrokeCmyk(ContentInterpreter self, ref ContentReader reader) => self.SetDeviceColor(true, PdfColorSpace.DeviceCmyk, ref reader);
+
+    /// <summary>Handles <c>cs</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetFillColorSpace(ContentInterpreter self, ref ContentReader reader) => self.SetColorSpace(false, reader.Operand(0).Name);
+
+    /// <summary>Handles <c>CS</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetStrokeColorSpace(ContentInterpreter self, ref ContentReader reader) => self.SetColorSpace(true, reader.Operand(0).Name);
+
+    /// <summary>Handles <c>sc</c> and <c>scn</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetFillColor(ContentInterpreter self, ref ContentReader reader) => self.SetColor(false, ref reader);
+
+    /// <summary>Handles <c>SC</c> and <c>SCN</c>.</summary>
+    /// <param name="self">The interpreter.</param>
+    /// <param name="reader">The reader.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void OpSetStrokeColor(ContentInterpreter self, ref ContentReader reader) => self.SetColor(true, ref reader);
+
+    /// <summary>Copies the numeric operands of an operator.</summary>
+    /// <param name="reader">The reader.</param>
+    /// <param name="count">The operands to read.</param>
+    /// <param name="destination">Receives the numbers; entries past the operands are zero.</param>
+    private static void CopyComponents(ref ContentReader reader, int count, scoped Span<float> destination)
+    {
+        destination.Clear();
+        var limit = Math.Min(count, destination.Length);
+        for (var i = 0; i < limit; i++)
+        {
+            destination[i] = reader.Number(i);
+        }
+    }
+
+    /// <summary>Gets the power of two at or above the page units one pattern unit spans, so cells are reused across nearby scales.</summary>
+    /// <param name="matrix">The matrix from pattern space to the page.</param>
+    /// <returns>The exponent, clamped to a sane range.</returns>
+    private static int PatternScaleBucket(Matrix3x2 matrix)
+    {
+        var scale = (MathF.Sqrt((matrix.M11 * matrix.M11) + (matrix.M12 * matrix.M12)) + MathF.Sqrt((matrix.M21 * matrix.M21) + (matrix.M22 * matrix.M22))) / PatternScaleBase;
+        var exponent = scale > 0 && float.IsFinite(scale) ? (int)MathF.Ceiling(MathF.Log2(scale)) : 0;
+        return Math.Clamp(exponent, MinPatternExponent, MaxPatternExponent);
+    }
+
+    /// <summary>Sets a colour in a device colour space.</summary>
+    /// <param name="stroke">Whether to set the stroke colour.</param>
+    /// <param name="space">The device colour space.</param>
+    /// <param name="reader">The reader holding the components.</param>
+    private void SetDeviceColor(bool stroke, PdfColorSpace space, ref ContentReader reader)
+    {
+        if (_colorLocked)
+        {
+            return;
+        }
+
+        Span<float> components = stackalloc float[PdfColorSpace.MaxComponents];
+        CopyComponents(ref reader, space.Components, components);
+        Store(stroke, ColorState.Resolve(MapDeviceSpace(space), components));
+    }
+
+    /// <summary>Stores a colour as the fill or stroke colour.</summary>
+    /// <param name="stroke">Whether to set the stroke colour.</param>
+    /// <param name="colour">The colour.</param>
+    private void Store(bool stroke, in ColorState colour)
+    {
+        if (stroke)
+        {
+            _state.Stroke = colour;
+        }
+        else
+        {
+            _state.Fill = colour;
+        }
+    }
+
+    /// <summary>Selects a colour space and sets its initial colour.</summary>
+    /// <param name="stroke">Whether to set the stroke space.</param>
+    /// <param name="name">The colour space name.</param>
+    private void SetColorSpace(bool stroke, PdfName name)
+    {
+        if (_colorLocked)
+        {
+            return;
+        }
+
+        var space = LookupColorSpace(name);
+        Span<float> initial = stackalloc float[PdfColorSpace.MaxComponents];
+        initial.Clear();
+        space.GetInitialColor(initial);
+        var colour = ColorState.Resolve(space, initial);
+        if (space.Kind == PdfColorSpaceKind.Pattern)
+        {
+            // Painting in a pattern space paints nothing until a pattern is selected.
+            colour = colour with { PaintsNothing = true };
+        }
+
+        Store(stroke, colour);
+    }
+
+    /// <summary>Finds a colour space by name: a device space, or a /ColorSpace resource.</summary>
+    /// <param name="name">The name.</param>
+    /// <returns>The colour space.</returns>
+    private PdfColorSpace LookupColorSpace(PdfName name)
+    {
+        switch (name.ToKnownName())
+        {
+            case KnownName.DeviceGray or KnownName.G:
+            {
+                return MapDeviceSpace(PdfColorSpace.DeviceGray);
+            }
+
+            case KnownName.DeviceRGB or KnownName.RGB:
+            {
+                return MapDeviceSpace(PdfColorSpace.DeviceRgb);
+            }
+
+            case KnownName.DeviceCMYK or KnownName.CMYK:
+            {
+                return MapDeviceSpace(PdfColorSpace.DeviceCmyk);
+            }
+
+            case KnownName.Pattern:
+            {
+                return PatternColorSpace.Colored;
+            }
+
+            default:
+            {
+                var value = FindResource(KnownName.ColorSpace, name);
+                return value.IsNull ? PdfColorSpace.DeviceGray : _cache.GetColorSpace(value, CurrentResources()?.GetDictionary(KnownName.ColorSpace));
+            }
+        }
+    }
+
+    /// <summary>Sets a colour in the current colour space, or selects a pattern.</summary>
+    /// <param name="stroke">Whether to set the stroke colour.</param>
+    /// <param name="reader">The reader holding the components and an optional pattern name.</param>
+    private void SetColor(bool stroke, ref ContentReader reader)
+    {
+        if (_colorLocked)
+        {
+            return;
+        }
+
+        var space = stroke ? _state.Stroke.Space : _state.Fill.Space;
+        var count = reader.OperandCount;
+        var last = reader.Operand(count - 1);
+        Span<float> components = stackalloc float[PdfColorSpace.MaxComponents];
+        if (last.Kind == ContentOperandKind.Name && space is PatternColorSpace pattern)
+        {
+            CopyComponents(ref reader, count - 1, components);
+            SelectPattern(stroke, pattern, last.Name, components);
+            return;
+        }
+
+        CopyComponents(ref reader, count, components);
+        Store(stroke, ColorState.Resolve(space, components));
+    }
+
+    /// <summary>Selects a pattern as the fill or stroke colour.</summary>
+    /// <param name="stroke">Whether to set the stroke colour.</param>
+    /// <param name="space">The pattern colour space.</param>
+    /// <param name="name">The pattern's resource name.</param>
+    /// <param name="components">The components of an uncoloured pattern's colour.</param>
+    private void SelectPattern(bool stroke, PatternColorSpace space, PdfName name, ReadOnlySpan<float> components)
+    {
+        var rgb = space.Underlying is { } underlying ? ColorState.Resolve(underlying, components).Rgb : 0U;
+        var paint = CreatePatternPaint(name, rgb);
+        Store(stroke, new(space, rgb, paint, paint is null));
+    }
+
+    /// <summary>Creates the paint for a pattern resource.</summary>
+    /// <param name="name">The pattern's resource name.</param>
+    /// <param name="rgb">The colour for an uncoloured pattern.</param>
+    /// <returns>The paint, or null when the pattern is missing or damaged.</returns>
+    private PdfPatternPaint? CreatePatternPaint(PdfName name, uint rgb)
+    {
+        var value = FindResource(KnownName.Pattern, name);
+        if (value.AsDictionary() is not { } dictionary)
+        {
+            return null;
+        }
+
+        var matrix = ReadMatrix(dictionary, KnownName.Matrix) * _patternBase;
+        if (dictionary.GetInt32(KnownName.PatternType) == ShadingPatternType)
+        {
+            var shadingValue = dictionary.Get(KnownName.Shading);
+            var shading = GetShading(shadingValue);
+            return shading is null ? null : new PdfPatternPaint(shading, matrix);
+        }
+
+        if (value.AsStream() is not { } stream)
+        {
+            return null;
+        }
+
+        var uncolored = dictionary.GetInt32(KnownName.PaintType) == UncoloredPaintType;
+        var bucket = PatternScaleBucket(matrix);
+        var cell = _cache.Cells.GetOrCreate(
+            new(dictionary, uncolored ? rgb : 0, bucket),
+            new CellRequest(this, stream, uncolored, rgb),
+            static (key, request) => request.Owner.RecordCell(request.Pattern, request.Uncolored, request.Rgb, MathF.Pow(PatternScaleBase, key.ScaleBucket)));
+        return cell is null ? null : new PdfPatternPaint(cell, matrix);
+    }
+
+    /// <summary>Gets a parsed shading.</summary>
+    /// <param name="value">The shading dictionary or stream, resolved.</param>
+    /// <returns>The shading, or null when it is damaged.</returns>
+    private PdfShading? GetShading(PdfValue value)
+    {
+        var dictionary = value.AsDictionary();
+        if (dictionary is null)
+        {
+            return null;
+        }
+
+        var spaces = CurrentResources()?.GetDictionary(KnownName.ColorSpace);
+        using var scope = OutputIntentColors.Enter(_cache.DeviceColors);
+        return _cache.Shadings.GetOrCreate(dictionary, new ShadingRequest(value, spaces), static (key, request) => PdfShading.Parse(request.Value, request.Spaces));
+    }
+
+    /// <summary>Records a tiling pattern's cell.</summary>
+    /// <param name="pattern">The pattern stream.</param>
+    /// <param name="uncolored">Whether the pattern is uncoloured.</param>
+    /// <param name="rgb">The colour for an uncoloured pattern.</param>
+    /// <param name="scale">The page units one pattern unit spans, which sets the resolution of a rasterised period.</param>
+    /// <returns>The cell, or null when the pattern is damaged, nested too deeply or has a zero step, which PDFium does not draw.</returns>
+    private PatternCell? RecordCell(PdfStream pattern, bool uncolored, uint rgb, float scale)
+    {
+        var dictionary = pattern.Dictionary;
+        if (_depth >= PdfLimits.MaxDrawDepth || !dictionary.TryGetRectangle(KnownName.BBox, out var box))
+        {
+            return null;
+        }
+
+        var stepX = dictionary.GetSingle(KnownName.XStep);
+        var stepY = dictionary.GetSingle(KnownName.YStep);
+        if (stepX == 0 || stepY == 0 || !float.IsFinite(stepX) || !float.IsFinite(stepY))
+        {
+            return null;
+        }
+
+        using var recorder = _device.CreatePictureDevice(new(box.Left, box.Bottom, box.Right, box.Top));
+        using var child = new ContentInterpreter(_cache, recorder, _depth + 1) { Printing = Printing };
+        child.RunPattern(pattern, uncolored, rgb);
+        using var cell = recorder.Finish();
+        return TileComposer.Compose(cell, box, stepX, stepY, scale);
+    }
+}

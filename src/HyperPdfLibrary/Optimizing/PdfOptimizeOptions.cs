@@ -1,0 +1,113 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System.Diagnostics;
+using HyperPdfLibrary.Structure.Tagged;
+
+namespace HyperPdfLibrary.Optimizing;
+
+/// <summary>What <see cref="PdfOptimizer"/> may change; start from a preset and override settings with <c>with</c>.</summary>
+[DebuggerDisplay("PdfOptimizeOptions: {ColorImageDpi} dpi, quality {JpegQuality}, lossy {AllowLossyImages}")]
+public sealed record PdfOptimizeOptions
+{
+    /// <summary>The image resolution the balanced preset keeps.</summary>
+    private const int BalancedDpi = 200;
+
+    /// <summary>The JPEG quality the balanced preset writes.</summary>
+    private const int BalancedQuality = 80;
+
+    /// <summary>The image resolution the smaller preset keeps.</summary>
+    private const int SmallerDpi = 150;
+
+    /// <summary>The JPEG quality the smaller preset writes.</summary>
+    private const int SmallerQuality = 70;
+
+    /// <summary>How far above the target an image's resolution must be before it is downsampled.</summary>
+    private const float DefaultThreshold = 1.5F;
+
+    /// <summary>Gets the preset for the smallest file: colour and grey images at 150 dpi, JPEG quality 70.</summary>
+    public static PdfOptimizeOptions Smaller { get; } = new() { ColorImageDpi = SmallerDpi, GrayImageDpi = SmallerDpi, JpegQuality = SmallerQuality };
+
+    /// <summary>Gets the balanced preset: colour and grey images at 200 dpi, JPEG quality 80.</summary>
+    public static PdfOptimizeOptions Balanced { get; } = new();
+
+    /// <summary>Gets the preset that changes no pixel: lossless recompression, deduplication and font subsetting only.</summary>
+    public static PdfOptimizeOptions KeepQuality { get; } = new() { AllowLossyImages = false };
+
+    /// <summary>Gets a value indicating whether images are downsampled or re-encoded.</summary>
+    public bool OptimizeImages { get; init; } = true;
+
+    /// <summary>
+    /// Gets a value indicating whether images may lose detail: downsampling and JPEG encoding. When off, images are only
+    /// re-encoded losslessly. Masks are never compressed lossily either way.
+    /// </summary>
+    public bool AllowLossyImages { get; init; } = true;
+
+    /// <summary>Gets the resolution colour images are downsampled to, in pixels per inch at their largest use.</summary>
+    public int ColorImageDpi { get; init; } = BalancedDpi;
+
+    /// <summary>Gets the resolution greyscale images are downsampled to, in pixels per inch at their largest use.</summary>
+    public int GrayImageDpi { get; init; } = BalancedDpi;
+
+    /// <summary>
+    /// Gets how many times the target resolution an image must exceed before it is downsampled; 1.5 leaves images up to
+    /// half again above the target alone, as resampling them saves little.
+    /// </summary>
+    public float DownsampleThreshold { get; init; } = DefaultThreshold;
+
+    /// <summary>Gets the JPEG quality, from 1 to 100, for colour and greyscale images re-encoded lossily.</summary>
+    public int JpegQuality { get; init; } = BalancedQuality;
+
+    /// <summary>Gets a value indicating whether black-and-white images are re-encoded as CCITT Group 4 when that is smaller.</summary>
+    public bool EncodeBilevelAsCcitt { get; init; } = true;
+
+    /// <summary>Gets a value indicating whether uncompressed streams are compressed and Flate streams recompressed at the best level.</summary>
+    public bool RecompressStreams { get; init; } = true;
+
+    /// <summary>Gets a value indicating whether identical streams, fonts and graphics states are merged.</summary>
+    public bool RemoveDuplicates { get; init; } = true;
+
+    /// <summary>
+    /// Gets a value indicating whether objects are packed into object streams with a cross-reference stream. PDF/A-1
+    /// files keep a classic table either way.
+    /// </summary>
+    public bool UseObjectStreams { get; init; } = true;
+
+    /// <summary>Gets a value indicating whether embedded TrueType fonts are cut down to the glyphs the pages show.</summary>
+    public bool SubsetFonts { get; init; } = true;
+
+    /// <summary>Gets the optional cleanup steps; none by default.</summary>
+    public PdfCleanupItems Cleanup { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether missing accessibility entries are filled in: /Lang, the title, /DisplayDocTitle,
+    /// and /MarkInfo for documents that have a structure tree.
+    /// </summary>
+    public bool FixAccessibility { get; init; } = true;
+
+    /// <summary>Gets the language written to /Lang when the document has none and its XMP gives none, such as "en-AU".</summary>
+    public string? Language { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether an untagged document gets a basic structure tree inferred from its layout. Figures
+    /// get no alternative text; the report counts them so a person can add it.
+    /// </summary>
+    public bool AddInferredTags { get; init; }
+
+    /// <summary>
+    /// Gets the text recognition hook: given a page index, returns the words found on that page, or
+    /// <see langword="null"/>. It is called only for pages that draw images and no text, and the words are added as an
+    /// invisible text layer.
+    /// </summary>
+    public Func<int, IReadOnlyList<PdfOcrWord>?>? OcrWords { get; init; }
+
+    /// <summary>Gets a value indicating whether an encrypted document is written decrypted; by default it keeps its encryption.</summary>
+    public bool RemoveEncryption { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether a signed document may still get additions, such as text layers, appended as an
+    /// incremental update. When off, a signed document is copied unchanged.
+    /// </summary>
+    public bool AllowIncrementalWhenSigned { get; init; } = true;
+}

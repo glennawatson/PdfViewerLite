@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\HyperPdfLibrary\HyperPdfLibrary.csproj" />
+    <ProjectReference Include="..\PdfViewerLite.TestAssets\PdfViewerLite.TestAssets.csproj" />
+  </ItemGroup>
+
+  <!-- The HT table generator's builder is shared with the tests, which rebuild the decoder's tables from the T.814 rows
+       and the test encoder reads the same rows. -->
+  <ItemGroup>
+    <Compile Include="..\..\scripts\JpxHtTableBuilder.cs" Link="Graphics\Jpx\JpxHtTableBuilder.cs" />
+    <EmbeddedResource Include="..\..\src\HyperPdfLibrary\Graphics\Images\Jpx\Data\T814CxtVlc.txt" LogicalName="T814CxtVlc.txt" />
+  </ItemGroup>
+</Project>

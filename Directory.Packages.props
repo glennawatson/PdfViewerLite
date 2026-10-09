@@ -74,8 +74,21 @@
     <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.12.0" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.16.0-preview.2" />
     <PackageVersion Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.8" />
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.12" />
   </ItemGroup>
+
+  <!-- net11.0 uses the .NET 11 RC package (go-live licence); other targets keep the stable release. -->
+  <Choose>
+    <When Condition="$(TargetFramework.StartsWith('net11'))">
+      <ItemGroup>
+        <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="11.0.0-rc.1.26425.128" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.12" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
 
   <ItemGroup Label="Packaging tools">
     <PackageVersion Include="MinVer" Version="8.0.0" />

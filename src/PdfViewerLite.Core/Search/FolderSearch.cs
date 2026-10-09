@@ -98,6 +98,48 @@ public static class FolderSearch
         }
     }
 
+    /// <summary>Searches a file after preparing each requested page's font data.</summary>
+    /// <param name="engine">The engine that opens it.</param>
+    /// <param name="path">The file.</param>
+    /// <param name="query">The words to find.</param>
+    /// <param name="options">Match case and whole words.</param>
+    /// <param name="maxMatches">The most matches kept for the file.</param>
+    /// <param name="cancellationToken">Cancels preparation and search.</param>
+    /// <returns>What was found.</returns>
+    public static async Task<FolderSearchFile> SearchFileAsync(IDocumentEngine engine, string path, string query, SearchOptions options, int maxMatches, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(engine);
+        ArgumentException.ThrowIfNullOrEmpty(query);
+        IDocument document;
+        try
+        {
+            document = await Task.Run(() => engine.Open(path, null), cancellationToken).ConfigureAwait(false);
+        }
+        catch (DocumentOpenException exception)
+        {
+            return new(path, [], exception.Error == DocumentOpenError.Password ? "needs a password" : "could not be opened", false);
+        }
+
+        using (document)
+        {
+            var found = new List<FolderSearchMatch>();
+            await foreach (var page in DocumentSearch.SearchAsync(document, query, options, 0, cancellationToken).ConfigureAwait(false))
+            {
+                foreach (var hit in page.Hits)
+                {
+                    if (found.Count == maxMatches)
+                    {
+                        return new(path, found, null, true);
+                    }
+
+                    found.Add(Snippet(document, hit.Match));
+                }
+            }
+
+            return new(path, found, null, false);
+        }
+    }
+
     /// <summary>Makes a match's snippet: the words around it on one line, with the match's place in it.</summary>
     /// <param name="document">The document.</param>
     /// <param name="hit">Where the words were found.</param>

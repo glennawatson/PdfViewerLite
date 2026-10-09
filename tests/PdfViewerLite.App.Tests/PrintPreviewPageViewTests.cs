@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.VisualTree;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
+using PdfViewerLite.Core.Tests.Fakes;
 using ReactiveUI.Primitives.Disposables;
 
 namespace PdfViewerLite.App.Tests;
@@ -27,6 +28,74 @@ public sealed class PrintPreviewPageViewTests
 
     /// <summary>The tolerance for rounding the scaled paper dimensions.</summary>
     private const double SizeTolerance = 1e-9;
+
+    /// <summary>Waits for requested font data before drawing a preview sheet.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task WaitsForPagePreparation()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken preparationToken = default;
+        using var document = new FakeDocument("preview-preparation.pdf", [new(ShortSide, LongSide)])
+        {
+            Preparation = (_, token) =>
+            {
+                preparationToken = token;
+                return new(release.Task.WaitAsync(token));
+            },
+        };
+        using var view = new PrintPreviewPageView { ViewModel = new(document, 0, new(ShortSide, LongSide), "1 of 1") };
+        var window = new Window { Content = view };
+        window.Show();
+        try
+        {
+            var image = view.GetVisualDescendants().OfType<Image>().Single();
+            await Assert.That(await UiWait.UntilAsync(() => preparationToken.CanBeCanceled)).IsTrue();
+            await Assert.That(image.Source).IsNull();
+            await Assert.That(document.RenderCount).IsEqualTo(0);
+            _ = release.TrySetResult();
+            await Assert.That(await UiWait.UntilAsync(() => image.Source is not null)).IsTrue();
+            await Assert.That(document.RenderCount).IsGreaterThan(0);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Closing a preview prevents a delayed preparation from drawing into it.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ClosingPreviewCancelsPendingPreparation()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken preparationToken = default;
+        using var document = new FakeDocument("preview-cancellation.pdf", [new(ShortSide, LongSide)])
+        {
+            Preparation = (_, token) =>
+            {
+                preparationToken = token;
+                return new(release.Task.WaitAsync(token));
+            },
+        };
+        var view = new PrintPreviewPageView { ViewModel = new(document, 0, new(ShortSide, LongSide), "1 of 1") };
+        var window = new Window { Content = view };
+        window.Show();
+        try
+        {
+            var image = view.GetVisualDescendants().OfType<Image>().Single();
+            await Assert.That(await UiWait.UntilAsync(() => preparationToken.CanBeCanceled)).IsTrue();
+            view.Dispose();
+            await Assert.That(preparationToken.IsCancellationRequested).IsTrue();
+            _ = release.TrySetResult();
+            await Assert.That(image.Source).IsNull();
+            await Assert.That(document.RenderCount).IsEqualTo(0);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
 
     /// <summary>Checks that a recycled sheet has its paper size before it is loaded.</summary>
     /// <returns>A task representing the asynchronous test.</returns>

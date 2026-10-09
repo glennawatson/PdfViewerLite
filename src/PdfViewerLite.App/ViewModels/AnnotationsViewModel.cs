@@ -228,6 +228,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
         AnnotationTool.Highlight => AnnotationKind.Highlight,
         AnnotationTool.Underline => AnnotationKind.Underline,
         AnnotationTool.StrikeOut => AnnotationKind.StrikeOut,
+        AnnotationTool.RedactText => AnnotationKind.Redaction,
         _ => null,
     };
 
@@ -241,6 +242,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
         AnnotationTool.Arrow => AnnotationKind.Arrow,
         AnnotationTool.Line => AnnotationKind.Line,
         AnnotationTool.Callout => AnnotationKind.Callout,
+        AnnotationTool.Redact => AnnotationKind.Redaction,
         _ => null,
     };
 

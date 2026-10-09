@@ -158,6 +158,8 @@
               <MenuFlyout Placement="BottomEdgeAlignedRight">
                 <MenuItem x:Name="SaveItem" views:ControlHelp.Text="{x:Static views:Descriptions.Save}" Header="_Save" InputGesture="Ctrl+S" />
                 <MenuItem x:Name="SaveAsItem" views:ControlHelp.Text="{x:Static views:Descriptions.SaveAs}" Header="Save _As…" InputGesture="Ctrl+Shift+S" />
+                <MenuItem x:Name="OptimizeCopyItem" views:ControlHelp.Text="{x:Static views:Descriptions.OptimizeCopy}" Header="Save _Optimised Copy…" />
+                <MenuItem x:Name="ApplyRedactionsItem" views:ControlHelp.Text="{x:Static views:Descriptions.ApplyRedactions}" Header="Apply _Redactions…" />
                 <MenuItem x:Name="SelectAllItem" views:ControlHelp.Text="{x:Static views:Descriptions.SelectAll}" Header="Select A_ll Text on Page" InputGesture="Ctrl+A" />
                 <MenuItem x:Name="ReloadItem" views:ControlHelp.Text="{x:Static views:Descriptions.Reload}" Header="Re_load" InputGesture="F5" />
                 <MenuItem x:Name="ShowInFolderItem" views:ControlHelp.Text="{x:Static views:Descriptions.ShowInFolder}" Header="Show in _Folder" />
@@ -292,6 +294,9 @@
                 <MenuItem x:Name="PolygonItem" views:ControlHelp.Text="{x:Static views:Descriptions.Polygon}" Header="_Polygon" />
                 <MenuItem x:Name="CloudItem" views:ControlHelp.Text="{x:Static views:Descriptions.Cloud}" Header="Cl_oud" />
                 <MenuItem x:Name="PolyLineItem" views:ControlHelp.Text="{x:Static views:Descriptions.PolyLine}" Header="Co_nnected Lines" />
+                <Separator />
+                <MenuItem x:Name="RedactAreaItem" views:ControlHelp.Text="{x:Static views:Descriptions.RedactArea}" Header="Mark Area to Re_dact" />
+                <MenuItem x:Name="RedactTextItem" views:ControlHelp.Text="{x:Static views:Descriptions.RedactText}" Header="Mark _Text to Redact" />
               </MenuFlyout>
             </Button.Flyout>
           </Button>
@@ -666,6 +671,16 @@
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock x:Name="ContentWarningText" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
         <Button Grid.Column="1" x:Name="DismissContentWarningButton" views:ControlHelp.Text="{x:Static views:Descriptions.DismissContentWarning}" Content="Dismiss" />
+      </Grid>
+    </Border>
+
+    <!-- Says once, calmly, that the file was damaged and repaired to show it; the list of repairs is shown on request. -->
+    <Border x:Name="RepairNoticeBar" DockPanel.Dock="Top" Classes="toolbar">
+      <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
+        <TextBlock x:Name="RepairNoticeText" AutomationProperties.LiveSetting="Polite" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap" />
+        <Button Grid.Column="1" x:Name="ToggleRepairDetailsButton" views:ControlHelp.Text="{x:Static views:Descriptions.ToggleRepairDetails}" Content="Details" />
+        <Button Grid.Column="2" x:Name="DismissRepairNoticeButton" views:ControlHelp.Text="{x:Static views:Descriptions.DismissRepairNotice}" Content="Dismiss" />
+        <TextBlock Grid.Row="1" Grid.ColumnSpan="3" x:Name="RepairDetailsText" VerticalAlignment="Center" Margin="6,4" TextWrapping="Wrap" />
       </Grid>
     </Border>
 

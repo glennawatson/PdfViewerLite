@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Forms.Scripting;
 using PdfViewerLite.Core.Geometry;
@@ -111,11 +112,69 @@ public sealed partial class FormsViewModel : ReactiveObject
                 return true;
             }
 
+            case FormFieldKind.PushButton:
+            {
+                return StartButton(field);
+            }
+
             default:
             {
                 return false;
             }
         }
+    }
+
+    /// <summary>
+    /// Runs the action of a push button, and the actions after it: reset, hide, show or hide layers and named page moves.
+    /// Scripts are never run, and form data is never sent. Fields that change are drawn again and recalculated.
+    /// </summary>
+    /// <param name="field">The button.</param>
+    /// <returns>What happened; <see cref="FormActionResult.None"/> when the document cannot run actions or the button has none.</returns>
+    public async Task<FormActionResult> RunButtonAsync(FormField field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        if (_owner.TryGetDocument() is not IFormActions actions)
+        {
+            return FormActionResult.None;
+        }
+
+        var result = await actions.RunWidgetActionAsync(field.PageIndex, field.Index, new TabFormActionHost(_owner, true), CancellationToken.None).ConfigureAwait(true);
+        if ((result & (FormActionResult.Changed | FormActionResult.LayersChanged)) != 0)
+        {
+            RefreshAllPages();
+            Recalculate();
+        }
+
+        return result;
+    }
+
+    /// <summary>Starts the actions of a page that became the current page, if the document has any.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    public void OnPageShown(int pageIndex)
+    {
+        if (_owner.TryGetDocument() is IFormActions && PageOpenedCommand is ICommand command && command.CanExecute(pageIndex))
+        {
+            command.Execute(pageIndex);
+        }
+    }
+
+    /// <summary>Runs the actions a page does when it opens.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <returns>What happened.</returns>
+    public async Task<FormActionResult> RunPageOpenedAsync(int pageIndex)
+    {
+        if (_owner.TryGetDocument() is not IFormActions actions)
+        {
+            return FormActionResult.None;
+        }
+
+        var result = await actions.RunPageOpenedAsync(pageIndex, new TabFormActionHost(_owner, false), CancellationToken.None).ConfigureAwait(true);
+        if ((result & (FormActionResult.Changed | FormActionResult.LayersChanged)) != 0)
+        {
+            RefreshAllPages();
+        }
+
+        return result;
     }
 
     /// <summary>Picks a choice of a combo or list box.</summary>
@@ -209,7 +268,7 @@ public sealed partial class FormsViewModel : ReactiveObject
     /// <returns><see langword="true"/> when the field took the key.</returns>
     public bool PressFocused()
     {
-        if (Focused is not { Kind: FormFieldKind.CheckBox or FormFieldKind.RadioButton } focused || FindCurrent(focused) is not { } field)
+        if (Focused is not { Kind: FormFieldKind.CheckBox or FormFieldKind.RadioButton or FormFieldKind.PushButton } focused || FindCurrent(focused) is not { } field)
         {
             return false;
         }
@@ -263,7 +322,32 @@ public sealed partial class FormsViewModel : ReactiveObject
     /// <param name="field">The field.</param>
     /// <returns><see langword="true"/> for fields that are not read-only and that the viewer fills.</returns>
     private static bool IsFillable(FormField field) =>
-        !field.IsReadOnly && field.Kind is FormFieldKind.Text or FormFieldKind.CheckBox or FormFieldKind.RadioButton or FormFieldKind.ComboBox or FormFieldKind.ListBox;
+        !field.IsReadOnly && field.Kind is FormFieldKind.Text or FormFieldKind.CheckBox or FormFieldKind.RadioButton or FormFieldKind.ComboBox or FormFieldKind.ListBox or FormFieldKind.PushButton;
+
+    /// <summary>Adds the fillable fields of one page in the page's tab order, then any the order does not list.</summary>
+    /// <param name="all">The fillable fields so far.</param>
+    /// <param name="fields">The fields of the page, in widget order.</param>
+    /// <param name="sequence">The widget indexes in tab order; empty when the page names none.</param>
+    private static void AddInTabOrder(List<FormField> all, List<FormField> fields, List<int> sequence)
+    {
+        var added = new HashSet<int>();
+        foreach (var index in sequence)
+        {
+            var field = fields.Find(candidate => candidate.Index == index);
+            if (field is not null && IsFillable(field) && added.Add(index))
+            {
+                all.Add(field);
+            }
+        }
+
+        foreach (var field in fields)
+        {
+            if (IsFillable(field) && added.Add(field.Index))
+            {
+                all.Add(field);
+            }
+        }
+    }
 
     /// <summary>Explains why a typed value is refused by its field's keystroke or validate script.</summary>
     /// <param name="scripts">The field's scripts.</param>
@@ -276,6 +360,7 @@ public sealed partial class FormsViewModel : ReactiveObject
             return scripts.Keystroke.Function switch
             {
                 FormScriptFunction.Date => $"Type a date like {FormScriptEngine.Format(scripts.Keystroke, "2026-03-07")}.",
+                FormScriptFunction.Time => $"Type a time like {FormScriptEngine.Format(scripts.Keystroke, "13:45")}.",
                 FormScriptFunction.Special => "Type the number with the right count of digits.",
                 _ => "Type a number.",
             };
@@ -317,17 +402,15 @@ public sealed partial class FormsViewModel : ReactiveObject
             return all;
         }
 
+        var order = _owner.TryGetDocument() as IFormOrder;
+        var sequence = new List<int>();
         for (var page = 0; page < _owner.PageCount; page++)
         {
             _scratch.Clear();
             filler.GetFields(page, _scratch);
-            foreach (var field in _scratch)
-            {
-                if (IsFillable(field))
-                {
-                    all.Add(field);
-                }
-            }
+            sequence.Clear();
+            order?.GetTabOrder(page, sequence);
+            AddInTabOrder(all, _scratch, sequence);
         }
 
         return all;
@@ -415,7 +498,80 @@ public sealed partial class FormsViewModel : ReactiveObject
             }
         }
 
+        OrderCalculations(_calculated);
         return _calculated;
+    }
+
+    /// <summary>Puts the calculated fields in the order the form lists them (<c>/CO</c>); fields it does not list follow in page order.</summary>
+    /// <param name="calculated">The calculated fields in page order, reordered in place.</param>
+    private void OrderCalculations(List<FieldScripts> calculated)
+    {
+        if (calculated.Count < 2 || _owner.TryGetDocument() is not IFormOrder source)
+        {
+            return;
+        }
+
+        var listed = new List<string>();
+        source.GetCalculationOrder(listed);
+        if (listed.Count == 0)
+        {
+            return;
+        }
+
+        var position = new Dictionary<string, int>(listed.Count, StringComparer.Ordinal);
+        foreach (var name in listed)
+        {
+            _ = position.TryAdd(name, position.Count);
+        }
+
+        // List.Sort is not stable, so the page order is kept as the tie-break.
+        var pageOrder = new Dictionary<FieldScripts, int>(calculated.Count, ReferenceEqualityComparer.Instance);
+        foreach (var scripts in calculated)
+        {
+            pageOrder[scripts] = pageOrder.Count;
+        }
+
+        calculated.Sort((a, b) =>
+        {
+            var byListed = position.GetValueOrDefault(a.Name, int.MaxValue).CompareTo(position.GetValueOrDefault(b.Name, int.MaxValue));
+            return byListed != 0 ? byListed : pageOrder[a].CompareTo(pageOrder[b]);
+        });
+    }
+
+    /// <summary>Starts a push button's action. The action runs in the background so the click returns at once.</summary>
+    /// <param name="field">The button.</param>
+    /// <returns><see langword="true"/> when the document can run the button's action.</returns>
+    private bool StartButton(FormField field)
+    {
+        Focused = field;
+        if (_owner.TryGetDocument() is not IFormActions || RunButtonCommand is not ICommand command || !command.CanExecute(field))
+        {
+            return false;
+        }
+
+        command.Execute(field);
+        return true;
+    }
+
+    /// <summary>Runs a push button's action.</summary>
+    /// <param name="field">The button.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    private async Task RunButton(FormField field) => await RunButtonAsync(field).ConfigureAwait(true);
+
+    /// <summary>Runs the actions of a page that became the current page.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    private async Task PageOpened(int pageIndex) => await RunPageOpenedAsync(pageIndex).ConfigureAwait(true);
+
+    /// <summary>Redraws every page, after an action changed fields, hid fields or switched layers.</summary>
+    private void RefreshAllPages()
+    {
+        for (var page = 0; page < _owner.PageCount; page++)
+        {
+            _owner.OnPageEdited(page);
+        }
     }
 
     /// <summary>Redraws the page of a changed field.</summary>

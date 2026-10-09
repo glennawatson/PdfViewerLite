@@ -980,6 +980,222 @@
         "footnotes"
       ],
       "licence": "CC BY 4.0 veraPDF test corpus"
+    },
+    {
+      "id": "loc-brown-v-board",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep347/usrep347483/usrep347483.pdf",
+      "sha256": "7021074961cffdafdddac07c25c6b21c6a689d1ff118966f5b53bb3a48163ec1",
+      "bytes": 462758,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal"
+      ],
+      "licence": "Public domain: Brown v. Board of Education, 347 U.S. 483 (1954), a US Supreme Court opinion and so a work of the US government"
+    },
+    {
+      "id": "loc-plessy-v-ferguson",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep163/usrep163537/usrep163537.pdf",
+      "sha256": "1bd8154d5ed6e16f3fec76f0cd14286f57975b997cdadf749f9bb40446b683e2",
+      "bytes": 1037410,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal"
+      ],
+      "licence": "Public domain: Plessy v. Ferguson, 163 U.S. 537 (1896), a US Supreme Court opinion and so a work of the US government"
+    },
+    {
+      "id": "loc-marbury-v-madison",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep005/usrep005137/usrep005137.pdf",
+      "sha256": "dc46074ce2db6f2250de60f8a72eaee961f9dd09d7d5daf8a40db404200a4608",
+      "bytes": 1536913,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal"
+      ],
+      "licence": "Public domain: Marbury v. Madison, 5 U.S. 137 (1803), a US Supreme Court opinion published long before 1930"
+    },
+    {
+      "id": "loc-korematsu-v-united-states",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep323/usrep323214/usrep323214.pdf",
+      "sha256": "2fdaef6d2e55184b529317fee573deb0fc9475c5d3e3d88f5db270f387408c1e",
+      "bytes": 1118301,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: Korematsu v. United States, 323 U.S. 214 (1944), a US Supreme Court opinion and so a work of the US government"
+    },
+    {
+      "id": "loc-gideon-v-wainwright",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep372/usrep372335/usrep372335.pdf",
+      "sha256": "2d3219523cb251490349806ab6ab089a33f82429b8c72cf727f1f8ed4d77407d",
+      "bytes": 550057,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal"
+      ],
+      "licence": "Public domain: Gideon v. Wainwright, 372 U.S. 335 (1963), a US Supreme Court opinion and so a work of the US government"
+    },
+    {
+      "id": "loc-youngstown-v-sawyer",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep343/usrep343579/usrep343579.pdf",
+      "sha256": "351d4aab852a0cc278e75437cccd0ed19825704a209de09e1cc77e739da18126",
+      "bytes": 4343807,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal",
+        "long",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: Youngstown Sheet & Tube Co. v. Sawyer, 343 U.S. 579 (1952), a US Supreme Court opinion and so a work of the US government"
+    },
+    {
+      "id": "loc-gibbons-v-ogden",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep022/usrep022001/usrep022001.pdf",
+      "sha256": "59b99d503c94011628516ba7931b436b6bd78bed602ffefc6637edc9e8ec2456",
+      "bytes": 7728431,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal",
+        "long"
+      ],
+      "licence": "Public domain: Gibbons v. Ogden, 22 U.S. 1 (1824), a US Supreme Court opinion published long before 1930"
+    },
+    {
+      "id": "loc-buckley-v-valeo",
+      "source": "Library of Congress United States Reports",
+      "url": "https://tile.loc.gov/storage-services/service/ll/usrep/usrep424/usrep424001/usrep424001.pdf",
+      "sha256": "0791d0935e803d2bd838ae3269c4dc91d981761d95396bfc78b1e9be8744b74e",
+      "bytes": 8530984,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jbig2",
+        "legal",
+        "long"
+      ],
+      "licence": "Public domain: Buckley v. Valeo, 424 U.S. 1 (1976), a US Supreme Court opinion and so a work of the US government"
+    },
+    {
+      "id": "ia-us-reports-228",
+      "source": "Internet Archive",
+      "url": "https://archive.org/download/unitedstatesrepo0228unse/unitedstatesrepo0228unse.pdf",
+      "sha256": "bdbec894201ec349d759011ee1e7b51138562fbd2115021d66833139ed542ee3",
+      "bytes": 45245606,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jpx",
+        "legal",
+        "long",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: United States Reports volume 228 (1913), US Supreme Court opinions published before 1930"
+    },
+    {
+      "id": "ia-us-reports-341",
+      "source": "Internet Archive",
+      "url": "https://archive.org/download/unitedstatesrepo0341unse/unitedstatesrepo0341unse.pdf",
+      "sha256": "c32801a3a7e235c7a870178ea6077de7d363c6ae75068721732b48102708111a",
+      "bytes": 35952803,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jpx",
+        "legal",
+        "long",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: United States Reports volume 341 (1951), US Supreme Court opinions and so works of the US government"
+    },
+    {
+      "id": "ia-reports-black-83-text",
+      "source": "Internet Archive",
+      "url": "https://archive.org/download/reportscasesarg83blacgoog/reportscasesarg83blacgoog_text.pdf",
+      "sha256": "2b42666c100947d5cfde54b85cabc62e4ef74986293904f104fc17a42940f7f0",
+      "bytes": 33222562,
+      "tags": [
+        "scanned",
+        "ocr",
+        "jpx",
+        "legal",
+        "long",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: a volume of reports of US Supreme Court cases (Internet Archive item dated 1803), published before 1930; Internet Archive text layer added over a Google Books scan"
+    },
+    {
+      "id": "google-us-reports-vol2",
+      "source": "Internet Archive",
+      "url": "https://archive.org/download/unitedstatesrep02wagngoog/unitedstatesrep02wagngoog.pdf",
+      "sha256": "c93062c820f158ecd745139f7704cc93187402f8e463ecae2ff66f06b685d7eb",
+      "bytes": 21881051,
+      "tags": [
+        "scanned",
+        "image-only",
+        "jbig2",
+        "jpx",
+        "legal",
+        "long",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: United States Reports, US Supreme Court opinions published before 1930; Google Books marks the scan as not in copyright"
+    },
+    {
+      "id": "google-us-reports-supreme-court",
+      "source": "Internet Archive",
+      "url": "https://archive.org/download/unitedstatesrep00statgoog/unitedstatesrep00statgoog.pdf",
+      "sha256": "1ca9b178c300739e8c10ceddd3e7e25921399f585ad7cfb8036261c18d8549d2",
+      "bytes": 30185592,
+      "tags": [
+        "scanned",
+        "image-only",
+        "jbig2",
+        "jpx",
+        "legal",
+        "long",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: United States Reports, US Supreme Court opinions published before 1930; Google Books marks the scan as not in copyright"
+    },
+    {
+      "id": "google-reports-black-16",
+      "source": "Internet Archive",
+      "url": "https://archive.org/download/reportscasesarg16blacgoog/reportscasesarg16blacgoog.pdf",
+      "sha256": "4e9578875c55dade0230975f3f7fd2378ae92523cf37fbf8236931fe0884079e",
+      "bytes": 16577471,
+      "tags": [
+        "scanned",
+        "image-only",
+        "jbig2",
+        "jpx",
+        "legal",
+        "long",
+        "mixed-page-sizes"
+      ],
+      "licence": "Public domain: a volume of reports of US Supreme Court cases (Internet Archive item dated 1904), published before 1930; Google Books marks the scan as not in copyright"
     }
   ]
 }

@@ -35,6 +35,12 @@ public interface IDocument : IDisposable
     /// <returns>The root entries.</returns>
     IReadOnlyList<OutlineNode> GetOutline();
 
+    /// <summary>Loads external page resources before rendering or reading text.</summary>
+    /// <param name="pageIndex">The zero based page index.</param>
+    /// <param name="cancellationToken">Cancels resource I/O.</param>
+    /// <returns>A task completing when page resources are ready.</returns>
+    ValueTask PreparePageAsync(int pageIndex, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+
     /// <summary>Renders part of a page into a pixel buffer. The buffer is filled with white first.</summary>
     /// <param name="info">What to render.</param>
     /// <param name="target">The destination buffer.</param>

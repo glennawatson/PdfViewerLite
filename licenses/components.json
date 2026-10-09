@@ -1,0 +1,92 @@
+[
+  {
+    "id": "open-font-pack",
+    "name": "Open font pack (Arimo, Tinos, Cousine and Noto symbols)",
+    "version": "Google Fonts pinned font programs",
+    "origin": "Downloaded individually on demand",
+    "licence": "Apache-2.0 AND OFL-1.1",
+    "copyright": "Copyright the font authors; see the font notices.",
+    "link": "https://github.com/google/fonts",
+    "textFile": "../src/HyperPdfLibrary/Fonts/Data/Faces/LICENSE.txt"
+  },
+  {
+    "id": "adobe-cmaps",
+    "name": "Binary CMap resource pack (PDF.js)",
+    "version": "PDF.js f5e56f0",
+    "origin": "Downloaded individually on demand",
+    "licence": "BSD-3-Clause",
+    "copyright": "Copyright 1990-2009 Adobe Systems Incorporated. All rights reserved.",
+    "link": "https://github.com/mozilla/pdf.js/tree/master/external/bcmaps",
+    "textFile": "../src/HyperPdfLibrary/Fonts/Data/CMaps/LICENSE.txt"
+  },
+  {
+    "id": "tessdata-fast",
+    "name": "Tesseract language data (tessdata_fast)",
+    "version": "4.1.0",
+    "origin": "English is bundled; other languages are downloaded when you turn this on",
+    "licence": "Apache-2.0",
+    "copyright": "Copyright the Tesseract OCR authors.",
+    "link": "https://github.com/tesseract-ocr/tessdata_fast",
+    "textFile": "spdx/Apache-2.0.txt"
+  },
+  {
+    "id": "kokoro",
+    "name": "Kokoro-82M speech model and voices",
+    "version": "ONNX build from onnx-community",
+    "origin": "Downloaded when you turn this on",
+    "licence": "Apache-2.0",
+    "copyright": "Copyright hexgrad.",
+    "link": "https://huggingface.co/hexgrad/Kokoro-82M",
+    "textFile": "spdx/Apache-2.0.txt"
+  },
+  {
+    "id": "misaki",
+    "name": "Misaki pronunciation dictionaries (used with Kokoro)",
+    "version": "",
+    "origin": "Downloaded when you turn this on",
+    "licence": "Apache-2.0",
+    "copyright": "Copyright hexgrad.",
+    "link": "https://github.com/hexgrad/misaki",
+    "textFile": "spdx/Apache-2.0.txt"
+  },
+  {
+    "id": "melotts",
+    "name": "MeloTTS-English speech model",
+    "version": "",
+    "origin": "Downloaded when you turn this on",
+    "licence": "MIT",
+    "copyright": "Copyright (c) 2024 MyShell.ai",
+    "link": "https://github.com/myshell-ai/MeloTTS",
+    "textFile": "spdx/MIT.txt"
+  },
+  {
+    "id": "bert-base-uncased",
+    "name": "BERT base uncased, first ten layers (used with MeloTTS)",
+    "version": "",
+    "origin": "Downloaded when you turn this on",
+    "licence": "Apache-2.0",
+    "copyright": "Copyright Google LLC.",
+    "link": "https://huggingface.co/google-bert/bert-base-uncased",
+    "textFile": "spdx/Apache-2.0.txt"
+  },
+  {
+    "id": "g2p-en",
+    "name": "g2p_en spelling-to-sound network (used with MeloTTS)",
+    "version": "",
+    "origin": "Downloaded when you turn this on",
+    "licence": "Apache-2.0",
+    "copyright": "Copyright Kyubyong Park and Jongseok Kim.",
+    "link": "https://github.com/Kyubyong/g2p",
+    "textFile": "spdx/Apache-2.0.txt"
+  },
+  {
+    "id": "cmudict",
+    "name": "CMU Pronouncing Dictionary (used with MeloTTS)",
+    "version": "",
+    "origin": "Downloaded when you turn this on",
+    "licence": "BSD-2-Clause",
+    "copyright": "Copyright (C) 1993-2015 Carnegie Mellon University.",
+    "link": "http://www.speech.cs.cmu.edu/cgi-bin/cmudict",
+    "textFile": "spdx/BSD-2-Clause.txt"
+  }
+]

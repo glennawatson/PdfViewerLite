@@ -72,6 +72,7 @@ public sealed partial class PageCanvas
                 return;
             }
 
+            await document.PreparePageAsync(page, CancellationToken.None).ConfigureAwait(true);
             var bitmap = await Task.Factory.StartNew(RenderSnapshot, (document, page, tab.Rotation, region), CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default)
                 .ConfigureAwait(true);
             if (bitmap is null)
