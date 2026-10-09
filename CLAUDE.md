@@ -10,6 +10,7 @@ PdfViewerLite is a local PDF viewer for Linux, Windows and macOS. Primary users 
 
 ## Implementation
 
+- Put behaviour in focused static classes with helper methods that operate on records holding the state. Never grow one type and split it across partial files; `partial` is only for source generators. Callers compose the focused helpers directly; change the downstream code instead of adding a facade.
 - Prefer sealed records for data snapshots. Prefer readonly record structs for small values. Use classes for mutable state, services and owned lifetimes. Record collection equality follows the collection's own equality.
 - Never use value tuple types: not as return types, fields, parameters, collection elements, or `(a, b) = (b, a)` swaps. Name the shape with a positional record (`record struct` for small values, `record` for reference data). Prefer positional syntax. On hot paths, use readonly record structs that stay on the stack or in pooled arrays, so they allocate nothing.
 - Keep deconstruction. Positional records deconstruct, so write `var (key, value) = entry;` and `foreach (var (key, value) in entries)` wherever it reads better than member access.
