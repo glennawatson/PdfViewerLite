@@ -36,13 +36,12 @@ public sealed class PageTreeTests
     [Test]
     public async Task ScannedPagesInheritFromTheirParents()
     {
-        using var document = PdfDocument.Open(
+        using var document = PdfDocumentReader.Open(
             MiniPdf.Build(
                 "<< /Type /Catalog >>",
                 "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 300 400] /Rotate 90 /Parent 2 0 R >>",
-                "<< /Type /Page /Parent 2 0 R >>"),
-            null);
-        var page = document.GetPage(0);
+                "<< /Type /Page /Parent 2 0 R >>"), null);
+        var page = PdfDocumentPages.GetPage(document, 0);
 
         await Assert.That(document.PageCount).IsEqualTo(1);
         await Assert.That(page.MediaBox.Right).IsEqualTo(InheritedWidth);
@@ -56,9 +55,9 @@ public sealed class PageTreeTests
     [Test]
     public async Task AbsurdMediaBoxIsIgnored()
     {
-        using var document = PdfDocument.Open(Single("/MediaBox [0 0 2000000 100]"), null);
+        using var document = PdfDocumentReader.Open(Single("/MediaBox [0 0 2000000 100]"), null);
 
-        await Assert.That(document.GetPage(0).Width).IsEqualTo(LetterWidth);
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Width).IsEqualTo(LetterWidth);
     }
 
     /// <summary>Rotations that are not quarter turns truncate toward zero like PDFium.</summary>
@@ -66,11 +65,11 @@ public sealed class PageTreeTests
     [Test]
     public async Task RotationTruncatesTowardZero()
     {
-        using var positive = PdfDocument.Open(Single(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/Rotate {AwkwardTurn}")), null);
-        using var negative = PdfDocument.Open(Single(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/Rotate {AwkwardNegativeTurn}")), null);
+        using var positive = PdfDocumentReader.Open(Single(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/Rotate {AwkwardTurn}")), null);
+        using var negative = PdfDocumentReader.Open(Single(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"/Rotate {AwkwardNegativeTurn}")), null);
 
-        await Assert.That(positive.GetPage(0).Rotation).IsEqualTo(QuarterTurn);
-        await Assert.That(negative.GetPage(0).Rotation).IsEqualTo(ThreeQuarterTurns);
+        await Assert.That(PdfDocumentPages.GetPage(positive, 0).Rotation).IsEqualTo(QuarterTurn);
+        await Assert.That(PdfDocumentPages.GetPage(negative, 0).Rotation).IsEqualTo(ThreeQuarterTurns);
     }
 
     /// <summary>Builds a one page document whose page carries extra entries.</summary>

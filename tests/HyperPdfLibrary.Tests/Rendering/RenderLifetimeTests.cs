@@ -55,8 +55,8 @@ public sealed class RenderLifetimeTests
     {
         using var page = CreateScanPage();
         _ = page.RenderPage();
-        _ = page.Document.GetTextPage(0);
-        var cache = page.Document.RenderCache;
+        _ = PdfDocumentText.GetTextPage(page.Document, 0);
+        var cache = PdfDocumentRendering.GetRenderCache(page.Document);
         var imagesBefore = cache.Images.Count;
         var bytesBefore = cache.Images.Bytes;
         var picturesBefore = page.Renderer.PictureBytes;
@@ -69,7 +69,7 @@ public sealed class RenderLifetimeTests
         await Assert.That(cache.Images.Count).IsEqualTo(0);
         await Assert.That(cache.Images.Bytes).IsEqualTo(0);
         await Assert.That(page.Renderer.PictureCount).IsEqualTo(0);
-        await Assert.That(() => page.Document.GetTextPage(0)).Throws<ObjectDisposedException>();
+        await Assert.That(() => PdfDocumentText.GetTextPage(page.Document, 0)).Throws<ObjectDisposedException>();
         await Assert.That(() => page.Document.Objects.GetObject(Catalog)).Throws<ObjectDisposedException>();
         await Assert.That(() => Render(page.Renderer, 0)).Throws<ObjectDisposedException>();
     }
@@ -83,7 +83,7 @@ public sealed class RenderLifetimeTests
 
         _ = page.RenderPage();
 
-        await Assert.That(page.Document.RenderCache.Images.Bytes).IsEqualTo((long)ScanSide * ScanSide);
+        await Assert.That(PdfDocumentRendering.GetRenderCache(page.Document).Images.Bytes).IsEqualTo((long)ScanSide * ScanSide);
         await Assert.That(page.Renderer.PictureBytes).IsGreaterThanOrEqualTo((long)ScanSide * ScanSide);
     }
 
@@ -92,7 +92,7 @@ public sealed class RenderLifetimeTests
     [Test]
     public async Task PictureLimitKeepsOnlyTheNewestPageWhenTiny()
     {
-        using var document = PdfDocument.Open(TestPdf.Create(PageCount), null);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(PageCount), null);
         using var tiny = new PdfPageRenderer(document, PdfRenderOptions.Default with { PictureCacheBytes = 1 });
         using var roomy = new PdfPageRenderer(document);
 
@@ -113,7 +113,7 @@ public sealed class RenderLifetimeTests
     [Test]
     public async Task NegativePictureLimitIsRejected()
     {
-        using var document = PdfDocument.Open(TestPdf.Create(1), null);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(1), null);
 
         await Assert.That(() => new PdfPageRenderer(document, PdfRenderOptions.Default with { PictureCacheBytes = -1 })).Throws<ArgumentOutOfRangeException>();
     }

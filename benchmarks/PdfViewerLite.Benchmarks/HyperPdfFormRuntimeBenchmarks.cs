@@ -54,7 +54,7 @@ public class HyperPdfFormRuntimeBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _document = PdfDocument.Open(FormRuntimeSamples.Create("/Tabs /R"), null);
+        _document = PdfDocumentReader.Open(FormRuntimeSamples.Create("/Tabs /R"), null);
         _renderer = new(_document, PdfRenderOptions.Default with { FormHighlight = new(TintColor, TintAlpha) });
         _pixels = new byte[PageWidth * PageHeight * PixelBytes];
         _ = RenderTinted();
@@ -74,7 +74,7 @@ public class HyperPdfFormRuntimeBenchmarks
     public int TabSequence()
     {
         _order.Clear();
-        _document.Form.GetTabSequence(0, _order);
+        PdfDocumentForms.GetForm(_document).GetTabSequence(0, _order);
         return _order.Count;
     }
 
@@ -84,14 +84,14 @@ public class HyperPdfFormRuntimeBenchmarks
     public int CalculationOrder()
     {
         _names.Clear();
-        _document.Form.GetCalculationOrder(_names);
+        PdfDocumentForms.GetForm(_document).GetCalculationOrder(_names);
         return _names.Count;
     }
 
     /// <summary>Resets every field.</summary>
     /// <returns>The number of fields reset.</returns>
     [Benchmark]
-    public int ResetForm() => _document.Form.Reset(Reset);
+    public int ResetForm() => PdfDocumentForms.GetForm(_document).Reset(Reset);
 
     /// <summary>Formats a time with a script.</summary>
     /// <returns>The text.</returns>

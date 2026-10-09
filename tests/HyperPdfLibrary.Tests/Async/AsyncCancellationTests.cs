@@ -63,22 +63,22 @@ public sealed class AsyncCancellationTests
     [Test]
     public async Task CancelledTokenStopsEveryOperation()
     {
-        using var document = PdfDocument.Open(Sample, null);
+        using var document = PdfDocumentReader.Open(Sample, null);
         using var renderer = new PdfPageRenderer(document);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
         var token = source.Token;
-        PdfPageRenderer.GetPixelSize(document.GetPage(0), 0, 1F, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, 0), 0, 1F, out var width, out var height);
         var pixels = new byte[width * height * BytesPerPixel];
         await using var output = new MemoryStream();
 
-        await Assert.That(await Cancelled(() => PdfDocument.OpenAsync(Sample, null, token).AsTask())).IsTrue();
-        await Assert.That(await Cancelled(() => document.GetTextPageAsync(0, token).AsTask())).IsTrue();
-        await Assert.That(await Cancelled(() => document.GetPageAsync(0, token).AsTask())).IsTrue();
-        await Assert.That(await Cancelled(() => document.GetOutlineAsync(token).AsTask())).IsTrue();
-        await Assert.That(await Cancelled(() => document.GetLinksAsync(0, token).AsTask())).IsTrue();
-        await Assert.That(await Cancelled(() => document.ScanAnnotationsAsync(0, token).AsTask())).IsTrue();
-        await Assert.That(await Cancelled(() => document.SaveAsync(output, token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentReader.OpenAsync(Sample, null, token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentText.GetTextPageAsync(document, 0, token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentPages.GetPageAsync(document, 0, token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentNavigation.GetOutlineAsync(document, token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentLinks.GetLinksAsync(document, 0, token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentContent.ScanAnnotationsAsync(document, 0, token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentSaving.SaveAsync(document, output, token).AsTask())).IsTrue();
         await Assert.That(await Cancelled(() => renderer.RenderAsync(new(0, 1F, 0, 0, 0, PdfRenderFlags.None), pixels, width, height, width * BytesPerPixel, token).AsTask())).IsTrue();
         await Assert.That(await Cancelled(DrainTextAsync(document, token))).IsTrue();
     }
@@ -91,7 +91,7 @@ public sealed class AsyncCancellationTests
         await using var stream = new ThrottledStream(Heavy, TimeSpan.FromMilliseconds(ReadLatencyMilliseconds));
         using var source = new CancellationTokenSource();
         var start = Stopwatch.GetTimestamp();
-        var opening = PdfDocument.OpenAsync(stream, null, source.Token).AsTask();
+        var opening = PdfDocumentReader.OpenAsync(stream, null, source.Token).AsTask();
         source.CancelAfter(CancelAfterMilliseconds);
         await Assert.That(await Cancelled(() => opening)).IsTrue();
         var stopped = Elapsed(start);
@@ -108,7 +108,7 @@ public sealed class AsyncCancellationTests
     public async Task CancelWhileWalkingThePageTreeStopsTheWalk()
     {
         var baseline = Stopwatch.GetTimestamp();
-        using (var whole = PdfDocument.Open(ManyPages, null))
+        using (var whole = PdfDocumentReader.Open(ManyPages, null))
         {
             await Assert.That(whole.PageCount).IsEqualTo(ManyPageCount);
         }
@@ -117,7 +117,7 @@ public sealed class AsyncCancellationTests
         using var source = new CancellationTokenSource();
         source.CancelAfter(CancelAfterMilliseconds);
         var start = Stopwatch.GetTimestamp();
-        await Assert.That(await Cancelled(() => PdfDocument.OpenAsync(ManyPages, null, source.Token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentReader.OpenAsync(ManyPages, null, source.Token).AsTask())).IsTrue();
         var elapsed = Elapsed(start);
 
         await Assert.That(uncancelled).IsGreaterThan(MinimumOpenMilliseconds);
@@ -130,9 +130,9 @@ public sealed class AsyncCancellationTests
     [Test]
     public async Task CancelWhileRenderingStopsRecording()
     {
-        using var document = PdfDocument.Open(Heavy, null);
+        using var document = PdfDocumentReader.Open(Heavy, null);
         using var renderer = new PdfPageRenderer(document);
-        PdfPageRenderer.GetPixelSize(document.GetPage(0), 0, 1F, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, 0), 0, 1F, out var width, out var height);
         var pixels = new byte[width * height * BytesPerPixel];
         using var source = new CancellationTokenSource();
         source.CancelAfter(CancelAfterMilliseconds);
@@ -143,9 +143,9 @@ public sealed class AsyncCancellationTests
         await Assert.That(Elapsed(start)).IsLessThan(CancelAfterMilliseconds + StopLimitMilliseconds);
 
         // A fresh token on a lighter document of the same renderer family still draws.
-        using var light = PdfDocument.Open(Sample, null);
+        using var light = PdfDocumentReader.Open(Sample, null);
         using var lightRenderer = new PdfPageRenderer(light);
-        PdfPageRenderer.GetPixelSize(light.GetPage(0), 0, 1F, out var lightWidth, out var lightHeight);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(light, 0), 0, 1F, out var lightWidth, out var lightHeight);
         var lightPixels = new byte[lightWidth * lightHeight * BytesPerPixel];
         await Assert.That(await lightRenderer.RenderAsync(new(0, 1F, 0, 0, 0, PdfRenderFlags.None), lightPixels, lightWidth, lightHeight, lightWidth * BytesPerPixel, CancellationToken.None)).IsTrue();
     }
@@ -155,11 +155,11 @@ public sealed class AsyncCancellationTests
     [Test]
     public async Task CancelWhileExtractingTextStopsExtraction()
     {
-        using var document = PdfDocument.Open(Heavy, null);
+        using var document = PdfDocumentReader.Open(Heavy, null);
         using var source = new CancellationTokenSource();
         source.CancelAfter(CancelAfterMilliseconds);
         var start = Stopwatch.GetTimestamp();
-        await Assert.That(await Cancelled(() => document.GetTextPageAsync(0, source.Token).AsTask())).IsTrue();
+        await Assert.That(await Cancelled(() => PdfDocumentText.GetTextPageAsync(document, 0, source.Token).AsTask())).IsTrue();
 
         await Assert.That(Elapsed(start)).IsLessThan(CancelAfterMilliseconds + StopLimitMilliseconds);
     }
@@ -171,11 +171,11 @@ public sealed class AsyncCancellationTests
     {
         using var first = new CancellationTokenSource();
         await using var slow = new ThrottledStream(Heavy, TimeSpan.FromMilliseconds(ReadLatencyMilliseconds));
-        var opening = PdfDocument.OpenAsync(slow, null, first.Token).AsTask();
+        var opening = PdfDocumentReader.OpenAsync(slow, null, first.Token).AsTask();
         await first.CancelAsync();
         var start = Stopwatch.GetTimestamp();
-        using var next = await PdfDocument.OpenAsync(Sample, null, CancellationToken.None);
-        var nextText = await next.GetTextPageAsync(0, CancellationToken.None);
+        using var next = await PdfDocumentReader.OpenAsync(Sample, null, CancellationToken.None);
+        var nextText = await PdfDocumentText.GetTextPageAsync(next, 0, CancellationToken.None);
         var openTime = Elapsed(start);
 
         await Assert.That(await Cancelled(() => opening)).IsTrue();
@@ -210,7 +210,7 @@ public sealed class AsyncCancellationTests
     /// <returns>The operation.</returns>
     private static Func<Task> DrainTextAsync(PdfDocument document, CancellationToken token) => async () =>
     {
-        await foreach (var page in document.GetTextPagesAsync(token))
+        await foreach (var page in PdfDocumentText.GetTextPagesAsync(document, token))
         {
             _ = page.CharCount;
         }

@@ -34,7 +34,7 @@ internal static class AccessibilityPass
             return;
         }
 
-        var xmp = document.GetXmp();
+        var xmp = PdfDocumentMetadata.GetXmp(document);
         var copy = catalog.Clone();
         var changed = FillLanguage(copy, options.Language, xmp, report);
         var title = FillTitle(document, xmp, report);
@@ -46,7 +46,7 @@ internal static class AccessibilityPass
         }
 
         store.Replace(root.AsReference(), PdfValue.FromDictionary(copy));
-        document.RefreshAfterOptimizerEdit();
+        PdfDocumentOptimizing.RefreshAfterOptimizerEdit(document);
     }
 
     /// <summary>Sets /Lang when it is missing.</summary>

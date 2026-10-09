@@ -47,13 +47,14 @@ public static class PdfRedactor
         }
 
         var tally = new RedactionTally();
-        document.RunInTransaction(
+        PdfDocumentPageContent.RunInTransaction(
+            document,
             "Apply redactions",
             PdfChangeKinds.Annotations | PdfChangeKinds.Metadata | PdfChangeKinds.Other,
             new RunState(document, marks, options, tally, cancellationToken),
             Run);
         document.Objects.RequireCompactSave();
-        document.InvalidatePageContent();
+        PdfDocumentPageContent.InvalidatePageContent(document);
         return tally.ToReport();
     }
 
@@ -133,7 +134,7 @@ public static class PdfRedactor
         foreach (var mark in marks)
         {
             regions.AddRange(mark.Regions);
-            sources.Add(new(mark, PdfPageAnnotations.Get(document.Objects, document.GetPage(pageIndex), mark.AnnotationIndex)!));
+            sources.Add(new(mark, PdfPageAnnotations.Get(document.Objects, PdfDocumentPages.GetPage(document, pageIndex), mark.AnnotationIndex)!));
         }
 
         var areas = regions.ToArray();
@@ -165,7 +166,7 @@ public static class PdfRedactor
     /// <param name="pageIndex">The zero based page index.</param>
     private static void RemoveThumbnail(PdfDocument document, int pageIndex)
     {
-        var page = document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(document, pageIndex);
         var dictionary = PdfPageAnnotations.GetPageDictionary(document.Objects, page);
         if (!dictionary.ContainsKey(document.Objects.Names.Intern("Thumb"u8)))
         {

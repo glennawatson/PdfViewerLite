@@ -11,7 +11,7 @@ using PdfViewerLite.TestAssets;
 
 namespace HyperPdfLibrary.Tests.Editing;
 
-/// <summary>Tests for <see cref="PdfDocument.SetMetadata"/> and the XMP editor.</summary>
+/// <summary>Tests for <see cref="PdfDocumentMetadataEditing.SetMetadata"/> and the XMP editor.</summary>
 public sealed class MetadataEditTests
 {
     /// <summary>Pages in the plain test document.</summary>
@@ -40,11 +40,11 @@ public sealed class MetadataEditTests
     [Test]
     public async Task UpdatesInfoAndXmp()
     {
-        using var document = PdfDocument.Open(EditingTestDocuments.CreateStructured(), null);
-        document.SetMetadata(new() { Title = "New <Title> & more", Producer = "New Producer", Creator = "Creator Tool", Modified = Date, Author = "Ana" });
-        using var saved = PdfDocument.Open(PdfIncrementalWriter.Save(document.Objects), null);
+        using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = "New <Title> & more", Producer = "New Producer", Creator = "Creator Tool", Modified = Date, Author = "Ana" });
+        using var saved = PdfDocumentReader.Open(PdfIncrementalWriter.Save(document.Objects), null);
 
-        var info = saved.GetInfo();
+        var info = PdfDocumentMetadata.GetInfo(saved);
         await Assert.That(info.Title).IsEqualTo("New <Title> & more");
         await Assert.That(info.Producer).IsEqualTo("New Producer");
         await Assert.That(info.Modified).IsEqualTo(Date);
@@ -66,13 +66,13 @@ public sealed class MetadataEditTests
     [Test]
     public async Task EmptyStringRemoves()
     {
-        using var document = PdfDocument.Open(EditingTestDocuments.CreateStructured(), null);
-        document.SetMetadata(new() { Title = string.Empty, Producer = string.Empty });
+        using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = string.Empty, Producer = string.Empty });
 
         var xmp = Xmp(document);
         await Assert.That(xmp).DoesNotContain("dc:title");
         await Assert.That(xmp).DoesNotContain(EditingTestDocuments.XmpProducer);
-        await Assert.That(document.GetInfo().Title).IsNull();
+        await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsNull();
         await Assert.That(XmpEditor.IsWellFormed(Encoding.UTF8.GetBytes(xmp))).IsTrue();
     }
 
@@ -81,11 +81,11 @@ public sealed class MetadataEditTests
     [Test]
     public async Task ExistingInfoKeepsUntouchedEntries()
     {
-        using var document = PdfDocument.Open(Tests.Writing.WritingTestDocuments.Encrypt(TestPdf.Create(Pages)), null);
-        document.SetMetadata(new() { Subject = "Subject", Keywords = "one, two" });
-        using var compact = PdfDocument.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default), null);
+        using var document = PdfDocumentReader.Open(Tests.Writing.WritingTestDocuments.Encrypt(TestPdf.Create(Pages)), null);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Subject = "Subject", Keywords = "one, two" });
+        using var compact = PdfDocumentReader.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default), null);
 
-        var info = compact.GetInfo();
+        var info = PdfDocumentMetadata.GetInfo(compact);
         await Assert.That(compact.IsEncrypted).IsTrue();
         await Assert.That(info.Title).IsEqualTo(TestPdf.Title);
         await Assert.That(info.Author).IsEqualTo(TestPdf.Author);

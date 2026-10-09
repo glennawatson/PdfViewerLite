@@ -46,9 +46,9 @@ public sealed class StructureTreeTests
     [Test]
     public async Task UntaggedDocumentHasNoTree()
     {
-        using var document = PdfDocument.Open(TaggedSamples.TwoColumns(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.TwoColumns(), null);
 
-        await Assert.That(document.StructureTree).IsNull();
+        await Assert.That(PdfDocumentTagged.GetStructureTree(document)).IsNull();
         await Assert.That(PdfStructureTree.Load(document)).IsNull();
     }
 
@@ -57,10 +57,10 @@ public sealed class StructureTreeTests
     [Test]
     public async Task TreeIsReadOnce()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
 
-        await Assert.That(document.StructureTree).IsSameReferenceAs(document.StructureTree);
-        await Assert.That(document.StructureTree!.IsMarked).IsTrue();
+        await Assert.That(PdfDocumentTagged.GetStructureTree(document)).IsSameReferenceAs(PdfDocumentTagged.GetStructureTree(document));
+        await Assert.That(PdfDocumentTagged.GetStructureTree(document)!.IsMarked).IsTrue();
     }
 
     /// <summary>Elements resolve through the role map, keep their own type, and read their kids in order.</summary>
@@ -68,8 +68,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task ReadsElementsThroughTheRoleMap()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
         var root = tree.Roots[0];
         var kids = root.Kids;
 
@@ -91,8 +91,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task ReadsMarkedContentKids()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var kids = document.StructureTree!.Roots[0].Kids;
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var kids = PdfDocumentTagged.GetStructureTree(document)!.Roots[0].Kids;
         var first = kids[1].Element!.Kids[0];
         var second = kids[SecondKid].Element!.Kids[0];
 
@@ -109,8 +109,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task InheritsTheLanguage()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
         var kids = tree.Roots[0].Kids;
 
         await Assert.That(tree.Language).IsEqualTo(TaggedSamples.DocumentLanguage);
@@ -124,8 +124,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task ParentTreeLeadsBackToElements()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
         var parents = new List<PdfStructureElement?>();
         tree.GetPageParents(0, parents);
 
@@ -140,8 +140,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task ReadsAttributesAndClasses()
     {
-        using var document = PdfDocument.Open(TaggedSamples.TableAndList(), null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.TableAndList(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
         var table = tree.Roots[0];
         var list = tree.Roots[1];
         var body = table.Kids[1].Element!;
@@ -161,8 +161,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task ResolvesNamespaces()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Namespaces(), null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.Namespaces(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
         var chapter = tree.Roots[0].Kids[0].Element!;
 
         await Assert.That(tree.Roots[0].Namespace).IsEqualTo(PdfStructureTypes.Pdf20Namespace);
@@ -179,8 +179,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task FindsElementsThroughTheIdTree()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Namespaces(), null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.Namespaces(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
 
         await Assert.That(tree.FindById("intro")!.RawType).IsEqualTo("Para");
         await Assert.That(tree.FindById("missing")).IsNull();
@@ -191,8 +191,8 @@ public sealed class StructureTreeTests
     [Test]
     public async Task SurvivesLoopsAndDeepNesting()
     {
-        using var document = PdfDocument.Open(TaggedSamples.Cycles(), null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.Cycles(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
         var root = tree.Roots[0];
         var loop = root.Kids[0].Element!.Kids[0].Element!;
 
@@ -228,8 +228,8 @@ public sealed class StructureTreeTests
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>",
             "<< /Type /StructTreeRoot >>");
-        using var document = PdfDocument.Open(bytes, null);
-        var tree = document.StructureTree!;
+        using var document = PdfDocumentReader.Open(bytes, null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
 
         await Assert.That(tree.IsMarked).IsTrue();
         await Assert.That(tree.Roots.Count).IsEqualTo(0);

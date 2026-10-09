@@ -46,7 +46,7 @@ public sealed class OptionalContentTests
         using var document = Open(GroupAOff, UntypedGroup);
 
         await Assert.That(Shown(document, GroupA)).IsFalse();
-        await Assert.That(document.OptionalContent.Layers[0].IsVisible).IsFalse();
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(document).Layers[0].IsVisible).IsFalse();
     }
 
     /// <summary>A group whose intent is not View is always shown.</summary>
@@ -57,7 +57,7 @@ public sealed class OptionalContentTests
         using var document = Open(GroupAOff, "<< /Type /OCG /Name (A) /Intent /Design >>");
 
         await Assert.That(Shown(document, GroupA)).IsTrue();
-        await Assert.That(document.OptionalContent.Layers[0].IsVisible).IsTrue();
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(document).Layers[0].IsVisible).IsTrue();
     }
 
     /// <summary>A group's own /Usage /View /ViewState wins over the configuration.</summary>
@@ -101,7 +101,7 @@ public sealed class OptionalContentTests
     {
         using var document = Open("<< /D << /OFF [4 0 R] >> >>", Group);
 
-        await Assert.That(document.OptionalContent.HasLayers).IsTrue();
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(document).HasLayers).IsTrue();
         await Assert.That(Shown(document, GroupA)).IsFalse();
     }
 
@@ -137,7 +137,7 @@ public sealed class OptionalContentTests
     public async Task ShowingALayerHidesItsRadioGroupSiblings()
     {
         using var document = Open("<< /OCGs [4 0 R 5 0 R] /D << /OFF [5 0 R] /RBGroups [[4 0 R 5 0 R]] >> >>", Group, OtherGroup);
-        var content = document.OptionalContent;
+        var content = PdfDocumentLayers.GetOptionalContent(document);
         var version = content.Version;
 
         await Assert.That(content.SetVisible(GroupB, true)).IsTrue();
@@ -155,7 +155,7 @@ public sealed class OptionalContentTests
     public async Task HidingALayerLeavesItsRadioGroupSiblings()
     {
         using var document = Open("<< /OCGs [4 0 R 5 0 R] /D << /RBGroups [[4 0 R 5 0 R]] >> >>", Group, OtherGroup);
-        var content = document.OptionalContent;
+        var content = PdfDocumentLayers.GetOptionalContent(document);
 
         await Assert.That(content.SetVisible(GroupA, false)).IsTrue();
 
@@ -168,7 +168,7 @@ public sealed class OptionalContentTests
     /// <param name="id">The object number of the group or membership dictionary.</param>
     /// <returns><see langword="true"/> when shown.</returns>
     private static bool Shown(PdfDocument document, int id) =>
-        document.OptionalContent.IsVisible(PdfValue.FromReference(new(id, 0)));
+        PdfDocumentLayers.GetOptionalContent(document).IsVisible(PdfValue.FromReference(new(id, 0)));
 
     /// <summary>Opens a one page document with optional content.</summary>
     /// <param name="properties">The /OCProperties dictionary.</param>
@@ -182,6 +182,6 @@ public sealed class OptionalContentTests
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>",
         ];
-        return PdfDocument.Open(MiniPdf.Build([.. header, .. objects]), null);
+        return PdfDocumentReader.Open(MiniPdf.Build([.. header, .. objects]), null);
     }
 }

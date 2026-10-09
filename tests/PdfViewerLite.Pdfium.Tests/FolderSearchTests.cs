@@ -50,7 +50,7 @@ public sealed class FolderSearchTests
         using var folder = new TestFolder();
         var file = FolderSearch.FindFiles(folder.Path, false)[0];
 
-        var found = FolderSearch.SearchFile(new PdfiumEngine(), file, Words, SearchOptions.None, MaxMatches, CancellationToken.None);
+        var found = await FolderSearch.SearchFileAsync(new PdfiumEngine(), file, Words, SearchOptions.None, MaxMatches, CancellationToken.None);
         var first = found.Matches[0];
 
         await Assert.That(found.Problem).IsNull();
@@ -68,8 +68,8 @@ public sealed class FolderSearchTests
         using var folder = new TestFolder();
         var engine = new PdfiumEngine();
 
-        var broken = FolderSearch.SearchFile(engine, folder.WriteBroken(), "fox", SearchOptions.None, MaxMatches, CancellationToken.None);
-        var limited = FolderSearch.SearchFile(engine, FolderSearch.FindFiles(folder.Path, false)[1], "fox", SearchOptions.None, 1, CancellationToken.None);
+        var broken = await FolderSearch.SearchFileAsync(engine, folder.WriteBroken(), "fox", SearchOptions.None, MaxMatches, CancellationToken.None);
+        var limited = await FolderSearch.SearchFileAsync(engine, FolderSearch.FindFiles(folder.Path, false)[1], "fox", SearchOptions.None, 1, CancellationToken.None);
 
         await Assert.That(broken.Problem).IsEqualTo("could not be opened");
         await Assert.That(limited.Matches.Count).IsEqualTo(1);

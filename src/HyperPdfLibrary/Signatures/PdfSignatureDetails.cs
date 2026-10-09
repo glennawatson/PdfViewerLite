@@ -8,7 +8,7 @@ using HyperPdfLibrary.Document;
 namespace HyperPdfLibrary.Signatures;
 
 /// <summary>A signature field and the modification-detection data its signature dictionary holds, read as data.</summary>
-/// <param name="Field">The stored signature, as <see cref="PdfDocument.GetSignatures"/> lists it.</param>
+/// <param name="Field">The stored signature, as <see cref="PdfDocumentAttachments.GetSignatures"/> lists it.</param>
 /// <param name="FieldName">The field's fully qualified name.</param>
 /// <param name="Format">The /Contents encoding, from /SubFilter.</param>
 /// <param name="IsCertification">Whether the catalog's /Perms /DocMDP names this signature.</param>

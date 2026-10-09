@@ -55,6 +55,32 @@ internal static class SystemFontMatcher
     /// <summary>The face used when nothing else matches.</summary>
     private static SubstituteFace? _fallback;
 
+    /// <summary>Loads the open font program a cold request will use.</summary>
+    /// <param name="request">The font request.</param>
+    /// <param name="cancellationToken">Cancels source I/O.</param>
+    /// <returns>A task completing when the needed face is cached.</returns>
+    internal static ValueTask EnsureAsync(SubstituteRequest request, CancellationToken cancellationToken)
+    {
+        var resolved = ResolveStandard(request);
+        var parsed = resolved.Standard == StandardFont.None ? ParsedFontName.Parse(resolved.BaseFont) : new ParsedFontName(string.Empty, 0, false);
+        var weight = ChooseWeight(resolved, parsed);
+        var italic = parsed.Italic || (resolved.Flags & FontFlags.Italic) != 0 || IsStandardItalic(resolved.Standard);
+        if (resolved.Standard == StandardFont.None && FindFirst(NamedCandidates(resolved, parsed), weight, italic) is not null)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        var family = resolved.Standard switch
+        {
+            StandardFont.Symbol => BundledFamily.Symbol,
+            StandardFont.ZapfDingbats => BundledFamily.Dingbats,
+            _ when IsFixed(resolved) => BundledFamily.Fixed,
+            _ when IsSerif(resolved) => BundledFamily.Serif,
+            _ => BundledFamily.Sans,
+        };
+        return BundledFaces.EnsureAsync(family, weight >= BoldThreshold, italic, cancellationToken);
+    }
+
     /// <summary>Finds a system font for a request.</summary>
     /// <param name="request">The request.</param>
     /// <returns>The face; the platform default font when nothing matches.</returns>
@@ -67,7 +93,7 @@ internal static class SystemFontMatcher
         var weight = ChooseWeight(resolved, parsed);
         var italic = parsed.Italic || (resolved.Flags & FontFlags.Italic) != 0 || IsStandardItalic(resolved.Standard);
 
-        // The standard 14 fonts always use the bundled faces, as PDFium uses its Foxit faces, so they look alike everywhere.
+        // Standard fonts use the same open font pack on every platform.
         return resolved.Standard != StandardFont.None && BundledFor(resolved, weight, italic) is { } bundled
             ? bundled
             : MatchByName(resolved, parsed, weight, italic);
@@ -231,22 +257,22 @@ internal static class SystemFontMatcher
         switch (request.Standard)
         {
             case StandardFont.Symbol:
-            {
-                Add(list, SymbolFamilies, false);
-                break;
-            }
+                {
+                    Add(list, SymbolFamilies, false);
+                    break;
+                }
 
             case StandardFont.ZapfDingbats:
-            {
-                Add(list, DingbatsFamilies, false);
-                break;
-            }
+                {
+                    Add(list, DingbatsFamilies, false);
+                    break;
+                }
 
             default:
-            {
-                Add(list, GenericFamilies(request), false);
-                break;
-            }
+                {
+                    Add(list, GenericFamilies(request), false);
+                    break;
+                }
         }
 
         return list;

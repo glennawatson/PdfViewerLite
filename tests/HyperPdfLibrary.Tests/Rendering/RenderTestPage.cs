@@ -16,7 +16,7 @@ internal sealed class RenderTestPage : IDisposable
     /// <param name="pdf">The PDF bytes.</param>
     internal RenderTestPage(byte[] pdf)
     {
-        Document = PdfDocument.Open(pdf, null);
+        Document = PdfDocumentReader.Open(pdf, null);
         Renderer = new(Document);
     }
 
@@ -33,7 +33,7 @@ internal sealed class RenderTestPage : IDisposable
     /// <returns>The pixels.</returns>
     internal RenderedImage RenderPage(float scale, int quarterTurns, PdfRenderFlags flags)
     {
-        PdfPageRenderer.GetPixelSize(Document.GetPage(0), quarterTurns, scale, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(Document, 0), quarterTurns, scale, out var width, out var height);
         return RenderTile(new(0, scale, quarterTurns, 0, 0, flags), width, height);
     }
 

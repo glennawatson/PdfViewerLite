@@ -475,6 +475,7 @@ public sealed partial class TextRecognitionViewModel : ReactiveObject, IDisposab
         {
             Progress = (double)page / pageCount;
             ProgressText = $"Recognising text: page {page + 1} of {pageCount}";
+            await document.PreparePageAsync(page, cancellation).ConfigureAwait(true);
             var index = page;
             var check = checkFirst;
             var result = await Task.Run(() => RecognizeOne(document, writer, engine, index, words, check), CancellationToken.None).ConfigureAwait(true);

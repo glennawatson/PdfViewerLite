@@ -45,17 +45,17 @@ public sealed class AsyncParityTests
         {
             var path = Path.Combine(directory.FullName, "sample.pdf");
             await File.WriteAllBytesAsync(path, Sample);
-            using var sync = PdfDocument.Open(Sample, null);
+            using var sync = PdfDocumentReader.Open(Sample, null);
             using var opened = await OpenAsync(path, kind);
             var document = opened.Document;
             await Assert.That(document.PageCount).IsEqualTo(sync.PageCount);
-            await Assert.That(document.GetInfo().Title).IsEqualTo(sync.GetInfo().Title);
-            await Assert.That((await document.GetOutlineAsync(CancellationToken.None)).Count).IsEqualTo(sync.GetOutline().Count);
+            await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsEqualTo(PdfDocumentMetadata.GetInfo(sync).Title);
+            await Assert.That((await PdfDocumentNavigation.GetOutlineAsync(document, CancellationToken.None)).Count).IsEqualTo(PdfDocumentNavigation.GetOutline(sync).Count);
             for (var i = 0; i < sync.PageCount; i++)
             {
-                await Assert.That((await document.GetLinksAsync(i, CancellationToken.None)).Count).IsEqualTo(sync.GetLinks(i).Count);
-                await Assert.That((await document.GetTextPageAsync(i, CancellationToken.None)).Text).IsEqualTo(sync.GetTextPage(i).Text);
-                await Assert.That(await document.ScanAnnotationsAsync(i, CancellationToken.None)).IsEqualTo(sync.ScanAnnotations(i));
+                await Assert.That((await PdfDocumentLinks.GetLinksAsync(document, i, CancellationToken.None)).Count).IsEqualTo(PdfDocumentLinks.GetLinks(sync, i).Count);
+                await Assert.That((await PdfDocumentText.GetTextPageAsync(document, i, CancellationToken.None)).Text).IsEqualTo(PdfDocumentText.GetTextPage(sync, i).Text);
+                await Assert.That(await PdfDocumentContent.ScanAnnotationsAsync(document, i, CancellationToken.None)).IsEqualTo(PdfDocumentContent.ScanAnnotations(sync, i));
             }
         }
         finally
@@ -69,12 +69,12 @@ public sealed class AsyncParityTests
     [Test]
     public async Task TextWalkAndSearchMatchSync()
     {
-        using var sync = PdfDocument.Open(Sample, null);
-        using var document = await PdfDocument.OpenAsync(Sample, null, CancellationToken.None);
+        using var sync = PdfDocumentReader.Open(Sample, null);
+        using var document = await PdfDocumentReader.OpenAsync(Sample, null, CancellationToken.None);
         var index = 0;
-        await foreach (var page in document.GetTextPagesAsync(CancellationToken.None))
+        await foreach (var page in PdfDocumentText.GetTextPagesAsync(document, CancellationToken.None))
         {
-            await Assert.That(page.Text).IsEqualTo(sync.GetTextPage(index).Text);
+            await Assert.That(page.Text).IsEqualTo(PdfDocumentText.GetTextPage(sync, index).Text);
             index++;
         }
 
@@ -84,16 +84,16 @@ public sealed class AsyncParityTests
         for (var i = 0; i < Pages; i++)
         {
             expected.Clear();
-            sync.GetTextPage(i).Find(Word, PdfTextSearchOptions.None, expected);
+            PdfDocumentText.GetTextPage(sync, i).Find(Word, PdfTextSearchOptions.None, expected);
             matchedPages += expected.Count > 0 ? 1 : 0;
         }
 
         var found = 0;
-        await foreach (var match in document.FindAsync(Word, PdfTextSearchOptions.None, CancellationToken.None))
+        await foreach (var match in PdfDocumentText.FindAsync(document, Word, PdfTextSearchOptions.None, CancellationToken.None))
         {
             found++;
             expected.Clear();
-            sync.GetTextPage(match.PageIndex).Find(Word, PdfTextSearchOptions.None, expected);
+            PdfDocumentText.GetTextPage(sync, match.PageIndex).Find(Word, PdfTextSearchOptions.None, expected);
             await Assert.That(match.Matches).IsEquivalentTo(expected);
         }
 
@@ -105,12 +105,12 @@ public sealed class AsyncParityTests
     [Test]
     public async Task RenderAsyncMatchesSync()
     {
-        using var document = PdfDocument.Open(Sample, null);
+        using var document = PdfDocumentReader.Open(Sample, null);
         using var renderer = new PdfPageRenderer(document);
         using var asyncRenderer = new PdfPageRenderer(document);
         for (var i = 0; i < Pages; i++)
         {
-            PdfPageRenderer.GetPixelSize(document.GetPage(i), 0, 1F, out var width, out var height);
+            PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, i), 0, 1F, out var width, out var height);
             var expected = new byte[width * height * BytesPerPixel];
             var actual = new byte[expected.Length];
             var request = new PdfTileRequest(i, 1F, 0, 0, 0, PdfRenderFlags.Annotations);
@@ -125,12 +125,12 @@ public sealed class AsyncParityTests
     [Test]
     public async Task ConcurrentRendersMatchSync()
     {
-        using var document = PdfDocument.Open(Sample, null);
+        using var document = PdfDocumentReader.Open(Sample, null);
         using var renderer = new PdfPageRenderer(document);
         var expected = new byte[ParallelPages][];
         var actual = new byte[ParallelPages][];
         var tasks = new Task<bool>[ParallelPages];
-        PdfPageRenderer.GetPixelSize(document.GetPage(0), 0, 1F, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, 0), 0, 1F, out var width, out var height);
         for (var i = 0; i < ParallelPages; i++)
         {
             expected[i] = new byte[width * height * BytesPerPixel];
@@ -159,14 +159,14 @@ public sealed class AsyncParityTests
     [Test]
     public async Task SaveAsyncMatchesSync()
     {
-        using var sync = PdfDocument.Open(Sample, null);
-        using var document = await PdfDocument.OpenAsync(Sample, null, CancellationToken.None);
-        sync.SetMetadata(new() { Title = "Edited" });
-        document.SetMetadata(new() { Title = "Edited" });
+        using var sync = PdfDocumentReader.Open(Sample, null);
+        using var document = await PdfDocumentReader.OpenAsync(Sample, null, CancellationToken.None);
+        PdfDocumentMetadataEditing.SetMetadata(sync, new() { Title = "Edited" });
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = "Edited" });
         await using var expected = new MemoryStream();
         PdfIncrementalWriter.Save(sync.Objects, expected);
         await using var actual = new MemoryStream();
-        await document.SaveAsync(actual, CancellationToken.None);
+        await PdfDocumentSaving.SaveAsync(document, actual, CancellationToken.None);
         await Assert.That(actual.ToArray().AsSpan().SequenceEqual(expected.ToArray())).IsTrue();
     }
 
@@ -179,30 +179,30 @@ public sealed class AsyncParityTests
         switch (kind)
         {
             case "bytes":
-            {
-                return new(await PdfDocument.OpenAsync(await File.ReadAllBytesAsync(path), null, CancellationToken.None), null);
-            }
+                {
+                    return new(await PdfDocumentReader.OpenAsync(await File.ReadAllBytesAsync(path), null, CancellationToken.None), null);
+                }
 
             case "handle":
-            {
-                return new(await PdfDocument.OpenWithAsync(path, new() { Source = PdfSourceKind.Stream }, CancellationToken.None), null);
-            }
+                {
+                    return new(await PdfDocumentReader.OpenWithAsync(path, new() { Source = PdfSourceKind.Stream }, CancellationToken.None), null);
+                }
 
             case "memory":
-            {
-                return new(await PdfDocument.OpenWithAsync(path, new() { Source = PdfSourceKind.Memory }, CancellationToken.None), null);
-            }
+                {
+                    return new(await PdfDocumentReader.OpenWithAsync(path, new() { Source = PdfSourceKind.Memory }, CancellationToken.None), null);
+                }
 
             case "stream":
-            {
-                var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.Asynchronous);
-                return new(await PdfDocument.OpenAsync(stream, null, CancellationToken.None), stream);
-            }
+                {
+                    var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.Asynchronous);
+                    return new(await PdfDocumentReader.OpenAsync(stream, null, CancellationToken.None), stream);
+                }
 
             default:
-            {
-                return new(await PdfDocument.OpenWithAsync(path, new() { Source = PdfSourceKind.Mapped }, CancellationToken.None), null);
-            }
+                {
+                    return new(await PdfDocumentReader.OpenWithAsync(path, new() { Source = PdfSourceKind.Mapped }, CancellationToken.None), null);
+                }
         }
     }
 }

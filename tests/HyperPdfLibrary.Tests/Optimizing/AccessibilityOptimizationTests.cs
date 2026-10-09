@@ -29,12 +29,14 @@ public sealed class AccessibilityOptimizationTests
         using var fonts = new TaggedFontScope();
         var source = TaggedSamples.Basic();
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller);
-        using var before = PdfDocument.Open(source, null);
-        using var after = PdfDocument.Open(result.Bytes, null);
+        using var before = PdfDocumentReader.Open(source, null);
+        using var after = PdfDocumentReader.Open(result.Bytes, null);
 
         await Assert.That(Signature(after)).IsEqualTo(Signature(before));
         await Assert.That(Spoken(after)).IsEqualTo(Spoken(before));
-        await Assert.That(after.StructureTree!.GetMarkedContentParent(0, 1)!.MappedType).IsEqualTo(before.StructureTree!.GetMarkedContentParent(0, 1)!.MappedType);
+        var afterType = PdfDocumentTagged.GetStructureTree(after)!.GetMarkedContentParent(0, 1)!.MappedType;
+        var beforeType = PdfDocumentTagged.GetStructureTree(before)!.GetMarkedContentParent(0, 1)!.MappedType;
+        await Assert.That(afterType).IsEqualTo(beforeType);
         await Assert.That(after.Catalog.GetText(KnownName.Lang)).IsEqualTo(TaggedSamples.DocumentLanguage);
     }
 
@@ -44,13 +46,13 @@ public sealed class AccessibilityOptimizationTests
     public async Task FillsMissingEntries()
     {
         var result = OptimizerTestKit.Optimize(OptimizerSamples.UntaggedText(Title), PdfOptimizeOptions.Balanced with { Language = Language });
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
         var names = document.Objects.Names;
 
         await Assert.That(document.Catalog.GetText(KnownName.Lang)).IsEqualTo(Language);
         await Assert.That(document.Catalog.GetDictionary(KnownName.ViewerPreferences)!.GetBoolean(names.Intern("DisplayDocTitle"u8))).IsTrue();
         await Assert.That(document.Catalog.ContainsKey(KnownName.MarkInfo)).IsFalse();
-        await Assert.That(document.GetInfo().Title).IsEqualTo(Title);
+        await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsEqualTo(Title);
     }
 
     /// <summary>With no language known, /Lang stays missing and the report says how to add one.</summary>
@@ -59,7 +61,7 @@ public sealed class AccessibilityOptimizationTests
     public async Task ReportsUnknownLanguage()
     {
         var result = OptimizerTestKit.Optimize(OptimizerSamples.UntaggedText(null), PdfOptimizeOptions.Balanced);
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
 
         await Assert.That(document.Catalog.ContainsKey(KnownName.Lang)).IsFalse();
         await Assert.That(result.Report.Skipped.Any(static skip => skip.Category == PdfOptimizeCategory.Accessibility)).IsTrue();
@@ -75,7 +77,7 @@ public sealed class AccessibilityOptimizationTests
     {
         var source = OptimizerSamples.UntaggedText(Title);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality with { AddInferredTags = true, Language = Language });
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
         var tagged = PdfReadingStructure.ReadTagged(document, 0);
         var types = new List<PdfSemanticRole>();
         var spoken = new StringBuilder();
@@ -86,13 +88,13 @@ public sealed class AccessibilityOptimizationTests
 
         await Assert.That(result.Report.TagsInferred).IsTrue();
         await Assert.That(result.Report.FiguresNeedingAltText).IsEqualTo(1);
-        await Assert.That(document.StructureTree).IsNotNull();
+        await Assert.That(PdfDocumentTagged.GetStructureTree(document)).IsNotNull();
         await Assert.That(document.Catalog.GetDictionary(KnownName.MarkInfo)!.GetBoolean(document.Objects.Names.Intern("Marked"u8))).IsTrue();
         await Assert.That(types).Contains(PdfSemanticRole.Heading);
         await Assert.That(types).Contains(PdfSemanticRole.Paragraph);
         await Assert.That(types).Contains(PdfSemanticRole.Figure);
         await Assert.That(spoken.ToString()).StartsWith($"Heading:{OptimizerSamples.Heading}");
-        await Assert.That(document.GetXmp()!.GetValue(InferredTagsXmp.Namespace, InferredTagsXmp.Property)).IsEqualTo("true");
+        await Assert.That(PdfDocumentMetadata.GetXmp(document)!.GetValue(InferredTagsXmp.Namespace, InferredTagsXmp.Property)).IsEqualTo("true");
         await Assert.That(OptimizerTestKit.Text(result.Bytes)).IsEquivalentTo(OptimizerTestKit.Text(source));
         await Assert.That(OptimizerTestKit.MaxDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsEqualTo(0);
     }
@@ -105,8 +107,8 @@ public sealed class AccessibilityOptimizationTests
         using var fonts = new TaggedFontScope();
         var source = TaggedSamples.Basic();
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality with { AddInferredTags = true });
-        using var before = PdfDocument.Open(source, null);
-        using var after = PdfDocument.Open(result.Bytes, null);
+        using var before = PdfDocumentReader.Open(source, null);
+        using var after = PdfDocumentReader.Open(result.Bytes, null);
 
         await Assert.That(result.Report.TagsInferred).IsFalse();
         await Assert.That(Signature(after)).IsEqualTo(Signature(before));
@@ -136,7 +138,7 @@ public sealed class AccessibilityOptimizationTests
     private static string Signature(PdfDocument document)
     {
         var text = new StringBuilder();
-        foreach (var root in document.StructureTree!.Roots)
+        foreach (var root in PdfDocumentTagged.GetStructureTree(document)!.Roots)
         {
             Describe(root, text);
         }

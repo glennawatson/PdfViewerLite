@@ -40,7 +40,7 @@ public sealed partial class PdfPageRenderer
             return null;
         }
 
-        var page = _document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(_document, pageIndex);
         if (page.Dictionary.Get(_cache.Thumb).AsStream() is not { } thumb)
         {
             return null;
@@ -67,7 +67,7 @@ public sealed partial class PdfPageRenderer
         using var embedded = GetEmbeddedThumbnail(pageIndex);
         if (embedded is null)
         {
-            var page = (uint)pageIndex < (uint)_document.PageCount ? _document.GetPage(pageIndex) : null;
+            var page = (uint)pageIndex < (uint)_document.PageCount ? PdfDocumentPages.GetPage(_document, pageIndex) : null;
             return page is not null && Render(new(pageIndex, ThumbnailScale(page, maxEdge), 0, 0, 0, PdfRenderFlags.None), target);
         }
 

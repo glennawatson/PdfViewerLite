@@ -19,10 +19,10 @@ public sealed class CleanupTests
     {
         var source = OptimizerSamples.Clutter();
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality with { Cleanup = PdfCleanupItems.All });
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
         var names = document.Objects.Names;
-        var page = document.GetPage(0).Dictionary;
-        var resources = document.GetPage(0).Resources!;
+        var page = PdfDocumentPages.GetPage(document, 0).Dictionary;
+        var resources = PdfDocumentPages.GetPage(document, 0).Resources!;
 
         await Assert.That(page.ContainsKey(names.Intern("Thumb"u8))).IsFalse();
         await Assert.That(page.ContainsKey(PieceInfo(names))).IsFalse();
@@ -31,7 +31,7 @@ public sealed class CleanupTests
         await Assert.That(resources.GetDictionary(KnownName.XObject)!.ContainsKey(names.Intern("Im1"u8))).IsTrue();
         await Assert.That(resources.GetDictionary(KnownName.XObject)!.ContainsKey(names.Intern("Im2"u8))).IsFalse();
         await Assert.That(resources.GetDictionary(KnownName.Font)!.Count).IsEqualTo(0);
-        await Assert.That(document.GetXmp()?.Title).IsEqualTo("Clutter");
+        await Assert.That(PdfDocumentMetadata.GetXmp(document)?.Title).IsEqualTo("Clutter");
         await Assert.That(OptimizerTestKit.MaxDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsEqualTo(0);
     }
 
@@ -41,10 +41,10 @@ public sealed class CleanupTests
     public async Task CleanupIsOptIn()
     {
         var result = OptimizerTestKit.Optimize(OptimizerSamples.Clutter(), PdfOptimizeOptions.KeepQuality);
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
         var names = document.Objects.Names;
 
-        await Assert.That(document.GetPage(0).Dictionary.ContainsKey(names.Intern("Thumb"u8))).IsTrue();
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Dictionary.ContainsKey(names.Intern("Thumb"u8))).IsTrue();
         await Assert.That(document.Catalog.ContainsKey(PieceInfo(names))).IsTrue();
     }
 

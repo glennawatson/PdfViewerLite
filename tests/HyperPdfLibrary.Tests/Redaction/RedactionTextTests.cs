@@ -66,7 +66,7 @@ public sealed class RedactionTextTests
         const string properties = $"/Properties << /MC0 << /MCID 4 /ActualText ({RedactionSamples.Secret}) >> >>";
         var pdf = named ? PageObjectSamples.Page(reference, properties) : PageObjectSamples.Page(inline);
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.SecretLine);
-        using var document = PdfDocument.Open(saved, null);
+        using var document = PdfDocumentReader.Open(saved, null);
 
         await Assert.That(RedactionSamples.Contains(pdf, "ActualText")).IsTrue();
         await Assert.That(RedactionSamples.Contains(saved, RedactionSamples.Secret)).IsFalse();
@@ -81,15 +81,15 @@ public sealed class RedactionTextTests
     {
         var pdf = PageObjectSamples.Page(RedactionSamples.ThreeLines);
         float[] before;
-        using (var original = PdfDocument.Open(pdf, null))
+        using (var original = PdfDocumentReader.Open(pdf, null))
         {
-            var text = (PdfTextObject)original.GetPageContent(0).Objects[1];
+            var text = (PdfTextObject)PdfDocumentPageContent.GetPageContent(original, 0).Objects[1];
             before = [text.Glyphs[0].Origin.X, text.Glyphs[SecretPrefix - 1].Origin.X];
         }
 
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.AlphaArea);
-        using var after = PdfDocument.Open(saved, null);
-        var kept = (PdfTextObject)after.GetPageContent(0).Objects[1];
+        using var after = PdfDocumentReader.Open(saved, null);
+        var kept = (PdfTextObject)PdfDocumentPageContent.GetPageContent(after, 0).Objects[1];
 
         await Assert.That(kept.Text).StartsWith("SECRET-");
         await Assert.That(kept.Text).DoesNotContain("ALPHA");
@@ -104,15 +104,15 @@ public sealed class RedactionTextTests
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 20 120 Td (SECRET-ALPHA public tail) Tj ET");
         PdfRectangle tailBefore;
-        using (var original = PdfDocument.Open(pdf, null))
+        using (var original = PdfDocumentReader.Open(pdf, null))
         {
-            var text = (PdfTextObject)original.GetPageContent(0).Objects[0];
+            var text = (PdfTextObject)PdfDocumentPageContent.GetPageContent(original, 0).Objects[0];
             tailBefore = text.Glyphs[^1].Box;
         }
 
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.PrefixArea);
-        using var after = PdfDocument.Open(saved, null);
-        var kept = (PdfTextObject)after.GetPageContent(0).Objects[0];
+        using var after = PdfDocumentReader.Open(saved, null);
+        var kept = (PdfTextObject)PdfDocumentPageContent.GetPageContent(after, 0).Objects[0];
 
         await Assert.That(kept.Glyphs[^1].Box.Left).IsEqualTo(tailBefore.Left).Within(Tolerance);
         await Assert.That(kept.Text).EndsWith("tail");
@@ -154,7 +154,7 @@ public sealed class RedactionTextTests
     [Test]
     public async Task ReportCountsRemovedGlyphs()
     {
-        using var document = PdfDocument.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
+        using var document = PdfDocumentReader.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
         var empty = PdfRedactor.Apply(document, PdfRedactionOptions.Default);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         var report = PdfRedactor.Apply(document, PdfRedactionOptions.Default);
@@ -170,7 +170,7 @@ public sealed class RedactionTextTests
     [Test]
     public async Task IncrementalSaveIsRefusedAfterApplying()
     {
-        using var document = PdfDocument.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
+        using var document = PdfDocumentReader.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         _ = PdfRedactor.Apply(document, PdfRedactionOptions.Default);
 
@@ -184,14 +184,14 @@ public sealed class RedactionTextTests
     [Test]
     public async Task CancellationLeavesTheDocumentUnchanged()
     {
-        using var document = PdfDocument.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
+        using var document = PdfDocumentReader.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
         await Assert.That(() => PdfRedactor.Apply(document, PdfRedactionOptions.Default, source.Token)).Throws<OperationCanceledException>();
         await Assert.That(document.Objects.RequiresCompactSave).IsFalse();
-        await Assert.That(document.GetTextPage(0).Text).Contains(RedactionSamples.SecretWord);
+        await Assert.That(PdfDocumentText.GetTextPage(document, 0).Text).Contains(RedactionSamples.SecretWord);
     }
 
     /// <summary>The async save writes the same file as the sync one.</summary>
@@ -199,7 +199,7 @@ public sealed class RedactionTextTests
     [Test]
     public async Task AsyncSaveRemovesTheText()
     {
-        using var document = PdfDocument.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
+        using var document = PdfDocumentReader.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         await using var output = new MemoryStream();
         var report = await PdfRedactor.ApplyAndSaveAsync(document, output, PdfRedactionOptions.Default, CancellationToken.None);

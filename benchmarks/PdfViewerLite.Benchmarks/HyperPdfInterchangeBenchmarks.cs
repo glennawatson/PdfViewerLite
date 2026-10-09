@@ -63,7 +63,7 @@ public class HyperPdfInterchangeBenchmarks
         _data = CreateData();
         _xfdf = XfdfWriter.Write(_data);
         _fdf = FdfWriter.Write(_data);
-        _annotated = PdfDocument.Open(_pdf, null);
+        _annotated = PdfDocumentReader.Open(_pdf, null);
         _ = PdfInterchange.Import(_annotated, _data);
     }
 
@@ -76,7 +76,7 @@ public class HyperPdfInterchangeBenchmarks
     [Benchmark(Baseline = true)]
     public int OpenOnly()
     {
-        using var document = PdfDocument.Open(_pdf, null);
+        using var document = PdfDocumentReader.Open(_pdf, null);
         return document.PageCount;
     }
 
@@ -95,7 +95,7 @@ public class HyperPdfInterchangeBenchmarks
     [Benchmark]
     public int ImportXfdf()
     {
-        using var document = PdfDocument.Open(_pdf, null);
+        using var document = PdfDocumentReader.Open(_pdf, null);
         return PdfInterchange.ImportXfdf(document, _xfdf).AnnotationsAdded;
     }
 
@@ -104,7 +104,7 @@ public class HyperPdfInterchangeBenchmarks
     [Benchmark]
     public int ImportFdf()
     {
-        using var document = PdfDocument.Open(_pdf, null);
+        using var document = PdfDocumentReader.Open(_pdf, null);
         return PdfInterchange.ImportFdf(document, _fdf).AnnotationsAdded;
     }
 

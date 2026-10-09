@@ -24,11 +24,11 @@ internal static class SourceOpener
     /// <returns>The document.</returns>
     internal static PdfDocument Open(string kind, byte[] bytes, PdfOpenOptions options, string directory) => kind switch
     {
-        "memory" => PdfDocument.OpenWith(bytes, options),
-        "window" => PdfDocument.OpenWith(new MemoryPdfByteSource(Offset(bytes)), true, options),
-        "stream" => PdfDocument.OpenWith(new StreamPdfByteSource(new MemoryStream(bytes, false), TinyCache, true), true, options),
-        "mapped" => PdfDocument.OpenWith(WriteFile(bytes, directory), options with { Source = PdfSourceKind.Mapped }),
-        _ => PdfDocument.OpenWith(WriteFile(bytes, directory), options with { Source = PdfSourceKind.Stream, CacheBytes = TinyCache }),
+        "memory" => PdfDocumentReader.OpenWith(bytes, options),
+        "window" => PdfDocumentReader.OpenWith(new MemoryPdfByteSource(Offset(bytes)), true, options),
+        "stream" => PdfDocumentReader.OpenWith(new StreamPdfByteSource(new MemoryStream(bytes, false), TinyCache, true), true, options),
+        "mapped" => PdfDocumentReader.OpenWith(WriteFile(bytes, directory), options with { Source = PdfSourceKind.Mapped }),
+        _ => PdfDocumentReader.OpenWith(WriteFile(bytes, directory), options with { Source = PdfSourceKind.Stream, CacheBytes = TinyCache }),
     };
 
     /// <summary>Creates an empty temporary directory.</summary>

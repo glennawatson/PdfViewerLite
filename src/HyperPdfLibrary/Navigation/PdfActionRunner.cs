@@ -100,7 +100,7 @@ public sealed class PdfActionRunner
     /// <param name="cancellationToken">A token that cancels the run between actions.</param>
     /// <returns>What happened.</returns>
     public async ValueTask<PdfActionResult> RunDocumentOpenedAsync(CancellationToken cancellationToken) =>
-        _document.GetOpenAction() is { } open ? await RunAsync(open, -1, cancellationToken).ConfigureAwait(false) : PdfActionResult.None;
+        PdfDocumentActions.GetOpenAction(_document) is { } open ? await RunAsync(open, -1, cancellationToken).ConfigureAwait(false) : PdfActionResult.None;
 
     /// <summary>Runs the document's additional actions for one event: WC (will close), WS (will save), DS (did save), WP (will print) or DP (did print).</summary>
     /// <param name="eventKey">The event's key.</param>
@@ -110,7 +110,7 @@ public sealed class PdfActionRunner
     public ValueTask<PdfActionResult> RunDocumentEventAsync(string eventKey, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(eventKey);
-        return RunTriggersAsync(_document.GetTriggers(), eventKey, -1, cancellationToken);
+        return RunTriggersAsync(PdfDocumentActions.GetTriggers(_document), eventKey, -1, cancellationToken);
     }
 
     /// <summary>Describes a local change.</summary>
@@ -189,7 +189,7 @@ public sealed class PdfActionRunner
     /// <returns>What happened.</returns>
     private ValueTask<PdfActionResult> RunPageAsync(int pageIndex, string eventKey, CancellationToken cancellationToken) =>
         (uint)pageIndex < (uint)_document.PageCount
-            ? RunTriggersAsync(_document.GetTriggers(_document.GetPage(pageIndex)), eventKey, pageIndex, cancellationToken)
+            ? RunTriggersAsync(PdfDocumentActions.GetTriggers(_document, PdfDocumentPages.GetPage(_document, pageIndex)), eventKey, pageIndex, cancellationToken)
             : ValueTask.FromResult(PdfActionResult.None);
 
     /// <summary>Runs one action, without its chain.</summary>
@@ -202,44 +202,44 @@ public sealed class PdfActionRunner
         switch (action.Value)
         {
             case ResetFormAction reset:
-            {
-                return Local(_document.Form.Reset(reset));
-            }
+                {
+                    return Local(PdfDocumentForms.GetForm(_document).Reset(reset));
+                }
 
             case HideAction hide:
-            {
-                return Local(_document.Form.SetHidden(hide));
-            }
+                {
+                    return Local(PdfDocumentForms.GetForm(_document).SetHidden(hide));
+                }
 
             case SetOcgStateAction layers:
-            {
-                return ApplyLayers(layers) > 0 ? PdfActionResult.Ran | PdfActionResult.LayersChanged : PdfActionResult.Ran;
-            }
+                {
+                    return ApplyLayers(layers) > 0 ? PdfActionResult.Ran | PdfActionResult.LayersChanged : PdfActionResult.Ran;
+                }
 
             case NamedAction named:
-            {
-                return Asked(await _host.RunNamedAsync(named.Name, sourcePage, cancellationToken).ConfigureAwait(false));
-            }
+                {
+                    return Asked(await _host.RunNamedAsync(named.Name, sourcePage, cancellationToken).ConfigureAwait(false));
+                }
 
             case SubmitFormAction submit:
-            {
-                return Asked(await _host.SubmitFormAsync(_document.Form.CreateSubmission(submit), cancellationToken).ConfigureAwait(false));
-            }
+                {
+                    return Asked(await _host.SubmitFormAsync(PdfDocumentForms.GetForm(_document).CreateSubmission(submit), cancellationToken).ConfigureAwait(false));
+                }
 
             case ImportDataAction import:
-            {
-                return Asked(await _host.ImportDataAsync(import, cancellationToken).ConfigureAwait(false));
-            }
+                {
+                    return Asked(await _host.ImportDataAsync(import, cancellationToken).ConfigureAwait(false));
+                }
 
             case GoToAction or UriAction or RemoteGoToAction or LaunchAction or EmbeddedGoToAction:
-            {
-                return Asked(await _host.NavigateAsync(action, sourcePage, cancellationToken).ConfigureAwait(false));
-            }
+                {
+                    return Asked(await _host.NavigateAsync(action, sourcePage, cancellationToken).ConfigureAwait(false));
+                }
 
             default:
-            {
-                return PdfActionResult.Skipped;
-            }
+                {
+                    return PdfActionResult.Skipped;
+                }
         }
     }
 
@@ -248,7 +248,7 @@ public sealed class PdfActionRunner
     /// <returns>The number of layers whose visibility changed.</returns>
     private int ApplyLayers(SetOcgStateAction action)
     {
-        var content = _document.OptionalContent;
+        var content = PdfDocumentLayers.GetOptionalContent(_document);
         var changed = 0;
         foreach (var step in action.Changes)
         {

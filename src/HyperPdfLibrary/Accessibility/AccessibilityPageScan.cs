@@ -54,7 +54,7 @@ internal sealed class AccessibilityPageScan
     internal AccessibilityPageScan(PdfDocument document, AccessibilityStructureScan? structure, int? part, AccessibilityFindings findings)
     {
         _document = document;
-        _tree = document.StructureTree;
+        _tree = PdfDocumentTagged.GetStructureTree(document);
         _structure = structure;
         _part = part;
         _findings = findings;
@@ -65,8 +65,8 @@ internal sealed class AccessibilityPageScan
     /// <returns>What was counted on the page.</returns>
     internal PdfAccessibilityPage Check(int pageIndex)
     {
-        var page = _document.GetPage(pageIndex);
-        var content = _document.GetMarkedContent(pageIndex);
+        var page = PdfDocumentPages.GetPage(_document, pageIndex);
+        var content = PdfDocumentTagged.GetMarkedContent(_document, pageIndex);
         CountGlyphs(content, out var untagged, out var artifacts);
         if (_tree is not null && untagged > 0)
         {
@@ -227,22 +227,22 @@ internal sealed class AccessibilityPageScan
         switch (kind)
         {
             case AnnotationKind.Link:
-            {
-                CheckLink(annotation, owner, pageIndex);
-                break;
-            }
+                {
+                    CheckLink(annotation, owner, pageIndex);
+                    break;
+                }
 
             case AnnotationKind.Widget:
-            {
-                CheckWidget(annotation, owner, pageIndex);
-                break;
-            }
+                {
+                    CheckWidget(annotation, owner, pageIndex);
+                    break;
+                }
 
             default:
-            {
-                CheckOther(owner, pageIndex);
-                break;
-            }
+                {
+                    CheckOther(owner, pageIndex);
+                    break;
+                }
         }
     }
 

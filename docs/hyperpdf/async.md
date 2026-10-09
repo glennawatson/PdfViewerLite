@@ -5,12 +5,15 @@ files on slow disks or network shares, and wherever the user can move on before 
 Cancelling stops the work itself, not just the wait.
 
 ```csharp
+using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Text;
+
 using var cancel = new CancellationTokenSource();
 
-using var document = await PdfDocument.OpenAsync("report.pdf", password: null, cancel.Token);
-var text = await document.GetTextPageAsync(0, cancel.Token);
+using var document = await PdfDocumentReader.OpenAsync("report.pdf", password: null, cancel.Token);
+var text = await PdfDocumentText.GetTextPageAsync(document, 0, cancel.Token);
 
-await foreach (var page in document.FindAsync("invoice", PdfTextSearchOptions.None, cancel.Token))
+await foreach (var page in PdfDocumentText.FindAsync(document, "invoice", PdfTextSearchOptions.None, cancel.Token))
 {
     Console.WriteLine($"Page {page.PageIndex + 1}: {page.Matches.Length} matches");
 }
@@ -36,13 +39,13 @@ An async call runs its work on the awaiting thread, so on its own it does not re
 
 | Area | Members |
 |---|---|
-| Open | `PdfDocument.OpenAsync`, `PdfDocument.OpenWithAsync` |
-| Pages | `PrefetchPageAsync`, `GetPageAsync`, `GetTextPageAsync` |
-| Walks | `GetTextPagesAsync`, `FindAsync` (both `IAsyncEnumerable`) |
-| Navigation | `GetOutlineAsync`, `GetLinksAsync`, `ScanAnnotationsAsync` |
+| Open | `PdfDocumentReader.OpenAsync`, `PdfDocumentReader.OpenWithAsync` |
+| Pages | `PdfDocumentPages.PrefetchPageAsync`, `PdfDocumentPages.GetPageAsync`, `PdfDocumentText.GetTextPageAsync` |
+| Walks | `PdfDocumentText.GetTextPagesAsync`, `PdfDocumentText.FindAsync` (both `IAsyncEnumerable`) |
+| Navigation | `PdfDocumentNavigation.GetOutlineAsync`, `PdfDocumentLinks.GetLinksAsync`, `PdfDocumentContent.ScanAnnotationsAsync` |
 | Render | `PdfPageRenderer.RenderAsync` |
-| Save | `PdfDocument.SaveAsync` |
-| Whole document | `PdfDocument.CheckAsync`, `PdfOptimizer.OptimizeAsync` |
+| Save | `PdfDocumentSaving.SaveAsync` |
+| Whole document | `PdfDocumentCheck.CheckAsync`, `PdfOptimizer.OptimizeAsync` |
 | Byte sources | `PdfByteSource.ReadAsync`, `PrefetchAsync`, `PdfByteSources.OpenAsync` |
 
 Small in-memory operations, such as setting metadata or form values, stay synchronous.

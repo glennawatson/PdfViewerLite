@@ -85,13 +85,13 @@ public sealed class RepairReportTests
         foreach (var seed in RobustnessSeeds.Create())
         {
             // Only what a viewer reads: the pages. The exerciser also reads object numbers no page reaches, and the linearized seed lists one that is not in the file.
-            using var document = PdfDocument.Open(seed.Bytes, null);
+            using var document = PdfDocumentReader.Open(seed.Bytes, null);
             for (var page = 0; page < document.PageCount; page++)
             {
-                _ = document.GetPage(page).Width;
+                _ = PdfDocumentPages.GetPage(document, page).Width;
             }
 
-            repaired.AddRange(document.WasRepaired ? [$"{seed.Name}: {string.Join(", ", Codes(document))}"] : []);
+            repaired.AddRange(PdfDocumentCheck.WasRepaired(document) ? [$"{seed.Name}: {string.Join(", ", Codes(document))}"] : []);
         }
 
         await Assert.That(repaired).IsEmpty();
@@ -102,9 +102,9 @@ public sealed class RepairReportTests
     [Test]
     public async Task RebuiltCrossReferenceTableIsReported()
     {
-        using var document = PdfDocument.Open(Replace(RobustnessSeeds.CreateMini(), "startxref", "startxxxx"), null);
+        using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "startxref", "startxxxx"), null);
 
-        await Assert.That(document.WasRepaired).IsTrue();
+        await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsTrue();
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.XrefRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
     }
@@ -116,7 +116,7 @@ public sealed class RepairReportTests
     {
         using var document = ReadAll(MiniPdf.Build(Catalog, Pages, ContentPage, "<< /Length 3 >>\nstream\nabcdefgh\nendstream"));
 
-        await Assert.That(document.WasRepaired).IsTrue();
+        await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsTrue();
         await Assert.That(Find(document, PdfDiagnosticCode.BadStreamLength).ObjectNumber).IsEqualTo(ContentNumber);
     }
 
@@ -137,7 +137,7 @@ public sealed class RepairReportTests
     {
         var packed = Compress(Repeated());
         var kept = packed.AsSpan(0, packed.Length * KeepPercent / Percent).ToArray();
-        using var document = PdfDocument.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", Encoding.Latin1.GetString(kept))), null);
+        using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", Encoding.Latin1.GetString(kept))), null);
         var decoded = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!.DecodeToArray();
 
         await Assert.That(decoded.Length).IsGreaterThan(0);
@@ -152,11 +152,11 @@ public sealed class RepairReportTests
     {
         var packed = Compress(Repeated());
         var kept = packed.AsSpan(0, packed.Length - ChecksumLength).ToArray();
-        using var document = PdfDocument.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", Encoding.Latin1.GetString(kept))), null);
+        using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", Encoding.Latin1.GetString(kept))), null);
         var decoded = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!.DecodeToArray();
 
         await Assert.That(decoded.Length).IsEqualTo(Repeated().Length);
-        await Assert.That(document.WasRepaired).IsFalse();
+        await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsFalse();
     }
 
     /// <summary>An LZW stream with a code that is not in the table keeps what came before and is reported.</summary>
@@ -166,7 +166,7 @@ public sealed class RepairReportTests
     {
         // Clear code, the literal "A", then code 400, which the table cannot hold yet.
         byte[] lzw = [0x80, 0x10, 0x72, 0x00];
-        using var document = PdfDocument.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /LZWDecode", Encoding.Latin1.GetString(lzw))), null);
+        using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /LZWDecode", Encoding.Latin1.GetString(lzw))), null);
         var decoded = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!.DecodeToArray();
 
         await Assert.That(Encoding.Latin1.GetString(decoded)).IsEqualTo("A");
@@ -178,7 +178,7 @@ public sealed class RepairReportTests
     [Test]
     public async Task MissingCatalogIsFoundByScanning()
     {
-        using var document = PdfDocument.Open(Replace(RobustnessSeeds.CreateMini(), "/Root 1 0 R", "/Root 99 0 R"), null);
+        using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/Root 1 0 R", "/Root 99 0 R"), null);
 
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.CatalogRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
@@ -190,7 +190,7 @@ public sealed class RepairReportTests
     public async Task MissingCatalogIsMadeFromThePageTree()
     {
         var file = Replace(Replace(RobustnessSeeds.CreateMini(), "/Root 1 0 R", "/Root 99 0 R"), "/Type /Catalog", "/Type /Nothing");
-        using var document = PdfDocument.Open(file, null);
+        using var document = PdfDocumentReader.Open(file, null);
 
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.CatalogRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
@@ -201,7 +201,7 @@ public sealed class RepairReportTests
     [Test]
     public async Task MissingTrailerIsMadeByScanning()
     {
-        using var document = PdfDocument.Open(Replace(RobustnessSeeds.CreateMini(), "trailer", "trailxx"), null);
+        using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "trailer", "trailxx"), null);
 
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.TrailerRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
@@ -212,7 +212,7 @@ public sealed class RepairReportTests
     [Test]
     public async Task BrokenPageTreeIsRebuilt()
     {
-        using var document = PdfDocument.Open(Replace(RobustnessSeeds.CreateMini(), "/Kids [3 0 R 4 0 R]", "/Kids [9 0 R]"), null);
+        using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/Kids [3 0 R 4 0 R]", "/Kids [9 0 R]"), null);
 
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.PageTreeRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
@@ -223,9 +223,9 @@ public sealed class RepairReportTests
     [Test]
     public async Task SwappedPageBoxIsReported()
     {
-        using var document = PdfDocument.Open(Replace(RobustnessSeeds.CreateMini(), "/MediaBox [0 0 200 100]", "/MediaBox [200 100 0 0]"), null);
+        using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/MediaBox [0 0 200 100]", "/MediaBox [200 100 0 0]"), null);
 
-        await Assert.That(document.GetPage(0).Width).IsEqualTo(MiniWidth);
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Width).IsEqualTo(MiniWidth);
         await Assert.That(Find(document, PdfDiagnosticCode.BadPageBox).ObjectNumber).IsEqualTo(PageNumber);
     }
 
@@ -234,9 +234,9 @@ public sealed class RepairReportTests
     [Test]
     public async Task EmptyPageBoxIsReported()
     {
-        using var document = PdfDocument.Open(Replace(RobustnessSeeds.CreateMini(), "/MediaBox [0 0 200 100]", "/MediaBox [0 0 0 0]"), null);
+        using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/MediaBox [0 0 200 100]", "/MediaBox [0 0 0 0]"), null);
 
-        await Assert.That(document.GetPage(0).Width).IsEqualTo(LetterWidth);
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Width).IsEqualTo(LetterWidth);
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadPageBox);
     }
 
@@ -245,7 +245,7 @@ public sealed class RepairReportTests
     [Test]
     public async Task MalformedWidthsAreReported()
     {
-        using var document = PdfDocument.Open(FontDocument(CompositeFont, CidFont), null);
+        using var document = PdfDocumentReader.Open(FontDocument(CompositeFont, CidFont), null);
         _ = PdfFontLoader.Load(FontOf(document));
 
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadFontWidths);
@@ -256,7 +256,7 @@ public sealed class RepairReportTests
     [Test]
     public async Task MalformedEncodingIsReported()
     {
-        using var document = PdfDocument.Open(FontDocument(BadEncodingFont, "null"), null);
+        using var document = PdfDocumentReader.Open(FontDocument(BadEncodingFont, "null"), null);
         _ = PdfFontLoader.Load(FontOf(document));
 
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadFontEncoding);
@@ -267,7 +267,7 @@ public sealed class RepairReportTests
     [Test]
     public async Task MalformedFontDescriptorIsReported()
     {
-        using var document = PdfDocument.Open(FontDocument(BadDescriptorFont, "null"), null);
+        using var document = PdfDocumentReader.Open(FontDocument(BadDescriptorFont, "null"), null);
         _ = PdfFontLoader.Load(FontOf(document));
 
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadFontDescriptor);
@@ -327,12 +327,12 @@ public sealed class RepairReportTests
     {
         try
         {
-            using var damaged = PdfDocument.Open(mutant, null);
+            using var damaged = PdfDocumentReader.Open(mutant, null);
             _ = DocumentExerciser.Read(damaged);
             var saved = HyperPdfLibrary.Writing.PdfCompactWriter.Save(damaged.Objects, HyperPdfLibrary.Writing.PdfCompactOptions.Default);
-            using var reopened = PdfDocument.Open(saved, null);
+            using var reopened = PdfDocumentReader.Open(saved, null);
             _ = DocumentExerciser.Read(reopened);
-            return reopened.WasRepaired ? $"the saved file still needs repair: {string.Join(", ", Codes(reopened))}" : null;
+            return PdfDocumentCheck.WasRepaired(reopened) ? $"the saved file still needs repair: {string.Join(", ", Codes(reopened))}" : null;
         }
         catch (PdfException)
         {
@@ -345,7 +345,7 @@ public sealed class RepairReportTests
     /// <returns>The document.</returns>
     private static PdfDocument ReadAll(byte[] file)
     {
-        var document = PdfDocument.Open(file, null);
+        var document = PdfDocumentReader.Open(file, null);
         _ = DocumentExerciser.Read(document);
         return document;
     }
@@ -356,7 +356,7 @@ public sealed class RepairReportTests
     private static List<PdfDiagnosticCode> Codes(PdfDocument document)
     {
         var codes = new List<PdfDiagnosticCode>();
-        foreach (var repair in document.GetRepairs())
+        foreach (var repair in PdfDocumentCheck.GetRepairs(document))
         {
             codes.Add(repair.Code);
         }
@@ -370,7 +370,7 @@ public sealed class RepairReportTests
     /// <returns>The repair, or a default one with code None.</returns>
     private static PdfDiagnostic Find(PdfDocument document, PdfDiagnosticCode code)
     {
-        foreach (var repair in document.GetRepairs())
+        foreach (var repair in PdfDocumentCheck.GetRepairs(document))
         {
             if (repair.Code == code)
             {

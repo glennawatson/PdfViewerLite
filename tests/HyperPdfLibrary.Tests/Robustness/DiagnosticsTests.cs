@@ -62,7 +62,7 @@ public sealed class DiagnosticsTests
     public async Task CleanFileReportsNothing()
     {
         var found = new ConcurrentQueue<PdfDiagnostic>();
-        using var document = PdfDocument.OpenWith(RobustnessSeeds.CreateMini(), new PdfOpenOptions { Diagnostics = found.Enqueue });
+        using var document = PdfDocumentReader.OpenWith(RobustnessSeeds.CreateMini(), new PdfOpenOptions { Diagnostics = found.Enqueue });
         _ = DocumentExerciser.Read(document);
 
         await Assert.That(found).IsEmpty();
@@ -140,7 +140,7 @@ public sealed class DiagnosticsTests
 
         var file = MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /RunLengthDecode", Encoding.Latin1.GetString(runs)));
         var found = new ConcurrentQueue<PdfDiagnostic>();
-        using var document = PdfDocument.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
+        using var document = PdfDocumentReader.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
         var stream = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!;
         var length = stream.DecodeToArray().Length;
 
@@ -175,7 +175,7 @@ public sealed class DiagnosticsTests
         var file = RobustnessSeeds.CreateMini();
         var options = new PdfOpenOptions { CancellationToken = source.Token };
 
-        await Assert.That(() => PdfDocument.OpenWith(file, options)).Throws<OperationCanceledException>();
+        await Assert.That(() => PdfDocumentReader.OpenWith(file, options)).Throws<OperationCanceledException>();
     }
 
     /// <summary>A token that is already cancelled stops the repair scan.</summary>
@@ -188,7 +188,7 @@ public sealed class DiagnosticsTests
         var file = Replace(RobustnessSeeds.CreateMini(), "startxref", "startxxxx");
         var options = new PdfOpenOptions { CancellationToken = source.Token };
 
-        await Assert.That(() => PdfDocument.OpenWith(file, options)).Throws<OperationCanceledException>();
+        await Assert.That(() => PdfDocumentReader.OpenWith(file, options)).Throws<OperationCanceledException>();
     }
 
     /// <summary>Cancelling after the open stops later stream decoding.</summary>
@@ -197,7 +197,7 @@ public sealed class DiagnosticsTests
     public async Task CancellingAfterOpenStopsDecoding()
     {
         using var source = new CancellationTokenSource();
-        using var document = PdfDocument.OpenWith(RobustnessSeeds.CreateMini(), new PdfOpenOptions { CancellationToken = source.Token });
+        using var document = PdfDocumentReader.OpenWith(RobustnessSeeds.CreateMini(), new PdfOpenOptions { CancellationToken = source.Token });
         var stream = document.Objects.GetObject(new(MiniStreamNumber, 0)).AsStream()!;
         var before = stream.DecodeToArray();
         await source.CancelAsync();
@@ -213,7 +213,7 @@ public sealed class DiagnosticsTests
     {
         var file = MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /NoSuchDecode", "abc"));
         var found = new ConcurrentQueue<PdfDiagnostic>();
-        using var document = PdfDocument.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
+        using var document = PdfDocumentReader.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
         var stream = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!;
         var tasks = new Task[Readers];
         for (var i = 0; i < tasks.Length; i++)
@@ -232,7 +232,7 @@ public sealed class DiagnosticsTests
     private static ConcurrentQueue<PdfDiagnostic> Open(byte[] file)
     {
         var found = new ConcurrentQueue<PdfDiagnostic>();
-        using var document = PdfDocument.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
+        using var document = PdfDocumentReader.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
         _ = DocumentExerciser.Read(document);
         return found;
     }

@@ -204,11 +204,11 @@ public sealed class AccessibilityDocumentTests
     public async Task CancelledTokenStopsTheReport()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(AccessibilityPdfs.Build(new()), null);
+        using var document = PdfDocumentReader.Open(AccessibilityPdfs.Build(new()), null);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
 
-        await Assert.That(() => document.GetAccessibilityReport(source.Token)).Throws<OperationCanceledException>();
+        await Assert.That(() => PdfDocumentAccessibility.GetAccessibilityReport(document, source.Token)).Throws<OperationCanceledException>();
     }
 
     /// <summary>Every code has a short sentence.</summary>

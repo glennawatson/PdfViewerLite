@@ -90,8 +90,8 @@ public sealed class PageObjectParseTests
     [Test]
     public async Task FindsEveryKindOfObjectInPaintingOrder()
     {
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var content = document.GetPageContent(0);
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var content = HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0);
 
         await Assert.That(content.Objects.Count).IsEqualTo(MixedCount);
         await Assert.That(content.Objects[0].Kind).IsEqualTo(PdfPageObjectKind.Path);
@@ -107,8 +107,8 @@ public sealed class PageObjectParseTests
     [Test]
     public async Task PathCarriesColourModeAndBounds()
     {
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var path = (PdfPathObject)document.GetPageContent(0).Objects[0];
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var path = (PdfPathObject)HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0).Objects[0];
 
         await Assert.That(path.PaintMode).IsEqualTo(PdfPathPaintMode.Fill);
         await Assert.That(path.FillPaint.Components[0]).IsEqualTo(RectangleRed).Within(Tolerance);
@@ -124,8 +124,8 @@ public sealed class PageObjectParseTests
     [Test]
     public async Task TextCarriesFontSizeAndGlyphs()
     {
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var text = (PdfTextObject)document.GetPageContent(0).Objects[1];
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var text = (PdfTextObject)HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0).Objects[1];
 
         await Assert.That(text.Text).IsEqualTo("Hello World");
         await Assert.That(text.GlyphCount).IsEqualTo(HelloWorldLength);
@@ -144,8 +144,8 @@ public sealed class PageObjectParseTests
     [Test]
     public async Task ImageCarriesSizeAndData()
     {
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var image = (PdfImageObject)document.GetPageContent(0).Objects[2];
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var image = (PdfImageObject)HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0).Objects[2];
 
         await Assert.That(image.IsInline).IsFalse();
         await Assert.That(image.Width).IsEqualTo(ImageSide);
@@ -165,8 +165,8 @@ public sealed class PageObjectParseTests
     [Test]
     public async Task ShadingTakesTheClipAsBounds()
     {
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var shading = (PdfShadingObject)document.GetPageContent(0).Objects[3];
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var shading = (PdfShadingObject)HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0).Objects[3];
 
         await Assert.That(shading.IsClipped).IsTrue();
         await Assert.That(shading.ClipPaths.Count).IsEqualTo(1);
@@ -181,8 +181,8 @@ public sealed class PageObjectParseTests
     [Test]
     public async Task FormContentIsReadWithItsMatrix()
     {
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var form = (PdfFormObject)document.GetPageContent(0).Objects[4];
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var form = (PdfFormObject)HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0).Objects[4];
         var inner = form.GetContent();
 
         await Assert.That(form.Bounds.Left).IsEqualTo(FormLeft).Within(Tolerance);
@@ -198,8 +198,8 @@ public sealed class PageObjectParseTests
     [Test]
     public async Task InlineImageIsRead()
     {
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var image = (PdfImageObject)document.GetPageContent(0).Objects[5];
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var image = (PdfImageObject)HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0).Objects[5];
 
         await Assert.That(image.IsInline).IsTrue();
         await Assert.That(image.Width).IsEqualTo(1);
@@ -215,8 +215,8 @@ public sealed class PageObjectParseTests
     {
         const int Mcid = 7;
         var pdf = PageObjectSamples.Page($"/P << /MCID {Mcid} >> BDC BT /F1 12 Tf 10 100 Td (Tagged) Tj ET EMC BT /F1 12 Tf 10 50 Td (Plain) Tj ET");
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(pdf, null);
-        var content = document.GetPageContent(0);
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(pdf, null);
+        var content = HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0);
 
         await Assert.That(content.Objects[0].Marks.Count).IsEqualTo(1);
         await Assert.That(content.Objects[0].Marks[0].MarkedContentId).IsEqualTo(Mcid);
@@ -230,8 +230,8 @@ public sealed class PageObjectParseTests
     public async Task ClipBoundsFollowSaveAndRestore()
     {
         var pdf = PageObjectSamples.Page("q 10 10 50 50 re W n 0 0 100 100 re f Q 0 0 100 100 re f");
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(pdf, null);
-        var content = document.GetPageContent(0);
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(pdf, null);
+        var content = HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0);
 
         await Assert.That(content.Objects[0].IsClipped).IsTrue();
         await Assert.That(content.Objects[0].ClipBounds.Right).IsEqualTo(ClipEdge).Within(Tolerance);
@@ -244,8 +244,8 @@ public sealed class PageObjectParseTests
     public async Task CurveBoundsFollowTheCurve()
     {
         var pdf = PageObjectSamples.Page("10 10 m 10 110 90 110 90 10 c S");
-        using var document = HyperPdfLibrary.Document.PdfDocument.Open(pdf, null);
-        var path = (PdfPathObject)document.GetPageContent(0).Objects[0];
+        using var document = HyperPdfLibrary.Document.PdfDocumentReader.Open(pdf, null);
+        var path = (PdfPathObject)HyperPdfLibrary.Document.PdfDocumentPageContent.GetPageContent(document, 0).Objects[0];
 
         // The curve peaks at three quarters of the control height: 10 + 0.75 * 100 = 85, plus half the default line width.
         await Assert.That(path.Bounds.Top).IsEqualTo(CurvePeak).Within(Tolerance);

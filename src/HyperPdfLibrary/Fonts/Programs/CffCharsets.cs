@@ -180,8 +180,8 @@ internal static class CffCharsets
     {
         var source = id switch
         {
-            ExpertCharset => CffStandardData.ExpertCharset,
-            ExpertSubsetCharset => CffStandardData.ExpertSubsetCharset,
+            ExpertCharset => CffStandardTables.ExpertCharset,
+            ExpertSubsetCharset => CffStandardTables.ExpertSubsetCharset,
             _ => [],
         };
 

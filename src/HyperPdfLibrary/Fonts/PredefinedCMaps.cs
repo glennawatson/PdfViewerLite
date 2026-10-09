@@ -5,13 +5,14 @@
 using System.Text;
 using HyperPdfLibrary.Filters;
 using HyperPdfLibrary.Fonts.CMaps;
+using HyperPdfLibrary.Fonts.Generation;
 
 namespace HyperPdfLibrary.Fonts;
 
 /// <summary>
 /// The predefined CMaps of ISO 32000-2 Table 116: Identity-H and Identity-V, and every Adobe-GB1, CNS1, Japan1 and
-/// Korea1 CMap, H and V, including the UCS2, UTF16 and UTF32 ones. The CJK CMaps are packed in the assembly from Adobe's
-/// cmap-resources; each is read once, on first use, and shared. Names the library does not know
+/// Korea1 CMap, H and V, including the UCS2, UTF16 and UTF32 ones. The CJK CMaps are generated from compact
+/// binary resource packs on demand; each is cached on disk, read once and shared. Names the library does not know
 /// get PDFium's fallback: two-byte codes used as CIDs, with no text of their own.
 /// </summary>
 internal static class PredefinedCMaps
@@ -46,6 +47,22 @@ internal static class PredefinedCMaps
     /// <summary>Gets the stand-in for an unknown vertical name.</summary>
     private static CompositeCMap UnknownV { get; } = new(CMap.IdentityV, CidCoding.Unknown, CjkScript.None);
 
+    /// <summary>Generates a supported map on its first request.</summary>
+    /// <param name="name">The map name.</param>
+    /// <param name="cancellationToken">Cancels source I/O.</param>
+    /// <returns>A task completing when the map is available.</returns>
+    internal static ValueTask EnsureAsync(string name, CancellationToken cancellationToken)
+    {
+        var collection = FontDataGeneration.FindCollection(name);
+
+        // The factory builds the requested map before rendering starts.
+        return collection is null ? ValueTask.CompletedTask : FontDataResources.EnsureAsync(
+            "CMaps",
+            $"{name}.bin",
+            token => FontDataGeneration.CMapAsync(name, collection, token),
+            cancellationToken);
+    }
+
     /// <summary>Gets a predefined CMap by name.</summary>
     /// <param name="name">The CMap name.</param>
     /// <returns>The CMap; an unknown name reads two-byte codes as CIDs, as PDFium does, vertically when it ends in V.</returns>
@@ -70,7 +87,7 @@ internal static class PredefinedCMaps
         return name.IsEmpty || !Ascii.IsValid(name) ? null : Find(Encoding.ASCII.GetString(name));
     }
 
-    /// <summary>Reads a packed CMap from the assembly without caching it; its base CMaps come from the cache.</summary>
+    /// <summary>Reads a packed CMap from disk without caching it; its base CMaps come from the cache.</summary>
     /// <param name="name">The CMap name.</param>
     /// <returns>The CMap, or <see langword="null"/> when the library does not hold it.</returns>
     internal static CompositeCMap? Load(string name)

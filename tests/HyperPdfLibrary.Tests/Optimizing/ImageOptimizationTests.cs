@@ -97,7 +97,7 @@ public sealed class ImageOptimizationTests
     {
         var source = OptimizerSamples.Masked(PhotoPixels, TwoInches);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller);
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
         var image = FirstImage(document);
         var mask = image.Dictionary.GetStream(KnownName.SMask)!;
 
@@ -127,8 +127,8 @@ public sealed class ImageOptimizationTests
     {
         var source = OptimizerSamples.PatternPhoto(PhotoPixels);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller);
-        using var document = PdfDocument.Open(result.Bytes, null);
-        var pattern = document.GetPage(0).Resources!.GetDictionary(KnownName.Pattern)!.GetStream(document.Objects.Names.Intern("P1"u8))!;
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
+        var pattern = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.Pattern)!.GetStream(document.Objects.Names.Intern("P1"u8))!;
         var image = pattern.Dictionary.GetDictionary(KnownName.Resources)!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
 
         await Assert.That(image.Dictionary.GetInt32(KnownName.Width)).IsEqualTo(PhotoPixels);
@@ -139,7 +139,7 @@ public sealed class ImageOptimizationTests
     [Test]
     public async Task SamplesNumberImagesAsExpected()
     {
-        using var document = PdfDocument.Open(OptimizerSamples.Masked(PhotoPixels, TwoInches), null);
+        using var document = PdfDocumentReader.Open(OptimizerSamples.Masked(PhotoPixels, TwoInches), null);
 
         await Assert.That(document.Objects.GetObject(new(ImageNumber, 0)).AsStream()).IsNotNull();
         await Assert.That(document.Objects.GetObject(new(MaskNumber, 0)).AsStream()).IsNotNull();
@@ -150,7 +150,7 @@ public sealed class ImageOptimizationTests
     /// <returns>The image stream.</returns>
     private static PdfStream FirstImage(byte[] pdf)
     {
-        using var document = PdfDocument.Open(pdf, null);
+        using var document = PdfDocumentReader.Open(pdf, null);
         var image = FirstImage(document);
         return new(image.Dictionary.Clone(), image.CopyRawData());
     }
@@ -159,5 +159,5 @@ public sealed class ImageOptimizationTests
     /// <param name="document">The document.</param>
     /// <returns>The image stream.</returns>
     private static PdfStream FirstImage(PdfDocument document) =>
-        document.GetPage(0).Resources!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
+        PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
 }

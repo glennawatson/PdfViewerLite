@@ -26,7 +26,7 @@ internal sealed partial class HyperPdfAnnotations
             var hidden = HideRemoved();
             try
             {
-                return _document.OpenWorkingCopy();
+                return PdfDocumentOptimizing.OpenWorkingCopy(_document);
             }
             finally
             {

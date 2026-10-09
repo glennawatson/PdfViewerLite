@@ -254,7 +254,7 @@ public sealed partial class HyperPdfDocument : IAnnotationEditor, ITextBoxEditor
             if (written > 0)
             {
                 // The page has new text: its characters, words and web links are read again.
-                _document.TextPages.Clear();
+                HyperPdfLibrary.Document.PdfDocumentText.GetTextPages(_document).Clear();
                 Edited();
             }
 
@@ -305,7 +305,7 @@ public sealed partial class HyperPdfDocument : IAnnotationEditor, ITextBoxEditor
     /// </summary>
     private void Edited()
     {
-        _document.InvalidateCaches();
+        HyperPdfLibrary.Document.PdfDocumentEditing.InvalidateCaches(_document);
         Volatile.Write(ref _links, null);
         ResetRenderer();
         _ = Interlocked.Increment(ref _editVersion);

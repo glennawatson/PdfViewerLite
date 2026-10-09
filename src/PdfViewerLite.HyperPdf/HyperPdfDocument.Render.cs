@@ -36,6 +36,10 @@ public sealed partial class HyperPdfDocument
     }
 
     /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ValueTask PreparePageAsync(int pageIndex, CancellationToken cancellationToken) => HyperPdfLibrary.Document.PdfDocumentPages.PrefetchPageAsync(_document, pageIndex, cancellationToken);
+
+    /// <inheritdoc/>
     public bool Render(in PageRenderInfo info, RenderTarget target)
     {
         if (IsDisposed || (uint)info.PageIndex >= (uint)PageCount)

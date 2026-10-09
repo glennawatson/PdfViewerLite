@@ -65,12 +65,12 @@ public sealed class FdfTests
     [Test]
     public async Task AppliesFieldsAndIgnoresUnknownNames()
     {
-        using var document = PdfDocument.Open(FormSamples.CreateRichForm(), null);
+        using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
 
         var result = PdfInterchange.ImportFdf(document, ThreeFields.ToArray());
 
         var widgets = new List<PdfFormWidget>();
-        document.Form.GetWidgets(0, widgets);
+        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
         await Assert.That(result.FieldsApplied).IsEqualTo(AppliedFields);
         await Assert.That(result.FieldsSkipped).IsEqualTo(1);
         await Assert.That(widgets[FormSamples.NotesIndex].Value).IsEqualTo("hello");

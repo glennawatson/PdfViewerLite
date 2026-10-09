@@ -112,7 +112,7 @@ public sealed class SourceParityTests
                 var stream = document.Objects.GetObject(new(StreamObject, 0)).AsStream()!;
                 await Assert.That(array.Count).IsEqualTo(LargeArrayCount);
                 await Assert.That(stream.RawLength).IsEqualTo(LongStreamLength);
-                await Assert.That(document.GetInfo().Title!.Length).IsEqualTo(LargeStringLength);
+                await Assert.That(PdfDocumentMetadata.GetInfo(document).Title!.Length).IsEqualTo(LargeStringLength);
             }
         }
         finally
@@ -177,8 +177,8 @@ public sealed class SourceParityTests
     {
         using var document = SourceOpener.Open(kind, file, PdfOpenOptions.Default, directory);
         var text = new StringBuilder();
-        _ = text.Append(CultureInfo.InvariantCulture, $"revisions={document.GetRevisions().Count};");
-        foreach (var report in document.ValidateSignatures(new() { TrustedRoots = [SignatureFixtures.Signer] }))
+        _ = text.Append(CultureInfo.InvariantCulture, $"revisions={PdfDocumentSignatureValidation.GetRevisions(document).Count};");
+        foreach (var report in PdfDocumentSignatureValidation.ValidateSignatures(document, new() { TrustedRoots = [SignatureFixtures.Signer] }))
         {
             _ = text.Append(CultureInfo.InvariantCulture, $"range={report.ByteRange.Status} covers={report.CoversWholeDocument} modified={report.ModifiedAfterSigning} ");
             _ = text.Append(CultureInfo.InvariantCulture, $"changes={report.Changes.Length} kinds={report.ChangeKinds} digest={report.DigestValid} signature={report.SignatureValid};");

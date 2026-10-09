@@ -138,8 +138,8 @@ public sealed class ShadingExtendRenderTests
         var pdf = new RenderTestPdf(Size, Size) { Content = PaintShading };
         var patch = pdf.AddStream($"/ShadingType 6 {MeshEntries}", CoonsPatch);
         pdf.Resources = $"/Shading << /S1 {patch} 0 R >>";
-        using var document = PdfDocument.Open(pdf.ToBytes(), null);
-        var value = document.GetPage(0).Resources!.GetDictionary(KnownName.Shading)!.Get(document.Objects.Names.Intern("S1"));
+        using var document = PdfDocumentReader.Open(pdf.ToBytes(), null);
+        var value = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.Shading)!.Get(document.Objects.Names.Intern("S1"));
         var shading = PdfShading.Parse(value, null)!;
 
         var small = shading.GetMesh(SmallScale);

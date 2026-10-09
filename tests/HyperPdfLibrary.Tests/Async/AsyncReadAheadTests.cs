@@ -48,14 +48,14 @@ public sealed class AsyncReadAheadTests
     public async Task SmallDocumentNeverReadsTheStreamSynchronously()
     {
         await using var stream = new ThrottledStream(Small, TimeSpan.FromMilliseconds(LatencyMilliseconds));
-        using var document = await PdfDocument.OpenAsync(stream, null, CancellationToken.None);
+        using var document = await PdfDocumentReader.OpenAsync(stream, null, CancellationToken.None);
         for (var i = 0; i < document.PageCount; i++)
         {
-            _ = await document.GetTextPageAsync(i, CancellationToken.None);
-            _ = await document.GetLinksAsync(i, CancellationToken.None);
+            _ = await PdfDocumentText.GetTextPageAsync(document, i, CancellationToken.None);
+            _ = await PdfDocumentLinks.GetLinksAsync(document, i, CancellationToken.None);
         }
 
-        _ = await document.GetOutlineAsync(CancellationToken.None);
+        _ = await PdfDocumentNavigation.GetOutlineAsync(document, CancellationToken.None);
         await Assert.That(stream.SyncReads).IsEqualTo(0);
         await Assert.That(stream.AsyncReads).IsGreaterThan(0);
     }
@@ -66,9 +66,9 @@ public sealed class AsyncReadAheadTests
     public async Task LargeDocumentLoadsAPageAheadOfRenderingIt()
     {
         await using var stream = new ThrottledStream(Large, TimeSpan.FromMilliseconds(LatencyMilliseconds));
-        using var document = await PdfDocument.OpenAsync(stream, null, CancellationToken.None);
+        using var document = await PdfDocumentReader.OpenAsync(stream, null, CancellationToken.None);
         using var renderer = new PdfPageRenderer(document);
-        PdfPageRenderer.GetPixelSize(document.GetPage(0), 0, 1F, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, 0), 0, 1F, out var width, out var height);
         var pixels = new byte[width * height * BytesPerPixel];
         var syncBefore = stream.SyncReads;
 
@@ -82,11 +82,11 @@ public sealed class AsyncReadAheadTests
     public async Task RepeatedPrefetchSkipsTheWalkUntilSomethingIsEvicted()
     {
         await using var stream = new ThrottledStream(Large, TimeSpan.FromMilliseconds(LatencyMilliseconds));
-        using var document = await PdfDocument.OpenAsync(stream, null, CancellationToken.None);
-        await document.PrefetchPageAsync(0, CancellationToken.None);
+        using var document = await PdfDocumentReader.OpenAsync(stream, null, CancellationToken.None);
+        await PdfDocumentPages.PrefetchPageAsync(document, 0, CancellationToken.None);
         var reads = stream.AsyncReads;
 
-        var repeat = document.PrefetchPageAsync(0, CancellationToken.None);
+        var repeat = PdfDocumentPages.PrefetchPageAsync(document, 0, CancellationToken.None);
 
         await Assert.That(repeat.IsCompletedSuccessfully).IsTrue();
         await Assert.That(stream.AsyncReads).IsEqualTo(reads);
@@ -133,7 +133,7 @@ public sealed class AsyncReadAheadTests
     public async Task DisposingTheDocumentLeavesTheStreamOpen()
     {
         await using var stream = new ThrottledStream(Small, TimeSpan.FromMilliseconds(LatencyMilliseconds));
-        var document = await PdfDocument.OpenAsync(stream, null, CancellationToken.None);
+        var document = await PdfDocumentReader.OpenAsync(stream, null, CancellationToken.None);
         document.Dispose();
         var reads = stream.AsyncReads;
 

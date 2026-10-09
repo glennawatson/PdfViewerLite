@@ -34,8 +34,8 @@ public sealed class TextStringParityTests
     [Arguments(LatinTitle, false)]
     public async Task NewTitleReadsBackInBothEngines(string title, bool incremental)
     {
-        using var document = PdfDocument.Open(TestPdf.Create(Pages), null);
-        document.SetMetadata(new() { Title = title });
+        using var document = PdfDocumentReader.Open(TestPdf.Create(Pages), null);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = title });
 
         await AssertTitle(Save(document, incremental), title);
     }
@@ -48,9 +48,9 @@ public sealed class TextStringParityTests
     [Arguments(false)]
     public async Task ReplacedUtf16TitleReadsBackInBothEngines(bool incremental)
     {
-        using var document = PdfDocument.Open(TestPdf.Create(Pages), null);
-        document.SetMetadata(new() { Title = UnicodeTitle });
-        document.SetMetadata(new() { Title = PlainTitle });
+        using var document = PdfDocumentReader.Open(TestPdf.Create(Pages), null);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = UnicodeTitle });
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = PlainTitle });
 
         await AssertTitle(Save(document, incremental), PlainTitle);
     }

@@ -22,8 +22,8 @@ internal static class SignatureFixtures
     /// <returns>The reports.</returns>
     internal static IReadOnlyList<PdfSignatureValidationReport> Validate(byte[] file, X509Certificate2 root)
     {
-        using var document = PdfDocument.Open(file, null);
-        return document.ValidateSignatures(new() { TrustedRoots = [root] });
+        using var document = PdfDocumentReader.Open(file, null);
+        return PdfDocumentSignatureValidation.ValidateSignatures(document, new() { TrustedRoots = [root] });
     }
 
     /// <summary>Validates the only signature of a file signed by <see cref="Signer"/>.</summary>

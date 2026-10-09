@@ -17,6 +17,6 @@ public sealed partial class HyperPdfDocument
     internal PdfAccessibilityReport GetAccessibilityReport(CancellationToken cancellation)
     {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
-        return _document.GetAccessibilityReport(cancellation);
+        return HyperPdfLibrary.Document.PdfDocumentAccessibility.GetAccessibilityReport(_document, cancellation);
     }
 }

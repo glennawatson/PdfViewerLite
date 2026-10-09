@@ -90,7 +90,7 @@ public sealed class SafetyTests
     {
         var source = WritingTestDocuments.Encrypt(TestPdf.Create(PageCount));
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced);
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
 
         await Assert.That(document.IsEncrypted).IsTrue();
         await Assert.That(result.Report.IsEncrypted).IsTrue();
@@ -104,7 +104,7 @@ public sealed class SafetyTests
     {
         var source = WritingTestDocuments.Encrypt(TestPdf.Create(PageCount));
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced with { RemoveEncryption = true });
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
 
         await Assert.That(document.IsEncrypted).IsFalse();
         await Assert.That(OptimizerTestKit.Text(result.Bytes)).IsEquivalentTo(OptimizerTestKit.Text(source));
@@ -135,7 +135,7 @@ public sealed class SafetyTests
         var phases = new List<PdfOptimizePhase>();
         var progress = new SynchronousProgress(phases);
         byte[] asyncBytes;
-        using (var document = PdfDocument.Open(source, null))
+        using (var document = PdfDocumentReader.Open(source, null))
         {
             await using var output = new MemoryStream();
             _ = await PdfOptimizer.OptimizeAsync(document, output, PdfOptimizeOptions.Balanced, progress, CancellationToken.None);
@@ -158,7 +158,7 @@ public sealed class SafetyTests
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
-        using var document = PdfDocument.Open(TestPdf.Create(PageCount), null);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(PageCount), null);
         await using var output = new MemoryStream();
 
         await Assert.That(() => PdfOptimizer.Optimize(document, output, PdfOptimizeOptions.Balanced, null, cancellation.Token)).Throws<OperationCanceledException>();
@@ -169,7 +169,7 @@ public sealed class SafetyTests
     [Test]
     public async Task LeavesTheSourceAlone()
     {
-        using var document = PdfDocument.Open(OptimizerSamples.UntaggedText(null), null);
+        using var document = PdfDocumentReader.Open(OptimizerSamples.UntaggedText(null), null);
         await using var output = new MemoryStream();
         _ = PdfOptimizer.Optimize(document, output, PdfOptimizeOptions.Smaller with { AddInferredTags = true, Cleanup = PdfCleanupItems.All, Language = "en" });
 

@@ -104,7 +104,7 @@ internal sealed partial class ConformanceScan
     /// <returns>The count.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int CountEmbeddedFiles() =>
-        Math.Max(_document.GetAttachments().Count, _document.Catalog.GetArray(_document.Objects.Names.Intern("AF"))?.Count ?? 0);
+        Math.Max(PdfDocumentAttachments.GetAttachments(_document).Count, _document.Catalog.GetArray(_document.Objects.Names.Intern("AF"))?.Count ?? 0);
 
     /// <summary>Joins the listed font names.</summary>
     /// <returns>The names, with a count of the rest when there are more than the limit.</returns>

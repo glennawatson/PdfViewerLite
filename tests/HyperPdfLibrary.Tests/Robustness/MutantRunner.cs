@@ -20,16 +20,23 @@ internal static class MutantRunner
     /// <returns>Whether the file opened, and a description of the problem or <see langword="null"/> when it behaved.</returns>
     internal static async Task<MutantResult> RunAsync(byte[] file)
     {
-        using var timeout = new CancellationTokenSource(Timeout);
-        var token = timeout.Token;
         try
         {
-            return await Task.Run(() => Exercise(file, token), CancellationToken.None).WaitAsync(HardLimit);
+            return await Task.Run(() => ExerciseTimed(file), CancellationToken.None).WaitAsync(HardLimit);
         }
         catch (TimeoutException)
         {
             return new(false, "hung past the hard limit");
         }
+    }
+
+    /// <summary>Starts the parsing deadline when a worker begins processing the file.</summary>
+    /// <param name="bytes">The damaged file.</param>
+    /// <returns>The parsing result.</returns>
+    private static MutantResult ExerciseTimed(byte[] bytes)
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        return Exercise(bytes, timeout.Token);
     }
 
     /// <summary>Opens a file and reads everything from it.</summary>
@@ -40,7 +47,7 @@ internal static class MutantRunner
     {
         try
         {
-            using var document = PdfDocument.OpenWith(bytes, new PdfOpenOptions { CancellationToken = token });
+            using var document = PdfDocumentReader.OpenWith(bytes, new PdfOpenOptions { CancellationToken = token });
             _ = DocumentExerciser.Read(document);
             return new(true, null);
         }

@@ -42,15 +42,15 @@ public sealed class InsertedPageStructureTests
     [Test]
     public async Task TaggedPageBringsItsElements()
     {
-        using var source = PdfDocument.Open(TaggedSamples.Basic(), null);
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var source = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
 
-        document.InsertPages(1, source, [0]);
+        PdfDocumentPageOperations.InsertPages(document, 1, source, [0]);
 
         await AssertInserted(document);
-        using var reopened = PdfDocument.Open(PdfIncrementalWriter.Save(document.Objects), null);
+        using var reopened = PdfDocumentReader.Open(PdfIncrementalWriter.Save(document.Objects), null);
         await AssertInserted(reopened);
-        using var compact = PdfDocument.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default), null);
+        using var compact = PdfDocumentReader.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default), null);
         await AssertInserted(compact);
     }
 
@@ -59,10 +59,10 @@ public sealed class InsertedPageStructureTests
     [Test]
     public async Task RoleMapEntriesAreMerged()
     {
-        using var source = PdfDocument.Open(CalloutDocument(), null);
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var source = PdfDocumentReader.Open(CalloutDocument(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
 
-        document.InsertPages(0, source, [0]);
+        PdfDocumentPageOperations.InsertPages(document, 0, source, [0]);
 
         var roleMap = PdfStructureTree.Load(document)!.Root.GetDictionary(document.Objects.Names.Intern("RoleMap"))!;
         await Assert.That(roleMap.ContainsKey(document.Objects.Names.Intern(CalloutRole))).IsTrue();
@@ -75,13 +75,13 @@ public sealed class InsertedPageStructureTests
     [Test]
     public async Task AnnotationsKeepTheirElements()
     {
-        using var source = PdfDocument.Open(TaggedSamples.LinksAndForms(), null);
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var source = PdfDocumentReader.Open(TaggedSamples.LinksAndForms(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
 
-        document.InsertPages(0, source, [0]);
+        PdfDocumentPageOperations.InsertPages(document, 0, source, [0]);
 
         var tree = PdfStructureTree.Load(document)!;
-        var annotations = document.GetPage(0).Dictionary.GetArray(KnownName.Annots)!;
+        var annotations = PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(KnownName.Annots)!;
         await Assert.That(tree.GetObjectParent(annotations.GetDictionary(0)!)!.Type).IsEqualTo(PdfStructureType.Link);
         await Assert.That(tree.GetObjectParent(annotations.GetDictionary(FieldIndex)!)!.Type).IsEqualTo(PdfStructureType.Form);
         await Assert.That(tree.GetMarkedContentParent(0, HeadingMcid)!.Type).IsEqualTo(PdfStructureType.Link);
@@ -93,18 +93,18 @@ public sealed class InsertedPageStructureTests
     [Test]
     public async Task UntaggedDocumentsKeepCurrentBehaviour()
     {
-        using var tagged = PdfDocument.Open(TaggedSamples.Basic(), null);
-        using var plain = PdfDocument.Open(TaggedSamples.TwoColumns(), null);
-        using var untaggedTarget = PdfDocument.Open(TaggedSamples.TwoColumns(), null);
-        using var taggedTarget = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var tagged = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        using var plain = PdfDocumentReader.Open(TaggedSamples.TwoColumns(), null);
+        using var untaggedTarget = PdfDocumentReader.Open(TaggedSamples.TwoColumns(), null);
+        using var taggedTarget = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
 
-        untaggedTarget.InsertPages(1, tagged, [0]);
-        taggedTarget.InsertPages(1, plain, [0]);
+        PdfDocumentPageOperations.InsertPages(untaggedTarget, 1, tagged, [0]);
+        PdfDocumentPageOperations.InsertPages(taggedTarget, 1, plain, [0]);
 
         await Assert.That(untaggedTarget.Catalog.ContainsKey(KnownName.StructTreeRoot)).IsFalse();
-        await Assert.That(untaggedTarget.GetPage(1).Dictionary.ContainsKey(KnownName.StructParents)).IsFalse();
+        await Assert.That(PdfDocumentPages.GetPage(untaggedTarget, 1).Dictionary.ContainsKey(KnownName.StructParents)).IsFalse();
         await Assert.That(PdfStructureTree.Load(taggedTarget)!.Roots.Count).IsEqualTo(1);
-        await Assert.That(taggedTarget.GetPage(1).Dictionary.ContainsKey(KnownName.StructParents)).IsFalse();
+        await Assert.That(PdfDocumentPages.GetPage(taggedTarget, 1).Dictionary.ContainsKey(KnownName.StructParents)).IsFalse();
     }
 
     /// <summary>Builds a tagged page whose element type is mapped by a role map the other documents lack.</summary>

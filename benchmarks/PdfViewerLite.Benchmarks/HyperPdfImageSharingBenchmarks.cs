@@ -61,7 +61,7 @@ public class HyperPdfImageSharingBenchmarks
     [Benchmark]
     public async Task<bool> ConcurrentColdImage()
     {
-        using var document = PdfDocument.Open(_pdf, null);
+        using var document = PdfDocumentReader.Open(_pdf, null);
         using var renderer = new PdfPageRenderer(document);
         return await RenderBoth(renderer);
     }
@@ -71,7 +71,7 @@ public class HyperPdfImageSharingBenchmarks
     [Benchmark]
     public bool TwoPassesOverSharedImage()
     {
-        using var document = PdfDocument.Open(_pdf, null);
+        using var document = PdfDocumentReader.Open(_pdf, null);
         using var renderer = new PdfPageRenderer(document, PdfRenderOptions.Default with { ImageCacheBytes = ImageLimit, PictureCacheBytes = PictureLimit });
         var all = true;
         var pixels = new byte[Tile * Tile * BytesPerPixel];

@@ -32,7 +32,7 @@ internal static class InterchangeImporter
             return default;
         }
 
-        var form = document.Form;
+        var form = PdfDocumentForms.GetForm(document);
         var widgets = IndexWidgets(document, form);
         var applied = 0;
         var skipped = 0;

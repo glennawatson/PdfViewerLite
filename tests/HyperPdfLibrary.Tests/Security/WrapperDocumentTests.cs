@@ -22,10 +22,10 @@ public sealed class WrapperDocumentTests
     [Test]
     public async Task PayloadIsListed()
     {
-        using var document = PdfDocument.Open(Wrapper(), null);
-        var payload = document.GetEncryptedPayload();
+        using var document = PdfDocumentReader.Open(Wrapper(), null);
+        var payload = PdfDocumentWrapper.GetEncryptedPayload(document);
 
-        await Assert.That(document.IsWrapperDocument).IsTrue();
+        await Assert.That(PdfDocumentWrapper.IsWrapperDocument(document)).IsTrue();
         await Assert.That(payload).IsNotNull();
         await Assert.That(payload!.FileName).IsEqualTo(PayloadName);
         await Assert.That(payload.CryptographicFilter).IsEqualTo(FilterName);
@@ -38,8 +38,8 @@ public sealed class WrapperDocumentTests
     [Test]
     public async Task PayloadOpens()
     {
-        using var document = PdfDocument.Open(Wrapper(), null);
-        using var payload = document.OpenEncryptedPayload(null);
+        using var document = PdfDocumentReader.Open(Wrapper(), null);
+        using var payload = PdfDocumentWrapper.OpenEncryptedPayload(document, null);
 
         await Assert.That(payload.PageCount).IsEqualTo(1);
     }
@@ -49,10 +49,10 @@ public sealed class WrapperDocumentTests
     [Test]
     public async Task PlainDocumentIsNotAWrapper()
     {
-        using var document = PdfDocument.Open(Payload(), null);
+        using var document = PdfDocumentReader.Open(Payload(), null);
 
-        await Assert.That(document.IsWrapperDocument).IsFalse();
-        await Assert.That(() => document.OpenEncryptedPayload(null)).Throws<PdfException>();
+        await Assert.That(PdfDocumentWrapper.IsWrapperDocument(document)).IsFalse();
+        await Assert.That(() => PdfDocumentWrapper.OpenEncryptedPayload(document, null)).Throws<PdfException>();
     }
 
     /// <summary>Builds the payload: a one-page document.</summary>

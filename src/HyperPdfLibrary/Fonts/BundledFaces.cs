@@ -2,25 +2,19 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-// The faces in Fonts/Data/Faces are PDFium's built-in Foxit fonts (core/fxge/fontdata/chromefontdata, Copyright 2014 The
-// PDFium Authors, BSD 3-Clause; original code copyright 2014 Foxit Software Inc.), extracted by
-// scripts/ExtractFoxitFonts.cs. Fonts/Data/Faces/LICENSE.txt holds the notice and is embedded beside them.
-
 using System.Runtime.CompilerServices;
+using HyperPdfLibrary.Fonts.Generation;
 using HyperPdfLibrary.Fonts.Programs;
 
 namespace HyperPdfLibrary.Fonts;
 
 /// <summary>
-/// The substitute faces bundled with the library, so text in a font the PDF does not embed looks the same on every
-/// operating system and on systems with few fonts. Each face is a compact CFF font read from an embedded resource the
-/// first time it is needed and shared by every document afterwards.
+/// The substitute faces loaded on demand from an open font pack, so text in a font the PDF does not embed looks the same on every
+/// operating system and on systems with few fonts. Each face is a TrueType font cached on
+/// first use and shared by every document afterwards.
 /// </summary>
 internal static class BundledFaces
 {
-    /// <summary>The prefix of the resource names.</summary>
-    private const string Prefix = "HyperPdfLibrary.Faces.";
-
     /// <summary>The number of styles of a family: regular, bold, italic and bold italic.</summary>
     private const int StylesPerFamily = 4;
 
@@ -42,14 +36,26 @@ internal static class BundledFaces
     /// <summary>The resource names, family by family in regular, bold, italic, bold italic order, then Symbol and Dingbats.</summary>
     private static readonly string[] Names =
     [
-        "FoxitSans", "FoxitSansBold", "FoxitSansItalic", "FoxitSansBoldItalic",
-        "FoxitSerif", "FoxitSerifBold", "FoxitSerifItalic", "FoxitSerifBoldItalic",
-        "FoxitFixed", "FoxitFixedBold", "FoxitFixedItalic", "FoxitFixedBoldItalic",
-        "FoxitSymbol", "FoxitDingbats",
+        "Arimo-Regular", "Arimo-Bold", "Arimo-Italic", "Arimo-BoldItalic",
+        "Tinos-Regular", "Tinos-Bold", "Tinos-Italic", "Tinos-BoldItalic",
+        "Cousine-Regular", "Cousine-Bold", "Cousine-Italic", "Cousine-BoldItalic",
+        "NotoSansMath-Regular", "NotoSansSymbols2-Regular",
     ];
 
     /// <summary>The faces read so far.</summary>
     private static readonly SubstituteFace?[] Faces = new SubstituteFace?[FaceCount];
+
+    /// <summary>Generates the requested face before its first use.</summary>
+    /// <param name="family">The family.</param>
+    /// <param name="bold">Whether the face is bold.</param>
+    /// <param name="italic">Whether the face slants.</param>
+    /// <param name="cancellationToken">Cancels source I/O.</param>
+    /// <returns>A task completing when the face is cached.</returns>
+    internal static ValueTask EnsureAsync(BundledFamily family, bool bold, bool italic, CancellationToken cancellationToken)
+    {
+        var name = Names[SlotOf(family, bold, italic)];
+        return FontDataResources.EnsureAsync("Faces", $"{name}.ttf", token => FontDataGeneration.FaceAsync(name, token), cancellationToken);
+    }
 
     /// <summary>Gets a bundled face.</summary>
     /// <param name="family">The family.</param>
@@ -93,7 +99,7 @@ internal static class BundledFaces
     /// <returns>A new face, or <see langword="null"/>.</returns>
     private static SubstituteFace? Read(int slot)
     {
-        using var stream = typeof(BundledFaces).Assembly.GetManifestResourceStream(Prefix + Names[slot]);
+        using var stream = FontDataResources.Open("Faces", $"{Names[slot]}.ttf");
         if (stream is null)
         {
             return null;
@@ -101,6 +107,6 @@ internal static class BundledFaces
 
         var data = new byte[(int)stream.Length];
         stream.ReadExactly(data);
-        return CffProgram.TryParse(data, out var program) ? new SubstituteFace(program, Names[slot]) : null;
+        return TrueTypeProgram.TryParse(data, out var program) ? new SubstituteFace(program, Names[slot]) : null;
     }
 }

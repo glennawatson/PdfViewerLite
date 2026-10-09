@@ -59,7 +59,7 @@ internal static class CarryTestDocuments
     internal static string[] WidgetNames(PdfDocument document, int pageIndex)
     {
         var widgets = new List<PdfFormWidget>();
-        document.Form.GetWidgets(pageIndex, widgets);
+        PdfDocumentForms.GetForm(document).GetWidgets(pageIndex, widgets);
         return [.. widgets.ConvertAll(static widget => widget.Name)];
     }
 
@@ -70,7 +70,7 @@ internal static class CarryTestDocuments
     internal static int[] LinkPages(PdfDocument document, int pageIndex)
     {
         var pages = new List<int>();
-        foreach (var link in document.GetLinks(pageIndex))
+        foreach (var link in PdfDocumentLinks.GetLinks(document, pageIndex))
         {
             if (link.Action.Value is GoToAction goTo)
             {
@@ -87,7 +87,7 @@ internal static class CarryTestDocuments
     internal static int[] OutlinePages(PdfDocument document)
     {
         var pages = new List<int>();
-        foreach (var item in document.GetOutline())
+        foreach (var item in PdfDocumentNavigation.GetOutline(document))
         {
             pages.Add(item.Action.Value is GoToAction goTo ? goTo.Destination.PageIndex : -1);
         }

@@ -78,7 +78,7 @@ public sealed class FormRuntimeTests
         using var document = Open(string.Empty);
         List<string> names = [];
 
-        document.Form.GetCalculationOrder(names);
+        PdfDocumentForms.GetForm(document).GetCalculationOrder(names);
 
         await Assert.That(names.ToArray()).IsEquivalentTo([PriceName, TotalName]);
         await Assert.That(names[0]).IsEqualTo(PriceName);
@@ -92,9 +92,9 @@ public sealed class FormRuntimeTests
         using var document = Open(string.Empty);
         List<int> order = [];
 
-        document.Form.GetTabSequence(0, order);
+        PdfDocumentForms.GetForm(document).GetTabSequence(0, order);
 
-        await Assert.That(document.Form.GetTabOrder(0)).IsEqualTo(PdfTabOrder.Unspecified);
+        await Assert.That(PdfDocumentForms.GetForm(document).GetTabOrder(0)).IsEqualTo(PdfTabOrder.Unspecified);
         await Assert.That(order.ToArray()).IsEquivalentTo(Enumerable.Range(0, AnnotationCount).ToArray());
         await Assert.That(order[0]).IsEqualTo(0);
         await Assert.That(order[^1]).IsEqualTo(AnnotationCount - 1);
@@ -108,9 +108,9 @@ public sealed class FormRuntimeTests
         using var document = Open("/Tabs /R");
         List<int> order = [];
 
-        document.Form.GetTabSequence(0, order);
+        PdfDocumentForms.GetForm(document).GetTabSequence(0, order);
 
-        await Assert.That(document.Form.GetTabOrder(0)).IsEqualTo(PdfTabOrder.Row);
+        await Assert.That(PdfDocumentForms.GetForm(document).GetTabOrder(0)).IsEqualTo(PdfTabOrder.Row);
         await Assert.That(order.SequenceEqual(RowOrder)).IsTrue();
     }
 
@@ -122,9 +122,9 @@ public sealed class FormRuntimeTests
         using var document = Open("/Tabs /C");
         List<int> order = [];
 
-        document.Form.GetTabSequence(0, order);
+        PdfDocumentForms.GetForm(document).GetTabSequence(0, order);
 
-        await Assert.That(document.Form.GetTabOrder(0)).IsEqualTo(PdfTabOrder.Column);
+        await Assert.That(PdfDocumentForms.GetForm(document).GetTabOrder(0)).IsEqualTo(PdfTabOrder.Column);
         await Assert.That(order.SequenceEqual(ColumnOrder)).IsTrue();
     }
 
@@ -136,9 +136,9 @@ public sealed class FormRuntimeTests
         using var document = Open("/Tabs /S");
         List<int> order = [];
 
-        document.Form.GetTabSequence(0, order);
+        PdfDocumentForms.GetForm(document).GetTabSequence(0, order);
 
-        await Assert.That(document.Form.GetTabOrder(0)).IsEqualTo(PdfTabOrder.Structure);
+        await Assert.That(PdfDocumentForms.GetForm(document).GetTabOrder(0)).IsEqualTo(PdfTabOrder.Structure);
         await Assert.That(order.SequenceEqual(Enumerable.Range(0, AnnotationCount))).IsTrue();
     }
 
@@ -148,9 +148,9 @@ public sealed class FormRuntimeTests
     public async Task ResetRestoresDefaults()
     {
         using var document = Open(string.Empty);
-        _ = document.Form.SetText(0, PriceIndex, "9");
+        _ = PdfDocumentForms.GetForm(document).SetText(0, PriceIndex, "9");
 
-        var count = document.Form.Reset(new([], 0));
+        var count = PdfDocumentForms.GetForm(document).Reset(new([], 0));
 
         await Assert.That(count).IsEqualTo(ResettableFields);
         await Assert.That(ValueOf(document, PriceIndex)).IsEqualTo("1");
@@ -164,9 +164,9 @@ public sealed class FormRuntimeTests
     public async Task ResetCanExcludeFields()
     {
         using var document = Open(string.Empty);
-        _ = document.Form.SetText(0, PriceIndex, "9");
+        _ = PdfDocumentForms.GetForm(document).SetText(0, PriceIndex, "9");
 
-        _ = document.Form.Reset(new([PriceName], ExcludeListed));
+        _ = PdfDocumentForms.GetForm(document).Reset(new([PriceName], ExcludeListed));
 
         await Assert.That(ValueOf(document, PriceIndex)).IsEqualTo("9");
         await Assert.That(ValueOf(document, QtyIndex)).IsEmpty();
@@ -179,9 +179,9 @@ public sealed class FormRuntimeTests
     {
         using var document = Open(string.Empty);
 
-        var hidden = document.Form.SetHidden(new([QtyName], true));
+        var hidden = PdfDocumentForms.GetForm(document).SetHidden(new([QtyName], true));
         var flagWhileHidden = Annotation(document, QtyIndex).GetInt32(KnownName.F);
-        var shown = document.Form.SetHidden(new([QtyName], false));
+        var shown = PdfDocumentForms.GetForm(document).SetHidden(new([QtyName], false));
 
         await Assert.That(hidden).IsEqualTo(1);
         await Assert.That(flagWhileHidden & HiddenFlag).IsEqualTo(HiddenFlag);
@@ -195,10 +195,10 @@ public sealed class FormRuntimeTests
     public async Task SubmissionCollectsFieldValues()
     {
         using var document = Open(string.Empty);
-        _ = document.Form.SetText(0, QtyIndex, string.Empty);
+        _ = PdfDocumentForms.GetForm(document).SetText(0, QtyIndex, string.Empty);
 
-        var withValues = document.Form.CreateSubmission(new(SendAddress, [], 0));
-        var withEmpty = document.Form.CreateSubmission(new(SendAddress, [], IncludeNoValue));
+        var withValues = PdfDocumentForms.GetForm(document).CreateSubmission(new(SendAddress, [], 0));
+        var withEmpty = PdfDocumentForms.GetForm(document).CreateSubmission(new(SendAddress, [], IncludeNoValue));
 
         await Assert.That(withValues.Url).IsEqualTo(SendAddress);
         await Assert.That(withValues.Fields.Select(static field => field.Name).ToArray()).IsEquivalentTo([TotalName, PriceName]);
@@ -213,7 +213,7 @@ public sealed class FormRuntimeTests
         using var document = Open(string.Empty);
         var host = new RecordingActionHost();
         var runner = new PdfActionRunner(document, host);
-        _ = document.Form.SetText(0, PriceIndex, "9");
+        _ = PdfDocumentForms.GetForm(document).SetText(0, PriceIndex, "9");
 
         var reset = await runner.RunAsync(ButtonAction(document, ClearIndex), 0, CancellationToken.None);
         var hide = await runner.RunAsync(ButtonAction(document, HiderIndex), 0, CancellationToken.None);
@@ -232,16 +232,16 @@ public sealed class FormRuntimeTests
     {
         using var document = Open(string.Empty);
         var runner = new PdfActionRunner(document, new RecordingActionHost());
-        var before = document.OptionalContent.Layers[0].IsVisible;
+        var before = PdfDocumentLayers.GetOptionalContent(document).Layers[0].IsVisible;
 
         var first = await runner.RunAsync(ButtonAction(document, LayerIndex), CancellationToken.None);
-        var afterFirst = document.OptionalContent.Layers[0].IsVisible;
+        var afterFirst = PdfDocumentLayers.GetOptionalContent(document).Layers[0].IsVisible;
         _ = await runner.RunAsync(ButtonAction(document, LayerIndex), CancellationToken.None);
 
         await Assert.That(first).IsEqualTo(PdfActionResult.Ran | PdfActionResult.LayersChanged);
         await Assert.That(before).IsTrue();
         await Assert.That(afterFirst).IsFalse();
-        await Assert.That(document.OptionalContent.Layers[0].IsVisible).IsTrue();
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(document).Layers[0].IsVisible).IsTrue();
     }
 
     /// <summary>A submit action is only offered to the host; a host that declines sends nothing and the result says so.</summary>
@@ -298,21 +298,21 @@ public sealed class FormRuntimeTests
     /// <summary>Opens the form with a page entry.</summary>
     /// <param name="pageEntries">The page dictionary's extra entries.</param>
     /// <returns>The document.</returns>
-    private static PdfDocument Open(string pageEntries) => PdfDocument.Open(FormRuntimeSamples.Create(pageEntries), null);
+    private static PdfDocument Open(string pageEntries) => PdfDocumentReader.Open(FormRuntimeSamples.Create(pageEntries), null);
 
     /// <summary>Reads a widget annotation dictionary.</summary>
     /// <param name="document">The document.</param>
     /// <param name="index">The annotation index.</param>
     /// <returns>The dictionary.</returns>
     private static PdfDictionary Annotation(PdfDocument document, int index) =>
-        document.GetPage(0).Dictionary.GetArray(KnownName.Annots)!.GetDictionary(index)!;
+        PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(KnownName.Annots)!.GetDictionary(index)!;
 
     /// <summary>Reads the action of a button.</summary>
     /// <param name="document">The document.</param>
     /// <param name="index">The annotation index.</param>
     /// <returns>The action with its chain.</returns>
     private static PdfActionNode ButtonAction(PdfDocument document, int index) =>
-        document.ReadActionNode(Annotation(document, index).GetDictionary(KnownName.A)!);
+        PdfDocumentActions.ReadActionNode(document, Annotation(document, index).GetDictionary(KnownName.A)!);
 
     /// <summary>Reads a field's value by annotation index.</summary>
     /// <param name="document">The document.</param>
@@ -321,7 +321,7 @@ public sealed class FormRuntimeTests
     private static string ValueOf(PdfDocument document, int index)
     {
         List<PdfFormWidget> widgets = [];
-        document.Form.GetWidgets(0, widgets);
+        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
         return widgets.Find(widget => widget.Index == index)!.Value;
     }
 }

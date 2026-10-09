@@ -52,7 +52,7 @@ internal static class SubstituteGlyphMapper
     {
         // A bundled face keeps PostScript names, so a name finds its glyph exactly, as in an embedded Type 1 font.
         var glyph = face.GetNamedGlyph(name);
-        if (glyph != 0 || symbolEncoding == FontEncoding.None)
+        if (glyph != 0 || symbolEncoding == FontEncoding.None || face.IsBundled)
         {
             return glyph;
         }

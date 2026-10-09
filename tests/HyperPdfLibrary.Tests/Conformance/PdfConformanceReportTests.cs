@@ -133,8 +133,8 @@ public sealed class PdfConformanceReportTests
         var bytes = pdf.ToBytes();
         var text = System.Text.Encoding.Latin1.GetString(bytes).Replace("/Root 1 0 R", string.Create(CultureInfo.InvariantCulture, $"/Root 1 0 R /Info {info} 0 R"), StringComparison.Ordinal);
 
-        using var document = PdfDocument.Open(System.Text.Encoding.Latin1.GetBytes(text), null);
-        var report = document.GetConformance();
+        using var document = PdfDocumentReader.Open(System.Text.Encoding.Latin1.GetBytes(text), null);
+        var report = PdfDocumentConformance.GetConformance(document);
 
         await Assert.That(report.PdfXVersion).IsEqualTo("PDF/X-1a:2001");
     }
@@ -399,9 +399,9 @@ public sealed class PdfConformanceReportTests
     [Test]
     public async Task EncryptionIsReported()
     {
-        using var document = PdfDocument.Open(EncryptedFixture.Build(), null);
+        using var document = PdfDocumentReader.Open(EncryptedFixture.Build(), null);
 
-        var report = document.GetConformance();
+        var report = PdfDocumentConformance.GetConformance(document);
 
         await Assert.That(report.TryGet(PdfConformanceFinding.Encryption, out var seen)).IsTrue();
         await Assert.That(seen.Count).IsEqualTo(1);
@@ -442,7 +442,7 @@ public sealed class PdfConformanceReportTests
     /// <returns>The report.</returns>
     private static PdfConformanceReport Report(RenderTestPdf pdf)
     {
-        using var document = PdfDocument.Open(pdf.ToBytes(), null);
-        return document.GetConformance();
+        using var document = PdfDocumentReader.Open(pdf.ToBytes(), null);
+        return PdfDocumentConformance.GetConformance(document);
     }
 }

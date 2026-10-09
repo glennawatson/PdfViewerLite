@@ -44,8 +44,8 @@ public sealed class SignatureFormatTests
         };
         var prepared = PdfSigning.Prepare(IncrementalPdf.Append(SignatureSamples.Signed(SignatureFixtures.Signer, NoChanges, string.Empty), update));
         var file = PdfSigning.WriteContents(prepared, await authority.TimestampAsync(prepared.SignedBytes, CancellationToken.None));
-        using var document = PdfDocument.Open(file, null);
-        var reports = document.ValidateSignatures(new() { TrustedRoots = [SignatureFixtures.Signer, authority.Certificate] });
+        using var document = PdfDocumentReader.Open(file, null);
+        var reports = PdfDocumentSignatureValidation.ValidateSignatures(document, new() { TrustedRoots = [SignatureFixtures.Signer, authority.Certificate] });
 
         await Assert.That(reports.Count).IsEqualTo(SignaturesWithTimestamp);
         await Assert.That(reports[1].Signature.IsDocumentTimestamp).IsTrue();
@@ -69,8 +69,8 @@ public sealed class SignatureFormatTests
         var token = await authority.TimestampAsync(cms.SignerInfos[0].GetSignature(), CancellationToken.None);
         cms.SignerInfos[0].AddUnsignedAttribute(new(TimestampTokenOid, token));
         var file = PdfSigning.WriteContents(prepared, cms.Encode());
-        using var document = PdfDocument.Open(file, null);
-        var report = document.ValidateSignatures(new() { TrustedRoots = [SignatureFixtures.Signer, authority.Certificate] })[0];
+        using var document = PdfDocumentReader.Open(file, null);
+        var report = PdfDocumentSignatureValidation.ValidateSignatures(document, new() { TrustedRoots = [SignatureFixtures.Signer, authority.Certificate] })[0];
 
         await Assert.That(report.SignatureValid).IsTrue();
         await Assert.That(report.HasTimestamp).IsTrue();
@@ -102,8 +102,8 @@ public sealed class SignatureFormatTests
             "<< /Type /Catalog /Pages 2 0 R /Perms << /UR3 3 0 R >> >>",
             "<< /Type /Pages /Kids [] /Count 0 >>",
             "<< /Type /Sig /Reference [<< /Type /SigRef /TransformMethod /UR3 /TransformParams << /Document [/FullSave] /Annots [/Create /Delete] /Form [/FillIn] /Msg (Rights) /P true >> >>] >>");
-        using var document = PdfDocument.Open(file, null);
-        var rights = document.GetUsageRights();
+        using var document = PdfDocumentReader.Open(file, null);
+        var rights = PdfDocumentSignatureValidation.GetUsageRights(document);
 
         await Assert.That(rights).IsNotNull();
         await Assert.That(rights!.Document).IsEquivalentTo(["FullSave"]);
@@ -153,8 +153,8 @@ public sealed class SignatureFormatTests
         File.WriteAllBytes(path, file);
         try
         {
-            using var document = PdfDocument.Open(file, null);
-            var field = document.GetSignatures()[0];
+            using var document = PdfDocumentReader.Open(file, null);
+            var field = PdfDocumentAttachments.GetSignatures(document)[0];
             var raw = new RawSignature(field.Index, field.Contents, field.ByteRange, field.SubFilter, field.Reason, field.SigningTime);
             return SignatureVerifier.Verify(raw, path, [certificate]).Integrity;
         }

@@ -23,8 +23,8 @@ internal static class PdfAccessibilityReader
     internal static PdfAccessibilityReport Read(PdfDocument document, CancellationToken cancellation)
     {
         var findings = new AccessibilityFindings();
-        var xmp = document.GetXmp();
-        var tree = document.StructureTree;
+        var xmp = PdfDocumentMetadata.GetXmp(document);
+        var tree = PdfDocumentTagged.GetStructureTree(document);
         var markInfo = document.Catalog.GetDictionary(KnownName.MarkInfo);
         var part = xmp?.PdfUaPart;
         var scan = tree is null ? null : new AccessibilityStructureScan(tree, part, findings, cancellation);
@@ -32,9 +32,9 @@ internal static class PdfAccessibilityReader
         var isMarked = markInfo?.Flag("Marked", false) == true;
         var language = document.Catalog.GetText(KnownName.Lang) is { Length: > 0 } text ? text : null;
         var hasTitle = !string.IsNullOrWhiteSpace(xmp?.Title);
-        var displayTitle = document.GetViewerPreferences().DisplayDocTitle;
+        var displayTitle = PdfDocumentViewerPreferences.GetViewerPreferences(document).DisplayDocTitle;
         var suspects = markInfo?.Flag("Suspects", false) == true;
-        var version = document.GetInfo().Version ?? string.Empty;
+        var version = PdfDocumentMetadata.GetInfo(document).Version ?? string.Empty;
 
         CheckDocument(findings, new(isMarked, tree is not null, language is not null, hasTitle, displayTitle, suspects), part, version);
         scan?.Run();

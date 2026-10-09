@@ -28,7 +28,7 @@ internal static class OcrLayerPass
         for (var i = 0; i < document.PageCount; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!document.GetMarkedContent(i).IsImageOnly || ocr(i) is not { Count: > 0 } words)
+            if (!PdfDocumentTagged.GetMarkedContent(document, i).IsImageOnly || ocr(i) is not { Count: > 0 } words)
             {
                 continue;
             }
@@ -40,15 +40,15 @@ internal static class OcrLayerPass
                 layer[w] = new(text, bounds.Left, bounds.Top, bounds.Right, bounds.Bottom, 0);
             }
 
-            var written = PdfTextLayer.Append(document.Objects, document.GetPage(i), layer, fonts);
+            var written = PdfTextLayer.Append(document.Objects, PdfDocumentPages.GetPage(document, i), layer, fonts);
             if (written == 0)
             {
                 continue;
             }
 
-            document.RefreshAfterOptimizerEdit();
+            PdfDocumentOptimizing.RefreshAfterOptimizerEdit(document);
             var note = string.Create(CultureInfo.InvariantCulture, $"Added an invisible text layer of {written} words to page {i + 1}.");
-            report.Noted(PdfOptimizeCategory.TextLayer, document.GetPage(i).Id.Number, note);
+            report.Noted(PdfOptimizeCategory.TextLayer, PdfDocumentPages.GetPage(document, i).Id.Number, note);
         }
     }
 }

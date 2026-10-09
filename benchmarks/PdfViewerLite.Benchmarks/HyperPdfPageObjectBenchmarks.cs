@@ -42,8 +42,8 @@ public class HyperPdfPageObjectBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _document = PdfDocument.Open(CreatePage(), null);
-        _content = _document.GetPageContent(0);
+        _document = PdfDocumentReader.Open(CreatePage(), null);
+        _content = PdfDocumentPageContent.GetPageContent(_document, 0);
     }
 
     /// <summary>Closes the document.</summary>
@@ -53,7 +53,7 @@ public class HyperPdfPageObjectBenchmarks
     /// <summary>Reads the page into objects.</summary>
     /// <returns>The object count, so the work is not optimised away.</returns>
     [Benchmark(Baseline = true)]
-    public int Parse() => _document!.GetPageContent(0).Objects.Count;
+    public int Parse() => PdfDocumentPageContent.GetPageContent(_document!, 0).Objects.Count;
 
     /// <summary>Writes the content again, copying the bytes of objects nobody changed.</summary>
     /// <returns>The length written.</returns>
@@ -70,7 +70,7 @@ public class HyperPdfPageObjectBenchmarks
     [Benchmark]
     public int EditAndRegenerate()
     {
-        var content = _document!.GetPageContent(0);
+        var content = PdfDocumentPageContent.GetPageContent(_document!, 0);
         _ = ((PdfTextObject)content.Objects[0]).RemoveGlyph(1);
         content.Objects[1].Translate(0, 1);
         return content.Regenerate().Length;

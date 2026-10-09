@@ -56,7 +56,7 @@ public sealed class HyperPdfEngine : IDocumentEngine
         PdfDocument document;
         try
         {
-            document = PdfDocument.Open(fullPath, password);
+            document = PdfDocumentReader.Open(fullPath, password);
         }
         catch (PdfException ex)
         {

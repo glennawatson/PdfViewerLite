@@ -65,7 +65,7 @@ public sealed class ConcurrencyTests
     public async Task ConcurrentEditsWhileReading()
     {
         using var timeout = new CancellationTokenSource(Limit);
-        using var document = PdfDocument.Open(RobustnessSeeds.Create()[0].Bytes, null);
+        using var document = PdfDocumentReader.Open(RobustnessSeeds.Create()[0].Bytes, null);
         var store = document.Objects;
         var shared = store.Add(PdfValue.FromInteger(0));
         var problems = new ConcurrentQueue<string>();
@@ -153,7 +153,7 @@ public sealed class ConcurrencyTests
     {
         foreach (var seed in RobustnessSeeds.Create())
         {
-            var document = PdfDocument.Open(seed.Bytes, null);
+            var document = PdfDocumentReader.Open(seed.Bytes, null);
             var id = new PdfObjectId(1, 0);
             document.Dispose();
             document.Dispose();
@@ -180,7 +180,7 @@ public sealed class ConcurrencyTests
     /// <returns>The description of what was read.</returns>
     private static string ReadOnce(byte[] file)
     {
-        using var document = PdfDocument.Open(file, null);
+        using var document = PdfDocumentReader.Open(file, null);
         return DocumentExerciser.Read(document);
     }
 
@@ -191,7 +191,7 @@ public sealed class ConcurrencyTests
     /// <returns>A line for each task whose read differed or threw.</returns>
     private static async Task<List<string>> ReadInParallelAsync(RobustnessSeeds.Seed seed, string expected, CancellationToken token)
     {
-        var document = PdfDocument.Open(seed.Bytes, null);
+        var document = PdfDocumentReader.Open(seed.Bytes, null);
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var tasks = new Task<string>[Readers];
         for (var i = 0; i < tasks.Length; i++)
@@ -317,7 +317,7 @@ public sealed class ConcurrencyTests
     /// <param name="token">Cancelled when the test has run too long.</param>
     /// <returns>A line for each unexpected exception or damaged read.</returns>
     private static Task<List<string>> DisposeOnceAsync(RobustnessSeeds.Seed seed, string expected, int round, CancellationToken token) =>
-        DisposeOnceAsync(PdfDocument.Open(seed.Bytes, null), seed, expected, round, token);
+        DisposeOnceAsync(PdfDocumentReader.Open(seed.Bytes, null), seed, expected, round, token);
 
     /// <summary>Reads an open document from many tasks and disposes it while they work.</summary>
     /// <param name="document">The document, which this method disposes.</param>

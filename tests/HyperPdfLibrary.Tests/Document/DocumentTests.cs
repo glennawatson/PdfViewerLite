@@ -32,9 +32,9 @@ public sealed class DocumentTests
     [Test]
     public async Task OpensPagesAndInformation()
     {
-        using var document = PdfDocument.Open(TestPdf.Create(Pages), null);
-        var info = document.GetInfo();
-        var page = document.GetPage(0);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(Pages), null);
+        var info = PdfDocumentMetadata.GetInfo(document);
+        var page = PdfDocumentPages.GetPage(document, 0);
 
         await Assert.That(document.PageCount).IsEqualTo(Pages);
         await Assert.That(page.Width).IsEqualTo(TestPdf.PortraitWidth);
@@ -51,8 +51,8 @@ public sealed class DocumentTests
     [Test]
     public async Task ReadsOutline()
     {
-        using var document = PdfDocument.Open(TestPdf.Create(Pages), null);
-        var outline = document.GetOutline();
+        using var document = PdfDocumentReader.Open(TestPdf.Create(Pages), null);
+        var outline = PdfDocumentNavigation.GetOutline(document);
 
         await Assert.That(outline.Count).IsEqualTo(Pages);
         await Assert.That(outline[1].Title).IsEqualTo("Chapter 2");
@@ -64,13 +64,13 @@ public sealed class DocumentTests
     [Test]
     public async Task ReadsLinks()
     {
-        using var document = PdfDocument.Open(TestPdf.Create(Pages), null);
-        var links = document.GetLinks(0);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(Pages), null);
+        var links = PdfDocumentLinks.GetLinks(document, 0);
 
         await Assert.That(links.Count).IsEqualTo(FirstPageLinks);
         await Assert.That(links[0].Action.Value is GoToAction { Destination.PageIndex: LinkedPageIndex }).IsTrue();
         await Assert.That(links[1].Action.Value is UriAction { Uri: var uri } && uri == TestPdf.LinkUri).IsTrue();
-        await Assert.That(document.GetLinks(1).Count).IsEqualTo(0);
+        await Assert.That(PdfDocumentLinks.GetLinks(document, 1).Count).IsEqualTo(0);
     }
 
     /// <summary>The link cache follows the page set: after pages are deleted, links are read for the new pages and an old index is refused.</summary>
@@ -78,15 +78,15 @@ public sealed class DocumentTests
     [Test]
     public async Task LinkCacheFollowsEditedPages()
     {
-        using var document = PdfDocument.Open(TestPdf.Create(Pages), null);
-        var before = document.GetLinks(0);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(Pages), null);
+        var before = PdfDocumentLinks.GetLinks(document, 0);
 
-        document.DeletePages([1]);
+        PdfDocumentPageOperations.DeletePages(document, [1]);
 
-        await Assert.That(document.GetLinks(0).Count).IsEqualTo(before.Count);
-        await Assert.That(() => document.GetLinks(Pages - 1)).Throws<ArgumentOutOfRangeException>();
-        _ = document.Undo();
-        await Assert.That(document.GetLinks(Pages - 1).Count).IsEqualTo(0);
+        await Assert.That(PdfDocumentLinks.GetLinks(document, 0).Count).IsEqualTo(before.Count);
+        await Assert.That(() => PdfDocumentLinks.GetLinks(document, Pages - 1)).Throws<ArgumentOutOfRangeException>();
+        _ = PdfDocumentEditing.Undo(document);
+        await Assert.That(PdfDocumentLinks.GetLinks(document, Pages - 1).Count).IsEqualTo(0);
     }
 
     /// <summary>Layers list in document order with their default visibility, and toggle without touching the file.</summary>
@@ -94,8 +94,8 @@ public sealed class DocumentTests
     [Test]
     public async Task ReadsAndTogglesLayers()
     {
-        using var document = PdfDocument.Open(TestPdf.CreateWithLayers(), null);
-        var content = document.OptionalContent;
+        using var document = PdfDocumentReader.Open(TestPdf.CreateWithLayers(), null);
+        var content = PdfDocumentLayers.GetOptionalContent(document);
         var layers = content.Layers;
         var version = content.Version;
 
@@ -116,11 +116,11 @@ public sealed class DocumentTests
     [Test]
     public async Task OpensCompressedLayout()
     {
-        using var document = PdfDocument.Open(TestPdf.CreateCompressed(), null);
+        using var document = PdfDocumentReader.Open(TestPdf.CreateCompressed(), null);
 
         await Assert.That(document.PageCount).IsEqualTo(1);
         await Assert.That(document.Objects.UsesXrefStreams).IsTrue();
-        await Assert.That(document.GetPage(0).Resources).IsNotNull();
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Resources).IsNotNull();
     }
 
     /// <summary>A file whose cross-reference offset is wrong is rebuilt by scanning.</summary>
@@ -133,11 +133,11 @@ public sealed class DocumentTests
         var marker = text.LastIndexOf("startxref", StringComparison.Ordinal);
         var damaged = Encoding.Latin1.GetBytes(string.Concat(text.AsSpan(0, marker), "startxref\n12\n%%EOF\n"));
 
-        using var document = PdfDocument.Open(damaged, null);
+        using var document = PdfDocumentReader.Open(damaged, null);
 
         await Assert.That(document.PageCount).IsEqualTo(Pages);
         await Assert.That(document.Objects.WasRepaired).IsTrue();
-        await Assert.That(document.GetInfo().Title).IsEqualTo(TestPdf.Title);
+        await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsEqualTo(TestPdf.Title);
     }
 
     /// <summary>Bytes that are not a PDF report a format error.</summary>
@@ -145,7 +145,7 @@ public sealed class DocumentTests
     [Test]
     public async Task GarbageReportsFormatError()
     {
-        var exception = await Assert.That(static () => PdfDocument.Open("not a pdf"u8.ToArray(), null)).Throws<PdfException>();
+        var exception = await Assert.That(static () => PdfDocumentReader.Open("not a pdf"u8.ToArray(), null)).Throws<PdfException>();
 
         await Assert.That(exception!.Error).IsEqualTo(PdfError.Format);
     }

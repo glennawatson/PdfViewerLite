@@ -148,7 +148,7 @@ public sealed partial class PdfForm
     {
         if (context.Type == PdfFieldType.ListBox)
         {
-            return FormAppearance.CreateList(context);
+            return FormTextAppearance.CreateList(context);
         }
 
         var text = FormValues.ReadText(context.Field, context.Type);
@@ -158,7 +158,7 @@ public sealed partial class PdfForm
             text = option >= 0 ? FormChoices.GetLabel(context.Field, option) : text;
         }
 
-        return FormAppearance.CreateText(context, text);
+        return FormTextAppearance.CreateText(context, text);
     }
 
     /// <summary>Works out what a button in the group becomes when one is switched.</summary>
@@ -302,11 +302,12 @@ public sealed partial class PdfForm
             return;
         }
 
-        var resources = _document.GetPage(widget.PageIndex).Resources;
+        var resources = HyperPdfLibrary.Document.PdfDocumentPages.GetPage(_document, widget.PageIndex).Resources;
         var edit = new FormEdit(Store);
         foreach (var control in FormControl.GetControls(field, widget.FieldId))
         {
-            var context = new AppearanceContext(Store, control.Dictionary, field, widget.Type, widget.Flags, AcroForm, resources) { Fonts = _document.RenderCache.Fonts };
+            var fonts = HyperPdfLibrary.Document.PdfDocumentRendering.GetRenderCache(_document).Fonts;
+            var context = new AppearanceContext(Store, control.Dictionary, field, widget.Type, widget.Flags, AcroForm, resources) { Fonts = fonts };
             if (control.Id.IsValid)
             {
                 StoreAppearance(edit, control, CreateAppearance(context));
@@ -412,10 +413,10 @@ public sealed partial class PdfForm
             return existing;
         }
 
-        var context = new AppearanceContext(Store, clone, widget.Field, widget.Type, widget.Flags, AcroForm, _document.GetPage(widget.PageIndex).Resources);
+        var context = new AppearanceContext(Store, clone, widget.Field, widget.Type, widget.Flags, AcroForm, HyperPdfLibrary.Document.PdfDocumentPages.GetPage(_document, widget.PageIndex).Resources);
         var states = new PdfDictionary(Store);
-        states.Set(Store.Names.Intern(FormValues.DefaultOnState), PdfValue.FromReference(Store.Add(PdfValue.FromStream(FormAppearance.CreateButton(context, true)))));
-        states.Set(Store.Names.Intern(FormValues.OffState), PdfValue.FromReference(Store.Add(PdfValue.FromStream(FormAppearance.CreateButton(context, false)))));
+        states.Set(Store.Names.Intern(FormValues.DefaultOnState), PdfValue.FromReference(Store.Add(PdfValue.FromStream(FormButtonAppearance.CreateButton(context, true)))));
+        states.Set(Store.Names.Intern(FormValues.OffState), PdfValue.FromReference(Store.Add(PdfValue.FromStream(FormButtonAppearance.CreateButton(context, false)))));
         var appearance = clone.GetDictionary(KnownName.AP)?.Clone() ?? new PdfDictionary(Store);
         appearance.Set(KnownName.N, PdfValue.FromDictionary(states));
         clone.Set(KnownName.AP, PdfValue.FromDictionary(appearance));

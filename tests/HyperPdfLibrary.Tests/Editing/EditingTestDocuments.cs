@@ -155,7 +155,7 @@ internal static class EditingTestDocuments
         var texts = new string[document.PageCount];
         for (var i = 0; i < texts.Length; i++)
         {
-            texts[i] = PageText(document.GetPage(i));
+            texts[i] = PageText(PdfDocumentPages.GetPage(document, i));
         }
 
         return texts;

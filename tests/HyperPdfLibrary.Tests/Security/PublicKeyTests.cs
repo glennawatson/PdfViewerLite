@@ -35,7 +35,7 @@ public sealed class PublicKeyTests
     [Arguments(PublicKeyCipher.Aes256)]
     public async Task OpensWithCertificate(PublicKeyCipher cipher)
     {
-        using var document = PdfDocument.OpenWithCertificate(PublicKeyPdf.Encrypted(cipher, Permissions, true, Recipient), Recipient);
+        using var document = PdfDocumentReader.OpenWithCertificate(PublicKeyPdf.Encrypted(cipher, Permissions, true, Recipient), Recipient);
 
         await Assert.That(document.IsEncrypted).IsTrue();
         await Assert.That(document.Objects.Security!.Permissions).IsEqualTo(Permissions);
@@ -47,7 +47,7 @@ public sealed class PublicKeyTests
     [Test]
     public async Task UnencryptedMetadataChangesTheKey()
     {
-        using var document = PdfDocument.OpenWithCertificate(PublicKeyPdf.Encrypted(PublicKeyCipher.Aes256, Permissions, false, Recipient), Recipient);
+        using var document = PdfDocumentReader.OpenWithCertificate(PublicKeyPdf.Encrypted(PublicKeyCipher.Aes256, Permissions, false, Recipient), Recipient);
 
         await Assert.That(document.Objects.Security!.EncryptMetadata).IsFalse();
         await Assert.That(Content(document)).IsEqualTo(PublicKeyPdf.Content);
@@ -58,7 +58,7 @@ public sealed class PublicKeyTests
     [Test]
     public async Task SecondRecipientOpens()
     {
-        using var document = PdfDocument.OpenWithCertificate(PublicKeyPdf.Encrypted(PublicKeyCipher.Aes128, Permissions, true, Recipient, OtherRecipient), OtherRecipient);
+        using var document = PdfDocumentReader.OpenWithCertificate(PublicKeyPdf.Encrypted(PublicKeyCipher.Aes128, Permissions, true, Recipient, OtherRecipient), OtherRecipient);
 
         await Assert.That(Content(document)).IsEqualTo(PublicKeyPdf.Content);
     }
@@ -68,8 +68,8 @@ public sealed class PublicKeyTests
     [Test]
     public async Task RendersLikePlaintextTwin()
     {
-        using var encrypted = PdfDocument.OpenWithCertificate(PublicKeyPdf.Encrypted(PublicKeyCipher.Aes256, Permissions, true, Recipient), Recipient);
-        using var plain = PdfDocument.Open(PublicKeyPdf.Plain(), null);
+        using var encrypted = PdfDocumentReader.OpenWithCertificate(PublicKeyPdf.Encrypted(PublicKeyCipher.Aes256, Permissions, true, Recipient), Recipient);
+        using var plain = PdfDocumentReader.Open(PublicKeyPdf.Plain(), null);
 
         await Assert.That(Render(encrypted)).IsEquivalentTo(Render(plain));
     }
@@ -80,7 +80,7 @@ public sealed class PublicKeyTests
     public async Task NoCertificateIsAClearError()
     {
         var file = PublicKeyPdf.Encrypted(PublicKeyCipher.Aes256, Permissions, true, Recipient);
-        var exception = await Assert.That(() => PdfDocument.Open(file, null)).Throws<PdfException>();
+        var exception = await Assert.That(() => PdfDocumentReader.Open(file, null)).Throws<PdfException>();
 
         await Assert.That(exception!.Error).IsEqualTo(PdfError.Certificate);
     }
@@ -91,7 +91,7 @@ public sealed class PublicKeyTests
     public async Task WrongCertificateIsAClearError()
     {
         var file = PublicKeyPdf.Encrypted(PublicKeyCipher.Aes256, Permissions, true, Recipient);
-        var exception = await Assert.That(() => PdfDocument.OpenWithCertificate(file, OtherRecipient)).Throws<PdfException>();
+        var exception = await Assert.That(() => PdfDocumentReader.OpenWithCertificate(file, OtherRecipient)).Throws<PdfException>();
 
         await Assert.That(exception!.Error).IsEqualTo(PdfError.Certificate);
     }
@@ -107,7 +107,7 @@ public sealed class PublicKeyTests
     public async Task MalformedRecipientsAreRejected(string recipients)
     {
         var file = PublicKeyPdf.WithDictionary($"<< /Filter /Adobe.PubSec /SubFilter /adbe.pkcs7.s4 /V 2 /Length 128 /Recipients {recipients} >>");
-        var exception = await Assert.That(() => PdfDocument.OpenWithCertificate(file, Recipient)).Throws<PdfException>();
+        var exception = await Assert.That(() => PdfDocumentReader.OpenWithCertificate(file, Recipient)).Throws<PdfException>();
 
         await Assert.That(exception!.Error).IsEqualTo(PdfError.Format);
     }
@@ -124,7 +124,7 @@ public sealed class PublicKeyTests
         }
 
         var file = PublicKeyPdf.WithDictionary($"<< /Filter /Adobe.PubSec /SubFilter /adbe.pkcs7.s4 /V 2 /Length 128 /Recipients [{list}] >>");
-        var exception = await Assert.That(() => PdfDocument.OpenWithCertificate(file, Recipient)).Throws<PdfException>();
+        var exception = await Assert.That(() => PdfDocumentReader.OpenWithCertificate(file, Recipient)).Throws<PdfException>();
 
         await Assert.That(exception!.Error).IsEqualTo(PdfError.Format);
     }
@@ -135,7 +135,7 @@ public sealed class PublicKeyTests
     public async Task GarbageRecipientIsSkipped()
     {
         var file = PublicKeyPdf.WithDictionary("<< /Filter /Adobe.PubSec /SubFilter /adbe.pkcs7.s4 /V 2 /Length 128 /Recipients [<3003020101>] >>");
-        var exception = await Assert.That(() => PdfDocument.OpenWithCertificate(file, Recipient)).Throws<PdfException>();
+        var exception = await Assert.That(() => PdfDocumentReader.OpenWithCertificate(file, Recipient)).Throws<PdfException>();
 
         await Assert.That(exception!.Error).IsEqualTo(PdfError.Certificate);
     }
@@ -144,7 +144,7 @@ public sealed class PublicKeyTests
     /// <param name="document">The document.</param>
     /// <returns>The content as text.</returns>
     private static string Content(PdfDocument document) =>
-        Encoding.ASCII.GetString(document.GetPage(0).Dictionary.GetStream(KnownName.Contents)!.DecodeToArray());
+        Encoding.ASCII.GetString(PdfDocumentPages.GetPage(document, 0).Dictionary.GetStream(KnownName.Contents)!.DecodeToArray());
 
     /// <summary>Renders the first page at one pixel per point.</summary>
     /// <param name="document">The document.</param>
@@ -152,7 +152,7 @@ public sealed class PublicKeyTests
     private static byte[] Render(PdfDocument document)
     {
         using var renderer = new PdfPageRenderer(document);
-        PdfPageRenderer.GetPixelSize(document.GetPage(0), 0, 1, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, 0), 0, 1, out var width, out var height);
         var stride = width * sizeof(int);
         var pixels = new byte[stride * height];
         _ = renderer.Render(new(0, 1, 0, 0, 0, PdfRenderFlags.None), new(pixels, width, height, stride));

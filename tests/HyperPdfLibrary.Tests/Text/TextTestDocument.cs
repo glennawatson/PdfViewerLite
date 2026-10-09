@@ -53,14 +53,14 @@ internal static class TextTestDocument
     /// <summary>Extracts the text of a test document's page.</summary>
     /// <param name="pdf">The document.</param>
     /// <returns>The text page.</returns>
-    internal static PdfTextPage Extract(RenderTestPdf pdf) => Open(pdf.ToBytes()).GetTextPage(0);
+    internal static PdfTextPage Extract(RenderTestPdf pdf) => PdfDocumentText.GetTextPage(Open(pdf.ToBytes()), 0);
 
     /// <summary>Opens a document and loads its fonts with the test fonts, so later text extraction needs no factory.</summary>
     /// <param name="bytes">The PDF bytes.</param>
     /// <returns>The document, with the first page's text already extracted and cached.</returns>
     internal static PdfDocument Open(byte[] bytes)
     {
-        var document = PdfDocument.Open(bytes, null);
+        var document = PdfDocumentReader.Open(bytes, null);
         lock (FactoryGate)
         {
             var previous = PdfFont.Factory;
@@ -69,7 +69,7 @@ internal static class TextTestDocument
             {
                 for (var i = 0; i < document.PageCount; i++)
                 {
-                    _ = document.GetTextPage(i);
+                    _ = PdfDocumentText.GetTextPage(document, i);
                 }
             }
             finally

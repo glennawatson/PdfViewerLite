@@ -19,7 +19,7 @@ public class HyperPdfConformanceBenchmarks
 
     /// <summary>Opens the generated document.</summary>
     [GlobalSetup]
-    public void Setup() => _document = PdfDocument.Open(TestPdf.Create(PageCount), null);
+    public void Setup() => _document = PdfDocumentReader.Open(TestPdf.Create(PageCount), null);
 
     /// <summary>Closes the document.</summary>
     [GlobalCleanup]
@@ -28,5 +28,5 @@ public class HyperPdfConformanceBenchmarks
     /// <summary>Reads the conformance report: XMP, output intents, every object and every page's resources and colour operators.</summary>
     /// <returns>The number of observations.</returns>
     [Benchmark]
-    public int GetConformance() => _document.GetConformance().Observations.Length;
+    public int GetConformance() => PdfDocumentConformance.GetConformance(_document).Observations.Length;
 }

@@ -64,7 +64,7 @@ public sealed class XmpTests
     public async Task CommonPropertiesAreRead()
     {
         using var document = OpenWith(Packet);
-        var xmp = document.GetXmp()!;
+        var xmp = PdfDocumentMetadata.GetXmp(document)!;
 
         await Assert.That(xmp.IsWellFormed).IsTrue();
         await Assert.That(xmp.Title).IsEqualTo(SampleTitle);
@@ -88,7 +88,7 @@ public sealed class XmpTests
         var body = Encoding.Unicode.GetBytes(Body);
         using var document = OpenWith(Encoding.Latin1.GetString([.. preamble, .. body]));
 
-        await Assert.That(document.GetXmp()!.Title).IsEqualTo(SampleTitle);
+        await Assert.That(PdfDocumentMetadata.GetXmp(document)!.Title).IsEqualTo(SampleTitle);
     }
 
     /// <summary>A damaged packet keeps the properties read before the damage and reports itself as not well formed.</summary>
@@ -98,7 +98,7 @@ public sealed class XmpTests
     {
         var cut = Packet.IndexOf(TitleEnd, StringComparison.Ordinal) + TitleEnd.Length;
         using var document = OpenWith(Packet[..cut]);
-        var xmp = document.GetXmp()!;
+        var xmp = PdfDocumentMetadata.GetXmp(document)!;
 
         await Assert.That(xmp.IsWellFormed).IsFalse();
         await Assert.That(xmp.Title).IsEqualTo(SampleTitle);
@@ -112,7 +112,7 @@ public sealed class XmpTests
     {
         using var document = OpenWith("<!DOCTYPE x [<!ENTITY e \"boom\">]><x/>");
 
-        await Assert.That(document.GetXmp()!.IsWellFormed).IsFalse();
+        await Assert.That(PdfDocumentMetadata.GetXmp(document)!.IsWellFormed).IsFalse();
     }
 
     /// <summary>A page's metadata stream is read, and a document without metadata gives null.</summary>
@@ -122,8 +122,8 @@ public sealed class XmpTests
     {
         using var document = StructureDocuments.OpenPage(string.Empty, MetadataEntry, MiniPdf.Stream(MetadataStream, Packet));
 
-        await Assert.That(document.GetXmp()).IsNull();
-        await Assert.That(document.GetXmp(document.GetPage(0))!.Title).IsEqualTo(SampleTitle);
+        await Assert.That(PdfDocumentMetadata.GetXmp(document)).IsNull();
+        await Assert.That(PdfDocumentMetadata.GetXmp(document, PdfDocumentPages.GetPage(document, 0))!.Title).IsEqualTo(SampleTitle);
     }
 
     /// <summary>Opens a document whose catalog metadata stream holds a packet.</summary>

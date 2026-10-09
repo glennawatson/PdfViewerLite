@@ -56,7 +56,7 @@ public sealed class StructurePreservationTests
             _ = PdfPageAnnotations.Append(store, page, PdfAnnotations.Create(store, KnownName.Square, new(NoteLeft, NoteBottom, NoteRight, NoteTop)));
         });
 
-        using var reopened = PdfDocument.Open(saved, null);
+        using var reopened = PdfDocumentReader.Open(saved, null);
 
         await Assert.That(Annotations(reopened).Count).IsEqualTo(AnnotationsAfterAdd);
         await AssertResolvesAsync(reopened, 0, TaggedSamples.FieldIndex);
@@ -69,9 +69,9 @@ public sealed class StructurePreservationTests
     public async Task FormEditsKeepStructure()
     {
         using var fonts = new TaggedFontScope();
-        var saved = Edit(static (document, page) => _ = document.Form.SetText(page.Index, TaggedSamples.FieldIndex, TypedValue));
+        var saved = Edit(static (document, page) => _ = PdfDocumentForms.GetForm(document).SetText(page.Index, TaggedSamples.FieldIndex, TypedValue));
 
-        using var reopened = PdfDocument.Open(saved, null);
+        using var reopened = PdfDocumentReader.Open(saved, null);
         var field = ReadNodes(reopened)[FieldNode];
 
         await AssertResolvesAsync(reopened, 0, TaggedSamples.FieldIndex);
@@ -87,8 +87,8 @@ public sealed class StructurePreservationTests
         using var fonts = new TaggedFontScope();
         var saved = Edit(static (document, page) => _ = PdfPageAnnotations.RemoveAt(document.Objects, page, 0));
 
-        using var reopened = PdfDocument.Open(saved, null);
-        var tree = reopened.StructureTree!;
+        using var reopened = PdfDocumentReader.Open(saved, null);
+        var tree = PdfDocumentTagged.GetStructureTree(reopened)!;
         var widget = Annotations(reopened).GetDictionary(0)!;
         var nodes = ReadNodes(reopened);
 
@@ -105,12 +105,12 @@ public sealed class StructurePreservationTests
     {
         using var fonts = new TaggedFontScope();
         byte[] saved;
-        using (var document = PdfDocument.Open(TaggedSamples.LinksAndForms(), null))
+        using (var document = PdfDocumentReader.Open(TaggedSamples.LinksAndForms(), null))
         {
             saved = PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
         }
 
-        using var reopened = PdfDocument.Open(saved, null);
+        using var reopened = PdfDocumentReader.Open(saved, null);
 
         await AssertResolvesAsync(reopened, 0, TaggedSamples.FieldIndex);
     }
@@ -120,15 +120,15 @@ public sealed class StructurePreservationTests
     /// <returns>The saved file.</returns>
     private static byte[] Edit(Action<PdfDocument, PdfPage> edit)
     {
-        using var document = PdfDocument.Open(TaggedSamples.LinksAndForms(), null);
-        edit(document, document.GetPage(0));
+        using var document = PdfDocumentReader.Open(TaggedSamples.LinksAndForms(), null);
+        edit(document, PdfDocumentPages.GetPage(document, 0));
         return PdfIncrementalWriter.Save(document.Objects);
     }
 
     /// <summary>Gets the page's annotations.</summary>
     /// <param name="document">The document.</param>
     /// <returns>The <c>/Annots</c> array.</returns>
-    private static PdfArray Annotations(PdfDocument document) => document.GetPage(0).Dictionary.GetArray(KnownName.Annots)!;
+    private static PdfArray Annotations(PdfDocument document) => PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(KnownName.Annots)!;
 
     /// <summary>Reads the document node's children.</summary>
     /// <param name="document">The document.</param>
@@ -142,7 +142,7 @@ public sealed class StructurePreservationTests
     /// <returns>A task.</returns>
     private static async Task AssertResolvesAsync(PdfDocument document, int linkIndex, int fieldIndex)
     {
-        var tree = document.StructureTree!;
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
         var annotations = Annotations(document);
         var linkElement = tree.GetObjectParent(annotations.GetDictionary(linkIndex)!);
         var formElement = tree.GetObjectParent(annotations.GetDictionary(fieldIndex)!);

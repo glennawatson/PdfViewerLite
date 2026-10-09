@@ -105,9 +105,9 @@ internal sealed class NativeDocument : IDisposable
     /// <returns>The dictionaries.</returns>
     internal static List<PdfDictionary> Dictionaries(byte[] bytes, int page)
     {
-        var document = PdfDocument.Open(bytes, null);
+        var document = PdfDocumentReader.Open(bytes, null);
         var result = new List<PdfDictionary>();
-        if (PdfPageAnnotations.GetArray(document.Objects, document.GetPage(page)) is { } array)
+        if (PdfPageAnnotations.GetArray(document.Objects, PdfDocumentPages.GetPage(document, page)) is { } array)
         {
             for (var i = 0; i < array.Count; i++)
             {

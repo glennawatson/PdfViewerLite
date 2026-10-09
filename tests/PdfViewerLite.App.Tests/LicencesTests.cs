@@ -130,11 +130,11 @@ public sealed class LicencesTests
     public async Task ListsBundledAndDownloadedComponents()
     {
         var entries = LicenceNotices.Load().AllEntries();
-        var fonts = entries.Single(static e => e.Name.StartsWith("Foxit fonts", StringComparison.Ordinal));
+        var fonts = entries.Single(static e => e.Name.StartsWith("Open font pack", StringComparison.Ordinal));
         var voice = entries.Single(static e => e.Name.StartsWith("Kokoro", StringComparison.Ordinal));
 
-        await Assert.That(fonts.Licence).IsEqualTo("BSD-3-Clause");
-        await Assert.That(fonts.Copyright).Contains("Foxit Software");
+        await Assert.That(fonts.Licence).IsEqualTo("Apache-2.0 AND OFL-1.1");
+        await Assert.That(fonts.Origin).Contains("on demand");
         await Assert.That(voice.Origin).Contains("Downloaded when you turn this on");
     }
 

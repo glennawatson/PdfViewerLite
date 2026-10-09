@@ -128,10 +128,10 @@ public sealed class XmpEditorTests
     [Test]
     public async Task UnchangedMetadataKeepsTheStreamBytes()
     {
-        using var document = PdfDocument.Open(EditingTestDocuments.CreateStructured(), null);
+        using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
         var before = document.Catalog.GetStream(KnownName.Metadata)!.DecodeToArray();
 
-        document.SetMetadata(new() { Title = OldTitle });
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = OldTitle });
 
         await Assert.That(document.Catalog.GetStream(KnownName.Metadata)!.DecodeToArray()).IsEquivalentTo(before);
     }

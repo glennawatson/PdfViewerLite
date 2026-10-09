@@ -1,22 +1,22 @@
 [
   {
-    "id": "foxit-fonts",
-    "name": "Foxit fonts (Sans, Serif, Fixed, Symbol and Dingbats)",
-    "version": "PDFium chromefontdata",
-    "origin": "Bundled with the app",
-    "licence": "BSD-3-Clause",
-    "copyright": "Copyright 2014 The PDFium Authors. Original code copyright 2014 Foxit Software Inc.",
-    "link": "https://pdfium.googlesource.com/pdfium/+/refs/heads/main/core/fxge/fontdata/chromefontdata",
+    "id": "open-font-pack",
+    "name": "Open font pack (Arimo, Tinos, Cousine and Noto symbols)",
+    "version": "Google Fonts pinned font programs",
+    "origin": "Downloaded individually on demand",
+    "licence": "Apache-2.0 AND OFL-1.1",
+    "copyright": "Copyright the font authors; see the font notices.",
+    "link": "https://github.com/google/fonts",
     "textFile": "../src/HyperPdfLibrary/Fonts/Data/Faces/LICENSE.txt"
   },
   {
     "id": "adobe-cmaps",
-    "name": "Predefined CMaps and CID-to-Unicode tables (Adobe cmap-resources and mapping-resources-pdf)",
-    "version": "cmap-resources f5cf3bc (2023-11-15); mapping-resources-pdf 2dd5e53 (2023-01-17)",
-    "origin": "Bundled with the app",
+    "name": "Binary CMap resource pack (PDF.js)",
+    "version": "PDF.js f5e56f0",
+    "origin": "Downloaded individually on demand",
     "licence": "BSD-3-Clause",
-    "copyright": "Copyright 1990-2023 Adobe (cmap-resources). Copyright 1990-2019 Adobe (mapping-resources-pdf). All rights reserved.",
-    "link": "https://github.com/adobe-type-tools/cmap-resources and https://github.com/adobe-type-tools/mapping-resources-pdf",
+    "copyright": "Copyright 1990-2009 Adobe Systems Incorporated. All rights reserved.",
+    "link": "https://github.com/mozilla/pdf.js/tree/master/external/bcmaps",
     "textFile": "../src/HyperPdfLibrary/Fonts/Data/CMaps/LICENSE.txt"
   },
   {

@@ -26,7 +26,7 @@ internal static class OptimizerTestKit
     /// <returns>The output and report.</returns>
     internal static OptimizedFile Optimize(byte[] pdf, PdfOptimizeOptions options)
     {
-        using var document = PdfDocument.Open(pdf, null);
+        using var document = PdfDocumentReader.Open(pdf, null);
         using var output = new MemoryStream();
         var report = PdfOptimizer.Optimize(document, output, options);
         return new(output.ToArray(), report);
@@ -84,11 +84,11 @@ internal static class OptimizerTestKit
     /// <returns>The text of each page.</returns>
     internal static string[] Text(byte[] pdf)
     {
-        using var document = PdfDocument.Open(pdf, null);
+        using var document = PdfDocumentReader.Open(pdf, null);
         var pages = new string[document.PageCount];
         for (var i = 0; i < pages.Length; i++)
         {
-            pages[i] = document.GetTextPage(i).Text;
+            pages[i] = PdfDocumentText.GetTextPage(document, i).Text;
         }
 
         return pages;

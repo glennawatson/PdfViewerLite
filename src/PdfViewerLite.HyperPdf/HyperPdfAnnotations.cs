@@ -211,7 +211,7 @@ internal sealed partial class HyperPdfAnnotations : IAnnotationEditor, ITextBoxE
     /// <param name="pageIndex">The page index.</param>
     /// <returns>The page.</returns>
     private PdfPage? GetPage(int pageIndex) =>
-        _document.IsDisposed || (uint)pageIndex >= (uint)_document.PageCount ? null : _document.GetPage(pageIndex);
+        _document.IsDisposed || (uint)pageIndex >= (uint)_document.PageCount ? null : PdfDocumentPages.GetPage(_document, pageIndex);
 
     /// <summary>Appends the annotations on a page, skipping links, form fields, pop-ups, replies and removed ones.</summary>
     /// <param name="page">The page.</param>

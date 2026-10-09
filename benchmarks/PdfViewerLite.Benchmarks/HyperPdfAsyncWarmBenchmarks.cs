@@ -55,11 +55,11 @@ public class HyperPdfAsyncWarmBenchmarks
         {
             _pixels[i] = new byte[HyperPdfAsyncSamples.MaxWidth * HyperPdfAsyncSamples.MaxHeight * HyperPdfAsyncSamples.BytesPerPixel];
             _ = HyperPdfAsyncSamples.RenderSync(_renderer, _opened.Document, i, _pixels[i]);
-            _ = _opened.Document.GetTextPage(i);
+            _ = HyperPdfLibrary.Document.PdfDocumentText.GetTextPage(_opened.Document, i);
         }
 
-        _ = _opened.Document.GetOutline();
-        _ = _opened.Document.GetLinks(0);
+        _ = HyperPdfLibrary.Document.PdfDocumentNavigation.GetOutline(_opened.Document);
+        _ = HyperPdfLibrary.Document.PdfDocumentLinks.GetLinks(_opened.Document, 0);
     }
 
     /// <summary>Releases the document.</summary>
@@ -83,32 +83,33 @@ public class HyperPdfAsyncWarmBenchmarks
     /// <summary>Gets the text of a page already extracted.</summary>
     /// <returns>The characters.</returns>
     [Benchmark]
-    public int TextWarmSync() => _opened.Document.GetTextPage(0).CharCount;
+    public int TextWarmSync() => HyperPdfLibrary.Document.PdfDocumentText.GetTextPage(_opened.Document, 0).CharCount;
 
     /// <summary>Gets the text of a page already extracted, with the async API.</summary>
     /// <returns>The characters.</returns>
     [Benchmark]
-    public async ValueTask<int> TextWarmAsync() => (await _opened.Document.GetTextPageAsync(0, CancellationToken.None).ConfigureAwait(false)).CharCount;
+    public async ValueTask<int> TextWarmAsync() => (await HyperPdfLibrary.Document.PdfDocumentText.GetTextPageAsync(_opened.Document, 0, CancellationToken.None).ConfigureAwait(false)).CharCount;
 
     /// <summary>Gets a page that is already loaded.</summary>
     /// <returns>The page width.</returns>
     [Benchmark]
-    public float PageWarmSync() => _opened.Document.GetPage(0).Width;
+    public float PageWarmSync() => HyperPdfLibrary.Document.PdfDocumentPages.GetPage(_opened.Document, 0).Width;
 
     /// <summary>Gets a page that is already loaded, with the async API.</summary>
     /// <returns>The page width.</returns>
     [Benchmark]
-    public async ValueTask<float> PageWarmAsync() => (await _opened.Document.GetPageAsync(0, CancellationToken.None).ConfigureAwait(false)).Width;
+    public async ValueTask<float> PageWarmAsync() => (await HyperPdfLibrary.Document.PdfDocumentPages.GetPageAsync(_opened.Document, 0, CancellationToken.None).ConfigureAwait(false)).Width;
 
     /// <summary>Reads the annotation content of a page already read.</summary>
     /// <returns>The content flags.</returns>
     [Benchmark]
-    public int AnnotationsWarmSync() => (int)_opened.Document.ScanAnnotations(0);
+    public int AnnotationsWarmSync() => (int)HyperPdfLibrary.Document.PdfDocumentContent.ScanAnnotations(_opened.Document, 0);
 
     /// <summary>Reads the annotation content of a page already read, with the async API.</summary>
     /// <returns>The content flags.</returns>
     [Benchmark]
-    public async ValueTask<int> AnnotationsWarmAsync() => (int)await _opened.Document.ScanAnnotationsAsync(0, CancellationToken.None).ConfigureAwait(false);
+    public async ValueTask<int> AnnotationsWarmAsync() =>
+        (int)await HyperPdfLibrary.Document.PdfDocumentContent.ScanAnnotationsAsync(_opened.Document, 0, CancellationToken.None).ConfigureAwait(false);
 
     /// <summary>Searches every page for a word; the text cache keeps only the most recent pages.</summary>
     /// <returns>The matches.</returns>
@@ -118,7 +119,7 @@ public class HyperPdfAsyncWarmBenchmarks
         _found.Clear();
         for (var i = 0; i < _opened.Document.PageCount; i++)
         {
-            _opened.Document.GetTextPage(i).Find(HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, _found);
+            HyperPdfLibrary.Document.PdfDocumentText.GetTextPage(_opened.Document, i).Find(HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, _found);
         }
 
         return _found.Count;
@@ -130,7 +131,8 @@ public class HyperPdfAsyncWarmBenchmarks
     public async ValueTask<int> SearchWarmAsync()
     {
         var matches = 0;
-        await foreach (var page in _opened.Document.FindAsync(HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, CancellationToken.None).ConfigureAwait(false))
+        var pages = HyperPdfLibrary.Document.PdfDocumentText.FindAsync(_opened.Document, HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, CancellationToken.None);
+        await foreach (var page in pages.ConfigureAwait(false))
         {
             matches += page.Matches.Length;
         }
@@ -141,14 +143,16 @@ public class HyperPdfAsyncWarmBenchmarks
     /// <summary>Reads the outline and the first page's links, already read.</summary>
     /// <returns>A count.</returns>
     [Benchmark]
-    public int NavigationWarmSync() => _opened.Document.GetOutline().Count + _opened.Document.GetLinks(0).Count;
+    public int NavigationWarmSync() =>
+        HyperPdfLibrary.Document.PdfDocumentNavigation.GetOutline(_opened.Document).Count
+        + HyperPdfLibrary.Document.PdfDocumentLinks.GetLinks(_opened.Document, 0).Count;
 
     /// <summary>Reads the outline and the first page's links, already read, with the async API.</summary>
     /// <returns>A count.</returns>
     [Benchmark]
     public async ValueTask<int> NavigationWarmAsync() =>
-        (await _opened.Document.GetOutlineAsync(CancellationToken.None).ConfigureAwait(false)).Count
-        + (await _opened.Document.GetLinksAsync(0, CancellationToken.None).ConfigureAwait(false)).Count;
+        (await HyperPdfLibrary.Document.PdfDocumentNavigation.GetOutlineAsync(_opened.Document, CancellationToken.None).ConfigureAwait(false)).Count
+        + (await HyperPdfLibrary.Document.PdfDocumentLinks.GetLinksAsync(_opened.Document, 0, CancellationToken.None).ConfigureAwait(false)).Count;
 
     /// <summary>Renders eight recorded pages at once on pool threads.</summary>
     /// <returns>The pages drawn.</returns>

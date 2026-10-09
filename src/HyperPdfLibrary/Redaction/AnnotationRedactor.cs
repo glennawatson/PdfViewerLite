@@ -27,7 +27,7 @@ internal static class AnnotationRedactor
     internal static void Run(PdfDocument document, int pageIndex, PdfRectangle[] regions, PdfRedactionAnnotationMode mode, RedactionTally tally)
     {
         var store = document.Objects;
-        var page = document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(document, pageIndex);
         if (PdfPageAnnotations.GetArray(store, page) is not { } annotations)
         {
             return;

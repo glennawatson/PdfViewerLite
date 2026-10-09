@@ -91,7 +91,7 @@ public sealed class LargeFileTests
             LargePdf.Write(path, SparsePages, SparseContentLength, SparseGap);
             foreach (var kind in (PdfSourceKind[])[PdfSourceKind.Mapped, PdfSourceKind.Stream, PdfSourceKind.Automatic])
             {
-                using var document = PdfDocument.OpenWith(path, new PdfOpenOptions { Source = kind });
+                using var document = PdfDocumentReader.OpenWith(path, new PdfOpenOptions { Source = kind });
                 await Assert.That(document.PageCount).IsEqualTo(SparsePages);
                 await Assert.That(document.Objects.WasRepaired).IsFalse();
                 await Assert.That(DecodePage(document, SparsePages - 1)).IsEqualTo(SparseContentLength);
@@ -145,7 +145,7 @@ public sealed class LargeFileTests
         // trimming, which swung the result by hundreds of MB (even negative) on a busy machine. Opening and decoding run
         // synchronously on this thread, so its own counter sees all of the work and nothing else.
         var before = GC.GetAllocatedBytesForCurrentThread();
-        using var document = PdfDocument.OpenWith(path, new PdfOpenOptions { Source = kind, CacheBytes = CacheBytes });
+        using var document = PdfDocumentReader.OpenWith(path, new PdfOpenOptions { Source = kind, CacheBytes = CacheBytes });
         _ = DecodePage(document, 0);
         _ = DecodePage(document, Math.Min(MiddlePage, document.PageCount - 1));
         var after = GC.GetAllocatedBytesForCurrentThread();
@@ -159,7 +159,7 @@ public sealed class LargeFileTests
     /// <returns>The decoded length.</returns>
     private static int DecodePage(PdfDocument document, int index)
     {
-        var contents = document.Objects.Resolve(document.GetPage(index).Dictionary.GetRaw(KnownName.Contents)).AsStream();
+        var contents = document.Objects.Resolve(PdfDocumentPages.GetPage(document, index).Dictionary.GetRaw(KnownName.Contents)).AsStream();
         if (contents is null)
         {
             return -1;

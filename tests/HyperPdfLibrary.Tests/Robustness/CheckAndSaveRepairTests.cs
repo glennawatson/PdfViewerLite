@@ -64,8 +64,8 @@ public sealed class CheckAndSaveRepairTests
     [Test]
     public async Task CleanDocumentChecksClean()
     {
-        using var document = PdfDocument.Open(Clean(GoodContent), null);
-        var report = document.Check(PdfCheckOptions.Default);
+        using var document = PdfDocumentReader.Open(Clean(GoodContent), null);
+        var report = PdfDocumentCheck.Check(document, PdfCheckOptions.Default);
 
         await Assert.That(report.IsClean).IsTrue();
         await Assert.That(report.ObjectsChecked).IsEqualTo(CleanObjects);
@@ -80,8 +80,8 @@ public sealed class CheckAndSaveRepairTests
     {
         var packed = Compress(Encoding.Latin1.GetBytes(string.Join('\n', Enumerable.Repeat(GoodContent, Repeats))));
         var kept = Encoding.Latin1.GetString(packed.AsSpan(0, packed.Length * KeepPercent / Percent));
-        using var document = PdfDocument.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", kept)), null);
-        var report = document.Check(PdfCheckOptions.Default);
+        using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", kept)), null);
+        var report = PdfDocumentCheck.Check(document, PdfCheckOptions.Default);
 
         await Assert.That(Codes(report, ContentNumber)).Contains(PdfDiagnosticCode.TruncatedStream);
     }
@@ -96,8 +96,8 @@ public sealed class CheckAndSaveRepairTests
     [Arguments("BT /F1 12 Tf", "never closed")]
     public async Task BadContentIsFound(string content, string message)
     {
-        using var document = PdfDocument.Open(Clean(content), null);
-        var report = document.Check(PdfCheckOptions.Default);
+        using var document = PdfDocumentReader.Open(Clean(content), null);
+        var report = PdfDocumentCheck.Check(document, PdfCheckOptions.Default);
         var faults = report.Faults.Where(static fault => fault.Code == PdfDiagnosticCode.BadContentStream).ToList();
 
         await Assert.That(faults.Count).IsEqualTo(1);
@@ -110,9 +110,9 @@ public sealed class CheckAndSaveRepairTests
     [Test]
     public async Task ContentParsingCanBeSwitchedOff()
     {
-        using var document = PdfDocument.Open(Clean(BadOperator), null);
+        using var document = PdfDocumentReader.Open(Clean(BadOperator), null);
 
-        await Assert.That(document.Check(new PdfCheckOptions { ParseContent = false }).IsClean).IsTrue();
+        await Assert.That(PdfDocumentCheck.Check(document, new PdfCheckOptions { ParseContent = false }).IsClean).IsTrue();
     }
 
     /// <summary>A page tree whose count, type and parent are wrong is reported node by node.</summary>
@@ -124,8 +124,8 @@ public sealed class CheckAndSaveRepairTests
             Catalog,
             "<< /Type /Pages /Kids [3 0 R] /Count 5 >>",
             "<< /MediaBox [0 0 200 100] >>");
-        using var document = PdfDocument.Open(file, null);
-        var report = document.Check(PdfCheckOptions.Default);
+        using var document = PdfDocumentReader.Open(file, null);
+        var report = PdfDocumentCheck.Check(document, PdfCheckOptions.Default);
 
         await Assert.That(Codes(report, PagesNumber)).Contains(PdfDiagnosticCode.BadStructure);
         var onPage = report.Faults.Where(static fault => fault.ObjectNumber == PageNumber).ToList();
@@ -138,8 +138,8 @@ public sealed class CheckAndSaveRepairTests
     public async Task StrictCheckDoesNotRecover()
     {
         var damaged = Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(RobustnessSeeds.CreateMini()).Replace("startxref", "startxxxx", StringComparison.Ordinal));
-        var strict = PdfDocument.Check(damaged, new PdfCheckOptions { Recovery = false });
-        var lenient = PdfDocument.Check(damaged, PdfCheckOptions.Default);
+        var strict = PdfDocumentCheck.Check(damaged, new PdfCheckOptions { Recovery = false });
+        var lenient = PdfDocumentCheck.Check(damaged, PdfCheckOptions.Default);
 
         await Assert.That(strict.Faults.Count).IsEqualTo(1);
         await Assert.That(strict.Faults[0].Code).IsEqualTo(PdfDiagnosticCode.BadStructure);
@@ -152,9 +152,9 @@ public sealed class CheckAndSaveRepairTests
     public async Task IgnoringCrossReferenceStreamsRebuildsTheTable()
     {
         var seed = RobustnessSeeds.Create().First(static s => s.Name == "compact-objstm").Bytes;
-        var normal = PdfDocument.Check(seed, PdfCheckOptions.Default);
-        var ignored = PdfDocument.Check(seed, new PdfCheckOptions { IgnoreXrefStreams = true });
-        var strict = PdfDocument.Check(seed, new PdfCheckOptions { IgnoreXrefStreams = true, Recovery = false });
+        var normal = PdfDocumentCheck.Check(seed, PdfCheckOptions.Default);
+        var ignored = PdfDocumentCheck.Check(seed, new PdfCheckOptions { IgnoreXrefStreams = true });
+        var strict = PdfDocumentCheck.Check(seed, new PdfCheckOptions { IgnoreXrefStreams = true, Recovery = false });
 
         await Assert.That(normal.Faults.Select(static fault => fault.Code)).DoesNotContain(PdfDiagnosticCode.XrefRebuilt);
         await Assert.That(ignored.Faults.Select(static fault => fault.Code)).Contains(PdfDiagnosticCode.XrefRebuilt);
@@ -166,14 +166,14 @@ public sealed class CheckAndSaveRepairTests
     [Test]
     public async Task AsyncCheckMatchesAndCancels()
     {
-        using var document = PdfDocument.Open(Clean(BadOperator), null);
-        var sync = document.Check(PdfCheckOptions.Default);
-        var async = await document.CheckAsync(PdfCheckOptions.Default, CancellationToken.None);
+        using var document = PdfDocumentReader.Open(Clean(BadOperator), null);
+        var sync = PdfDocumentCheck.Check(document, PdfCheckOptions.Default);
+        var async = await PdfDocumentCheck.CheckAsync(document, PdfCheckOptions.Default, CancellationToken.None);
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
         await Assert.That(async.Faults.Select(static fault => fault.Code)).IsEquivalentTo(sync.Faults.Select(static fault => fault.Code));
-        await Assert.That(async () => await document.CheckAsync(PdfCheckOptions.Default, cancelled.Token)).Throws<OperationCanceledException>();
+        await Assert.That(async () => await PdfDocumentCheck.CheckAsync(document, PdfCheckOptions.Default, cancelled.Token)).Throws<OperationCanceledException>();
     }
 
     /// <summary>The asynchronous check of a path reads the file and reports.</summary>
@@ -185,7 +185,7 @@ public sealed class CheckAndSaveRepairTests
         await File.WriteAllBytesAsync(path, Clean(BadOperator));
         try
         {
-            var report = await PdfDocument.CheckAsync(path, PdfCheckOptions.Default, CancellationToken.None);
+            var report = await PdfDocumentCheck.CheckAsync(path, PdfCheckOptions.Default, CancellationToken.None);
 
             await Assert.That(report.Faults.Select(static fault => fault.Code)).Contains(PdfDiagnosticCode.BadContentStream);
         }
@@ -205,16 +205,16 @@ public sealed class CheckAndSaveRepairTests
             "<< /Kids [3 0 R] /Count 5 >>",
             "<< /MediaBox [200 100 0 0] /Contents 4 0 R /Rotate 0 /Rotate 90 >>",
             MiniPdf.Stream(string.Empty, GoodContent));
-        using var damaged = PdfDocument.Open(file, null);
+        using var damaged = PdfDocumentReader.Open(file, null);
         var saved = PdfCompactWriter.Save(damaged.Objects, PdfCompactOptions.Classic);
         var text = Encoding.Latin1.GetString(saved);
-        using var reopened = PdfDocument.Open(saved, null);
+        using var reopened = PdfDocumentReader.Open(saved, null);
 
-        await Assert.That(reopened.WasRepaired).IsFalse();
-        await Assert.That(reopened.Check(PdfCheckOptions.Default).IsClean).IsTrue();
+        await Assert.That(PdfDocumentCheck.WasRepaired(reopened)).IsFalse();
+        await Assert.That(PdfDocumentCheck.Check(reopened, PdfCheckOptions.Default).IsClean).IsTrue();
         await Assert.That(reopened.Catalog.IsName(KnownName.Type, KnownName.Catalog)).IsTrue();
-        await Assert.That(reopened.GetPage(0).Height).IsEqualTo(PageWidth);
-        await Assert.That(reopened.GetPage(0).Rotation).IsEqualTo(Rotation);
+        await Assert.That(PdfDocumentPages.GetPage(reopened, 0).Height).IsEqualTo(PageWidth);
+        await Assert.That(PdfDocumentPages.GetPage(reopened, 0).Rotation).IsEqualTo(Rotation);
         await Assert.That(text).DoesNotContain("/Rotate 0");
         await Assert.That(damaged.Objects.GetDiagnostics().Select(static fault => fault.Code)).Contains(PdfDiagnosticCode.FixedOnSave);
     }
@@ -225,14 +225,14 @@ public sealed class CheckAndSaveRepairTests
     public async Task RebuiltFileSavesToACleanFile()
     {
         var damaged = Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(RobustnessSeeds.CreateMini()).Replace("startxref", "startxxxx", StringComparison.Ordinal));
-        using var document = PdfDocument.Open(damaged, null);
+        using var document = PdfDocumentReader.Open(damaged, null);
         var compact = PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
         var incremental = PdfIncrementalWriter.Save(document.Objects);
-        using var fromCompact = PdfDocument.Open(compact, null);
-        using var fromIncremental = PdfDocument.Open(incremental, null);
+        using var fromCompact = PdfDocumentReader.Open(compact, null);
+        using var fromIncremental = PdfDocumentReader.Open(incremental, null);
 
-        await Assert.That(document.WasRepaired).IsTrue();
-        await Assert.That(fromCompact.WasRepaired).IsFalse();
+        await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsTrue();
+        await Assert.That(PdfDocumentCheck.WasRepaired(fromCompact)).IsFalse();
         await Assert.That(fromIncremental.Objects.WasRepaired).IsFalse();
         await Assert.That(fromCompact.PageCount).IsEqualTo(document.PageCount);
         await Assert.That(fromIncremental.PageCount).IsEqualTo(document.PageCount);
@@ -245,12 +245,12 @@ public sealed class CheckAndSaveRepairTests
     {
         var packed = Compress(Encoding.Latin1.GetBytes(string.Join('\n', Enumerable.Repeat(GoodContent, Repeats))));
         var kept = Encoding.Latin1.GetString(packed.AsSpan(0, packed.Length * KeepPercent / Percent));
-        using var damaged = PdfDocument.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", kept)), null);
+        using var damaged = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", kept)), null);
         var expected = damaged.Objects.GetObject(new(ContentNumber, 0)).AsStream()!.DecodeToArray();
         var saved = PdfCompactWriter.Save(damaged.Objects, PdfCompactOptions.Classic);
-        using var reopened = PdfDocument.Open(saved, null);
-        var report = reopened.Check(PdfCheckOptions.Default);
-        var content = reopened.GetPage(0).Dictionary.Get(KnownName.Contents).AsStream()!.DecodeToArray();
+        using var reopened = PdfDocumentReader.Open(saved, null);
+        var report = PdfDocumentCheck.Check(reopened, PdfCheckOptions.Default);
+        var content = PdfDocumentPages.GetPage(reopened, 0).Dictionary.Get(KnownName.Contents).AsStream()!.DecodeToArray();
 
         await Assert.That(report.Faults.Select(static fault => fault.Code)).DoesNotContain(PdfDiagnosticCode.TruncatedStream);
         await Assert.That(content.AsSpan().SequenceEqual(expected)).IsTrue();

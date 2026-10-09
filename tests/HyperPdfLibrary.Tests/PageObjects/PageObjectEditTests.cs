@@ -116,8 +116,8 @@ public sealed class PageObjectEditTests
     public async Task MovedObjectsReportMovedBoundsAndLeaveLaterObjectsAlone()
     {
         var pdf = PageObjectSamples.Page("q 1 0 0 rg 20 20 60 40 re f Q 0 0 1 rg 120 120 40 40 re f");
-        using var document = PdfDocument.Open(pdf, null);
-        var content = document.GetPageContent(0);
+        using var document = PdfDocumentReader.Open(pdf, null);
+        var content = PdfDocumentPageContent.GetPageContent(document, 0);
         var original = content.Objects[0].Bounds;
         content.Objects[0].Translate(Shift, 0);
 
@@ -146,8 +146,8 @@ public sealed class PageObjectEditTests
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 10 100 Td (AAA) Tj 0 -40 Td (BBB) Tj ET");
         var edited = PageObjectSamples.Edit(pdf, static content => content.Objects[0].SetFillPaint(PdfPaint.FromRgb(1, 0, 0)));
-        using var document = PdfDocument.Open(edited, null);
-        var content = document.GetPageContent(0);
+        using var document = PdfDocumentReader.Open(edited, null);
+        var content = PdfDocumentPageContent.GetPageContent(document, 0);
 
         await Assert.That(content.Objects.Count).IsEqualTo(TwoObjects);
         await Assert.That(content.Objects[0].FillPaint.Components[0]).IsEqualTo(1);
@@ -162,14 +162,14 @@ public sealed class PageObjectEditTests
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 10 100 Td (AAA) Tj (BBB) Tj ET");
         float before;
-        using (var document = PdfDocument.Open(pdf, null))
+        using (var document = PdfDocumentReader.Open(pdf, null))
         {
-            before = document.GetPageContent(0).Objects[1].Bounds.Left;
+            before = PdfDocumentPageContent.GetPageContent(document, 0).Objects[1].Bounds.Left;
         }
 
         var edited = PageObjectSamples.Edit(pdf, static content => content.Objects[0].Delete());
-        using var after = PdfDocument.Open(edited, null);
-        var content = after.GetPageContent(0);
+        using var after = PdfDocumentReader.Open(edited, null);
+        var content = PdfDocumentPageContent.GetPageContent(after, 0);
 
         await Assert.That(content.Objects.Count).IsEqualTo(1);
         await Assert.That(content.Objects[0].Bounds.Left).IsEqualTo(before).Within(PositionTolerance);
@@ -183,9 +183,9 @@ public sealed class PageObjectEditTests
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 10 100 Td [(Hello) -300 (World)] TJ ET");
         float[] before;
-        using (var document = PdfDocument.Open(pdf, null))
+        using (var document = PdfDocumentReader.Open(pdf, null))
         {
-            var text = (PdfTextObject)document.GetPageContent(0).Objects[0];
+            var text = (PdfTextObject)PdfDocumentPageContent.GetPageContent(document, 0).Objects[0];
             before = [.. text.Glyphs.ToArray().Select(static glyph => glyph.Origin.X)];
         }
 
@@ -195,8 +195,8 @@ public sealed class PageObjectEditTests
             _ = text.RemoveGlyph(1);
             _ = text.RemoveGlyph(SecondGlyph);
         });
-        using var after = PdfDocument.Open(edited, null);
-        var remaining = (PdfTextObject)after.GetPageContent(0).Objects[0];
+        using var after = PdfDocumentReader.Open(edited, null);
+        var remaining = (PdfTextObject)PdfDocumentPageContent.GetPageContent(after, 0).Objects[0];
 
         await Assert.That(remaining.Text).IsEqualTo("HloWorld");
         await Assert.That(remaining.Glyphs[0].Origin.X).IsEqualTo(before[0]).Within(PositionTolerance);
@@ -211,15 +211,15 @@ public sealed class PageObjectEditTests
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 10 100 Td (AAA) Tj (BBB) Tj ET");
         PdfRectangle[] before;
-        using (var document = PdfDocument.Open(pdf, null))
+        using (var document = PdfDocumentReader.Open(pdf, null))
         {
-            var objects = document.GetPageContent(0).Objects;
+            var objects = PdfDocumentPageContent.GetPageContent(document, 0).Objects;
             before = [objects[0].Bounds, objects[1].Bounds];
         }
 
         var edited = PageObjectSamples.Edit(pdf, static content => content.Objects[0].Translate(0, Lift));
-        using var after = PdfDocument.Open(edited, null);
-        var moved = after.GetPageContent(0).Objects;
+        using var after = PdfDocumentReader.Open(edited, null);
+        var moved = PdfDocumentPageContent.GetPageContent(after, 0).Objects;
 
         await Assert.That(moved[0].Bounds.Bottom).IsEqualTo(before[0].Bottom + Lift).Within(PositionTolerance);
         await Assert.That(moved[0].Bounds.Left).IsEqualTo(before[0].Left).Within(PositionTolerance);
@@ -234,17 +234,17 @@ public sealed class PageObjectEditTests
     {
         var pdf = TestPdf.CreateTagged();
         int elements;
-        using (var document = PdfDocument.Open(pdf, null))
+        using (var document = PdfDocumentReader.Open(pdf, null))
         {
-            elements = document.StructureTree!.ElementCount;
+            elements = PdfDocumentTagged.GetStructureTree(document)!.ElementCount;
         }
 
         var edited = PageObjectSamples.Edit(pdf, static content => content.Objects[HeadingObject].Delete());
-        using var after = PdfDocument.Open(edited, null);
-        var marked = after.GetMarkedContent(0);
-        var source = System.Text.Encoding.ASCII.GetString(after.GetPageContent(0).Source);
+        using var after = PdfDocumentReader.Open(edited, null);
+        var marked = PdfDocumentTagged.GetMarkedContent(after, 0);
+        var source = System.Text.Encoding.ASCII.GetString(PdfDocumentPageContent.GetPageContent(after, 0).Source);
 
-        await Assert.That(after.StructureTree!.ElementCount).IsEqualTo(elements);
+        await Assert.That(PdfDocumentTagged.GetStructureTree(after)!.ElementCount).IsEqualTo(elements);
         await Assert.That(source).Contains("/H1 << /MCID 0 >> BDC");
         await Assert.That(marked.GetGlyphs(HeadingId).Length).IsEqualTo(0);
         await Assert.That(marked.GetGlyphs(FirstId).Length).IsGreaterThan(0);
@@ -259,11 +259,11 @@ public sealed class PageObjectEditTests
     {
         var pdf = PageObjectSamples.Page(TwoRectangles);
         using var page = new RenderTestPage(pdf);
-        var content = page.Document.GetPageContent(0);
+        var content = PdfDocumentPageContent.GetPageContent(page.Document, 0);
         content.Objects[0].Delete();
         content.Apply();
         var deleted = page.RenderPage();
-        _ = page.Document.Undo();
+        _ = PdfDocumentEditing.Undo(page.Document);
         var restored = page.RenderPage();
 
         await Assert.That(deleted.IsNear(RedColumn, RedRow, Rgb.White, Tolerance)).IsTrue();
@@ -276,8 +276,8 @@ public sealed class PageObjectEditTests
     public async Task EditedPageSavesBothWays()
     {
         var pdf = PageObjectSamples.Page(TwoRectangles);
-        using var document = PdfDocument.Open(pdf, null);
-        var content = document.GetPageContent(0);
+        using var document = PdfDocumentReader.Open(pdf, null);
+        var content = PdfDocumentPageContent.GetPageContent(document, 0);
         content.Objects[0].Translate(Shift, 0);
         content.Apply();
         var compact = PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
@@ -317,8 +317,8 @@ public sealed class PageObjectEditTests
             form.GetContent().Objects[0].SetFillPaint(PdfPaint.FromRgb(0, 1, 0));
         });
         var after = PageObjectSamples.Render(edited);
-        using var document = PdfDocument.Open(pdf, null);
-        var formStream = ((PdfFormObject)document.GetPageContent(0).Objects[4]).Stream;
+        using var document = PdfDocumentReader.Open(pdf, null);
+        var formStream = ((PdfFormObject)PdfDocumentPageContent.GetPageContent(document, 0).Objects[4]).Stream;
 
         await Assert.That(before.IsNear(FormColumn, FormRow, Rgb.Blue255, Tolerance)).IsTrue();
         await Assert.That(after.IsNear(FormColumn, FormRow, Rgb.Green255, Tolerance)).IsTrue();
@@ -332,8 +332,8 @@ public sealed class PageObjectEditTests
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 10 100 Td (AAA) Tj ET");
         var edited = PageObjectSamples.Edit(pdf, static content => content.Objects[0].Translate(1, 1));
-        using var document = PdfDocument.Open(edited, null);
+        using var document = PdfDocumentReader.Open(edited, null);
 
-        await Assert.That(((PdfTextObject)document.GetPageContent(0).Objects[0]).FontSize).IsEqualTo(TextSize);
+        await Assert.That(((PdfTextObject)PdfDocumentPageContent.GetPageContent(document, 0).Objects[0]).FontSize).IsEqualTo(TextSize);
     }
 }

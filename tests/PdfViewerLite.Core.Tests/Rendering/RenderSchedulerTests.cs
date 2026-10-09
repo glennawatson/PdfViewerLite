@@ -53,6 +53,66 @@ public sealed class RenderSchedulerTests
         tile.Surface.Dispose();
     }
 
+    /// <summary>Slow page preparation releases the render thread and resumes the waiting page afterwards.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PreparationDoesNotBlockOtherPages()
+    {
+        using var completed = new SemaphoreSlim(0);
+        using var timeout = new CancellationTokenSource(Timeout);
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiting = new FakeDocument(DocumentName, FakeEngine.A4);
+        waiting.Preparation = (pageIndex, token) =>
+        {
+            _ = pageIndex;
+            _ = entered.TrySetResult();
+            return new(release.Task.WaitAsync(token));
+        };
+        var ready = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
+        var client = new RenderClient();
+
+        _ = scheduler.Request(Request(Key(0), waiting, client, RenderPriority.Visible));
+        await entered.Task.WaitAsync(timeout.Token);
+        _ = scheduler.Request(Request(Key(1), ready, client, RenderPriority.Visible));
+        await Assert.That(await completed.WaitAsync(Timeout)).IsTrue();
+        await Assert.That(scheduler.TryTakeCompleted(out var first)).IsTrue();
+        await Assert.That(first.Key).IsEqualTo(Key(1));
+        await Assert.That(waiting.RenderCount).IsEqualTo(0);
+        first.Surface.Dispose();
+
+        _ = release.TrySetResult();
+        await Assert.That(await completed.WaitAsync(Timeout)).IsTrue();
+        await Assert.That(scheduler.TryTakeCompleted(out var second)).IsTrue();
+        await Assert.That(second.Key).IsEqualTo(Key(0));
+        await Assert.That(waiting.RenderCount).IsEqualTo(1);
+        second.Surface.Dispose();
+    }
+
+    /// <summary>A synchronous preparation failure leaves the render thread available for the next page.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PreparationFailureDoesNotStopRendering()
+    {
+        using var completed = new SemaphoreSlim(0);
+        using var scheduler = new RenderScheduler(new FakeSurfaceFactory());
+        using var completions = scheduler.Completed.SubscribeSafe(_ => completed.Release(), static _ => { });
+        var failed = new FakeDocument(DocumentName, FakeEngine.A4);
+        failed.Preparation = static (_, _) => throw new IOException("The resource is unavailable.");
+        var ready = new FakeDocument(DocumentName, FakeEngine.A4, FakeEngine.A4);
+        var client = new RenderClient();
+        _ = scheduler.Request(Request(Key(0), failed, client, RenderPriority.Visible));
+        _ = scheduler.Request(Request(Key(1), ready, client, RenderPriority.Visible));
+
+        await Assert.That(await completed.WaitAsync(Timeout)).IsTrue();
+        await Assert.That(scheduler.TryTakeCompleted(out var tile)).IsTrue();
+        await Assert.That(tile.Key).IsEqualTo(Key(1));
+        await Assert.That(scheduler.IsPending(Key(0))).IsFalse();
+        tile.Surface.Dispose();
+    }
+
     /// <summary>Verifies duplicate requests are coalesced.</summary>
     /// <returns>A task.</returns>
     [Test]

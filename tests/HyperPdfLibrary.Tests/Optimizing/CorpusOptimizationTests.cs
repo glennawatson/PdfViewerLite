@@ -35,13 +35,13 @@ public sealed class CorpusOptimizationTests
         {
             var source = await File.ReadAllBytesAsync(path);
             var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced);
-            using var before = PdfDocument.Open(source, null);
-            using var after = PdfDocument.Open(result.Bytes, null);
+            using var before = PdfDocumentReader.Open(source, null);
+            using var after = PdfDocumentReader.Open(result.Bytes, null);
 
             await Assert.That(after.PageCount).IsEqualTo(before.PageCount);
             await Assert.That(result.Report.BytesAfter).IsEqualTo(result.Bytes.LongLength);
-            await Assert.That(after.StructureTree?.ElementCount ?? 0).IsEqualTo(before.StructureTree?.ElementCount ?? 0);
-            await Assert.That(after.GetTextPage(0).Text).IsEqualTo(before.GetTextPage(0).Text);
+            await Assert.That(PdfDocumentTagged.GetStructureTree(after)?.ElementCount ?? 0).IsEqualTo(PdfDocumentTagged.GetStructureTree(before)?.ElementCount ?? 0);
+            await Assert.That(PdfDocumentText.GetTextPage(after, 0).Text).IsEqualTo(PdfDocumentText.GetTextPage(before, 0).Text);
             await Assert.That(OptimizerTestKit.MeanDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsLessThan(PageTolerance);
         }
     }
@@ -53,16 +53,16 @@ public sealed class CorpusOptimizationTests
     {
         var source = TestPdf.CreateForm();
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller with { Cleanup = PdfCleanupItems.All });
-        using var before = PdfDocument.Open(source, null);
-        using var after = PdfDocument.Open(result.Bytes, null);
+        using var before = PdfDocumentReader.Open(source, null);
+        using var after = PdfDocumentReader.Open(result.Bytes, null);
         var expected = Widgets(before);
         var widgets = Widgets(after);
         var text = widgets.FindIndex(static widget => widget.Type == PdfFieldType.Text);
 
         await Assert.That(widgets.Count).IsEqualTo(expected.Count);
-        await Assert.That(after.Form.SetText(0, text, Typed)).IsTrue();
+        await Assert.That(PdfDocumentForms.GetForm(after).SetText(0, text, Typed)).IsTrue();
 
-        using var filled = PdfDocument.Open(PdfIncrementalWriter.Save(after.Objects), null);
+        using var filled = PdfDocumentReader.Open(PdfIncrementalWriter.Save(after.Objects), null);
         await Assert.That(Widgets(filled)[text].Value).IsEqualTo(Typed);
     }
 
@@ -89,7 +89,7 @@ public sealed class CorpusOptimizationTests
     private static List<PdfFormWidget> Widgets(PdfDocument document)
     {
         var widgets = new List<PdfFormWidget>();
-        document.Form.GetWidgets(0, widgets);
+        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
         return widgets;
     }
 }

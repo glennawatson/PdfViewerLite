@@ -44,21 +44,21 @@ internal static class HyperPdfAsyncSamples
         switch (name)
         {
             case "Scan":
-            {
-                return Path.Combine(CorpusFolder, "loc-marbury-v-madison.pdf");
-            }
+                {
+                    return Path.Combine(CorpusFolder, "loc-marbury-v-madison.pdf");
+                }
 
             case "Book":
-            {
-                return Path.Combine(CorpusFolder, "ia-us-reports-341.pdf");
-            }
+                {
+                    return Path.Combine(CorpusFolder, "ia-us-reports-341.pdf");
+                }
 
             default:
-            {
-                var path = Path.Combine(Path.GetTempPath(), $"hyperpdf-async-{name}.pdf");
-                File.WriteAllBytes(path, name == "Form" ? TestPdf.CreateForm() : TestPdf.Create(ReportPages));
-                return path;
-            }
+                {
+                    var path = Path.Combine(Path.GetTempPath(), $"hyperpdf-async-{name}.pdf");
+                    File.WriteAllBytes(path, name == "Form" ? TestPdf.CreateForm() : TestPdf.Create(ReportPages));
+                    return path;
+                }
         }
     }
 
@@ -71,10 +71,10 @@ internal static class HyperPdfAsyncSamples
         if (source == "UserStream")
         {
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.RandomAccess);
-            return new(PdfDocument.Open(stream, null), stream);
+            return new(PdfDocumentReader.Open(stream, null), stream);
         }
 
-        return new(PdfDocument.OpenWith(path, new() { Source = KindOf(source) }), null);
+        return new(PdfDocumentReader.OpenWith(path, new() { Source = KindOf(source) }), null);
     }
 
     /// <summary>Opens a document the async way for a source kind.</summary>
@@ -87,10 +87,10 @@ internal static class HyperPdfAsyncSamples
         if (source == "UserStream")
         {
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.RandomAccess | FileOptions.Asynchronous);
-            return new(await PdfDocument.OpenAsync(stream, null, cancellationToken).ConfigureAwait(false), stream);
+            return new(await PdfDocumentReader.OpenAsync(stream, null, cancellationToken).ConfigureAwait(false), stream);
         }
 
-        return new(await PdfDocument.OpenWithAsync(path, new() { Source = KindOf(source) }, cancellationToken).ConfigureAwait(false), null);
+        return new(await PdfDocumentReader.OpenWithAsync(path, new() { Source = KindOf(source) }, cancellationToken).ConfigureAwait(false), null);
     }
 
     /// <summary>Renders a page at one pixel per point into a shared buffer.</summary>
@@ -101,7 +101,7 @@ internal static class HyperPdfAsyncSamples
     /// <returns>Whether the page was drawn.</returns>
     internal static bool RenderSync(PdfPageRenderer renderer, PdfDocument document, int pageIndex, byte[] pixels)
     {
-        PdfPageRenderer.GetPixelSize(document.GetPage(pageIndex), 0, Scale, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, pageIndex), 0, Scale, out var width, out var height);
         return renderer.Render(new(pageIndex, Scale, 0, 0, 0, PdfRenderFlags.Annotations), new(pixels, width, height, width * BytesPerPixel));
     }
 
@@ -114,7 +114,7 @@ internal static class HyperPdfAsyncSamples
     /// <returns>Whether the page was drawn.</returns>
     internal static ValueTask<bool> RenderAsync(PdfPageRenderer renderer, PdfDocument document, int pageIndex, byte[] pixels, CancellationToken cancellationToken)
     {
-        PdfPageRenderer.GetPixelSize(document.GetPage(pageIndex), 0, Scale, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, pageIndex), 0, Scale, out var width, out var height);
         return renderer.RenderAsync(new(pageIndex, Scale, 0, 0, 0, PdfRenderFlags.Annotations), pixels, width, height, width * BytesPerPixel, cancellationToken);
     }
 

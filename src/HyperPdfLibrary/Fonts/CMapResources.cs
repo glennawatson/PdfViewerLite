@@ -2,10 +2,6 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-// The packed tables in Fonts/Data/CMaps are built by scripts/CMapTableGenerator.cs from Adobe's cmap-resources
-// and mapping-resources-pdf (Copyright 1990-2023 and 1990-2019 Adobe, BSD 3-Clause). Fonts/Data/CMaps/LICENSE.txt holds the notice and is embedded beside the
-// tables.
-
 using System.Buffers;
 using HyperPdfLibrary.Compat;
 using HyperPdfLibrary.Filters;
@@ -13,14 +9,11 @@ using HyperPdfLibrary.Filters;
 namespace HyperPdfLibrary.Fonts;
 
 /// <summary>
-/// Reads the predefined CMaps and CID-to-Unicode tables embedded in the assembly. Each resource is a zlib stream; the
+/// Reads cached CMaps and CID-to-Unicode tables generated on demand. Each resource is a zlib stream; the
 /// callers cache what they build, so each resource is read at most once.
 /// </summary>
 internal static class CMapResources
 {
-    /// <summary>The prefix of the resource names.</summary>
-    private const string Prefix = "HyperPdfLibrary.CMaps.";
-
     /// <summary>The longest name looked up; longer names are never predefined CMaps.</summary>
     private const int MaxNameLength = 32;
 
@@ -35,7 +28,7 @@ internal static class CMapResources
             return false;
         }
 
-        using var stream = typeof(CMapResources).Assembly.GetManifestResourceStream(Prefix + name);
+        using var stream = FontDataResources.Open("CMaps", $"{name}.bin");
         if (stream is null)
         {
             return false;

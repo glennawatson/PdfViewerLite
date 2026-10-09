@@ -115,6 +115,7 @@ public sealed class PredefinedCMapTests
     {
         foreach (var name in Names)
         {
+            await PredefinedCMaps.EnsureAsync(name, CancellationToken.None);
             var cmap = PredefinedCMaps.Find(Encoding.ASCII.GetBytes(name));
 
             await Assert.That(cmap).IsNotNull();
@@ -128,6 +129,9 @@ public sealed class PredefinedCMapTests
     [Test]
     public async Task ShiftJisMapsToJapan1()
     {
+        await PredefinedCMaps.EnsureAsync(Encoding.ASCII.GetString(ShiftJisName), CancellationToken.None);
+        await CidToUnicodeTable.EnsureAsync(CjkScript.Japanese, CancellationToken.None);
+
         var cmap = PredefinedCMaps.Get(ShiftJisName);
         var japan1 = CidToUnicodeTable.Get(CjkScript.Japanese);
 
@@ -149,6 +153,10 @@ public sealed class PredefinedCMapTests
     [Test]
     public async Task VerticalCMapUsesItsBase()
     {
+        await PredefinedCMaps.EnsureAsync(Encoding.ASCII.GetString(ShiftJisName), CancellationToken.None);
+        await PredefinedCMaps.EnsureAsync("90ms-RKSJ-V", CancellationToken.None);
+        await CidToUnicodeTable.EnsureAsync(CjkScript.Japanese, CancellationToken.None);
+
         var horizontal = PredefinedCMaps.Get(ShiftJisName);
         var vertical = PredefinedCMaps.Get("90ms-RKSJ-V"u8);
         var japan1 = CidToUnicodeTable.Get(CjkScript.Japanese);
@@ -165,6 +173,9 @@ public sealed class PredefinedCMapTests
     [Test]
     public async Task GbEucMapsToGb1()
     {
+        await PredefinedCMaps.EnsureAsync("GB-EUC-H", CancellationToken.None);
+        await CidToUnicodeTable.EnsureAsync(CjkScript.SimplifiedChinese, CancellationToken.None);
+
         var cmap = PredefinedCMaps.Get("GB-EUC-H"u8);
         var gb1 = CidToUnicodeTable.Get(CjkScript.SimplifiedChinese);
 
@@ -179,6 +190,10 @@ public sealed class PredefinedCMapTests
     [Test]
     public async Task ChineseTraditionalMapsToCns1()
     {
+        await PredefinedCMaps.EnsureAsync("ETen-B5-H", CancellationToken.None);
+        await PredefinedCMaps.EnsureAsync("CNS-EUC-H", CancellationToken.None);
+        await CidToUnicodeTable.EnsureAsync(CjkScript.TraditionalChinese, CancellationToken.None);
+
         var big5 = PredefinedCMaps.Get("ETen-B5-H"u8);
         var euc = PredefinedCMaps.Get("CNS-EUC-H"u8);
         var cns1 = CidToUnicodeTable.Get(CjkScript.TraditionalChinese);
@@ -196,6 +211,10 @@ public sealed class PredefinedCMapTests
     [Test]
     public async Task KoreanMapsToKorea1()
     {
+        await PredefinedCMaps.EnsureAsync("KSC-EUC-H", CancellationToken.None);
+        await PredefinedCMaps.EnsureAsync("UniKS-UCS2-H", CancellationToken.None);
+        await CidToUnicodeTable.EnsureAsync(CjkScript.Korean, CancellationToken.None);
+
         var euc = PredefinedCMaps.Get("KSC-EUC-H"u8);
         var ucs2 = PredefinedCMaps.Get("UniKS-UCS2-H"u8);
         var korea1 = CidToUnicodeTable.Get(CjkScript.Korean);
@@ -212,6 +231,10 @@ public sealed class PredefinedCMapTests
     [Test]
     public async Task UnicodeEncodingsAgree()
     {
+        await PredefinedCMaps.EnsureAsync("UniJIS-UTF16-H", CancellationToken.None);
+        await PredefinedCMaps.EnsureAsync("UniJIS-UTF32-H", CancellationToken.None);
+        await CidToUnicodeTable.EnsureAsync(CjkScript.Japanese, CancellationToken.None);
+
         var utf16 = PredefinedCMaps.Get("UniJIS-UTF16-H"u8);
         var utf32 = PredefinedCMaps.Get("UniJIS-UTF32-H"u8);
 

@@ -36,8 +36,8 @@ public sealed class PageContentRoundTripTests
     [Test]
     public async Task PreserveGivesTheSameContentBytes()
     {
-        using var document = PdfDocument.Open(PageObjectSamples.Mixed(), null);
-        var content = document.GetPageContent(0);
+        using var document = PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
+        var content = PdfDocumentPageContent.GetPageContent(document, 0);
 
         await Assert.That(content.Regenerate().AsSpan().SequenceEqual(content.Source)).IsTrue();
         await Assert.That(content.IsModified).IsFalse();
@@ -71,13 +71,13 @@ public sealed class PageContentRoundTripTests
         for (var page = 0; page < TextPages; page++)
         {
             var before = Render(original.Document, original.Renderer, page);
-            var text = original.Document.GetTextPage(page).Text;
-            var content = original.Document.GetPageContent(page);
+            var text = PdfDocumentText.GetTextPage(original.Document, page).Text;
+            var content = PdfDocumentPageContent.GetPageContent(original.Document, page);
             content.Apply(mode);
             var after = Render(original.Document, original.Renderer, page);
 
             await Assert.That(after.Pixels.AsSpan().SequenceEqual(before.Pixels)).IsTrue();
-            await Assert.That(original.Document.GetTextPage(page).Text).IsEqualTo(text);
+            await Assert.That(PdfDocumentText.GetTextPage(original.Document, page).Text).IsEqualTo(text);
         }
     }
 
@@ -127,8 +127,8 @@ public sealed class PageContentRoundTripTests
     /// <returns>The saved bytes.</returns>
     private static byte[] RoundTrip(byte[] pdf, PdfRegenerateMode mode)
     {
-        using var document = PdfDocument.Open(pdf, null);
-        document.GetPageContent(0).Apply(mode);
+        using var document = PdfDocumentReader.Open(pdf, null);
+        PdfDocumentPageContent.GetPageContent(document, 0).Apply(mode);
         return PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
     }
 
@@ -137,8 +137,8 @@ public sealed class PageContentRoundTripTests
     /// <returns>The text.</returns>
     private static string TextOf(byte[] pdf)
     {
-        using var document = PdfDocument.Open(pdf, null);
-        return document.GetTextPage(0).Text;
+        using var document = PdfDocumentReader.Open(pdf, null);
+        return PdfDocumentText.GetTextPage(document, 0).Text;
     }
 
     /// <summary>Renders a page at one pixel per point.</summary>
@@ -148,7 +148,7 @@ public sealed class PageContentRoundTripTests
     /// <returns>The pixels.</returns>
     private static RenderedImage Render(PdfDocument document, PdfPageRenderer renderer, int pageIndex)
     {
-        PdfPageRenderer.GetPixelSize(document.GetPage(pageIndex), 0, 1, out var width, out var height);
+        PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, pageIndex), 0, 1, out var width, out var height);
         var pixels = new byte[width * height * RenderedImage.BytesPerPixel];
         _ = renderer.Render(new(pageIndex, 1, 0, 0, 0, PdfRenderFlags.None), new(pixels, width, height, width * RenderedImage.BytesPerPixel));
         return new(pixels, width, height);
@@ -198,8 +198,8 @@ public sealed class PageContentRoundTripTests
     private static async Task<int> CheckPage(RenderTestPage page, int index, PdfRegenerateMode mode, bool exact, string file)
     {
         var before = Render(page.Document, page.Renderer, index);
-        var text = page.Document.GetTextPage(index).Text;
-        var content = page.Document.GetPageContent(index);
+        var text = PdfDocumentText.GetTextPage(page.Document, index).Text;
+        var content = PdfDocumentPageContent.GetPageContent(page.Document, index);
         content.Apply(mode);
         var after = Render(page.Document, page.Renderer, index);
         var differing = CountDifferences(before, after, exact ? 0 : RewriteTolerance);
@@ -209,7 +209,7 @@ public sealed class PageContentRoundTripTests
         var allowed = exact ? 0 : (int)((double)before.Pixels.Length / RenderedImage.BytesPerPixel * RewriteDifferingShare);
 
         await Assert.That(differing <= allowed).IsTrue().Because(message);
-        await Assert.That(page.Document.GetTextPage(index).Text).IsEqualTo(text);
+        await Assert.That(PdfDocumentText.GetTextPage(page.Document, index).Text).IsEqualTo(text);
         return content.Objects.Count;
     }
 }

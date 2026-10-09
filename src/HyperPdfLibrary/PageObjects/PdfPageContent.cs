@@ -165,7 +165,7 @@ public sealed partial class PdfPageContent
     internal static PdfPageContent Read(PdfDocument document, int pageIndex, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(document);
-        var page = document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(document, pageIndex);
 
         // The page object may predate edits made in the open transaction, so the current dictionary is the authority.
         var current = PdfPageAnnotations.GetPageDictionary(document.Objects, page);

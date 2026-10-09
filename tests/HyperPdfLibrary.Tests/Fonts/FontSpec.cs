@@ -51,4 +51,7 @@ internal sealed record FontSpec
 
     /// <summary>Gets the page content.</summary>
     internal string Content { get; init; } = string.Empty;
+
+    /// <summary>Gets the Adobe character collection of a Type 0 descendant.</summary>
+    internal string CidOrdering { get; init; } = "Identity";
 }

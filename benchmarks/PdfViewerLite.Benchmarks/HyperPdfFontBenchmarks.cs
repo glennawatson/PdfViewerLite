@@ -88,15 +88,22 @@ public class HyperPdfFontBenchmarks
     public string Kind { get; set; } = "TrueType";
 
     /// <summary>Builds the document, loads the font and records the page.</summary>
+    /// <returns>A task completing when the requested resources are cached.</returns>
     /// <exception cref="InvalidOperationException">The font did not load.</exception>
     [GlobalSetup]
-    public void Setup()
+    public async Task Setup()
     {
         _codes = EncodeLine(Kind);
         _pdf = CreateDocument(Kind, _codes);
-        _document = PdfDocument.Open(_pdf, null);
+        _document = PdfDocumentReader.Open(_pdf, null);
+        await PdfDocumentPages.PrefetchPageAsync(_document, 0, CancellationToken.None);
+        await PredefinedCMaps.EnsureAsync(ColdCMapName, CancellationToken.None);
+        await PredefinedCMaps.EnsureAsync("90ms-RKSJ-H", CancellationToken.None);
+        await CidToUnicodeTable.EnsureAsync(CjkScript.Japanese, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Sans, false, false, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Sans, true, false, CancellationToken.None);
         _renderer = new(_document);
-        var fonts = _document.GetPage(0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("No fonts.");
+        var fonts = PdfDocumentPages.GetPage(_document, 0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("No fonts.");
         _fontDictionary = fonts.Get(fonts.GetKeyAt(0)).AsDictionary() ?? throw new InvalidOperationException("No font.");
         _font = PdfFontLoader.Load(_fontDictionary) ?? throw new InvalidOperationException("The font did not load.");
         _ = OutlineCodes();
@@ -119,6 +126,16 @@ public class HyperPdfFontBenchmarks
         _renderer.Dispose();
         _document.Dispose();
     }
+
+    /// <summary>Prepares a page whose font data is already cached.</summary>
+    /// <returns>The completed preparation.</returns>
+    [Benchmark]
+    public ValueTask WarmPagePreparation() => PdfDocumentPages.PrefetchPageAsync(_document, 0, CancellationToken.None);
+
+    /// <summary>Prefetches the same page bytes without font preparation.</summary>
+    /// <returns>The page.</returns>
+    [Benchmark]
+    public ValueTask<PdfPage> WarmPageBytes() => PdfDocumentPages.GetPageAsync(_document, 0, CancellationToken.None);
 
     /// <summary>Loads the font from its dictionary: descriptor, program, encoding and widths.</summary>
     /// <returns>The font.</returns>
@@ -157,7 +174,7 @@ public class HyperPdfFontBenchmarks
         return total;
     }
 
-    /// <summary>Reads a bundled Foxit face from the assembly and parses it, as on first use of a substituted font.</summary>
+    /// <summary>Reads a cached open font program from disk and parses it, as on first use of a substituted font.</summary>
     /// <returns>The face.</returns>
     [Benchmark]
     public object? LoadBundledFace() => BundledFaces.Read(BundledFamily.Sans, false, false);
@@ -167,12 +184,12 @@ public class HyperPdfFontBenchmarks
     [Benchmark]
     public object MatchBundledFace() => SystemFontMatcher.Match(new("Helvetica-Bold", StandardFont.HelveticaBold, FontFlags.Nonsymbolic, 0, CjkScript.None));
 
-    /// <summary>Reads a predefined CMap from the assembly: decompresses and decodes UniJIS-UCS2-H, as on first use.</summary>
+    /// <summary>Reads a predefined CMap from disk: decompresses and decodes UniJIS-UCS2-H, as on first use.</summary>
     /// <returns>The CMap.</returns>
     [Benchmark]
     public object? LoadPredefinedCMap() => PredefinedCMaps.Load(ColdCMapName);
 
-    /// <summary>Reads the Adobe-Japan1 CID-to-Unicode table from the assembly, as on first use.</summary>
+    /// <summary>Reads the Adobe-Japan1 CID-to-Unicode table from disk, as on first use.</summary>
     /// <returns>The table.</returns>
     [Benchmark]
     public object LoadCidToUnicode() => CidToUnicodeTable.Read(CjkScript.Japanese);
@@ -205,7 +222,7 @@ public class HyperPdfFontBenchmarks
     [Benchmark]
     public bool ColdTextTile()
     {
-        using var document = PdfDocument.Open(_pdf, null);
+        using var document = PdfDocumentReader.Open(_pdf, null);
         using var renderer = new PdfPageRenderer(document);
         return renderer.Render(new(0, Scale, 0, 0, 0, PdfRenderFlags.None), new(_pixels, TileSize, TileSize, TileSize * BytesPerPixel));
     }

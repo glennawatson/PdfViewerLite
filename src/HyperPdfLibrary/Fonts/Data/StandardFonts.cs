@@ -11,8 +11,11 @@ namespace HyperPdfLibrary.Fonts.Data;
 /// Metrics of the standard 14 fonts from Adobe's Core14 AFM files, and the font names PDF writers use for them. Lookups
 /// search static data and do not allocate.
 /// </summary>
-public static partial class StandardFonts
+public static class StandardFonts
 {
+    /// <summary>The number of numbers stored per font in <see cref="StandardFontsData.FontNumbers"/>.</summary>
+    private const int NumbersPerFont = 13;
+
     /// <summary>The length of a subset tag such as <c>ABCDEF+</c>, without the plus sign.</summary>
     private const int SubsetTagLength = 6;
 
@@ -112,7 +115,7 @@ public static partial class StandardFonts
     internal static int GetNumber(StandardFont font, int slot)
     {
         var index = (((int)font - 1) * NumbersPerFont) + slot;
-        return (uint)index < (uint)FontNumbers.Length ? FontNumbers[index] : 0;
+        return (uint)index < (uint)StandardFontsData.FontNumbers.Length ? StandardFontsData.FontNumbers[index] : 0;
     }
 
     /// <summary>Gets a font's bounding box.</summary>
@@ -193,20 +196,20 @@ public static partial class StandardFonts
     {
         width = 0;
         var index = (int)font - 1;
-        if ((uint)index >= (uint)(WidthStarts.Length - 1) || nameId == GlyphNames.NoName)
+        if ((uint)index >= (uint)(StandardFontsData.WidthStarts.Length - 1) || nameId == GlyphNames.NoName)
         {
             return false;
         }
 
-        int start = WidthStarts[index];
-        int end = WidthStarts[index + 1];
-        var found = WidthNameIds[start..end].BinarySearch((ushort)nameId);
+        int start = StandardFontsData.WidthStarts[index];
+        int end = StandardFontsData.WidthStarts[index + 1];
+        var found = StandardFontsData.WidthNameIds[start..end].BinarySearch((ushort)nameId);
         if (found < 0)
         {
             return false;
         }
 
-        width = WidthValues[start + found];
+        width = StandardFontsData.WidthValues[start + found];
         return true;
     }
 
@@ -237,15 +240,15 @@ public static partial class StandardFonts
     private static StandardFont FindAlias(ReadOnlySpan<byte> name)
     {
         var low = 0;
-        var high = AliasTargets.Length - 1;
+        var high = StandardFontsData.AliasTargets.Length - 1;
         while (low <= high)
         {
             var middle = (int)((uint)(low + high) >> 1);
-            int start = AliasOffsets[middle];
-            var order = AliasData[start..AliasOffsets[middle + 1]].SequenceCompareTo(name);
+            int start = StandardFontsData.AliasOffsets[middle];
+            var order = StandardFontsData.AliasData[start..StandardFontsData.AliasOffsets[middle + 1]].SequenceCompareTo(name);
             if (order == 0)
             {
-                return (StandardFont)AliasTargets[middle];
+                return (StandardFont)StandardFontsData.AliasTargets[middle];
             }
 
             if (order < 0)

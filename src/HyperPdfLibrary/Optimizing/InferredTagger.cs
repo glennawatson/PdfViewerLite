@@ -94,7 +94,7 @@ internal sealed partial class InferredTagger
             report.Warn(string.Create(CultureInfo.InvariantCulture, $"{tagger._figures} inferred figures have no alternative text yet; a person needs to describe them."));
         }
 
-        document.RefreshAfterOptimizerEdit();
+        PdfDocumentOptimizing.RefreshAfterOptimizerEdit(document);
     }
 
     /// <summary>Determines whether every unit has an owning element.</summary>
@@ -138,7 +138,7 @@ internal sealed partial class InferredTagger
     private void TagPage(int index)
     {
         var store = _document.Objects;
-        var page = _document.GetPage(index);
+        var page = PdfDocumentPages.GetPage(_document, index);
         var content = default(PooledBuffer);
         var marked = default(PooledBuffer);
         try
@@ -164,8 +164,8 @@ internal sealed partial class InferredTagger
             var labels = Label(blocks, units.Count);
             MarkedContentRewriter.Write(content.WrittenSpan, units, labels, store.Names, ref marked);
             var key = _nextKey;
-            SetContents(_document.GetPage(index), marked.WrittenSpan, key);
-            AddSection(_document.GetPage(index), blocks, labels, key);
+            SetContents(PdfDocumentPages.GetPage(_document, index), marked.WrittenSpan, key);
+            AddSection(PdfDocumentPages.GetPage(_document, index), blocks, labels, key);
         }
         finally
         {
@@ -197,7 +197,7 @@ internal sealed partial class InferredTagger
             }
 
             store.Replace(page.Id, PdfValue.FromDictionary(copy));
-            _document.RefreshAfterOptimizerEdit();
+            PdfDocumentOptimizing.RefreshAfterOptimizerEdit(_document);
         }
         finally
         {

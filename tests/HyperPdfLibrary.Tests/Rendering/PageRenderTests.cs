@@ -134,7 +134,7 @@ public sealed class PageRenderTests
         using var page = new RenderTestPage(pdf.ToBytes());
 
         var hidden = page.RenderPage();
-        var changed = page.Document.OptionalContent.SetVisible(group, true);
+        var changed = HyperPdfLibrary.Document.PdfDocumentLayers.GetOptionalContent(page.Document).SetVisible(group, true);
         var shown = page.RenderPage();
 
         await Assert.That(changed).IsTrue();

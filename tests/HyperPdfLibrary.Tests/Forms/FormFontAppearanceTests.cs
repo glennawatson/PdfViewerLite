@@ -28,7 +28,7 @@ public sealed class FormFontAppearanceTests
     {
         using var document = Open("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /MacRomanEncoding >>", string.Empty);
 
-        _ = document.Form.SetText(0, Widget, Accented);
+        _ = PdfDocumentForms.GetForm(document).SetText(0, Widget, Accented);
         var content = Appearance(document);
 
         await Assert.That(Encoding.Latin1.GetString(content)).Contains("(caf\\216) Tj");
@@ -41,7 +41,7 @@ public sealed class FormFontAppearanceTests
     {
         using var document = Open("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding << /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [200 /eacute] >> >>", string.Empty);
 
-        _ = document.Form.SetText(0, Widget, Accented);
+        _ = PdfDocumentForms.GetForm(document).SetText(0, Widget, Accented);
 
         await Assert.That(Encoding.Latin1.GetString(Appearance(document))).Contains("(caf\\310) Tj");
     }
@@ -57,7 +57,7 @@ public sealed class FormFontAppearanceTests
             + "/FontBBox [-123 -257 1001 910] /ItalicAngle 0 /Ascent 723 /Descent -241 /CapHeight 709 /StemV 69 >> >>] >>",
             string.Empty);
 
-        _ = document.Form.SetText(0, Widget, Nichi);
+        _ = PdfDocumentForms.GetForm(document).SetText(0, Widget, Nichi);
         var content = Appearance(document);
         var resources = Annotation(document).GetDictionary(KnownName.AP)!.GetStream(KnownName.N)!.Dictionary.GetDictionary(KnownName.Resources)!;
 
@@ -79,7 +79,7 @@ public sealed class FormFontAppearanceTests
                 "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /Adobe-Identity-UCS def /CMapType 2 def 1 begincodespacerange <0000> <FFFF> endcodespacerange "
                 + "2 beginbfchar <0007> <0048> <0008> <0069> endbfchar endcmap CMapName currentdict /CMap defineresource pop end end"));
 
-        _ = document.Form.SetText(0, Widget, "Hi");
+        _ = PdfDocumentForms.GetForm(document).SetText(0, Widget, "Hi");
 
         await Assert.That(Encoding.Latin1.GetString(Appearance(document))).Contains("(\\000\\007\\000\\b) Tj");
     }
@@ -94,7 +94,7 @@ public sealed class FormFontAppearanceTests
             string.Empty,
             "/BS << /W 2 /S /B >> /MK << /BC [0 0 0] /BG [0.8 0.8 0.8] >>");
 
-        _ = document.Form.SetText(0, Widget, "x");
+        _ = PdfDocumentForms.GetForm(document).SetText(0, Widget, "x");
         var text = Encoding.Latin1.GetString(Appearance(document));
 
         await Assert.That(text).Contains("1 g");
@@ -112,7 +112,7 @@ public sealed class FormFontAppearanceTests
             string.Empty,
             "/BS << /W 1 /S /I >> /MK << /BC [0 0 0] >>");
 
-        _ = document.Form.SetText(0, Widget, "x");
+        _ = PdfDocumentForms.GetForm(document).SetText(0, Widget, "x");
         var text = Encoding.Latin1.GetString(Appearance(document));
 
         await Assert.That(text).Contains("0.5 g");
@@ -130,21 +130,20 @@ public sealed class FormFontAppearanceTests
     /// <param name="extra">The body of object 6, used by fonts that point at a stream.</param>
     /// <param name="widgetEntries">More widget entries.</param>
     /// <returns>The document.</returns>
-    private static PdfDocument Open(string font, string extra, string widgetEntries) => PdfDocument.Open(
+    private static PdfDocument Open(string font, string extra, string widgetEntries) => PdfDocumentReader.Open(
         MiniPdf.Build(
             "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [5 0 R] /DA (/Helv 12 Tf 0 g) /DR << /Font << /Helv 4 0 R >> >> >> >>",
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Annots [5 0 R] >>",
             font,
             $"<< /Type /Annot /Subtype /Widget /Rect [20 200 220 230] /P 3 0 R /F 4 /FT /Tx /T (Name) /DA (/Helv 12 Tf 0 g) {widgetEntries} >>",
-            extra.Length == 0 ? "<< >>" : extra),
-        null);
+            extra.Length == 0 ? "<< >>" : extra), null);
 
     /// <summary>Reads the field's widget annotation.</summary>
     /// <param name="document">The document.</param>
     /// <returns>The widget dictionary.</returns>
     private static PdfDictionary Annotation(PdfDocument document) =>
-        document.GetPage(0).Dictionary.GetArray(KnownName.Annots)!.GetDictionary(Widget)!;
+        PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(KnownName.Annots)!.GetDictionary(Widget)!;
 
     /// <summary>Reads the decoded content of the field's appearance.</summary>
     /// <param name="document">The document.</param>

@@ -111,7 +111,7 @@ internal sealed partial class ContentInterpreter : IDisposable
         _cache = cache;
         _device = device;
         _textObjects = device as ITextObjectDevice;
-        _layers = cache.Document.OptionalContent;
+        _layers = PdfDocumentLayers.GetOptionalContent(cache.Document);
         _depth = depth;
     }
 

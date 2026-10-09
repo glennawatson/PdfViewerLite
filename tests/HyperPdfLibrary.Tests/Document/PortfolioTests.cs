@@ -48,9 +48,9 @@ public sealed class PortfolioTests
             "<< /Type /Folder /ID 1 /Name (Sub) /Parent 7 0 R /Next 11 0 R >>",
             "<< /Type /Folder /ID 2 /Name (Sub2) /Parent 7 0 R >>");
 
-        var portfolio = document.GetPortfolio()!;
+        var portfolio = HyperPdfLibrary.Document.PdfDocumentPortfolio.GetPortfolio(document)!;
 
-        await Assert.That(document.IsPortfolio).IsTrue();
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentPortfolio.IsPortfolio(document)).IsTrue();
         await Assert.That(portfolio.Schema.Count).IsEqualTo(FileCount);
         await Assert.That(portfolio.Schema[0].Key).IsEqualTo("Size");
         await Assert.That(portfolio.Schema[0].Visible).IsFalse();
@@ -88,7 +88,7 @@ public sealed class PortfolioTests
             "<< /Type /Folder /ID 1 /Name (Mid) /Child 11 0 R >>",
             "<< /Type /Folder /ID 12 /Name (Deep) >>");
 
-        var portfolio = document.GetPortfolio()!;
+        var portfolio = HyperPdfLibrary.Document.PdfDocumentPortfolio.GetPortfolio(document)!;
 
         await Assert.That(portfolio.RootFolder!.Children[0].Children[0].Id).IsEqualTo(DeepFolder);
         await Assert.That(portfolio.Items[0].FolderId).IsEqualTo(DeepFolder);
@@ -109,8 +109,8 @@ public sealed class PortfolioTests
             "<< /Type /Folder /ID 0 /Child 5 0 R >>");
         using var plain = StructureDocuments.Open(string.Empty);
 
-        await Assert.That(document.GetPortfolio()!.RootFolder!.Children.Length).IsEqualTo(0);
-        await Assert.That(plain.GetPortfolio()).IsNull();
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentPortfolio.GetPortfolio(document)!.RootFolder!.Children.Length).IsEqualTo(0);
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentPortfolio.GetPortfolio(plain)).IsNull();
     }
 
     /// <summary>Associated files are read from the catalog, a page, an annotation and a structure element.</summary>
@@ -127,15 +127,16 @@ public sealed class PortfolioTests
             MiniPdf.Stream("/Type /EmbeddedFile /Subtype /application#2Fxml", "<a/>"),
             "<< /Type /Filespec /F (a.bin) >>");
 
-        var catalog = document.GetAssociatedFiles();
-        var all = document.GetAllAssociatedFiles();
+        var catalog = HyperPdfLibrary.Document.PdfDocumentAssociatedFiles.GetAssociatedFiles(document);
+        var all = HyperPdfLibrary.Document.PdfDocumentAssociatedFiles.GetAllAssociatedFiles(document);
 
         await Assert.That(catalog.Count).IsEqualTo(1);
         await Assert.That(catalog[0].Relationship).IsEqualTo("Source");
         await Assert.That(catalog[0].MimeType).IsEqualTo("application/xml");
         await Assert.That(catalog[0].Description).IsEqualTo("d");
         await Assert.That(catalog[0].Data).IsNotNull();
-        await Assert.That(document.GetAssociatedFiles(document.GetPage(0))[0].Relationship).IsEqualTo("Data");
+        var pageFiles = HyperPdfLibrary.Document.PdfDocumentAssociatedFiles.GetAssociatedFiles(document, HyperPdfLibrary.Document.PdfDocumentPages.GetPage(document, 0));
+        await Assert.That(pageFiles[0].Relationship).IsEqualTo("Data");
         await Assert.That(all.Count).IsEqualTo(AssociatedCount);
         await Assert.That(all[2].Owner).IsEqualTo(PdfAssociatedOwner.Annotation);
         await Assert.That(all[2].Relationship).IsEqualTo("Unspecified");
@@ -154,7 +155,7 @@ public sealed class PortfolioTests
             "<< /Type /Filespec /F (s.txt) /AFRelationship /Alternative >>",
             MiniPdf.Stream("/Type /XObject /Subtype /Form /BBox [0 0 1 1] /AF [6 0 R]", string.Empty));
 
-        var all = document.GetAllAssociatedFiles();
+        var all = HyperPdfLibrary.Document.PdfDocumentAssociatedFiles.GetAllAssociatedFiles(document);
 
         await Assert.That(all.Count).IsEqualTo(1);
         await Assert.That(all[0].Owner).IsEqualTo(PdfAssociatedOwner.XObject);

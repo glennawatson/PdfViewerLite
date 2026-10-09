@@ -55,15 +55,15 @@ public class HyperPdfStructureBenchmarks
         _previousFactory = PdfFont.Factory;
         PdfFont.Factory = static dictionary => new StructureBenchmarkFont(dictionary);
         var bytes = TestPdf.CreateTagged();
-        _tagged = PdfDocument.Open(bytes, null);
-        _article = PdfDocument.Open(TestPdf.CreateArticle(ArticlePages), null);
-        _page = _tagged.GetPage(0);
-        _tree = _tagged.StructureTree!;
+        _tagged = PdfDocumentReader.Open(bytes, null);
+        _article = PdfDocumentReader.Open(TestPdf.CreateArticle(ArticlePages), null);
+        _page = PdfDocumentPages.GetPage(_tagged, 0);
+        _tree = PdfDocumentTagged.GetStructureTree(_tagged)!;
         _path = Path.Combine(Path.GetTempPath(), $"structure-benchmark-{Guid.NewGuid():N}.pdf");
         File.WriteAllBytes(_path, bytes);
         _adapter = (HyperPdfDocument)new HyperPdfEngine().Open(_path, null);
         _ = _adapter.GetTaggedBlocksNative(0, _blocks);
-        _ = _article.GetMarkedContent(0);
+        _ = PdfDocumentTagged.GetMarkedContent(_article, 0);
     }
 
     /// <summary>Closes the documents and restores the font factory.</summary>

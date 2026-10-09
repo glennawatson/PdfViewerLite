@@ -50,9 +50,9 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task MergedFormsHaveUniqueFieldsThatFillAndSave()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var target = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        target.InsertPages(target.PageCount, source, [FirstPage, SecondPage]);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var target = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        PdfDocumentPageOperations.InsertPages(target, target.PageCount, source, [FirstPage, SecondPage]);
 
         await Assert.That(target.PageCount).IsEqualTo(MergedPages);
         await Assert.That(CarryTestDocuments.WidgetNames(target, FirstPage)).IsEquivalentTo(FirstPageFields);
@@ -60,12 +60,12 @@ public sealed class CarryStructuresTests
         await Assert.That(CarryTestDocuments.WidgetNames(target, FourthPage)).IsEquivalentTo(["Address_1.City"]);
         await Assert.That(target.Catalog.GetDictionary(KnownName.AcroForm)!.GetArray(KnownName.Fields)!.Count).IsEqualTo(MergedPages);
 
-        await Assert.That(target.Form.SetText(ThirdPage, 0, Typed)).IsTrue();
-        await Assert.That(target.Form.SetText(FourthPage, 0, Typed)).IsTrue();
+        await Assert.That(PdfDocumentForms.GetForm(target).SetText(ThirdPage, 0, Typed)).IsTrue();
+        await Assert.That(PdfDocumentForms.GetForm(target).SetText(FourthPage, 0, Typed)).IsTrue();
 
-        using var saved = PdfDocument.Open(PdfIncrementalWriter.Save(target.Objects), null);
+        using var saved = PdfDocumentReader.Open(PdfIncrementalWriter.Save(target.Objects), null);
         var widgets = new List<HyperPdfLibrary.Forms.PdfFormWidget>();
-        saved.Form.GetWidgets(ThirdPage, widgets);
+        PdfDocumentForms.GetForm(saved).GetWidgets(ThirdPage, widgets);
         await Assert.That(widgets[0].Value).IsEqualTo(Typed);
         await Assert.That(WritingTestDocuments.CountMissing(saved.Objects)).IsEqualTo(0);
     }
@@ -75,9 +75,9 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task PartialCopyKeepsOnlyCopiedWidgets()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var target = PdfDocument.Open(EditingTestDocuments.CreateFlat(1), null);
-        target.InsertPages(1, source, [SecondPage]);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var target = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(1), null);
+        PdfDocumentPageOperations.InsertPages(target, 1, source, [SecondPage]);
 
         await Assert.That(CarryTestDocuments.WidgetNames(target, 1)).IsEquivalentTo([CityName]);
         var form = target.Catalog.GetDictionary(KnownName.AcroForm)!;
@@ -92,16 +92,16 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task OutlinesAndDestinationsFollowTheCopies()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var target = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        target.InsertPages(target.PageCount, source, [FirstPage, SecondPage]);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var target = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        PdfDocumentPageOperations.InsertPages(target, target.PageCount, source, [FirstPage, SecondPage]);
 
         await Assert.That(CarryTestDocuments.OutlinePages(target)).IsEquivalentTo([FirstPage, SecondPage, ThirdPage, FourthPage]);
         await Assert.That(CarryTestDocuments.LinkPages(target, FirstPage)).IsEquivalentTo([SecondPage, SecondPage]);
         await Assert.That(CarryTestDocuments.LinkPages(target, ThirdPage)).IsEquivalentTo([FourthPage, FourthPage]);
         await Assert.That(CarryTestDocuments.LinkPages(target, FourthPage)).IsEquivalentTo([ThirdPage]);
 
-        using var saved = PdfDocument.Open(PdfIncrementalWriter.Save(target.Objects), null);
+        using var saved = PdfDocumentReader.Open(PdfIncrementalWriter.Save(target.Objects), null);
         await Assert.That(CarryTestDocuments.OutlinePages(saved)).IsEquivalentTo([FirstPage, SecondPage, ThirdPage, FourthPage]);
         await Assert.That(CarryTestDocuments.LinkPages(saved, ThirdPage)).IsEquivalentTo([FourthPage, FourthPage]);
     }
@@ -111,13 +111,13 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task CopyingOnePageDropsLinksToOtherPages()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var target = PdfDocument.Open(EditingTestDocuments.CreateFlat(1), null);
-        target.InsertPages(1, source, [SecondPage]);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var target = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(1), null);
+        PdfDocumentPageOperations.InsertPages(target, 1, source, [SecondPage]);
 
         await Assert.That(CarryTestDocuments.OutlinePages(target)).IsEquivalentTo([1]);
         await Assert.That(CarryTestDocuments.LinkPages(target, 1)).IsEmpty();
-        var links = target.GetPage(1).Dictionary.GetArray(KnownName.Annots)!;
+        var links = PdfDocumentPages.GetPage(target, 1).Dictionary.GetArray(KnownName.Annots)!;
         await Assert.That(links.GetDictionary(1)!.ContainsKey(KnownName.Dest)).IsFalse();
     }
 
@@ -126,20 +126,20 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task LayersKeepTheirState()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var target = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        await Assert.That(target.OptionalContent.Layers.Count).IsEqualTo(1);
-        target.InsertPages(target.PageCount, source, [FirstPage]);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var target = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(target).Layers.Count).IsEqualTo(1);
+        PdfDocumentPageOperations.InsertPages(target, target.PageCount, source, [FirstPage]);
 
-        var layers = target.OptionalContent.Layers;
+        var layers = PdfDocumentLayers.GetOptionalContent(target).Layers;
         await Assert.That(layers.Count).IsEqualTo(TwoLayers);
         await Assert.That(layers[1].Name).IsEqualTo("Notes");
         await Assert.That(layers[1].IsVisible).IsFalse();
 
-        using var flat = PdfDocument.Open(EditingTestDocuments.CreateFlat(1), null);
-        flat.InsertPages(0, source, [FirstPage]);
-        await Assert.That(flat.OptionalContent.Layers.Count).IsEqualTo(1);
-        await Assert.That(flat.OptionalContent.Layers[0].IsVisible).IsFalse();
+        using var flat = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(1), null);
+        PdfDocumentPageOperations.InsertPages(flat, 0, source, [FirstPage]);
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(flat).Layers.Count).IsEqualTo(1);
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(flat).Layers[0].IsVisible).IsFalse();
     }
 
     /// <summary>Copied pages bring their page labels and the names of their embedded files.</summary>
@@ -147,19 +147,19 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task LabelsAndEmbeddedFilesComeAlong()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var target = PdfDocument.Open(EditingTestDocuments.CreateFlat(MergedPages - 1), null);
-        target.InsertPages(0, source, [FirstPage, SecondPage]);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var target = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(MergedPages - 1), null);
+        PdfDocumentPageOperations.InsertPages(target, 0, source, [FirstPage, SecondPage]);
 
-        await Assert.That(target.GetPageLabel(FirstPage)).IsEqualTo("i");
-        await Assert.That(target.GetPageLabel(SecondPage)).IsEqualTo("ii");
-        await Assert.That(target.GetPageLabel(ThirdPage)).IsEqualTo("1");
-        await Assert.That(target.GetAttachments().Count).IsEqualTo(1);
-        await Assert.That(target.GetAttachments()[0].Name).IsEqualTo(CarryTestDocuments.AttachmentName);
+        await Assert.That(PdfDocumentLabels.GetPageLabel(target, FirstPage)).IsEqualTo("i");
+        await Assert.That(PdfDocumentLabels.GetPageLabel(target, SecondPage)).IsEqualTo("ii");
+        await Assert.That(PdfDocumentLabels.GetPageLabel(target, ThirdPage)).IsEqualTo("1");
+        await Assert.That(PdfDocumentAttachments.GetAttachments(target).Count).IsEqualTo(1);
+        await Assert.That(PdfDocumentAttachments.GetAttachments(target)[0].Name).IsEqualTo(CarryTestDocuments.AttachmentName);
 
-        using var both = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        both.InsertPages(both.PageCount, source, [FirstPage]);
-        await Assert.That(both.GetAttachments().Count).IsEqualTo(TwoFiles);
+        using var both = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        PdfDocumentPageOperations.InsertPages(both, both.PageCount, source, [FirstPage]);
+        await Assert.That(PdfDocumentAttachments.GetAttachments(both).Count).IsEqualTo(TwoFiles);
     }
 
     /// <summary>Pages inserted from the document itself get their own fields.</summary>
@@ -167,8 +167,8 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task InsertingFromTheSameDocumentRenamesFields()
     {
-        using var document = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        document.InsertPages(document.PageCount, document, [FirstPage, SecondPage]);
+        using var document = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        PdfDocumentPageOperations.InsertPages(document, document.PageCount, document, [FirstPage, SecondPage]);
 
         await Assert.That(CarryTestDocuments.WidgetNames(document, FirstPage)).IsEquivalentTo(FirstPageFields);
         await Assert.That(CarryTestDocuments.WidgetNames(document, ThirdPage)).IsEquivalentTo(RenamedFirstPageFields);
@@ -180,20 +180,20 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task ExtractedPagesKeepTheStructures()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var extracted = PdfDocument.Open(source.ExtractPages([FirstPage, SecondPage]), null);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var extracted = PdfDocumentReader.Open(PdfDocumentPageOperations.ExtractPages(source, [FirstPage, SecondPage]), null);
 
         await Assert.That(CarryTestDocuments.WidgetNames(extracted, FirstPage)).IsEquivalentTo(FirstPageFields);
         await Assert.That(CarryTestDocuments.WidgetNames(extracted, SecondPage)).IsEquivalentTo([CityName]);
         await Assert.That(CarryTestDocuments.OutlinePages(extracted)).IsEquivalentTo([FirstPage, SecondPage]);
         await Assert.That(CarryTestDocuments.LinkPages(extracted, FirstPage)).IsEquivalentTo([SecondPage, SecondPage]);
         await Assert.That(CarryTestDocuments.LinkPages(extracted, SecondPage)).IsEquivalentTo([FirstPage]);
-        await Assert.That(extracted.GetPageLabel(SecondPage)).IsEqualTo("ii");
-        await Assert.That(extracted.OptionalContent.Layers.Count).IsEqualTo(1);
-        await Assert.That(extracted.OptionalContent.Layers[0].IsVisible).IsFalse();
-        await Assert.That(extracted.GetAttachments().Count).IsEqualTo(1);
+        await Assert.That(PdfDocumentLabels.GetPageLabel(extracted, SecondPage)).IsEqualTo("ii");
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(extracted).Layers.Count).IsEqualTo(1);
+        await Assert.That(PdfDocumentLayers.GetOptionalContent(extracted).Layers[0].IsVisible).IsFalse();
+        await Assert.That(PdfDocumentAttachments.GetAttachments(extracted).Count).IsEqualTo(1);
         await Assert.That(WritingTestDocuments.CountMissing(extracted.Objects)).IsEqualTo(0);
-        await Assert.That(extracted.Form.SetText(FirstPage, 0, Typed)).IsTrue();
+        await Assert.That(PdfDocumentForms.GetForm(extracted).SetText(FirstPage, 0, Typed)).IsTrue();
     }
 
     /// <summary>Extracting one page leaves out the outline entries and links to the others.</summary>
@@ -201,8 +201,8 @@ public sealed class CarryStructuresTests
     [Test]
     public async Task ExtractingOnePageLeavesOutOtherLinks()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var extracted = PdfDocument.Open(source.ExtractPages([SecondPage]), null);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var extracted = PdfDocumentReader.Open(PdfDocumentPageOperations.ExtractPages(source, [SecondPage]), null);
 
         await Assert.That(CarryTestDocuments.OutlinePages(extracted)).IsEquivalentTo([FirstPage]);
         await Assert.That(CarryTestDocuments.LinkPages(extracted, FirstPage)).IsEmpty();

@@ -42,7 +42,7 @@ internal static class InterchangeAnnotationImporter
                 continue;
             }
 
-            var page = document.GetPage(source.Page);
+            var page = PdfDocumentPages.GetPage(document, source.Page);
             var dictionary = Build(source, store, page);
             var id = Place(source, page, dictionary, existing, batches, out var wasReplaced);
             replaced += wasReplaced ? 1 : 0;
@@ -223,7 +223,7 @@ internal static class InterchangeAnnotationImporter
 
         foreach (var pageIndex in pages)
         {
-            if (PdfPageAnnotations.GetArray(document.Objects, document.GetPage(pageIndex)) is not { } array)
+            if (PdfPageAnnotations.GetArray(document.Objects, PdfDocumentPages.GetPage(document, pageIndex)) is not { } array)
             {
                 continue;
             }

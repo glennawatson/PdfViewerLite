@@ -35,7 +35,7 @@ public sealed class InterchangeRoundTripTests
     {
         using var original = Annotated();
         var xfdf = PdfInterchange.ExportXfdf(original);
-        using var copy = PdfDocument.Open(TestPdf.Create(SamplePages), null);
+        using var copy = PdfDocumentReader.Open(TestPdf.Create(SamplePages), null);
 
         var result = PdfInterchange.ImportXfdf(copy, xfdf);
 
@@ -55,7 +55,7 @@ public sealed class InterchangeRoundTripTests
         using var original = Annotated();
         var xfdf = PdfInterchange.ExportXfdf(original);
         var fdf = PdfInterchange.ExportFdf(original);
-        using var copy = PdfDocument.Open(TestPdf.Create(SamplePages), null);
+        using var copy = PdfDocumentReader.Open(TestPdf.Create(SamplePages), null);
 
         var result = PdfInterchange.ImportFdf(copy, fdf);
 
@@ -70,7 +70,7 @@ public sealed class InterchangeRoundTripTests
     public async Task ImportLinksRepliesPopupsAndAttachments()
     {
         using var original = Annotated();
-        using var copy = PdfDocument.Open(TestPdf.Create(SamplePages), null);
+        using var copy = PdfDocumentReader.Open(TestPdf.Create(SamplePages), null);
         _ = PdfInterchange.ImportXfdf(copy, PdfInterchange.ExportXfdf(original));
 
         var annotations = Annotations(copy, 0);
@@ -94,7 +94,7 @@ public sealed class InterchangeRoundTripTests
     {
         using var original = Annotated();
         var xfdf = PdfInterchange.ExportXfdf(original);
-        using var copy = PdfDocument.Open(TestPdf.Create(SamplePages), null);
+        using var copy = PdfDocumentReader.Open(TestPdf.Create(SamplePages), null);
         _ = PdfInterchange.ImportXfdf(copy, xfdf);
         var before = Annotations(copy, 0).Count;
 
@@ -112,10 +112,10 @@ public sealed class InterchangeRoundTripTests
     public async Task ImportedAnnotationsSurviveSaving()
     {
         using var original = Annotated();
-        using var copy = PdfDocument.Open(TestPdf.Create(SamplePages), null);
+        using var copy = PdfDocumentReader.Open(TestPdf.Create(SamplePages), null);
         _ = PdfInterchange.ImportXfdf(copy, PdfInterchange.ExportXfdf(original));
 
-        using var reopened = PdfDocument.Open(PdfIncrementalWriter.Save(copy.Objects), null);
+        using var reopened = PdfDocumentReader.Open(PdfIncrementalWriter.Save(copy.Objects), null);
 
         // Saving adds a file identifier, which the comparison leaves out.
         await Assert.That(AnnotationsXml(reopened)).IsEqualTo(AnnotationsXml(original));
@@ -129,10 +129,10 @@ public sealed class InterchangeRoundTripTests
     [Arguments(true)]
     public async Task FormValuesRoundTrip(bool useFdf)
     {
-        using var original = PdfDocument.Open(FormSamples.CreateRichForm(), null);
+        using var original = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
         FillRichForm(original);
         var file = useFdf ? PdfInterchange.ExportFdf(original) : PdfInterchange.ExportXfdf(original);
-        using var copy = PdfDocument.Open(FormSamples.CreateRichForm(), null);
+        using var copy = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
 
         var result = useFdf ? PdfInterchange.ImportFdf(copy, file) : PdfInterchange.ImportXfdf(copy, file);
 
@@ -148,7 +148,7 @@ public sealed class InterchangeRoundTripTests
     [Test]
     public async Task ExportNamesNestedFields()
     {
-        using var document = PdfDocument.Open(FormSamples.CreateRichForm(), null);
+        using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
         var data = PdfInterchange.Export(document, PdfInterchangeContent.Fields);
         var xml = Encoding.UTF8.GetString(XfdfWriter.Write(data));
 
@@ -199,9 +199,9 @@ public sealed class InterchangeRoundTripTests
     {
         foreach (var path in CorpusForms())
         {
-            using var original = PdfDocument.Open(path, null);
+            using var original = PdfDocumentReader.Open(path, null);
             var xfdf = PdfInterchange.ExportXfdf(original);
-            using var copy = PdfDocument.Open(path, null);
+            using var copy = PdfDocumentReader.Open(path, null);
             _ = PdfInterchange.ImportXfdf(copy, xfdf);
 
             await Assert.That(Encoding.UTF8.GetString(PdfInterchange.ExportXfdf(copy))).IsEqualTo(Encoding.UTF8.GetString(xfdf));
@@ -239,7 +239,7 @@ public sealed class InterchangeRoundTripTests
     /// <returns>The document.</returns>
     private static PdfDocument Annotated()
     {
-        var document = PdfDocument.Open(TestPdf.Create(SamplePages), null);
+        var document = PdfDocumentReader.Open(TestPdf.Create(SamplePages), null);
         InterchangeSamples.AddAnnotations(document);
         return document;
     }
@@ -248,7 +248,7 @@ public sealed class InterchangeRoundTripTests
     /// <param name="document">The document.</param>
     private static void FillRichForm(PdfDocument document)
     {
-        var form = document.Form;
+        var form = PdfDocumentForms.GetForm(document);
         _ = form.SetText(0, FormSamples.NotesIndex, "first\nsecond");
         _ = form.SetText(0, FormSamples.SecretIndex, "pw");
         _ = form.SelectOption(0, FormSamples.PickIndex, ListOption);
@@ -264,7 +264,7 @@ public sealed class InterchangeRoundTripTests
     private static string Describe(PdfDocument document)
     {
         var widgets = new List<PdfFormWidget>();
-        document.Form.GetWidgets(0, widgets);
+        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
         var text = new StringBuilder();
         foreach (var widget in widgets)
         {
@@ -288,7 +288,7 @@ public sealed class InterchangeRoundTripTests
     /// <returns>The dictionaries.</returns>
     private static List<PdfDictionary> Annotations(PdfDocument document, int page)
     {
-        var array = PdfPageAnnotations.GetArray(document.Objects, document.GetPage(page));
+        var array = PdfPageAnnotations.GetArray(document.Objects, PdfDocumentPages.GetPage(document, page));
         var list = new List<PdfDictionary>();
         for (var i = 0; i < (array?.Count ?? 0); i++)
         {

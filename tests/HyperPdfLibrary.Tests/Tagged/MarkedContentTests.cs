@@ -54,14 +54,14 @@ public sealed class MarkedContentTests
     public async Task GroupsGlyphsByMarkedContentId()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var page = document.GetMarkedContent(0);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var page = PdfDocumentTagged.GetMarkedContent(document, 0);
 
         await Assert.That(TextOf(page, HeadingMcid)).IsEqualTo(TaggedSamples.Title);
         await Assert.That(TextOf(page, FirstMcid)).IsEqualTo(TaggedSamples.First);
         await Assert.That(page.GetGlyphs(FigureMcid).Length).IsEqualTo(0);
         await Assert.That(page.HasContent(FigureMcid)).IsTrue();
-        await Assert.That(document.GetMarkedContent(0)).IsSameReferenceAs(page);
+        await Assert.That(PdfDocumentTagged.GetMarkedContent(document, 0)).IsSameReferenceAs(page);
     }
 
     /// <summary>Glyph boxes are in viewer space, from the baseline up by the ascent.</summary>
@@ -70,8 +70,8 @@ public sealed class MarkedContentTests
     public async Task GlyphBoxesAreInViewerSpace()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var page = document.GetMarkedContent(0);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var page = PdfDocumentTagged.GetMarkedContent(document, 0);
         var box = page.GetBounds(HeadingMcid);
         var glyph = page.Glyphs[page.GetGlyphs(HeadingMcid)[0]];
 
@@ -86,8 +86,8 @@ public sealed class MarkedContentTests
     public async Task FlagsArtifacts()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var page = document.GetMarkedContent(0);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var page = PdfDocumentTagged.GetMarkedContent(document, 0);
         var artifacts = 0;
         foreach (var glyph in page.Glyphs)
         {
@@ -104,8 +104,8 @@ public sealed class MarkedContentTests
     public async Task RecordsGraphicBounds()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
-        var box = document.GetMarkedContent(0).GetBounds(FigureMcid);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
+        var box = PdfDocumentTagged.GetMarkedContent(document, 0).GetBounds(FigureMcid);
 
         await Assert.That(box.Left).IsEqualTo(FigureLeft).Within(Tolerance);
         await Assert.That(box.Width).IsEqualTo(FigureWidth).Within(Tolerance);
@@ -117,8 +117,8 @@ public sealed class MarkedContentTests
     public async Task ReadsNamedAndFormContent()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.NamedAndFormContent(), null);
-        var page = document.GetMarkedContent(0);
+        using var document = PdfDocumentReader.Open(TaggedSamples.NamedAndFormContent(), null);
+        var page = PdfDocumentTagged.GetMarkedContent(document, 0);
 
         await Assert.That(TextOf(page, NamedMcid)).IsEqualTo("Named");
         await Assert.That(TextOf(page, FormMcid)).IsEqualTo("Inside");
@@ -129,8 +129,8 @@ public sealed class MarkedContentTests
     [Test]
     public async Task DetectsImageOnlyPages()
     {
-        using var document = PdfDocument.Open(TaggedSamples.ImageOnly(), null);
-        var page = document.GetMarkedContent(0);
+        using var document = PdfDocumentReader.Open(TaggedSamples.ImageOnly(), null);
+        var page = PdfDocumentTagged.GetMarkedContent(document, 0);
 
         await Assert.That(page.HasImages).IsTrue();
         await Assert.That(page.IsImageOnly).IsTrue();

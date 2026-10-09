@@ -11,7 +11,7 @@ namespace HyperPdfLibrary.Structure.Tagged;
 /// <summary>
 /// A document's logical structure tree (tagged PDF): its elements in logical order, with role maps, attributes, the
 /// ID tree and the parent tree that leads from marked content and annotations back to their elements. The tree is
-/// built once and never changes, so it is safe to read from any thread. Use <see cref="PdfDocument.StructureTree"/>
+/// built once and never changes, so it is safe to read from any thread. Use <see cref="PdfDocumentTagged.GetStructureTree"/>
 /// for the document's shared copy.
 /// </summary>
 [DebuggerDisplay("PdfStructureTree: {ElementCount} elements, marked={IsMarked}")]
@@ -66,7 +66,7 @@ public sealed class PdfStructureTree
     /// <summary>Gets the structure tree root dictionary.</summary>
     public PdfDictionary Root => _root;
 
-    /// <summary>Reads a document's structure tree. Prefer <see cref="PdfDocument.StructureTree"/>, which reads it once.</summary>
+    /// <summary>Reads a document's structure tree. Prefer <see cref="PdfDocumentTagged.GetStructureTree"/>, which reads it once.</summary>
     /// <param name="document">The document.</param>
     /// <returns>The tree, or <see langword="null"/> when the document has no structure tree root.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="document"/> is <see langword="null"/>.</exception>
@@ -107,7 +107,7 @@ public sealed class PdfStructureTree
     /// <param name="pageIndex">The zero based page index.</param>
     /// <returns>The key, or -1 when the page has none or does not exist.</returns>
     public int GetStructParents(int pageIndex) =>
-        (uint)pageIndex < (uint)_document.PageCount ? _document.GetPage(pageIndex).Dictionary.GetInt32(KnownName.StructParents, -1) : -1;
+        (uint)pageIndex < (uint)_document.PageCount ? PdfDocumentPages.GetPage(_document, pageIndex).Dictionary.GetInt32(KnownName.StructParents, -1) : -1;
 
     /// <summary>Gets the element that owns a marked content id on a page, through the page's parent tree entry.</summary>
     /// <param name="pageIndex">The zero based page index.</param>

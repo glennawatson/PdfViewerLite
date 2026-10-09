@@ -40,14 +40,14 @@ public sealed class Pdf2Tests
     [Test]
     public async Task Utf8TextStringsAndVersionRead()
     {
-        using var document = PdfDocument.Open(Pdf2Documents.CreateText(), null);
-        var info = document.GetInfo();
+        using var document = PdfDocumentReader.Open(Pdf2Documents.CreateText(), null);
+        var info = PdfDocumentMetadata.GetInfo(document);
 
         await Assert.That(info.Title).IsEqualTo(Pdf2Documents.HelloText);
         await Assert.That(info.Author).IsEqualTo("Jörn");
         await Assert.That(info.Version).IsEqualTo("2.0");
         await Assert.That(document.Objects.Version).IsEqualTo("2.0");
-        await Assert.That(document.GetOutline()[0].Title).IsEqualTo(Pdf2Documents.HelloText);
+        await Assert.That(PdfDocumentNavigation.GetOutline(document)[0].Title).IsEqualTo(Pdf2Documents.HelloText);
     }
 
     /// <summary>The UTF-8 byte order mark is stripped and bad bytes after it do not throw.</summary>
@@ -65,8 +65,8 @@ public sealed class Pdf2Tests
     [Test]
     public async Task OutputIntentsAreIgnoredSafely()
     {
-        using var document = PdfDocument.Open(Pdf2Documents.CreateText(), null);
-        var page = document.GetPage(0);
+        using var document = PdfDocumentReader.Open(Pdf2Documents.CreateText(), null);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var content = WritingTestDocuments.PageContents(document.Objects);
         var profile = document.Objects.GetObject(new(ProfileNumber, 0)).AsStream()!;
 
@@ -85,8 +85,8 @@ public sealed class Pdf2Tests
     {
         var plain = RobustnessSeeds.Create()[0].Bytes;
         var encrypted = Pdf2Documents.EncryptAes256(plain, string.Empty, RobustnessSeeds.OwnerPassword);
-        using var plainDocument = PdfDocument.Open(plain, null);
-        using var document = PdfDocument.Open(encrypted, null);
+        using var plainDocument = PdfDocumentReader.Open(plain, null);
+        using var document = PdfDocumentReader.Open(encrypted, null);
 
         await Assert.That(document.IsEncrypted).IsTrue();
         await Assert.That(document.Objects.Security!.Revision).IsEqualTo(Revision6);
@@ -94,7 +94,7 @@ public sealed class Pdf2Tests
 
         // The only difference the reader sees is the header version the rewrite changed.
         await Assert.That(DocumentExerciser.Read(document)).IsEqualTo(DocumentExerciser.Read(plainDocument).Replace("|1.7;", "|2.0;", StringComparison.Ordinal));
-        await Assert.That(document.GetInfo().Title).IsEqualTo(plainDocument.GetInfo().Title);
+        await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsEqualTo(PdfDocumentMetadata.GetInfo(plainDocument).Title);
     }
 
     /// <summary>The user and owner passwords open an AES-256 document; no password and a wrong one report a password error.</summary>
@@ -105,10 +105,10 @@ public sealed class Pdf2Tests
         var plain = RobustnessSeeds.Create()[0].Bytes;
         var encrypted = Pdf2Documents.EncryptAes256(plain, UserPassword, RobustnessSeeds.OwnerPassword);
 
-        using var asUser = PdfDocument.Open(encrypted, UserPassword);
-        using var asOwner = PdfDocument.Open(encrypted, RobustnessSeeds.OwnerPassword);
-        var none = await Assert.That(() => PdfDocument.Open(encrypted, null)).Throws<PdfException>();
-        var wrong = await Assert.That(() => PdfDocument.Open(encrypted, WrongPassword)).Throws<PdfException>();
+        using var asUser = PdfDocumentReader.Open(encrypted, UserPassword);
+        using var asOwner = PdfDocumentReader.Open(encrypted, RobustnessSeeds.OwnerPassword);
+        var none = await Assert.That(() => PdfDocumentReader.Open(encrypted, null)).Throws<PdfException>();
+        var wrong = await Assert.That(() => PdfDocumentReader.Open(encrypted, WrongPassword)).Throws<PdfException>();
 
         await Assert.That(asUser.PageCount).IsEqualTo(PlainPages);
         await Assert.That(asOwner.PageCount).IsEqualTo(PlainPages);
@@ -122,10 +122,10 @@ public sealed class Pdf2Tests
     public async Task Aes256DecryptsUtf8Strings()
     {
         var encrypted = Pdf2Documents.EncryptAes256(Pdf2Documents.CreateText(), string.Empty, RobustnessSeeds.OwnerPassword);
-        using var document = PdfDocument.Open(encrypted, null);
+        using var document = PdfDocumentReader.Open(encrypted, null);
 
-        await Assert.That(document.GetInfo().Title).IsEqualTo(Pdf2Documents.HelloText);
-        await Assert.That(document.GetOutline()[0].Title).IsEqualTo(Pdf2Documents.HelloText);
+        await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsEqualTo(Pdf2Documents.HelloText);
+        await Assert.That(PdfDocumentNavigation.GetOutline(document)[0].Title).IsEqualTo(Pdf2Documents.HelloText);
     }
 
     /// <summary>Revision 6 allows AES-256 only: RC4 and AES-128 crypt filters are refused as unsupported.</summary>

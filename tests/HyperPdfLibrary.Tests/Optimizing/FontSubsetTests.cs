@@ -86,8 +86,8 @@ public sealed class FontSubsetTests
     /// <returns>The font file.</returns>
     private static byte[] Program(byte[] pdf)
     {
-        using var document = PdfDocument.Open(pdf, null);
-        var font = document.GetPage(0).Resources!.GetDictionary(KnownName.Font)!.GetDictionary(document.Objects.Names.Intern("F1"u8))!;
+        using var document = PdfDocumentReader.Open(pdf, null);
+        var font = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.Font)!.GetDictionary(document.Objects.Names.Intern("F1"u8))!;
         return font.GetDictionary(KnownName.FontDescriptor)!.GetStream(KnownName.FontFile2)!.DecodeToArray();
     }
 

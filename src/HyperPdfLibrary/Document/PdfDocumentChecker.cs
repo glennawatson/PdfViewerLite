@@ -110,7 +110,7 @@ internal sealed class PdfDocumentChecker
             return;
         }
 
-        var page = _document.GetPage(index);
+        var page = PdfDocumentPages.GetPage(_document, index);
         var content = default(PooledBuffer);
         try
         {

@@ -51,13 +51,13 @@ public sealed class LinearizedTests
     [Test]
     public async Task LinearizedPagesFollowThePageTree()
     {
-        using var document = PdfDocument.Open(LinearizedDocuments.Create(false), null);
+        using var document = PdfDocumentReader.Open(LinearizedDocuments.Create(false), null);
 
         await Assert.That(document.PageCount).IsEqualTo(LinearizedDocuments.PageCount);
-        await Assert.That(document.GetPage(0).Width).IsEqualTo(FirstWidth);
-        await Assert.That(document.GetPage(0).Height).IsEqualTo(FirstHeight);
-        await Assert.That(document.GetPage(1).Width).IsEqualTo(FirstHeight);
-        await Assert.That(document.GetPage(1).Height).IsEqualTo(FirstWidth);
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Width).IsEqualTo(FirstWidth);
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Height).IsEqualTo(FirstHeight);
+        await Assert.That(PdfDocumentPages.GetPage(document, 1).Width).IsEqualTo(FirstHeight);
+        await Assert.That(PdfDocumentPages.GetPage(document, 1).Height).IsEqualTo(FirstWidth);
     }
 
     /// <summary>The linearization dictionary and hint stream are plain objects that read back and do no harm.</summary>
@@ -67,7 +67,7 @@ public sealed class LinearizedTests
     {
         foreach (var streams in new[] { false, true })
         {
-            using var document = PdfDocument.Open(LinearizedDocuments.Create(streams), null);
+            using var document = PdfDocumentReader.Open(LinearizedDocuments.Create(streams), null);
             var linearization = document.Objects.GetDictionary(new(LinearizationNumber, 0))!;
             var hint = document.Objects.GetObject(new(HintNumber, 0)).AsStream()!;
 
@@ -93,7 +93,7 @@ public sealed class LinearizedTests
             catalog.Set(store.Names.Intern(SaveReopenTests.MarkerKey), PdfValue.FromReference(marker));
             store.Replace(catalogId, PdfValue.FromDictionary(catalog));
             var saved = PdfIncrementalWriter.Save(store);
-            using var reopened = PdfDocument.Open(saved, null);
+            using var reopened = PdfDocumentReader.Open(saved, null);
 
             await Assert.That(saved.AsSpan(0, original.Length).SequenceEqual(original)).IsTrue();
             await Assert.That(reopened.PageCount).IsEqualTo(LinearizedDocuments.PageCount);
@@ -132,11 +132,11 @@ public sealed class LinearizedTests
                 end = store.GetDictionary(new(LinearizationNumber, 0))!.GetInt32(store.Names.Intern("E"));
             }
 
-            using var document = PdfDocument.Open(full.AsSpan(0, end).ToArray(), null);
-            var content = document.GetPage(0).Dictionary.GetStream(KnownName.Contents)!.DecodeToArray();
+            using var document = PdfDocumentReader.Open(full.AsSpan(0, end).ToArray(), null);
+            var content = PdfDocumentPages.GetPage(document, 0).Dictionary.GetStream(KnownName.Contents)!.DecodeToArray();
 
             await Assert.That(document.PageCount).IsGreaterThanOrEqualTo(1);
-            await Assert.That(document.GetPage(0).Width).IsEqualTo(FirstWidth);
+            await Assert.That(PdfDocumentPages.GetPage(document, 0).Width).IsEqualTo(FirstWidth);
             await Assert.That(Encoding.Latin1.GetString(content)).IsEqualTo(LinearizedDocuments.FirstContent);
         }
     }

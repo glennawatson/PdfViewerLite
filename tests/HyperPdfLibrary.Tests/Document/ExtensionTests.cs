@@ -44,7 +44,7 @@ public sealed class ExtensionTests
     public async Task DeveloperExtensionsAreRead()
     {
         using var document = Open();
-        var extensions = document.GetDeveloperExtensions();
+        var extensions = PdfDocumentExtensionDeclarations.GetDeveloperExtensions(document);
 
         await Assert.That(extensions.Length).IsEqualTo(ExtensionCount);
         await Assert.That(extensions[0].Prefix).IsEqualTo("ADBE");
@@ -59,7 +59,7 @@ public sealed class ExtensionTests
     public async Task UnknownEntriesDistinguishExtensionsFromDamage()
     {
         using var document = Open();
-        var entries = document.FindUnknownEntries();
+        var entries = PdfDocumentExtensionDeclarations.FindUnknownEntries(document);
 
         await Assert.That(entries.Length).IsEqualTo(UnknownCount);
         await Assert.That(Find(entries, DeclaredKey).ParsedCleanly).IsTrue();
@@ -70,7 +70,7 @@ public sealed class ExtensionTests
         await Assert.That(Find(entries, "Plain").ValueKind).IsEqualTo(PdfKind.Integer);
         await Assert.That(Find(entries, PageKey).Owner).IsEqualTo(PdfEntryOwner.Page);
         await Assert.That(Find(entries, PageKey).PageIndex).IsEqualTo(0);
-        await Assert.That(document.FindUnknownEntries(document.GetPage(0)).Length).IsEqualTo(1);
+        await Assert.That(PdfDocumentExtensionDeclarations.FindUnknownEntries(document, PdfDocumentPages.GetPage(document, 0)).Length).IsEqualTo(1);
         await Assert.That(Find(entries, "XYZ_Other").IsDeclared).IsTrue();
     }
 
@@ -84,11 +84,11 @@ public sealed class ExtensionTests
     public async Task UnknownKeysSurviveSaving(string mode)
     {
         var saved = Save(StructureDocuments.Build(CatalogEntries, PageEntries, "<< /Kept true >>", "1"), mode);
-        using var reopened = PdfDocument.Open(saved, null);
-        var entries = reopened.FindUnknownEntries();
+        using var reopened = PdfDocumentReader.Open(saved, null);
+        var entries = PdfDocumentExtensionDeclarations.FindUnknownEntries(reopened);
 
         var names = reopened.Objects.Names;
-        var pageInfo = reopened.GetPage(0).Dictionary.GetDictionary(names.Intern(PageKey))!;
+        var pageInfo = PdfDocumentPages.GetPage(reopened, 0).Dictionary.GetDictionary(names.Intern(PageKey))!;
         var thing = reopened.Catalog.GetDictionary(names.Intern(DeclaredKey))!;
 
         // Compaction drops a key whose reference leads to no object; an incremental update keeps every key.
@@ -109,7 +109,7 @@ public sealed class ExtensionTests
 
     /// <summary>Opens the sample document.</summary>
     /// <returns>The document.</returns>
-    private static PdfDocument Open() => PdfDocument.Open(StructureDocuments.Build(CatalogEntries, PageEntries, "<< /Kept true >>", "1"), null);
+    private static PdfDocument Open() => PdfDocumentReader.Open(StructureDocuments.Build(CatalogEntries, PageEntries, "<< /Kept true >>", "1"), null);
 
     /// <summary>Opens the file, adds a marker key to the catalog and saves it.</summary>
     /// <param name="original">The file.</param>

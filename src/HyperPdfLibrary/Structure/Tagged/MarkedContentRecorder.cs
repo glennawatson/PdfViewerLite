@@ -160,7 +160,7 @@ internal sealed class MarkedContentRecorder : IContentDevice
         var scanned = new List<ScannedMark>();
         var images = MarkedContentScanner.Scan(document, page, scanned);
         var device = new MarkedContentRecorder(document.Objects.Names, scanned);
-        using (var interpreter = new ContentInterpreter(document.RenderCache, device, 0))
+        using (var interpreter = new ContentInterpreter(PdfDocumentRendering.GetRenderCache(document), device, 0))
         {
             interpreter.RunPage(page);
         }

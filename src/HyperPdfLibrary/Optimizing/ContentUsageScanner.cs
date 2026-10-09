@@ -87,7 +87,7 @@ internal sealed partial class ContentUsageScanner
         for (var i = 0; i < _document.PageCount; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ScanPage(_document.GetPage(i));
+            ScanPage(PdfDocumentPages.GetPage(_document, i));
             pageDone?.Invoke(i + 1);
         }
 
@@ -189,32 +189,32 @@ internal sealed partial class ContentUsageScanner
         switch (op)
         {
             case ContentOperator.Save:
-            {
-                _stack.Add(ctm);
-                return true;
-            }
-
-            case ContentOperator.Restore:
-            {
-                if (_stack.Count > floor)
                 {
-                    ctm = _stack[^1];
-                    _stack.RemoveAt(_stack.Count - 1);
+                    _stack.Add(ctm);
+                    return true;
                 }
 
-                return true;
-            }
+            case ContentOperator.Restore:
+                {
+                    if (_stack.Count > floor)
+                    {
+                        ctm = _stack[^1];
+                        _stack.RemoveAt(_stack.Count - 1);
+                    }
+
+                    return true;
+                }
 
             case ContentOperator.ConcatMatrix:
-            {
-                ctm = ReadMatrix(ref reader) * ctm;
-                return true;
-            }
+                {
+                    ctm = ReadMatrix(ref reader) * ctm;
+                    return true;
+                }
 
             default:
-            {
-                return false;
-            }
+                {
+                    return false;
+                }
         }
     }
 
@@ -229,35 +229,35 @@ internal sealed partial class ContentUsageScanner
         switch (op)
         {
             case ContentOperator.PaintXObject:
-            {
-                PaintXObject(reader.Operand(0).Name, resources, ctm, walk);
-                break;
-            }
+                {
+                    PaintXObject(reader.Operand(0).Name, resources, ctm, walk);
+                    break;
+                }
 
             case ContentOperator.SetFont:
-            {
-                UseFont(reader.Operand(0).Name, resources, walk.IsFixed);
-                break;
-            }
+                {
+                    UseFont(reader.Operand(0).Name, resources, walk.IsFixed);
+                    break;
+                }
 
             case ContentOperator.SetGraphicsState:
-            {
-                UseGraphicsState(reader.Operand(0).Name, resources, walk);
-                break;
-            }
+                {
+                    UseGraphicsState(reader.Operand(0).Name, resources, walk);
+                    break;
+                }
 
             case ContentOperator.BeginInlineImage:
-            {
-                // Inline images may name colour spaces and filters by resource name.
-                MarkUnsafe(resources);
-                break;
-            }
+                {
+                    // Inline images may name colour spaces and filters by resource name.
+                    MarkUnsafe(resources);
+                    break;
+                }
 
             default:
-            {
-                HandleNamedResource(op, ref reader, resources, walk);
-                break;
-            }
+                {
+                    HandleNamedResource(op, ref reader, resources, walk);
+                    break;
+                }
         }
     }
 
@@ -271,43 +271,43 @@ internal sealed partial class ContentUsageScanner
         switch (op)
         {
             case ContentOperator.SetFillColorSpace or ContentOperator.SetStrokeColorSpace:
-            {
-                Use(resources, KnownName.ColorSpace, reader.Operand(0).Name);
-                break;
-            }
+                {
+                    Use(resources, KnownName.ColorSpace, reader.Operand(0).Name);
+                    break;
+                }
 
             case ContentOperator.SetFillColorN or ContentOperator.SetStrokeColorN:
-            {
-                var last = reader.Operand(reader.OperandCount - 1);
-                if (last.Kind == ContentOperandKind.Name)
                 {
-                    UsePattern(last.Name, resources, walk);
-                }
+                    var last = reader.Operand(reader.OperandCount - 1);
+                    if (last.Kind == ContentOperandKind.Name)
+                    {
+                        UsePattern(last.Name, resources, walk);
+                    }
 
-                break;
-            }
+                    break;
+                }
 
             case ContentOperator.PaintShading:
-            {
-                Use(resources, KnownName.Shading, reader.Operand(0).Name);
-                break;
-            }
-
-            case ContentOperator.BeginMarkedContentProperties or ContentOperator.MarkPointProperties:
-            {
-                var properties = reader.Operand(1);
-                if (properties.Kind == ContentOperandKind.Name)
                 {
-                    Use(resources, KnownName.Properties, properties.Name);
+                    Use(resources, KnownName.Shading, reader.Operand(0).Name);
+                    break;
                 }
 
-                break;
-            }
+            case ContentOperator.BeginMarkedContentProperties or ContentOperator.MarkPointProperties:
+                {
+                    var properties = reader.Operand(1);
+                    if (properties.Kind == ContentOperandKind.Name)
+                    {
+                        Use(resources, KnownName.Properties, properties.Name);
+                    }
+
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 

@@ -30,7 +30,7 @@ public sealed class SemanticNodeTests
     public async Task FollowsLogicalOrder()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
         var page = PdfReadingStructure.Read(document, 0);
         var root = page.Nodes[0];
 
@@ -51,7 +51,7 @@ public sealed class SemanticNodeTests
     public async Task FiguresSpeakTheirDescription()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
         var figure = PdfReadingStructure.Read(document, 0).Nodes[0].Children[FigureIndex];
 
         await Assert.That(figure.Role).IsEqualTo(PdfSemanticRole.Figure);
@@ -66,7 +66,7 @@ public sealed class SemanticNodeTests
     public async Task ItemsMapBackToGlyphs()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.Basic(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.Basic(), null);
         var page = PdfReadingStructure.Read(document, 0);
         var items = new List<int>();
         page.Nodes[0].Children[0].CollectItems(items);
@@ -85,7 +85,7 @@ public sealed class SemanticNodeTests
     public async Task LinksTableCellsToHeaders()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.TableAndList(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.TableAndList(), null);
         var table = PdfReadingStructure.Read(document, 0).Nodes[0];
 
         await Assert.That(table.Role).IsEqualTo(PdfSemanticRole.Table);
@@ -105,7 +105,7 @@ public sealed class SemanticNodeTests
     public async Task ReadsLists()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.TableAndList(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.TableAndList(), null);
         var list = PdfReadingStructure.Read(document, 0).Nodes[1];
         var item = list.Children[0];
 
@@ -124,7 +124,7 @@ public sealed class SemanticNodeTests
     public async Task ReadsLinksAndFormFields()
     {
         using var fonts = new TaggedFontScope();
-        using var document = PdfDocument.Open(TaggedSamples.LinksAndForms(), null);
+        using var document = PdfDocumentReader.Open(TaggedSamples.LinksAndForms(), null);
         var root = PdfReadingStructure.Read(document, 0).Nodes[0];
         var link = root.Children[0];
         var field = root.Children[FieldIndex];
@@ -145,9 +145,9 @@ public sealed class SemanticNodeTests
     [Test]
     public async Task AnnotationsLeadBackToTheirElements()
     {
-        using var document = PdfDocument.Open(TaggedSamples.LinksAndForms(), null);
-        var tree = document.StructureTree!;
-        var annotations = document.GetPage(0).Dictionary.GetArray(Objects.KnownName.Annots)!;
+        using var document = PdfDocumentReader.Open(TaggedSamples.LinksAndForms(), null);
+        var tree = PdfDocumentTagged.GetStructureTree(document)!;
+        var annotations = PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(Objects.KnownName.Annots)!;
 
         await Assert.That(tree.GetObjectParent(annotations.GetDictionary(0)!)!.Type).IsEqualTo(PdfStructureType.Link);
         await Assert.That(tree.GetObjectParent(annotations.GetDictionary(1)!)!.Type).IsEqualTo(PdfStructureType.Form);

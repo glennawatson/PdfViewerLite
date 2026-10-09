@@ -698,42 +698,42 @@
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.InsertCore",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentPageOperations.InsertCore",
     "reason": "Inserting pages allocates the carrier, the importer's queue, the reserved ids, the prepared annotation arrays and the page slots, once per insertion. Page editing is a user action, not a render path."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.RunEdit",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentEditing.RunEdit",
     "reason": "An edit allocates its transaction and the lists that record changed objects and trailer entries, once per edit."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.ImportPage",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentPageOperations.ImportPage",
     "reason": "Copying a page dictionary builds its copy once per inserted page."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.CollectSourceLabels",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentLabels.CollectSourceLabels",
     "reason": "Reading the source labels of the copied pages builds the label array and a decimal style, once per insertion."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.CollectLabels",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentPageOperations.CollectLabels",
     "reason": "Rebuilding the labels of the new page order builds the label array and a decimal style, once per insertion."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.GetLabelRanges",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentLabels.GetLabelRanges",
     "reason": "The label ranges are read once after an edit drops the cached ranges."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.CurrentSlots",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentPageOperations.CurrentSlots",
     "reason": "The page slots list is built once per page edit."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.WritePages",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentPageOperations.WritePages",
     "reason": "Writing the page tree after an edit builds the label list and the tree's working state, once per edit."
   },
   {
@@ -853,7 +853,7 @@
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.",
+    "frame": "HyperPdfLibrary.Document.PdfDocument",
     "reason": "Document-level reads that return results the caller keeps or the document caches once: Create builds the document and its lazily filled caches, the page set and output intents are read once, and outline, link, URI, info, viewer preference and conformance reads return records and strings. RunContent creates one content interpreter with its graphics state, resource and marked-content stacks per content run, which happens once per text page build or raster scan, and the text page is cached. RunEdit and CurrentSlots copy the page slots for an undoable page edit. None of these run when a recorded tile is drawn."
   },
   {
@@ -1153,52 +1153,52 @@
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.OpenWithAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentReader.OpenWithAsync(",
     "reason": "Opening with a cancellable token: the options copy that carries the token, plus the state machine box and continuations of the awaited loads. One set per open."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.FindPagesAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentText.FindPagesAsync(",
     "reason": "The async search walk: the iterator's state machine, the reused match list, and one match array for each page that has a match."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.GetTextPagesAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentText.GetTextPagesAsync(",
     "reason": "The async text walk: the iterator's state machine, once per walk."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.PrefetchPageAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentPages.PrefetchPageAsync(",
     "reason": "Async form whose load-ahead really waited: the state machine box and continuation. Skipped, with no allocation, once the page is loaded; the allocation test checks that."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.PageAfterAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentPages.PageAfterAsync(",
     "reason": "Slow path of GetPageAsync, taken only when the load-ahead really waited: state machine box and continuation."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.TextPageAfterAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentText.TextPageAfterAsync(",
     "reason": "Slow path of GetTextPageAsync, taken only when the load-ahead really waited: state machine box and continuation."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.OutlineAfterAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentNavigation.OutlineAfterAsync(",
     "reason": "Slow path of GetOutlineAsync, taken only when the load-ahead really waited: state machine box and continuation."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.LinksAfterAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentLinks.LinksAfterAsync(",
     "reason": "Slow path of GetLinksAsync, taken only when the load-ahead really waited: state machine box and continuation."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.AnnotationsAfterAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentContent.AnnotationsAfterAsync(",
     "reason": "Slow path of ScanAnnotationsAsync, taken only when the load-ahead really waited: state machine box and continuation."
   },
   {
     "type": "",
-    "frame": "HyperPdfLibrary.Document.PdfDocument.SaveAsync(",
+    "frame": "HyperPdfLibrary.Document.PdfDocumentSaving.SaveAsync(",
     "reason": "Async save: the state machine box and continuation of the awaited copy and write, one set per save."
   },
   {
@@ -1260,5 +1260,115 @@
     "type": "HyperPdfLibrary.Objects.PdfOpenContext",
     "frame": "HyperPdfLibrary.Objects.PdfOpenContext.Create(",
     "reason": "One 64-byte context per open holds the cancellation token, the recovery switches and the repair log, so a document can report whether it was repaired. Opening is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.AnnotationShapeAppearance",
+    "reason": "Generates an appearance stream for an annotation that has none (square, circle, ink, markup, polygon, line, note): its content bytes, form dictionary and resources. This runs once per annotation when the page is recorded; the result is drawn into the cached picture."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.AnnotationMarkupAppearance",
+    "reason": "Generates an appearance stream for an annotation that has none (square, circle, ink, markup, polygon, line, note): its content bytes, form dictionary and resources. This runs once per annotation when the page is recorded; the result is drawn into the cached picture."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.AnnotationTextAppearance",
+    "reason": "Generates an appearance stream for an annotation that has none (square, circle, ink, markup, polygon, line, note): its content bytes, form dictionary and resources. This runs once per annotation when the page is recorded; the result is drawn into the cached picture."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.AnnotationTintAppearance",
+    "reason": "Generates an appearance stream for an annotation that has none (square, circle, ink, markup, polygon, line, note): its content bytes, form dictionary and resources. This runs once per annotation when the page is recorded; the result is drawn into the cached picture."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormAppearanceResources.",
+    "reason": "Regenerating a form appearance writes its retained content bytes, form stream, bounding box, matrix and resource dictionaries. Compression creates encoder state. This is an edit operation; warm rendering draws the recorded appearance."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormTextAppearance.",
+    "reason": "Regenerating text and choice appearances formats content operands and font names, splits multiline text into line records and writes the new appearance. These strings, line arrays and scratch lists occur during edits, never when a warmed tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormButtonAppearance.",
+    "reason": "Generating a button mark creates its appearance operands and glyph bytes before the result is saved in the widget\u0027s appearance stream. This runs during filling or regeneration, not warm rendering."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.DefaultAppearance.",
+    "reason": "A form edit parses the field\u0027s default-appearance string into a font, size and colour record. Decoding names and formatting stroke colours creates strings and builder buffers for the new appearance."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormFont.",
+    "reason": "Form appearance generation resolves the selected font and encoding, splits supplied text into Unicode runes, and creates encoded glyph bytes and width arrays. The resulting codes feed the new appearance; warm rendering does not run this editor path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormControl.GetControls",
+    "reason": "Resolving a field for an edit collects its widget controls into a list of control records, including direct controls and referenced widgets."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormEdit.",
+    "reason": "An undoable form edit clones changed dictionaries and collects original-to-copy mappings. Committing enumerates those copies and writes their replacement objects, preserving the original revision for undo."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.RegenerateAppearances",
+    "reason": "Regenerating widgets creates one form-edit transaction and the rewritten appearance data for each resolved control. These objects support the edit and undo; the warmed render path uses cached pictures."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.Resolve",
+    "reason": "Resolving a form field for filling creates its inherited attributes, control list and resolved widget record. This occurs per edit, outside warmed rendering."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.ApplyCheck",
+    "reason": "Filling a checkbox creates an undoable form edit and rewrites its checked state and appearance references."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.EnsureOnState",
+    "reason": "A checkbox without an on-state appearance gets a new appearance dictionary and generated mark stream when it is filled."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.WriteButtonValue",
+    "reason": "Writing a button value creates the PDF value and state names stored in its field and widget dictionaries during filling."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormValues.GetType",
+    "reason": "Resolving form field flags reads the field type spelling into a string for edit dispatch."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FieldAttributes.GetFullName",
+    "reason": "Resolving a field constructs its full name from the parent chain for the returned form-field record."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.FormChoices.UsesSelectedIndices",
+    "reason": "Regenerating a choice field builds option-value counts and decoded strings to check that selected indices agree with the field values before highlighting rows."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Compat.ZLibCodec.Compress",
+    "reason": "Writing a compressed stream creates an encoder and retained compressed bytes. The .NET 10 fallback also creates MemoryStream, ZLibStream and deflater state. Compression is a save/edit operation, never a warmed tile draw."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfStream..ctor",
+    "reason": "A newly written stream sets its dictionary\u0027s Length entry. Growing that dictionary\u0027s value storage and name lookup creates amortised value and index arrays when the appearance is finalized."
+  },
+  {
+    "type": "System.Threading.Lock",
+    "frame": "HyperPdfLibrary.Objects.PdfOpenContext.Create",
+    "reason": "Each newly opened document creates the lock protecting its diagnostic log. This accompanies the open context and does not run on warmed rendering."
   }
 ]

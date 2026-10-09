@@ -59,7 +59,7 @@ internal static class InterchangeExporter
         var names = NameRepliedTo(document);
         for (var pageIndex = 0; pageIndex < document.PageCount; pageIndex++)
         {
-            var page = document.GetPage(pageIndex);
+            var page = PdfDocumentPages.GetPage(document, pageIndex);
             if (PdfPageAnnotations.GetArray(store, page) is not { } array)
             {
                 continue;
@@ -84,7 +84,7 @@ internal static class InterchangeExporter
         var names = new Dictionary<int, string>();
         for (var pageIndex = 0; pageIndex < document.PageCount; pageIndex++)
         {
-            if (PdfPageAnnotations.GetArray(document.Objects, document.GetPage(pageIndex)) is not { } array)
+            if (PdfPageAnnotations.GetArray(document.Objects, PdfDocumentPages.GetPage(document, pageIndex)) is not { } array)
             {
                 continue;
             }

@@ -10,7 +10,7 @@ using PdfViewerLite.TestAssets;
 
 namespace HyperPdfLibrary.Tests.Editing;
 
-/// <summary>Tests for <see cref="PdfDocument.GetSignatureEffects"/>.</summary>
+/// <summary>Tests for <see cref="PdfDocumentSignatureEffects.GetSignatureEffects"/>.</summary>
 public sealed class SignatureEffectTests
 {
     /// <summary>DocMDP level 2: form filling and signing.</summary>
@@ -36,8 +36,8 @@ public sealed class SignatureEffectTests
     [Test]
     public async Task NoEditsKeepEverySignature()
     {
-        using var document = PdfDocument.Open(CreateSigned(FormFilling), null);
-        var report = document.GetSignatureEffects(true);
+        using var document = PdfDocumentReader.Open(CreateSigned(FormFilling), null);
+        var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
 
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.None);
         await Assert.That(report.Signatures.Count).IsEqualTo(SignatureCount);
@@ -54,11 +54,11 @@ public sealed class SignatureEffectTests
     [Test]
     public async Task FormFillIsAllowedUnlessLocked()
     {
-        using var document = PdfDocument.Open(CreateSigned(FormFilling), null);
+        using var document = PdfDocumentReader.Open(CreateSigned(FormFilling), null);
         var field = document.Objects.GetDictionary(new(TextFieldNumber, 0))!.Clone();
         field.Set(KnownName.V, PdfValue.FromString("New"u8.ToArray()));
         document.Objects.Replace(new(TextFieldNumber, 0), PdfValue.FromDictionary(field));
-        var report = document.GetSignatureEffects(true);
+        var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
 
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.FormFill);
         await Assert.That(report.ChangedFields).IsEquivalentTo((string[])["Name"]);
@@ -66,7 +66,7 @@ public sealed class SignatureEffectTests
         await Assert.That(report.Signatures[1].LockedFieldsChanged).IsEquivalentTo((string[])["Name"]);
         await Assert.That(report.Signatures[1].RemainsValid).IsFalse();
 
-        var rewrite = document.GetSignatureEffects(false);
+        var rewrite = PdfDocumentSignatureEffects.GetSignatureEffects(document, false);
         await Assert.That(rewrite.Signatures[0].KeepsSignedBytes).IsFalse();
         await Assert.That(rewrite.Signatures[0].RemainsValid).IsFalse();
     }
@@ -80,18 +80,18 @@ public sealed class SignatureEffectTests
     [Arguments(Annotating, true)]
     public async Task AnnotationsNeedLevelThree(int permission, bool allowed)
     {
-        using var document = PdfDocument.Open(CreateSigned(permission), null);
+        using var document = PdfDocumentReader.Open(CreateSigned(permission), null);
         var note = new PdfDictionary(document.Objects);
         note.Set(KnownName.Type, PdfValue.FromName(KnownName.Annot));
         note.Set(KnownName.Subtype, PdfValue.FromName(KnownName.Square));
         note.Set(KnownName.Rect, PdfValue.FromArray(new PdfRectangle(0, 0, 1, 1).ToArray(document.Objects)));
         var noteId = document.Objects.Add(PdfValue.FromDictionary(note));
-        var page = document.GetPage(0).Dictionary.Clone();
+        var page = PdfDocumentPages.GetPage(document, 0).Dictionary.Clone();
         var annots = page.GetArray(KnownName.Annots)!.Clone();
         annots.Add(PdfValue.FromReference(noteId));
         page.Set(KnownName.Annots, PdfValue.FromArray(annots));
         document.Objects.Replace(new(PageNumber, 0), PdfValue.FromDictionary(page));
-        var report = document.GetSignatureEffects(true);
+        var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
 
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.Annotations);
         await Assert.That(report.Signatures[0].RemainsValid).IsEqualTo(allowed);
@@ -103,10 +103,10 @@ public sealed class SignatureEffectTests
     [Test]
     public async Task PageAndMetadataChangesAreDisallowed()
     {
-        using var document = PdfDocument.Open(CreateSigned(Annotating), null);
-        document.SetRotation(0, QuarterTurn);
-        document.SetMetadata(new() { Title = "Changed" });
-        var report = document.GetSignatureEffects(true);
+        using var document = PdfDocumentReader.Open(CreateSigned(Annotating), null);
+        PdfDocumentPageOperations.SetRotation(document, 0, QuarterTurn);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = "Changed" });
+        var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
 
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.PageChanges | PdfChangeKinds.Metadata);
         await Assert.That(report.Signatures[0].DisallowedKinds).IsEqualTo(PdfChangeKinds.PageChanges | PdfChangeKinds.Metadata);

@@ -47,7 +47,7 @@ public sealed class NavigationTests
             "<< /Limits [(b) (c)] /Names [(bb) [4 0 R /Fit]] >>",
             "<< /Names [(zz) [3 0 R /Fit]] >>");
 
-        await Assert.That(document.ResolveDestination(PdfValue.FromString("bb"u8.ToArray()))?.PageIndex).IsEqualTo(SecondPage);
+        await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromString("bb"u8.ToArray()))?.PageIndex).IsEqualTo(SecondPage);
     }
 
     /// <summary>A key outside its kid's wrong /Limits is still found through a table of the whole tree.</summary>
@@ -59,8 +59,8 @@ public sealed class NavigationTests
             "/Names << /Dests << /Kids [5 0 R] >> >>",
             "<< /Limits [(a) (b)] /Names [(a) [3 0 R /Fit] (zz) [4 0 R /Fit]] >>");
 
-        await Assert.That(document.ResolveDestination(PdfValue.FromString("zz"u8.ToArray()))?.PageIndex).IsEqualTo(SecondPage);
-        await Assert.That(document.ResolveDestination(PdfValue.FromString("absent"u8.ToArray()))).IsNull();
+        await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromString("zz"u8.ToArray()))?.PageIndex).IsEqualTo(SecondPage);
+        await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromString("absent"u8.ToArray()))).IsNull();
     }
 
     /// <summary>A named destination is looked up in the name tree before the catalog's /Dests dictionary.</summary>
@@ -71,7 +71,7 @@ public sealed class NavigationTests
         using var document = Open(
             "/Names << /Dests << /Names [(x) [4 0 R /Fit]] >> >> /Dests << /x [3 0 R /Fit] >>");
 
-        await Assert.That(document.ResolveDestination(PdfValue.FromName(document.Objects.Names.Intern("x")))?.PageIndex).IsEqualTo(SecondPage);
+        await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromName(document.Objects.Names.Intern("x")))?.PageIndex).IsEqualTo(SecondPage);
     }
 
     /// <summary>A URI without a scheme is joined to the catalog's /URI /Base.</summary>
@@ -83,8 +83,8 @@ public sealed class NavigationTests
             "/URI << /Base (https://example.com/docs/) >>",
             "<< /S /URI /URI (a.pdf) >>",
             "<< /S /URI /URI (mailto:me@example.com) >>");
-        var relative = document.ReadAction(Action(document, ActionObject));
-        var absolute = document.ReadAction(Action(document, ActionObject + 1));
+        var relative = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject));
+        var absolute = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject + 1));
 
         await Assert.That(relative.Value is UriAction { Uri: "https://example.com/docs/a.pdf" }).IsTrue();
         await Assert.That(absolute.Value is UriAction { Uri: "mailto:me@example.com" }).IsTrue();
@@ -100,7 +100,7 @@ public sealed class NavigationTests
             "<< /S /JavaScript /JS 6 0 R >>",
             MiniPdf.Stream(string.Empty, new('a', OversizedScript)));
 
-        var script = document.ReadAction(Action(document, ActionObject)).Value as JavaScriptAction;
+        var script = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject)).Value as JavaScriptAction;
 
         await Assert.That(script?.Script.Length).IsEqualTo(ScriptLimit);
     }
@@ -115,8 +115,8 @@ public sealed class NavigationTests
             "<< /S /Launch /F << /Type /Filespec /DOS (FILE.TXT) >> >>",
             "<< /S /Launch /F << /Type /Filespec /FS /URL /F (https://example.com/a) >> >>");
 
-        await Assert.That(document.ReadAction(Action(document, ActionObject)).Value is LaunchAction { File: "FILE.TXT" }).IsTrue();
-        await Assert.That(document.ReadAction(Action(document, ActionObject + 1)).Value is UriAction { Uri: "https://example.com/a" }).IsTrue();
+        await Assert.That(PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject)).Value is LaunchAction { File: "FILE.TXT" }).IsTrue();
+        await Assert.That(PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject + 1)).Value is UriAction { Uri: "https://example.com/a" }).IsTrue();
     }
 
     /// <summary>A go-to-remote action with a named destination stays on page 0 and exposes the name.</summary>
@@ -129,8 +129,9 @@ public sealed class NavigationTests
             "<< /S /GoToR /F (other.pdf) /D (Chapter1) >>",
             "<< /S /GoToR /F << /FS /URL /F (https://example.com/o.pdf) >> /D (Chapter1) >>");
 
-        await Assert.That(document.ReadAction(Action(document, ActionObject)).Value is RemoteGoToAction { File: "other.pdf", PageIndex: 0, NamedDestination: "Chapter1" }).IsTrue();
-        await Assert.That(document.ReadAction(Action(document, ActionObject + 1)).Value is UriAction).IsTrue();
+        var remoteAction = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject)).Value;
+        await Assert.That(remoteAction is RemoteGoToAction { File: "other.pdf", PageIndex: 0, NamedDestination: "Chapter1" }).IsTrue();
+        await Assert.That(PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject + 1)).Value is UriAction).IsTrue();
     }
 
     /// <summary>On Windows, "/c/dir/file" and "../" become Windows paths; elsewhere paths are unchanged.</summary>
@@ -138,11 +139,11 @@ public sealed class NavigationTests
     [Test]
     public async Task FileSpecPathsConvertForTheTargetPlatform()
     {
-        await Assert.That(PdfDocument.ToPlatformPath(DrivePath, true)).IsEqualTo("c:\\dir\\file.pdf");
-        await Assert.That(PdfDocument.ToPlatformPath("//server/share/file.pdf", true)).IsEqualTo("\\\\server\\share\\file.pdf");
-        await Assert.That(PdfDocument.ToPlatformPath("/dir/file.pdf", true)).IsEqualTo("\\dir\\file.pdf");
-        await Assert.That(PdfDocument.ToPlatformPath("../up/file.pdf", true)).IsEqualTo("..\\up\\file.pdf");
-        await Assert.That(PdfDocument.ToPlatformPath(DrivePath, false)).IsEqualTo(DrivePath);
+        await Assert.That(PdfDocumentFileSpecs.ToPlatformPath(DrivePath, true)).IsEqualTo("c:\\dir\\file.pdf");
+        await Assert.That(PdfDocumentFileSpecs.ToPlatformPath("//server/share/file.pdf", true)).IsEqualTo("\\\\server\\share\\file.pdf");
+        await Assert.That(PdfDocumentFileSpecs.ToPlatformPath("/dir/file.pdf", true)).IsEqualTo("\\dir\\file.pdf");
+        await Assert.That(PdfDocumentFileSpecs.ToPlatformPath("../up/file.pdf", true)).IsEqualTo("..\\up\\file.pdf");
+        await Assert.That(PdfDocumentFileSpecs.ToPlatformPath(DrivePath, false)).IsEqualTo(DrivePath);
     }
 
     /// <summary>Gets an action dictionary from a sample document.</summary>
@@ -159,6 +160,6 @@ public sealed class NavigationTests
     private static PdfDocument Open(string catalogEntries, params string[] objects)
     {
         string[] header = [$"<< /Type /Catalog /Pages 2 0 R {catalogEntries} >>", TwoPages, FirstPage, OtherPage];
-        return PdfDocument.Open(MiniPdf.Build([.. header, .. objects]), null);
+        return PdfDocumentReader.Open(MiniPdf.Build([.. header, .. objects]), null);
     }
 }

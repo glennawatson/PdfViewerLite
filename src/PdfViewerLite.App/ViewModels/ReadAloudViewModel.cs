@@ -676,7 +676,7 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
         Task<SpeechAudio>? prepared = null;
         try
         {
-            while (await LoadPageAsync(document).ConfigureAwait(true))
+            while (await LoadPageAsync(document, token).ConfigureAwait(true))
             {
                 token.ThrowIfCancellationRequested();
                 StatusText = $"Reading page {SpokenPage + 1} of {document.PageCount}";
@@ -779,8 +779,9 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
 
     /// <summary>Loads the sentences of <see cref="SpokenPage"/>, moving past pages without text.</summary>
     /// <param name="document">The document.</param>
+    /// <param name="cancellationToken">Cancels page preparation and extraction.</param>
     /// <returns><see langword="false"/> at the end of the document.</returns>
-    private async Task<bool> LoadPageAsync(IDocument document)
+    private async Task<bool> LoadPageAsync(IDocument document, CancellationToken cancellationToken)
     {
         while (_loadedPage != SpokenPage || _sentence >= _sentences.Count)
         {
@@ -800,7 +801,8 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
 
             var page = SpokenPage;
             var reading = _owner.GetReadingDocument();
-            (_pageText, _map) = await Task.Run(() => LoadText(document, reading, page)).ConfigureAwait(true);
+            await document.PreparePageAsync(page, cancellationToken).ConfigureAwait(true);
+            (_pageText, _map) = await Task.Run(() => LoadText(document, reading, page), cancellationToken).ConfigureAwait(true);
             _sentences.Clear();
             SentenceSplitter.Split(_pageText, _sentences);
             _loadedPage = page;

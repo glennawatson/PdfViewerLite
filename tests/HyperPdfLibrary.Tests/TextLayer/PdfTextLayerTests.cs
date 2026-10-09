@@ -144,7 +144,7 @@ public sealed partial class PdfTextLayerTests
         var expectedScale = BoxWidth / ((ink.Right - ink.Left) * expectedSize / Thousand);
         var expectedLeft = ExpectedOrigin(0);
         using var document = Open(string.Empty);
-        var page = document.GetPage(0);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var font = new PdfStandardTextLayerFont(document.Objects, AppearanceFont.Helvetica);
         var written = PdfTextLayer.Append(document.Objects, page, [Triple], [font]);
         var content = LayerContent(document);
@@ -170,7 +170,7 @@ public sealed partial class PdfTextLayerTests
     public async Task WrapsExistingContent()
     {
         using var document = Open(PageContent);
-        var page = document.GetPage(0);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var font = new PdfStandardTextLayerFont(document.Objects, AppearanceFont.Helvetica);
         _ = PdfTextLayer.Append(document.Objects, page, [Triple], [font]);
         var contents = PdfPageAnnotations.GetPageDictionary(document.Objects, page).GetArray(KnownName.Contents)!;
@@ -188,7 +188,7 @@ public sealed partial class PdfTextLayerTests
     public async Task ChoosesAFreshFontName()
     {
         using var document = Open(string.Empty, "/Font << /OcrF1 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> >>");
-        var page = document.GetPage(0);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var font = new PdfStandardTextLayerFont(document.Objects, AppearanceFont.Helvetica);
         _ = PdfTextLayer.Append(document.Objects, page, [Triple], [font]);
         var fonts = PdfPageAnnotations.GetPageDictionary(document.Objects, page).GetDictionary(KnownName.Resources)!.GetDictionary(KnownName.Font)!;
@@ -206,7 +206,7 @@ public sealed partial class PdfTextLayerTests
     public async Task FollowsPageRotation()
     {
         using var document = Open(string.Empty, string.Empty, "/Rotate 90");
-        var page = document.GetPage(0);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var font = new PdfStandardTextLayerFont(document.Objects, AppearanceFont.Helvetica);
         _ = PdfTextLayer.Append(document.Objects, page, [Triple], [font]);
         var matrix = MatrixPattern().Match(LayerContent(document));
@@ -227,7 +227,7 @@ public sealed partial class PdfTextLayerTests
         const int cropLeft = 20;
         const int cropBottom = 30;
         using var document = Open(string.Empty, string.Empty, string.Create(CultureInfo.InvariantCulture, $"/CropBox [{cropLeft} {cropBottom} {PageWidth} {PageHeight}]"));
-        var page = document.GetPage(0);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var font = new PdfStandardTextLayerFont(document.Objects, AppearanceFont.Helvetica);
         _ = PdfTextLayer.Append(document.Objects, page, [Triple], [font]);
         var matrix = MatrixPattern().Match(LayerContent(document));
@@ -241,7 +241,7 @@ public sealed partial class PdfTextLayerTests
     public async Task SkipsWordsItCannotPlace()
     {
         using var document = Open(string.Empty);
-        var page = document.GetPage(0);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var font = new PdfStandardTextLayerFont(document.Objects, AppearanceFont.Helvetica);
         PdfTextLayerWord[] words =
         [
@@ -308,10 +308,10 @@ public sealed partial class PdfTextLayerTests
     {
         using var document = Open(PageContent);
         var font = new PdfStandardTextLayerFont(document.Objects, AppearanceFont.Helvetica);
-        _ = PdfTextLayer.Append(document.Objects, document.GetPage(0), [Triple], [font]);
-        using var reopened = PdfDocument.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default), null);
-        var contents = reopened.GetPage(0).Dictionary.GetArray(KnownName.Contents)!;
-        var fonts = reopened.GetPage(0).Dictionary.GetDictionary(KnownName.Resources)!.GetDictionary(KnownName.Font)!;
+        _ = PdfTextLayer.Append(document.Objects, PdfDocumentPages.GetPage(document, 0), [Triple], [font]);
+        using var reopened = PdfDocumentReader.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default), null);
+        var contents = PdfDocumentPages.GetPage(reopened, 0).Dictionary.GetArray(KnownName.Contents)!;
+        var fonts = PdfDocumentPages.GetPage(reopened, 0).Dictionary.GetDictionary(KnownName.Resources)!.GetDictionary(KnownName.Font)!;
 
         await Assert.That(contents.Count).IsEqualTo(WrappedItems);
         await Assert.That(Decode(contents, WrappedItems - 1)).Contains("(AAA) Tj");
@@ -373,7 +373,7 @@ public sealed partial class PdfTextLayerTests
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             string.Create(CultureInfo.InvariantCulture, $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {PageWidth} {PageHeight}] /Contents 4 0 R /Resources << {resources} >> {pageEntries} >>"),
             MiniPdf.Stream(string.Empty, content));
-        return PdfDocument.Open(bytes, null);
+        return PdfDocumentReader.Open(bytes, null);
     }
 
     /// <summary>Gets the text layer's decoded content: the last stream of the page's contents.</summary>
@@ -381,7 +381,7 @@ public sealed partial class PdfTextLayerTests
     /// <returns>The content.</returns>
     private static string LayerContent(PdfDocument document)
     {
-        var contents = PdfPageAnnotations.GetPageDictionary(document.Objects, document.GetPage(0)).GetArray(KnownName.Contents)!;
+        var contents = PdfPageAnnotations.GetPageDictionary(document.Objects, PdfDocumentPages.GetPage(document, 0)).GetArray(KnownName.Contents)!;
         return Decode(contents, contents.Count - 1);
     }
 

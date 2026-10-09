@@ -68,7 +68,7 @@ public class HyperPdfObjectStreamBenchmarks
     [Benchmark]
     public int OpenDocument()
     {
-        using var document = PdfDocument.Open(_file, null);
+        using var document = PdfDocumentReader.Open(_file, null);
         return document.PageCount;
     }
 

@@ -84,6 +84,7 @@ public static class DocumentSearch
         {
             cancellationToken.ThrowIfCancellationRequested();
             var page = (startPage + n) % pageCount;
+            await document.PreparePageAsync(page, cancellationToken).ConfigureAwait(false);
             var result = await Task.Run(() => SearchPage(document, query, options, page), cancellationToken).ConfigureAwait(false);
             if (result is not null)
             {

@@ -42,7 +42,7 @@ public sealed partial class HyperPdfDocument : IDocument
         _pageSizes = new PageSize[document.PageCount];
         for (var i = 0; i < _pageSizes.Length; i++)
         {
-            var page = document.GetPage(i);
+            var page = PdfDocumentPages.GetPage(document, i);
             _pageSizes[i] = new(page.Width, page.Height);
         }
     }
@@ -66,7 +66,7 @@ public sealed partial class HyperPdfDocument : IDocument
     public DocumentMetadata GetMetadata()
     {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
-        var info = _document.GetInfo();
+        var info = PdfDocumentMetadata.GetInfo(_document);
         return new()
         {
             Title = info.Title,
@@ -83,7 +83,7 @@ public sealed partial class HyperPdfDocument : IDocument
     }
 
     /// <inheritdoc/>
-    public string? GetPageLabel(int pageIndex) => IsDisposed ? null : _document.GetPageLabel(pageIndex);
+    public string? GetPageLabel(int pageIndex) => IsDisposed ? null : PdfDocumentLabels.GetPageLabel(_document, pageIndex);
 
     /// <inheritdoc/>
     public IReadOnlyList<OutlineNode> GetOutline()
@@ -96,7 +96,7 @@ public sealed partial class HyperPdfDocument : IDocument
         var outline = Volatile.Read(ref _outline);
         if (outline is null)
         {
-            outline = ConvertOutline(_document.GetOutline());
+            outline = ConvertOutline(PdfDocumentNavigation.GetOutline(_document));
             Volatile.Write(ref _outline, outline);
         }
 
@@ -157,8 +157,8 @@ public sealed partial class HyperPdfDocument : IDocument
     /// <returns>The links.</returns>
     private List<PageLink> ReadAnnotationLinks(int pageIndex)
     {
-        var page = _document.GetPage(pageIndex);
-        var source = _document.GetLinks(pageIndex);
+        var page = PdfDocumentPages.GetPage(_document, pageIndex);
+        var source = PdfDocumentLinks.GetLinks(_document, pageIndex);
         var links = new List<PageLink>(source.Count);
         foreach (var link in source)
         {

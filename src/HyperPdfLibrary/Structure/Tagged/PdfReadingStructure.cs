@@ -36,7 +36,7 @@ public static class PdfReadingStructure
         Validate(document, pageIndex);
         var builder = new TaggedNodeBuilder(document, pageIndex);
         var nodes = new List<PdfSemanticNode>();
-        if (document.StructureTree is { } tree)
+        if (PdfDocumentTagged.GetStructureTree(document) is { } tree)
         {
             builder.Build(tree, nodes);
         }
@@ -53,7 +53,7 @@ public static class PdfReadingStructure
     public static PdfSemanticPage InferLayout(PdfDocument document, int pageIndex)
     {
         Validate(document, pageIndex);
-        var content = document.GetMarkedContent(pageIndex);
+        var content = PdfDocumentTagged.GetMarkedContent(document, pageIndex);
         var items = new List<LayoutItem>(content.GlyphCount);
         var glyphs = content.Glyphs;
         for (var i = 0; i < glyphs.Length; i++)

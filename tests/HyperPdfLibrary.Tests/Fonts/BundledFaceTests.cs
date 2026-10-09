@@ -11,10 +11,10 @@ namespace HyperPdfLibrary.Tests.Fonts;
 public sealed class BundledFaceTests
 {
     /// <summary>The name of the bold sans face.</summary>
-    private const string SansBoldFace = "FoxitSansBold";
+    private const string SansBoldFace = "Arimo-Bold";
 
     /// <summary>The name of the regular serif face.</summary>
-    private const string SerifFace = "FoxitSerif";
+    private const string SerifFace = "Tinos-Regular";
 
     /// <summary>A font name no system has.</summary>
     private const string UnknownFont = "NoSuchFontXyz";
@@ -53,20 +53,20 @@ public sealed class BundledFaceTests
     /// <returns>The cases.</returns>
     public static IEnumerable<Func<StandardFaceCase>> StandardFaces() =>
     [
-        static () => new("Helvetica", "FoxitSans"),
+        static () => new("Helvetica", "Arimo-Regular"),
         static () => new("Helvetica-Bold", SansBoldFace),
-        static () => new("Helvetica-Oblique", "FoxitSansItalic"),
-        static () => new("Helvetica-BoldOblique", "FoxitSansBoldItalic"),
+        static () => new("Helvetica-Oblique", "Arimo-Italic"),
+        static () => new("Helvetica-BoldOblique", "Arimo-BoldItalic"),
         static () => new("Times-Roman", SerifFace),
-        static () => new("Times-Bold", "FoxitSerifBold"),
-        static () => new("Times-Italic", "FoxitSerifItalic"),
-        static () => new("Times-BoldItalic", "FoxitSerifBoldItalic"),
-        static () => new("Courier", "FoxitFixed"),
-        static () => new("Courier-Bold", "FoxitFixedBold"),
-        static () => new("Courier-Oblique", "FoxitFixedItalic"),
-        static () => new("Courier-BoldOblique", "FoxitFixedBoldItalic"),
-        static () => new(SymbolFont, "FoxitSymbol"),
-        static () => new("ZapfDingbats", "FoxitDingbats"),
+        static () => new("Times-Bold", "Tinos-Bold"),
+        static () => new("Times-Italic", "Tinos-Italic"),
+        static () => new("Times-BoldItalic", "Tinos-BoldItalic"),
+        static () => new("Courier", "Cousine-Regular"),
+        static () => new("Courier-Bold", "Cousine-Bold"),
+        static () => new("Courier-Oblique", "Cousine-Italic"),
+        static () => new("Courier-BoldOblique", "Cousine-BoldItalic"),
+        static () => new(SymbolFont, "NotoSansMath-Regular"),
+        static () => new("ZapfDingbats", "NotoSansSymbols2-Regular"),
     ];
 
     /// <summary>Each of the standard 14 names uses its own bundled face, never a system font.</summary>
@@ -79,6 +79,7 @@ public sealed class BundledFaceTests
         var (baseFont, expected) = make;
         var standard = StandardFonts.Find(System.Text.Encoding.UTF8.GetBytes(baseFont));
 
+        await SystemFontMatcher.EnsureAsync(new(baseFont, standard, FontFlags.Nonsymbolic, 0, CjkScript.None), CancellationToken.None);
         var face = SystemFontMatcher.Match(new(baseFont, standard, FontFlags.Nonsymbolic, 0, CjkScript.None));
 
         await Assert.That(face.IsBundled).IsTrue();
@@ -90,6 +91,9 @@ public sealed class BundledFaceTests
     [Test]
     public async Task AliasesUseTheBundledFace()
     {
+        await BundledFaces.EnsureAsync(BundledFamily.Sans, true, false, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Serif, false, false, CancellationToken.None);
+
         var arial = SystemFontMatcher.Match(new("Arial,Bold", StandardFont.None, FontFlags.Nonsymbolic, 0, CjkScript.None));
         var times = SystemFontMatcher.Match(new("TimesNewRoman", StandardFont.None, FontFlags.Nonsymbolic, 0, CjkScript.None));
 
@@ -102,15 +106,20 @@ public sealed class BundledFaceTests
     [Test]
     public async Task FlagsChooseTheGenericFace()
     {
+        await BundledFaces.EnsureAsync(BundledFamily.Serif, false, false, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Fixed, false, false, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Sans, true, false, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Sans, false, true, CancellationToken.None);
+
         var serif = SystemFontMatcher.Match(new(UnknownFont, StandardFont.None, FontFlags.Serif | FontFlags.Nonsymbolic, RegularWeight, CjkScript.None));
         var fixedPitch = SystemFontMatcher.Match(new(UnknownFont, StandardFont.None, FontFlags.FixedPitch | FontFlags.Nonsymbolic, RegularWeight, CjkScript.None));
         var sansBold = SystemFontMatcher.Match(new(UnknownFont, StandardFont.None, FontFlags.Nonsymbolic, BoldWeight, CjkScript.None));
         var sansItalic = SystemFontMatcher.Match(new("NoSuchFontXyz-Italic", StandardFont.None, FontFlags.Nonsymbolic, RegularWeight, CjkScript.None));
 
         await Assert.That(serif.FamilyName).IsEqualTo(SerifFace);
-        await Assert.That(fixedPitch.FamilyName).IsEqualTo("FoxitFixed");
+        await Assert.That(fixedPitch.FamilyName).IsEqualTo("Cousine-Regular");
         await Assert.That(sansBold.FamilyName).IsEqualTo(SansBoldFace);
-        await Assert.That(sansItalic.FamilyName).IsEqualTo("FoxitSansItalic");
+        await Assert.That(sansItalic.FamilyName).IsEqualTo("Arimo-Italic");
     }
 
     /// <summary>The bundled faces keep the metrics of the fonts they stand in for, so layout does not change.</summary>
@@ -118,6 +127,9 @@ public sealed class BundledFaceTests
     [Test]
     public async Task BundledFacesMatchStandardWidths()
     {
+        await BundledFaces.EnsureAsync(BundledFamily.Sans, false, false, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Fixed, false, false, CancellationToken.None);
+
         var sans = BundledFaces.Get(BundledFamily.Sans, false, false)!;
         var mono = BundledFaces.Get(BundledFamily.Fixed, false, false)!;
 
@@ -136,6 +148,7 @@ public sealed class BundledFaceTests
             {
                 foreach (var italic in new[] { false, true })
                 {
+                    await BundledFaces.EnsureAsync(family, bold, italic, CancellationToken.None);
                     var face = BundledFaces.Get(family, bold, italic);
                     await Assert.That(face).IsNotNull();
                     using var path = face!.BuildOutline(face.GetGlyph(CodeA));
@@ -151,6 +164,9 @@ public sealed class BundledFaceTests
     [Test]
     public async Task SymbolFontsDrawFromBundledFaces()
     {
+        await BundledFaces.EnsureAsync(BundledFamily.Symbol, false, false, CancellationToken.None);
+        await BundledFaces.EnsureAsync(BundledFamily.Dingbats, false, false, CancellationToken.None);
+
         using var symbol = new FontTestDocument(new() { Subtype = Type1, BaseFont = SymbolFont, Flags = -1 });
         using var dingbats = new FontTestDocument(new() { Subtype = Type1, BaseFont = "ZapfDingbats", Flags = -1 });
 
@@ -164,6 +180,8 @@ public sealed class BundledFaceTests
     [Test]
     public async Task HelveticaDrawsFromTheBundledFace()
     {
+        await BundledFaces.EnsureAsync(BundledFamily.Sans, false, false, CancellationToken.None);
+
         using var document = new FontTestDocument(new() { Subtype = Type1, BaseFont = "Helvetica", Flags = -1 });
 
         await Assert.That(FontProbe.Bounds(document.Font, CodeA).IsEmpty).IsFalse();

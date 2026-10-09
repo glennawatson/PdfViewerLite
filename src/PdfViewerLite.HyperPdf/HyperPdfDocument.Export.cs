@@ -224,7 +224,7 @@ public sealed partial class HyperPdfDocument : IPageExporter
         {
             try
             {
-                _ = importer.ImportPage(_document.GetPage(index), filter);
+                _ = importer.ImportPage(PdfDocumentPages.GetPage(_document, index), filter);
                 copied++;
             }
             catch (Exception ex) when (ex is PdfException or InvalidDataException)
@@ -251,7 +251,7 @@ public sealed partial class HyperPdfDocument : IPageExporter
         {
             try
             {
-                var page = _document.GetPage(index);
+                var page = PdfDocumentPages.GetPage(_document, index);
                 var form = importer.ImportForm(page, page.CropBox, filter, false);
                 var placement = GetFitPlacement(form, page, paper, layout, out var sheet);
                 _ = builder.AddSheet(sheet.X, sheet.Y, page.Rotation, [placement]);
@@ -370,7 +370,7 @@ public sealed partial class HyperPdfDocument : IPageExporter
     {
         try
         {
-            var page = _document.GetPage(index);
+            var page = PdfDocumentPages.GetPage(_document, index);
             var box = tiles > 0 ? GetTileBox(page.MediaBox, tile, tiles) : page.CropBox;
             var form = importer.ImportForm(page, box, filter, false);
             PdfFormPlacement placement = new(form, Matrix3x2.CreateTranslation(-box.Left, -box.Bottom));
@@ -399,7 +399,7 @@ public sealed partial class HyperPdfDocument : IPageExporter
         SheetPage? item = null;
         try
         {
-            var page = _document.GetPage(index);
+            var page = PdfDocumentPages.GetPage(_document, index);
             item = new(importer.ImportForm(page, page.CropBox, filter, true), page.Width, page.Height);
         }
         catch (Exception ex) when (ex is PdfException or InvalidDataException)

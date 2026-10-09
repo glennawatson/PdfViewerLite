@@ -187,7 +187,7 @@ internal sealed class StructureTreeBuilder
             return inherited;
         }
 
-        var index = _document.GetPageIndex(page.AsReference());
+        var index = PdfDocumentPages.GetPageIndex(_document, page.AsReference());
         return index >= 0 ? index : inherited;
     }
 
@@ -232,28 +232,28 @@ internal sealed class StructureTreeBuilder
         switch (dictionary.GetName(KnownName.Type).ToKnownName())
         {
             case KnownName.MCR:
-            {
-                var stream = dictionary.GetRaw(_names.Stm).AsReference();
-                element.AddKid(new(PdfStructureKidKind.MarkedContent, null, ReadPage(dictionary, element.PageIndex), dictionary.GetInt32(KnownName.MCID, -1), default, stream));
-                break;
-            }
-
-            case KnownName.OBJR:
-            {
-                var target = dictionary.GetRaw(KnownName.Obj).AsReference();
-                element.AddKid(new(PdfStructureKidKind.Object, null, ReadPage(dictionary, element.PageIndex), -1, target, default));
-                break;
-            }
-
-            default:
-            {
-                if (AddElement(raw, passed) is { } child)
                 {
-                    element.AddKid(new(PdfStructureKidKind.Element, child, child.PageIndex, -1, default, default));
+                    var stream = dictionary.GetRaw(_names.Stm).AsReference();
+                    element.AddKid(new(PdfStructureKidKind.MarkedContent, null, ReadPage(dictionary, element.PageIndex), dictionary.GetInt32(KnownName.MCID, -1), default, stream));
+                    break;
                 }
 
-                break;
-            }
+            case KnownName.OBJR:
+                {
+                    var target = dictionary.GetRaw(KnownName.Obj).AsReference();
+                    element.AddKid(new(PdfStructureKidKind.Object, null, ReadPage(dictionary, element.PageIndex), -1, target, default));
+                    break;
+                }
+
+            default:
+                {
+                    if (AddElement(raw, passed) is { } child)
+                    {
+                        element.AddKid(new(PdfStructureKidKind.Element, child, child.PageIndex, -1, default, default));
+                    }
+
+                    break;
+                }
         }
     }
 

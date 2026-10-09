@@ -74,8 +74,8 @@ public sealed class TextDeviceTests
     /// <returns>The device with its runs closed.</returns>
     private static TextDevice Collect(bool hooked)
     {
-        var document = PdfDocument.Open(TextTestDocument.Create(string.Empty).ToBytes(), null);
-        var page = document.GetPage(0);
+        var document = PdfDocumentReader.Open(TextTestDocument.Create(string.Empty).ToBytes(), null);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var font = new TextTestFont(new PdfDictionary(document.Objects), false, false);
         var device = new TextDevice();
         device.Reset(page);

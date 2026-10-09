@@ -132,10 +132,10 @@ public sealed class TextStringEncodingTests
     [Arguments(Version20, true)]
     public async Task UntouchedStringsSurviveSaving(string version, bool compact)
     {
-        using var document = PdfDocument.Open(Build(version, CafeUtf16Hex), null);
+        using var document = PdfDocumentReader.Open(Build(version, CafeUtf16Hex), null);
         var saved = Save(document, compact);
 
-        using var reopened = PdfDocument.Open(saved, null);
+        using var reopened = PdfDocumentReader.Open(saved, null);
         await Assert.That(Bytes(Info(reopened), KnownName.Title)).IsEquivalentTo(CafeUtf16);
         await Assert.That(Bytes(Find(reopened, KnownName.Title, KnownName.Parent), KnownName.Title)).IsEquivalentTo(CafeUtf16);
         await Assert.That(Bytes(Find(reopened, KnownName.Contents, KnownName.Rect), KnownName.Contents)).IsEquivalentTo(CafeUtf16);
@@ -150,8 +150,8 @@ public sealed class TextStringEncodingTests
     [Arguments(true)]
     public async Task Utf8StringsSurviveSaving(bool compact)
     {
-        using var document = PdfDocument.Open(Build(Version20, CafeUtf8Hex), null);
-        using var reopened = PdfDocument.Open(Save(document, compact), null);
+        using var document = PdfDocumentReader.Open(Build(Version20, CafeUtf8Hex), null);
+        using var reopened = PdfDocumentReader.Open(Save(document, compact), null);
 
         await Assert.That(Bytes(Info(reopened), KnownName.Title)).IsEquivalentTo(CafeUtf8);
         await Assert.That(Bytes(Find(reopened, KnownName.V, KnownName.T), KnownName.V)).IsEquivalentTo(CafeUtf8);
@@ -173,13 +173,13 @@ public sealed class TextStringEncodingTests
     [Arguments(Version17, "416263", "abc", (byte)'a')]
     public async Task MetadataEditKeepsEncoding(string version, string previousHex, string text, byte first)
     {
-        using var document = PdfDocument.Open(Build(version, previousHex), null);
-        document.SetMetadata(new() { Title = text });
+        using var document = PdfDocumentReader.Open(Build(version, previousHex), null);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = text });
 
-        using var reopened = PdfDocument.Open(PdfIncrementalWriter.Save(document.Objects), null);
+        using var reopened = PdfDocumentReader.Open(PdfIncrementalWriter.Save(document.Objects), null);
         var stored = Bytes(Info(reopened), KnownName.Title);
         await Assert.That(stored[0]).IsEqualTo(first);
-        await Assert.That(reopened.GetInfo().Title).IsEqualTo(text);
+        await Assert.That(PdfDocumentMetadata.GetInfo(reopened).Title).IsEqualTo(text);
     }
 
     /// <summary>A form edit keeps the encoding of the value it replaces, and the value reads back after both saves.</summary>
@@ -197,10 +197,10 @@ public sealed class TextStringEncodingTests
     [Arguments(Version20, "416263", Omega, (byte)0xEF, false)]
     public async Task FormEditKeepsEncoding(string version, string previousHex, string text, byte first, bool compact)
     {
-        using var document = PdfDocument.Open(Build(version, previousHex), null);
-        await Assert.That(document.Form.SetText(0, FieldIndex, text)).IsTrue();
+        using var document = PdfDocumentReader.Open(Build(version, previousHex), null);
+        await Assert.That(PdfDocumentForms.GetForm(document).SetText(0, FieldIndex, text)).IsTrue();
 
-        using var reopened = PdfDocument.Open(Save(document, compact), null);
+        using var reopened = PdfDocumentReader.Open(Save(document, compact), null);
         var stored = Bytes(Find(reopened, KnownName.V, KnownName.T), KnownName.V);
         await Assert.That(stored[0]).IsEqualTo(first);
         await Assert.That(PdfText.Decode(stored)).IsEqualTo(text);
@@ -220,7 +220,7 @@ public sealed class TextStringEncodingTests
     [Arguments(Version17, "416263", "xyz", (byte)'x')]
     public async Task AnnotationEditKeepsEncoding(string version, string previousHex, string text, byte first)
     {
-        using var document = PdfDocument.Open(Build(version, previousHex), null);
+        using var document = PdfDocumentReader.Open(Build(version, previousHex), null);
         var annotation = Find(document, KnownName.Contents, KnownName.Rect).Clone();
         PdfAnnotations.SetText(annotation, KnownName.Contents, text);
 
@@ -241,11 +241,11 @@ public sealed class TextStringEncodingTests
     [Arguments(Version20, true, (byte)0xEF)]
     public async Task NewTextRoundTrips(string version, bool compact, byte first)
     {
-        using var document = PdfDocument.Open(Build(version, "416263"), null);
-        document.SetMetadata(new() { Title = Omega });
+        using var document = PdfDocumentReader.Open(Build(version, "416263"), null);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = Omega });
 
-        using var reopened = PdfDocument.Open(Save(document, compact), null);
-        await Assert.That(reopened.GetInfo().Title).IsEqualTo(Omega);
+        using var reopened = PdfDocumentReader.Open(Save(document, compact), null);
+        await Assert.That(PdfDocumentMetadata.GetInfo(reopened).Title).IsEqualTo(Omega);
         await Assert.That(Bytes(Info(reopened), KnownName.Title)[0]).IsEqualTo(first);
     }
 

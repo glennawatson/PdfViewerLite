@@ -12,10 +12,10 @@ internal static class PdfSignatureDetailsReader
 {
     /// <summary>Reads the details of every signature field.</summary>
     /// <param name="document">The document.</param>
-    /// <returns>The details, one per entry of <see cref="PdfDocument.GetSignatures"/>.</returns>
+    /// <returns>The details, one per entry of <see cref="PdfDocumentAttachments.GetSignatures"/>.</returns>
     internal static PdfSignatureDetails[] Read(PdfDocument document)
     {
-        var signatures = document.GetSignatures();
+        var signatures = PdfDocumentAttachments.GetSignatures(document);
         var names = document.Objects.Names;
         var fields = document.Catalog.GetDictionary(KnownName.AcroForm)?.GetArray(KnownName.Fields);
         var certification = document.Catalog.GetDictionary(KnownName.Perms)?.GetRaw(KnownName.DocMDP) ?? default;

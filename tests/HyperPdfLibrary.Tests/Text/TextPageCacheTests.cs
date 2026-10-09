@@ -30,7 +30,7 @@ public sealed class TextPageCacheTests
         Func<int, int, PdfTextPage> build = (_, _) =>
         {
             builds++;
-            return document.ExtractText(0);
+            return HyperPdfLibrary.Document.PdfDocumentText.ExtractText(document, 0);
         };
 
         var first = cache.GetOrAdd(0, 0, build);

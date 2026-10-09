@@ -51,7 +51,7 @@ internal static class RasterReportBuilder
         var readable = true;
         try
         {
-            scanner.Scan(document.GetPage(index));
+            scanner.Scan(PdfDocumentPages.GetPage(document, index));
         }
         catch (Exception ex) when (ex is InvalidDataException or PdfException or ArgumentException or InvalidOperationException
             or IndexOutOfRangeException or NotSupportedException or FormatException or OverflowException)
@@ -71,7 +71,7 @@ internal static class RasterReportBuilder
     {
         try
         {
-            return document.GetTextPage(index).CharCount;
+            return PdfDocumentText.GetTextPage(document, index).CharCount;
         }
         catch (Exception ex) when (ex is InvalidDataException or PdfException or ArgumentException or InvalidOperationException
             or IndexOutOfRangeException or NotSupportedException or FormatException or OverflowException)

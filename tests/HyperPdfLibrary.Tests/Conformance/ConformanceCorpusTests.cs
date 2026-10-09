@@ -55,7 +55,7 @@ public sealed class ConformanceCorpusTests
             return null;
         }
 
-        using var document = PdfDocument.Open(File.ReadAllBytes(path), null);
-        return document.GetConformance();
+        using var document = PdfDocumentReader.Open(File.ReadAllBytes(path), null);
+        return PdfDocumentConformance.GetConformance(document);
     }
 }

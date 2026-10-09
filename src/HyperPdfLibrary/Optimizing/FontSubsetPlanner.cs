@@ -110,10 +110,10 @@ internal static class FontSubsetPlanner
     {
         for (var i = 0; i < document.PageCount; i++)
         {
-            using var interpreter = new ContentInterpreter(document.RenderCache, device, 0);
+            using var interpreter = new ContentInterpreter(PdfDocumentRendering.GetRenderCache(document), device, 0);
             try
             {
-                interpreter.RunPage(document.GetPage(i));
+                interpreter.RunPage(PdfDocumentPages.GetPage(document, i));
             }
             catch (Exception e) when (e is InvalidDataException or PdfException or ArgumentException or InvalidOperationException
                 or IndexOutOfRangeException or NotSupportedException or FormatException or OverflowException)
@@ -159,26 +159,26 @@ internal static class FontSubsetPlanner
         switch (font)
         {
             case PdfCompositeFont composite:
-            {
-                AddGlyph(glyphs, composite.GetGlyph(code));
-                break;
-            }
-
-            case PdfSimpleFont simple:
-            {
-                AddGlyph(glyphs, simple.GetGlyph(code));
-                if (simple.Source is ProgramGlyphSource { Program: TrueTypeProgram program })
                 {
-                    AddCmapGlyphs(program, font, code, glyphs);
+                    AddGlyph(glyphs, composite.GetGlyph(code));
+                    break;
                 }
 
-                break;
-            }
+            case PdfSimpleFont simple:
+                {
+                    AddGlyph(glyphs, simple.GetGlyph(code));
+                    if (simple.Source is ProgramGlyphSource { Program: TrueTypeProgram program })
+                    {
+                        AddCmapGlyphs(program, font, code, glyphs);
+                    }
+
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 

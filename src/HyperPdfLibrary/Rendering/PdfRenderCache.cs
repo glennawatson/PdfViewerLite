@@ -138,6 +138,14 @@ internal sealed class PdfRenderCache
         SoftMasks.Clear();
     }
 
+    /// <summary>Drops font-dependent entries after newly requested font data becomes available.</summary>
+    internal void InvalidateFonts()
+    {
+        Fonts.Clear();
+        Cells.Clear();
+        SoftMasks.Clear();
+    }
+
     /// <summary>Gets an image XObject ready to draw and marks it in use.</summary>
     /// <param name="stream">The image stream.</param>
     /// <returns>The image, which the caller releases; <see langword="null"/> when it cannot be decoded.</returns>

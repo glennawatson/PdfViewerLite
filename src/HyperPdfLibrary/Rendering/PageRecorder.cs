@@ -66,6 +66,36 @@ internal static class PageRecorder
         return Finish(device, out bytes, out images);
     }
 
+    /// <summary>
+    /// Gets an annotation's normal appearance stream. With several states it follows /AS; without /AS it uses the state
+    /// named by the field value (/V, or the parent's /V) when there is one, else /Off, as PDFium does.
+    /// </summary>
+    /// <param name="annotation">The annotation dictionary.</param>
+    /// <param name="names">The document's name table.</param>
+    /// <returns>The stream, or null.</returns>
+    internal static PdfStream? GetAppearance(PdfDictionary annotation, PdfNameTable names)
+    {
+        var normal = annotation.GetDictionary(KnownName.AP)?.Get(KnownName.N) ?? default;
+        if (normal.AsStream() is { } stream)
+        {
+            return stream;
+        }
+
+        if (normal.AsDictionary() is not { } states)
+        {
+            return null;
+        }
+
+        var selected = annotation.GetName(KnownName.AS);
+        if (!selected.IsNone)
+        {
+            return states.GetStream(selected);
+        }
+
+        var state = FieldState(annotation, names);
+        return !state.IsNone && states.ContainsKey(state) ? states.GetStream(state) : states.GetStream(KnownName.Off);
+    }
+
     /// <summary>Starts a device that records the page area and clips to it.</summary>
     /// <param name="page">The page.</param>
     /// <returns>The device.</returns>
@@ -111,13 +141,13 @@ internal static class PageRecorder
         }
 
         var context = new AnnotationContext(pass.Cache, pass.Page, annotation);
-        if (!AnnotationAppearance.IsTinted(context))
+        if (!AnnotationTintAppearance.IsTinted(context))
         {
             return;
         }
 
         var bounds = PdfRectangle.FromCorners(rect.Left, rect.Bottom, rect.Right, rect.Top);
-        DrawForm(pass, annotation, AnnotationAppearance.CreateTint(context, bounds, tint), bounds);
+        DrawForm(pass, annotation, AnnotationTintAppearance.CreateTint(context, bounds, tint), bounds);
     }
 
     /// <summary>Draws one annotation's normal appearance, generating one when it has none.</summary>
@@ -140,7 +170,7 @@ internal static class PageRecorder
             return;
         }
 
-        if (HasNormalAppearance(annotation) || AnnotationAppearance.Generate(new(pass.Cache, pass.Page, annotation)) is not { } generated)
+        if (HasNormalAppearance(annotation) || AnnotationAppearanceDispatch.Generate(new(pass.Cache, pass.Page, annotation)) is not { } generated)
         {
             return;
         }
@@ -201,36 +231,6 @@ internal static class PageRecorder
     /// <returns><see langword="true"/> when /AP /N is a dictionary of states, which PDFium never regenerates.</returns>
     private static bool HasNormalAppearance(PdfDictionary annotation) =>
         annotation.GetDictionary(KnownName.AP)?.Get(KnownName.N).AsDictionary() is not null;
-
-    /// <summary>
-    /// Gets an annotation's normal appearance stream. With several states it follows /AS; without /AS it uses the state
-    /// named by the field value (/V, or the parent's /V) when there is one, else /Off, as PDFium does.
-    /// </summary>
-    /// <param name="annotation">The annotation dictionary.</param>
-    /// <param name="names">The document's name table.</param>
-    /// <returns>The stream, or null.</returns>
-    private static PdfStream? GetAppearance(PdfDictionary annotation, PdfNameTable names)
-    {
-        var normal = annotation.GetDictionary(KnownName.AP)?.Get(KnownName.N) ?? default;
-        if (normal.AsStream() is { } stream)
-        {
-            return stream;
-        }
-
-        if (normal.AsDictionary() is not { } states)
-        {
-            return null;
-        }
-
-        var selected = annotation.GetName(KnownName.AS);
-        if (!selected.IsNone)
-        {
-            return states.GetStream(selected);
-        }
-
-        var state = FieldState(annotation, names);
-        return !state.IsNone && states.ContainsKey(state) ? states.GetStream(state) : states.GetStream(KnownName.Off);
-    }
 
     /// <summary>Reads the field value PDFium falls back to when a widget has no /AS: its own /V, else its parent's.</summary>
     /// <param name="annotation">The annotation dictionary.</param>

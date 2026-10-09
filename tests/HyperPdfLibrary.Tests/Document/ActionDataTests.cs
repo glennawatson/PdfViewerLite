@@ -145,11 +145,11 @@ public sealed class ActionDataTests
     public async Task OpenActionTriggersAndScriptsAreRead()
     {
         using var document = Open();
-        var scripts = document.GetDocumentScripts();
+        var scripts = PdfDocumentActions.GetDocumentScripts(document);
 
-        await Assert.That(document.GetOpenAction()!.Action.Value is JavaScriptAction { Script: "app.alert(1)" }).IsTrue();
-        await Assert.That(document.GetTriggers()[0].Event).IsEqualTo("WC");
-        await Assert.That(document.GetTriggers(document.GetPage(0))[0].Event).IsEqualTo("O");
+        await Assert.That(PdfDocumentActions.GetOpenAction(document)!.Action.Value is JavaScriptAction { Script: "app.alert(1)" }).IsTrue();
+        await Assert.That(PdfDocumentActions.GetTriggers(document)[0].Event).IsEqualTo("WC");
+        await Assert.That(PdfDocumentActions.GetTriggers(document, PdfDocumentPages.GetPage(document, 0))[0].Event).IsEqualTo("O");
         await Assert.That(scripts.Length).IsEqualTo(1);
         await Assert.That(scripts[0].Name).IsEqualTo("init");
         await Assert.That(scripts[0].Script).IsEqualTo("app.alert(1)");
@@ -192,7 +192,7 @@ public sealed class ActionDataTests
     /// <param name="document">The document.</param>
     /// <param name="number">The action object number.</param>
     /// <returns>The node.</returns>
-    private static PdfActionNode Node(PdfDocument document, int number) => document.ReadActionNode(StructureDocuments.Dictionary(document, number));
+    private static PdfActionNode Node(PdfDocument document, int number) => PdfDocumentActions.ReadActionNode(document, StructureDocuments.Dictionary(document, number));
 
     /// <summary>Opens the sample document that holds every action.</summary>
     /// <returns>The document.</returns>

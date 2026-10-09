@@ -66,8 +66,8 @@ public sealed class StructureOptimizationTests
         var image = MiniPdf.Stream(entries, OptimizerTestKit.Latin1(OptimizerTestKit.Deflate(predicted)));
         var source = OptimizerSamples.ImagePage(image, Width);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality);
-        using var document = PdfDocument.Open(result.Bytes, null);
-        var stream = document.GetPage(0).Resources!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
+        var stream = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
 
         await Assert.That(stream.DecodeToArray()).IsEquivalentTo(samples);
         await Assert.That(OptimizerTestKit.MaxDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsEqualTo(0);
@@ -80,10 +80,10 @@ public sealed class StructureOptimizationTests
     {
         var source = OptimizerSamples.Duplicates();
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality);
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
         var name = document.Objects.Names.Intern("Im1"u8);
-        var first = document.GetPage(0).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name).AsReference();
-        var second = document.GetPage(1).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name).AsReference();
+        var first = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name).AsReference();
+        var second = PdfDocumentPages.GetPage(document, 1).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name).AsReference();
 
         await Assert.That(first).IsEqualTo(second);
         await Assert.That(result.Report.GetSaving(PdfOptimizeCategory.Duplicates).Count).IsGreaterThan(0);
@@ -95,11 +95,11 @@ public sealed class StructureOptimizationTests
     public async Task KeepsDuplicatesWhenAsked()
     {
         var result = OptimizerTestKit.Optimize(OptimizerSamples.Duplicates(), PdfOptimizeOptions.KeepQuality with { RemoveDuplicates = false });
-        using var document = PdfDocument.Open(result.Bytes, null);
+        using var document = PdfDocumentReader.Open(result.Bytes, null);
         var name = document.Objects.Names.Intern("Im1"u8);
 
-        await Assert.That(document.GetPage(0).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name))
-            .IsNotEqualTo(document.GetPage(1).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name));
+        await Assert.That(PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name))
+            .IsNotEqualTo(PdfDocumentPages.GetPage(document, 1).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name));
     }
 
     /// <summary>Objects nothing reaches are dropped and counted.</summary>

@@ -26,7 +26,9 @@ public sealed partial class PdfPageRenderer
     public ValueTask<bool> RenderAsync(PdfTileRequest request, Memory<byte> pixels, int width, int height, int stride, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var load = (uint)request.PageIndex < (uint)_document.PageCount ? _document.PrefetchPageAsync(request.PageIndex, cancellationToken) : ValueTask.CompletedTask;
+        var load = (uint)request.PageIndex < (uint)_document.PageCount
+            ? HyperPdfLibrary.Document.PdfDocumentPages.PrefetchPageAsync(_document, request.PageIndex, cancellationToken)
+            : ValueTask.CompletedTask;
         return load.IsCompletedSuccessfully
             ? RenderReady(request, pixels, width, height, stride, cancellationToken)
             : RenderAfterAsync(load, request, pixels, width, height, stride, cancellationToken);

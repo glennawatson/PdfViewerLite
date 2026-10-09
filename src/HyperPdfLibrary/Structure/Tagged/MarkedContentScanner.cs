@@ -100,33 +100,33 @@ internal static class MarkedContentScanner
             switch (op)
             {
                 case ContentOperator.BeginMarkedContent:
-                {
-                    output.Add(new(reader.Operand(0).Name, -1, null));
-                    break;
-                }
+                    {
+                        output.Add(new(reader.Operand(0).Name, -1, null));
+                        break;
+                    }
 
                 case ContentOperator.BeginMarkedContentProperties:
-                {
-                    output.Add(ReadMark(document, content, reader.Operand(0).Name, reader.Operand(1), resources));
-                    break;
-                }
+                    {
+                        output.Add(ReadMark(document, content, reader.Operand(0).Name, reader.Operand(1), resources));
+                        break;
+                    }
 
                 case ContentOperator.PaintXObject:
-                {
-                    images |= ScanXObject(document, reader.Operand(0).Name, resources, depth, output);
-                    break;
-                }
+                    {
+                        images |= ScanXObject(document, reader.Operand(0).Name, resources, depth, output);
+                        break;
+                    }
 
                 case ContentOperator.BeginInlineImage:
-                {
-                    images = true;
-                    break;
-                }
+                    {
+                        images = true;
+                        break;
+                    }
 
                 default:
-                {
-                    break;
-                }
+                    {
+                        break;
+                    }
             }
         }
 
@@ -198,7 +198,7 @@ internal static class MarkedContentScanner
 
         var dictionary = xobject.Dictionary;
         var membership = dictionary.GetRaw(KnownName.OC);
-        if (!membership.IsNull && !document.OptionalContent.IsVisible(membership))
+        if (!membership.IsNull && !PdfDocumentLayers.GetOptionalContent(document).IsVisible(membership))
         {
             return false;
         }

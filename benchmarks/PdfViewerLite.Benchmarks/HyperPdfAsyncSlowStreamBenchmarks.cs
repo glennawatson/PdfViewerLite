@@ -82,11 +82,11 @@ public class HyperPdfAsyncSlowStreamBenchmarks
     private int ReadTextSync()
     {
         using var stream = new ThrottledStream(_bytes, TimeSpan.FromMilliseconds(LatencyMilliseconds));
-        using var document = PdfDocument.Open(stream, null);
+        using var document = PdfDocumentReader.Open(stream, null);
         var characters = 0;
         for (var i = 0; i < Math.Min(TextPages, document.PageCount); i++)
         {
-            characters += document.GetTextPage(i).CharCount;
+            characters += PdfDocumentText.GetTextPage(document, i).CharCount;
         }
 
         return characters;
@@ -97,11 +97,11 @@ public class HyperPdfAsyncSlowStreamBenchmarks
     private async Task<int> ReadTextAsync()
     {
         await using var stream = new ThrottledStream(_bytes, TimeSpan.FromMilliseconds(LatencyMilliseconds));
-        using var document = await PdfDocument.OpenAsync(stream, null, CancellationToken.None).ConfigureAwait(false);
+        using var document = await PdfDocumentReader.OpenAsync(stream, null, CancellationToken.None).ConfigureAwait(false);
         var characters = 0;
         for (var i = 0; i < Math.Min(TextPages, document.PageCount); i++)
         {
-            characters += (await document.GetTextPageAsync(i, CancellationToken.None).ConfigureAwait(false)).CharCount;
+            characters += (await PdfDocumentText.GetTextPageAsync(document, i, CancellationToken.None).ConfigureAwait(false)).CharCount;
         }
 
         return characters;

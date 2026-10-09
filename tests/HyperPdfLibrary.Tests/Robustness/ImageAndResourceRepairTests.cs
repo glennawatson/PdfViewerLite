@@ -50,18 +50,18 @@ public sealed class ImageAndResourceRepairTests
     [Test]
     public async Task TruncatedJpegIsReportedOncePerImage()
     {
-        using var document = PdfDocument.Open(ImageDocument(Cut), null);
+        using var document = PdfDocumentReader.Open(ImageDocument(Cut), null);
         var stream = document.Objects.GetObject(new(ImageNumber, 0)).AsStream()!;
 
         var first = PdfImageDecoder.Decode(stream);
         var second = PdfImageDecoder.Decode(stream);
-        var reports = document.GetRepairs().Where(static repair => repair.Code == PdfDiagnosticCode.TruncatedStream).ToList();
+        var reports = PdfDocumentCheck.GetRepairs(document).Where(static repair => repair.Code == PdfDiagnosticCode.TruncatedStream).ToList();
 
         await Assert.That(first).IsNotNull();
         await Assert.That(second).IsNotNull();
         await Assert.That(reports.Count).IsEqualTo(1);
         await Assert.That(reports[0].ObjectNumber).IsEqualTo(ImageNumber);
-        await Assert.That(document.WasRepaired).IsTrue();
+        await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsTrue();
     }
 
     /// <summary>A whole JPEG decodes without a report.</summary>
@@ -69,11 +69,11 @@ public sealed class ImageAndResourceRepairTests
     [Test]
     public async Task WholeJpegIsNotReported()
     {
-        using var document = PdfDocument.Open(ImageDocument(0), null);
+        using var document = PdfDocumentReader.Open(ImageDocument(0), null);
 
         _ = PdfImageDecoder.Decode(document.Objects.GetObject(new(ImageNumber, 0)).AsStream()!);
 
-        await Assert.That(document.WasRepaired).IsFalse();
+        await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsFalse();
     }
 
     /// <summary>A page with no /Resources, own or inherited, gets an empty one on save.</summary>
@@ -81,11 +81,11 @@ public sealed class ImageAndResourceRepairTests
     [Test]
     public async Task SaveAddsMissingResources()
     {
-        using var document = PdfDocument.Open(MiniPdf.Build(Catalog, Pages, BarePage), null);
+        using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, BarePage), null);
         var saved = PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Classic);
-        using var reopened = PdfDocument.Open(saved, null);
+        using var reopened = PdfDocumentReader.Open(saved, null);
 
-        await Assert.That(reopened.GetPage(0).Dictionary.GetDictionary(KnownName.Resources)).IsNotNull();
+        await Assert.That(PdfDocumentPages.GetPage(reopened, 0).Dictionary.GetDictionary(KnownName.Resources)).IsNotNull();
         await Assert.That(document.Objects.GetDiagnostics().Where(static fault => fault.Code == PdfDiagnosticCode.FixedOnSave && fault.ObjectNumber == PageNumber)).IsNotEmpty();
     }
 
@@ -95,7 +95,7 @@ public sealed class ImageAndResourceRepairTests
     public async Task InheritedResourcesAreNotDuplicated()
     {
         var file = MiniPdf.Build(Catalog, "<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources << >> >>", BarePage);
-        using var document = PdfDocument.Open(file, null);
+        using var document = PdfDocumentReader.Open(file, null);
         var saved = PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Classic);
 
         await Assert.That(document.Objects.GetDiagnostics().Where(static fault => fault.Code == PdfDiagnosticCode.FixedOnSave)).IsEmpty();

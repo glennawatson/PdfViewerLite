@@ -23,7 +23,7 @@ internal static class ResourcePruner
     internal static void Prune(PdfDocument document, int pageIndex, RedactionTally tally)
     {
         var store = document.Objects;
-        var page = document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(document, pageIndex);
         var dictionary = PdfPageAnnotations.GetPageDictionary(store, page);
         if (dictionary.GetDictionary(KnownName.Resources) is not { } resources || !TryScan(dictionary.Get(KnownName.Contents), store.Names, resources, out var used))
         {
@@ -116,33 +116,33 @@ internal static class ResourcePruner
         switch (op)
         {
             case ContentOperator.SetFont:
-            {
-                _ = used[0].Add(reader.Operand(0).Name);
-                break;
-            }
+                {
+                    _ = used[0].Add(reader.Operand(0).Name);
+                    break;
+                }
 
             case ContentOperator.PaintXObject:
-            {
-                _ = used[1].Add(reader.Operand(0).Name);
-                break;
-            }
+                {
+                    _ = used[1].Add(reader.Operand(0).Name);
+                    break;
+                }
 
             case ContentOperator.SetGraphicsState:
-            {
-                _ = used[2].Add(reader.Operand(0).Name);
-                break;
-            }
+                {
+                    _ = used[2].Add(reader.Operand(0).Name);
+                    break;
+                }
 
             case ContentOperator.BeginMarkedContentProperties:
-            {
-                _ = used[3].Add(reader.Operand(1).Name);
-                break;
-            }
+                {
+                    _ = used[3].Add(reader.Operand(1).Name);
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 

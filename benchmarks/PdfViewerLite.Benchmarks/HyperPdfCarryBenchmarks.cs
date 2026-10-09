@@ -35,9 +35,9 @@ public class HyperPdfCarryBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _target = PdfDocument.Open(TestPdf.Create(PlainPages), null);
-        _plain = PdfDocument.Open(TestPdf.Create(PlainPages), null);
-        _book = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
+        _target = PdfDocumentReader.Open(TestPdf.Create(PlainPages), null);
+        _plain = PdfDocumentReader.Open(TestPdf.Create(PlainPages), null);
+        _book = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
     }
 
     /// <summary>Closes the documents.</summary>
@@ -54,9 +54,10 @@ public class HyperPdfCarryBenchmarks
     [Benchmark(Baseline = true)]
     public int InsertPlain()
     {
-        _target!.InsertPages(_target.PageCount, _plain!, CopiedPages);
-        var count = _target.PageCount;
-        _ = _target.Undo();
+        var target = _target!;
+        PdfDocumentPageOperations.InsertPages(target, target.PageCount, _plain!, CopiedPages);
+        var count = target.PageCount;
+        _ = PdfDocumentEditing.Undo(target);
         return count;
     }
 
@@ -65,14 +66,15 @@ public class HyperPdfCarryBenchmarks
     [Benchmark]
     public int InsertBook()
     {
-        _target!.InsertPages(_target.PageCount, _book!, CopiedPages);
-        var count = _target.PageCount;
-        _ = _target.Undo();
+        var target = _target!;
+        PdfDocumentPageOperations.InsertPages(target, target.PageCount, _book!, CopiedPages);
+        var count = target.PageCount;
+        _ = PdfDocumentEditing.Undo(target);
         return count;
     }
 
     /// <summary>Extracts the two pages of the book into a new document, carrying the same structures.</summary>
     /// <returns>The length of the new file.</returns>
     [Benchmark]
-    public int ExtractBook() => _book!.ExtractPages(CopiedPages).Length;
+    public int ExtractBook() => PdfDocumentPageOperations.ExtractPages(_book!, CopiedPages).Length;
 }

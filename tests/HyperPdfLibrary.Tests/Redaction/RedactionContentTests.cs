@@ -88,8 +88,8 @@ public sealed class RedactionContentTests
         pdf.Resources = $"/XObject << /Im1 {image} 0 R >>";
         pdf.Content = DrawImage;
         var saved = RedactionSamples.Redact(pdf.ToBytes(), NoOverlay, ImageArea);
-        using var document = PdfDocument.Open(saved, null);
-        var blanked = (PdfImageObject)document.GetPageContent(0).Objects[0];
+        using var document = PdfDocumentReader.Open(saved, null);
+        var blanked = (PdfImageObject)PdfDocumentPageContent.GetPageContent(document, 0).Objects[0];
         var softMask = blanked.Dictionary.Get(KnownName.SMask).AsStream();
 
         await Assert.That(softMask).IsNotNull();
@@ -109,9 +109,9 @@ public sealed class RedactionContentTests
         pdf.Content = $"1 0 0 rg {DrawImage}";
         var saved = RedactionSamples.Redact(pdf.ToBytes(), NoOverlay, ImageArea);
         var image = PageObjectSamples.Render(saved);
-        using var document = PdfDocument.Open(saved, null);
+        using var document = PdfDocumentReader.Open(saved, null);
 
-        await Assert.That(((PdfImageObject)document.GetPageContent(0).Objects[0]).IsMask).IsTrue();
+        await Assert.That(((PdfImageObject)PdfDocumentPageContent.GetPageContent(document, 0).Objects[0]).IsMask).IsTrue();
         await Assert.That(image.IsNear(AreaColumn, AreaRow, Rgb.White, Tolerance)).IsTrue();
         await Assert.That(image.IsNear(FarColumn, FarRow, Rgb.Red255, Tolerance)).IsTrue();
     }
@@ -127,9 +127,9 @@ public sealed class RedactionContentTests
         var content = clipTouchesArea ? $"50 50 100 100 re W n {DrawImage}" : $"100 100 50 50 re W n {DrawImage}";
         var options = NoOverlay with { Images = PdfRedactionImageMode.RemoveUnlessInvisible };
         var saved = RedactionSamples.Redact(ImagePage(content), options, ImageArea);
-        using var document = PdfDocument.Open(saved, null);
+        using var document = PdfDocumentReader.Open(saved, null);
 
-        await Assert.That(document.GetPageContent(0).Objects.Count).IsEqualTo(clipTouchesArea ? 0 : 1);
+        await Assert.That(PdfDocumentPageContent.GetPageContent(document, 0).Objects.Count).IsEqualTo(clipTouchesArea ? 0 : 1);
     }
 
     /// <summary>Line art modes keep, remove covered, or remove touched paths.</summary>
@@ -144,9 +144,9 @@ public sealed class RedactionContentTests
     {
         var pdf = PageObjectSamples.Page("0 0 1 rg 10 10 120 120 re f 1 0 0 rg 65 65 20 20 re f");
         var saved = RedactionSamples.Redact(pdf, NoOverlay with { LineArt = mode }, ImageArea);
-        using var document = PdfDocument.Open(saved, null);
+        using var document = PdfDocumentReader.Open(saved, null);
 
-        await Assert.That(document.GetPageContent(0).Objects.Count).IsEqualTo(expectedCount);
+        await Assert.That(PdfDocumentPageContent.GetPageContent(document, 0).Objects.Count).IsEqualTo(expectedCount);
     }
 
     /// <summary>A clipping path of a removed path still clips what follows it.</summary>

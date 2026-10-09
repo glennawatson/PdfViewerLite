@@ -54,10 +54,10 @@
     <InternalsVisibleTo Include="PdfViewerLite.App.Tests" />
   </ItemGroup>
 
-  <!-- The Licences window shows these notices: the packages in this project's assets, the bundled fonts and CMaps, and the data the app downloads. -->
+  <!-- The Licences window shows these notices: the packages in this project's assets, the font and CMap resource packs, and the data the app downloads. -->
   <PropertyGroup>
     <NoticesResourceName>PdfViewerLite.ThirdPartyNotices.md</NoticesResourceName>
-    <NoticesComponents>foxit-fonts;adobe-cmaps;tessdata-fast;kokoro;misaki;melotts;bert-base-uncased;g2p-en;cmudict</NoticesComponents>
+    <NoticesComponents>open-font-pack;adobe-cmaps;tessdata-fast;kokoro;misaki;melotts;bert-base-uncased;g2p-en;cmudict</NoticesComponents>
   </PropertyGroup>
   <Import Project="..\..\licenses\ThirdPartyNotices.targets" />
 

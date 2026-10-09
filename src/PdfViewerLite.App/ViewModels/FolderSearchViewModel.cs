@@ -131,7 +131,7 @@ public sealed partial class FolderSearchViewModel(AppServices services, Action<s
             for (var i = 0; i < files.Count && !token.IsCancellationRequested; i++)
             {
                 var path = files[i];
-                var found = await Task.Run(() => FolderSearch.SearchFile(services.Engine, path, query, options, MaxMatchesPerFile, token), token).ConfigureAwait(true);
+                var found = await FolderSearch.SearchFileAsync(services.Engine, path, query, options, MaxMatchesPerFile, token).ConfigureAwait(true);
                 Add(found);
                 matches += found.Matches.Count;
                 withMatches += found.Matches.Count > 0 ? 1 : 0;

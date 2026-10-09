@@ -39,14 +39,14 @@ public sealed class PageImporterTests
     [Test]
     public async Task CopiedPagesKeepContentAndShareObjects()
     {
-        using var source = PdfDocument.Open(TestPdf.Create(SourcePages), null);
+        using var source = PdfDocumentReader.Open(TestPdf.Create(SourcePages), null);
         var builder = new PdfDocumentBuilder();
         var importer = new PdfPageImporter(builder, source);
-        _ = importer.ImportPage(source.GetPage(0), PdfAnnotationFilter.All);
-        _ = importer.ImportPage(source.GetPage(LastPage), PdfAnnotationFilter.All);
-        _ = importer.ImportPage(source.GetPage(0), PdfAnnotationFilter.All);
+        _ = importer.ImportPage(PdfDocumentPages.GetPage(source, 0), PdfAnnotationFilter.All);
+        _ = importer.ImportPage(PdfDocumentPages.GetPage(source, LastPage), PdfAnnotationFilter.All);
+        _ = importer.ImportPage(PdfDocumentPages.GetPage(source, 0), PdfAnnotationFilter.All);
 
-        using var copy = PdfDocument.Open(builder.ToArray(), null);
+        using var copy = PdfDocumentReader.Open(builder.ToArray(), null);
         var fonts = new List<int>();
         for (var i = 0; i < copy.PageCount; i++)
         {
@@ -54,7 +54,7 @@ public sealed class PageImporterTests
         }
 
         await Assert.That(copy.PageCount).IsEqualTo(SourcePages);
-        await Assert.That(copy.GetPage(0).Width).IsEqualTo(source.GetPage(0).Width);
+        await Assert.That(PdfDocumentPages.GetPage(copy, 0).Width).IsEqualTo(PdfDocumentPages.GetPage(source, 0).Width);
         await Assert.That(PageContent(copy, 0)).IsEqualTo(PageContent(source, 0));
         await Assert.That(PageContent(copy, 1)).IsEqualTo(PageContent(source, LastPage));
         await Assert.That(fonts.Distinct().Count()).IsEqualTo(1);
@@ -68,19 +68,19 @@ public sealed class PageImporterTests
     [Test]
     public async Task CyclesEndAndPageTreesAreNotCopied()
     {
-        using var source = PdfDocument.Open(CyclicSource.ToArray(), null);
+        using var source = PdfDocumentReader.Open(CyclicSource.ToArray(), null);
         var builder = new PdfDocumentBuilder();
-        _ = new PdfPageImporter(builder, source).ImportPage(source.GetPage(0), PdfAnnotationFilter.All);
+        _ = new PdfPageImporter(builder, source).ImportPage(PdfDocumentPages.GetPage(source, 0), PdfAnnotationFilter.All);
 
-        using var copy = PdfDocument.Open(builder.ToArray(), null);
+        using var copy = PdfDocumentReader.Open(builder.ToArray(), null);
         var names = copy.Objects.Names;
-        var marker = copy.GetPage(0).Resources!.GetDictionary(names.Intern("Marker"));
+        var marker = PdfDocumentPages.GetPage(copy, 0).Resources!.GetDictionary(names.Intern("Marker"));
 
         await Assert.That(marker).IsNotNull();
         await Assert.That(marker!.GetRaw(names.Intern("Self")).IsReference).IsTrue();
         await Assert.That(marker.GetDictionary(names.Intern("Self"))).IsSameReferenceAs(marker);
         await Assert.That(marker.ContainsKey(KnownName.Parent)).IsFalse();
-        await Assert.That(marker.GetDictionary(names.Intern("Back"))).IsSameReferenceAs(copy.GetPage(0).Dictionary);
+        await Assert.That(marker.GetDictionary(names.Intern("Back"))).IsSameReferenceAs(PdfDocumentPages.GetPage(copy, 0).Dictionary);
         await Assert.That(marker.Get(names.Intern("Tree")).IsNull).IsTrue();
         await Assert.That(copy.PageCount).IsEqualTo(1);
     }
@@ -91,7 +91,7 @@ public sealed class PageImporterTests
     /// <returns>The font's object number.</returns>
     private static int FontNumber(PdfDocument document, int page)
     {
-        var fonts = document.GetPage(page).Resources!.GetDictionary(KnownName.Font)!;
+        var fonts = PdfDocumentPages.GetPage(document, page).Resources!.GetDictionary(KnownName.Font)!;
         return fonts.GetRaw(fonts.GetKeyAt(0)).AsReference().Number;
     }
 
@@ -100,5 +100,5 @@ public sealed class PageImporterTests
     /// <param name="page">The page.</param>
     /// <returns>The content as text.</returns>
     private static string PageContent(PdfDocument document, int page) =>
-        Encoding.Latin1.GetString(document.GetPage(page).Dictionary.GetStream(KnownName.Contents)!.DecodeToArray());
+        Encoding.Latin1.GetString(PdfDocumentPages.GetPage(document, page).Dictionary.GetStream(KnownName.Contents)!.DecodeToArray());
 }

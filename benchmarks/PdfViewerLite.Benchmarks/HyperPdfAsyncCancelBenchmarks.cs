@@ -77,7 +77,7 @@ public class HyperPdfAsyncCancelBenchmarks
     [Benchmark(Baseline = true)]
     public int OpenManyPagesUncancellable()
     {
-        using var document = PdfDocument.Open(_many, null);
+        using var document = PdfDocumentReader.Open(_many, null);
         return document.PageCount;
     }
 
@@ -89,7 +89,7 @@ public class HyperPdfAsyncCancelBenchmarks
         using var source = new CancellationTokenSource(CancelAfterMilliseconds);
         try
         {
-            using var document = await PdfDocument.OpenAsync(_many, null, source.Token).ConfigureAwait(false);
+            using var document = await PdfDocumentReader.OpenAsync(_many, null, source.Token).ConfigureAwait(false);
             return document.PageCount;
         }
         catch (OperationCanceledException)
@@ -103,7 +103,7 @@ public class HyperPdfAsyncCancelBenchmarks
     [Benchmark]
     public bool RenderHeavyUncancellable()
     {
-        using var document = PdfDocument.Open(_heavy, null);
+        using var document = PdfDocumentReader.Open(_heavy, null);
         using var renderer = new PdfPageRenderer(document);
         return renderer.Render(new(0, 1F, 0, 0, 0, PdfRenderFlags.None), new(_pixels, PageWidth, PageHeight, PageWidth * BytesPerPixel));
     }
@@ -114,7 +114,7 @@ public class HyperPdfAsyncCancelBenchmarks
     public async Task<int> RenderHeavyCancelled()
     {
         using var source = new CancellationTokenSource(CancelAfterMilliseconds);
-        using var document = PdfDocument.Open(_heavy, null);
+        using var document = PdfDocumentReader.Open(_heavy, null);
         using var renderer = new PdfPageRenderer(document);
         try
         {
@@ -131,8 +131,8 @@ public class HyperPdfAsyncCancelBenchmarks
     [Benchmark]
     public int TextHeavyUncancellable()
     {
-        using var document = PdfDocument.Open(_heavy, null);
-        return document.GetTextPage(0).CharCount;
+        using var document = PdfDocumentReader.Open(_heavy, null);
+        return PdfDocumentText.GetTextPage(document, 0).CharCount;
     }
 
     /// <summary>Extracts the text of a heavy page and cancels after 60 ms.</summary>
@@ -141,10 +141,10 @@ public class HyperPdfAsyncCancelBenchmarks
     public async Task<int> TextHeavyCancelled()
     {
         using var source = new CancellationTokenSource(CancelAfterMilliseconds);
-        using var document = PdfDocument.Open(_heavy, null);
+        using var document = PdfDocumentReader.Open(_heavy, null);
         try
         {
-            return (await document.GetTextPageAsync(0, source.Token).ConfigureAwait(false)).CharCount;
+            return (await PdfDocumentText.GetTextPageAsync(document, 0, source.Token).ConfigureAwait(false)).CharCount;
         }
         catch (OperationCanceledException)
         {
@@ -162,8 +162,8 @@ public class HyperPdfAsyncCancelBenchmarks
     {
         var first = Task.Run(RenderFirstTabSync, CancellationToken.None);
         await Task.Delay(CancelAfterMilliseconds).ConfigureAwait(false);
-        using var second = PdfDocument.Open(_small, null);
-        var characters = second.GetTextPage(0).CharCount;
+        using var second = PdfDocumentReader.Open(_small, null);
+        var characters = PdfDocumentText.GetTextPage(second, 0).CharCount;
         _ = await first.ConfigureAwait(false);
         return characters;
     }
@@ -180,8 +180,8 @@ public class HyperPdfAsyncCancelBenchmarks
         var first = RenderFirstTabAsync(source.Token);
         await Task.Delay(CancelAfterMilliseconds).ConfigureAwait(false);
         await source.CancelAsync().ConfigureAwait(false);
-        using var second = await PdfDocument.OpenAsync(_small, null, CancellationToken.None).ConfigureAwait(false);
-        var characters = (await second.GetTextPageAsync(0, CancellationToken.None).ConfigureAwait(false)).CharCount;
+        using var second = await PdfDocumentReader.OpenAsync(_small, null, CancellationToken.None).ConfigureAwait(false);
+        var characters = (await PdfDocumentText.GetTextPageAsync(second, 0, CancellationToken.None).ConfigureAwait(false)).CharCount;
         _ = await first.ConfigureAwait(false);
         return characters;
     }
@@ -195,7 +195,7 @@ public class HyperPdfAsyncCancelBenchmarks
         using var source = new CancellationTokenSource(CancelAfterMilliseconds);
         try
         {
-            using var document = await PdfDocument.OpenAsync(stream, null, source.Token).ConfigureAwait(false);
+            using var document = await PdfDocumentReader.OpenAsync(stream, null, source.Token).ConfigureAwait(false);
             return document.PageCount;
         }
         catch (OperationCanceledException)
@@ -210,7 +210,7 @@ public class HyperPdfAsyncCancelBenchmarks
     public int OpenSlowStreamUncancellable()
     {
         using var stream = new ThrottledStream(_heavy, TimeSpan.FromMilliseconds(ReadLatencyMilliseconds));
-        using var document = PdfDocument.Open(stream, null);
+        using var document = PdfDocumentReader.Open(stream, null);
         return document.PageCount;
     }
 
@@ -218,7 +218,7 @@ public class HyperPdfAsyncCancelBenchmarks
     /// <returns>Whether the page was drawn.</returns>
     private bool RenderFirstTabSync()
     {
-        using var document = PdfDocument.Open(_heavy, null);
+        using var document = PdfDocumentReader.Open(_heavy, null);
         using var renderer = new PdfPageRenderer(document);
         var pixels = new byte[PageWidth * PageHeight * BytesPerPixel];
         return renderer.Render(new(0, 1F, 0, 0, 0, PdfRenderFlags.None), new(pixels, PageWidth, PageHeight, PageWidth * BytesPerPixel));
@@ -233,7 +233,7 @@ public class HyperPdfAsyncCancelBenchmarks
         await Task.Yield();
         try
         {
-            using var document = await PdfDocument.OpenAsync(_heavy, null, cancellationToken).ConfigureAwait(false);
+            using var document = await PdfDocumentReader.OpenAsync(_heavy, null, cancellationToken).ConfigureAwait(false);
             using var renderer = new PdfPageRenderer(document);
             var pixels = new byte[PageWidth * PageHeight * BytesPerPixel];
             _ = await renderer.RenderAsync(new(0, 1F, 0, 0, 0, PdfRenderFlags.None), pixels, PageWidth, PageHeight, PageWidth * BytesPerPixel, cancellationToken).ConfigureAwait(false);

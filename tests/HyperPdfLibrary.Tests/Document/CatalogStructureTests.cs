@@ -60,14 +60,14 @@ public sealed class CatalogStructureTests
         using var single = StructureDocuments.Open("/AcroForm << /Fields [] /XFA 4 0 R >>", MiniPdf.Stream(string.Empty, "<xdp/>"));
         using var none = StructureDocuments.Open(string.Empty);
 
-        var packets = array.GetXfa()!;
+        var packets = HyperPdfLibrary.Document.PdfDocumentXfa.GetXfa(array)!;
 
-        await Assert.That(array.HasXfa).IsTrue();
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentXfa.HasXfa(array)).IsTrue();
         await Assert.That(packets.Packets.Count).IsEqualTo(PacketCount);
         await Assert.That(System.Text.Encoding.ASCII.GetString(packets.Find("datasets")!.Data)).IsEqualTo("<data/>");
-        await Assert.That(single.GetXfa()!.IsSingleStream).IsTrue();
-        await Assert.That(single.GetXfa()!.Packets[0].Name).IsEqualTo("xdp");
-        await Assert.That(none.GetXfa()).IsNull();
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentXfa.GetXfa(single)!.IsSingleStream).IsTrue();
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentXfa.GetXfa(single)!.Packets[0].Name).IsEqualTo("xdp");
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentXfa.GetXfa(none)).IsNull();
     }
 
     /// <summary>A thread's bead ring is read once, with pages and rectangles.</summary>
@@ -80,7 +80,7 @@ public sealed class CatalogStructureTests
             "<< /Type /Thread /F 5 0 R /I << /Title (Story) >> >>",
             "<< /T 4 0 R /N 6 0 R /V 6 0 R /P 3 0 R /R [0 0 10 10] >>",
             "<< /T 4 0 R /N 5 0 R /V 5 0 R /P 3 0 R /R [20 20 30 30] >>");
-        var thread = document.GetThreads()[0];
+        var thread = HyperPdfLibrary.Document.PdfDocumentCatalog.GetThreads(document)[0];
 
         await Assert.That(thread.Title).IsEqualTo("Story");
         await Assert.That(thread.Beads.Length).IsEqualTo(PacketCount);
@@ -97,8 +97,8 @@ public sealed class CatalogStructureTests
             "/PageMode /UseOutlines /PageLayout /TwoColumnLeft /ViewerPreferences << /HideToolbar true /Direction /R2L /NumCopies 3 /PrintPageRange [1 2] /Enforce [/PrintScaling] >>",
             "/Trans << /S /Fly /D 2.5 /Di /None /B true >> /Dur 3");
         using var plain = StructureDocuments.Open(string.Empty);
-        var prefs = document.GetViewerPreferences();
-        var transition = document.GetTransition(document.GetPage(0))!;
+        var prefs = HyperPdfLibrary.Document.PdfDocumentViewerPreferences.GetViewerPreferences(document);
+        var transition = HyperPdfLibrary.Document.PdfDocumentViewerPreferences.GetTransition(document, HyperPdfLibrary.Document.PdfDocumentPages.GetPage(document, 0))!;
 
         await Assert.That(prefs.PageMode).IsEqualTo("UseOutlines");
         await Assert.That(prefs.PageLayout).IsEqualTo("TwoColumnLeft");
@@ -107,14 +107,14 @@ public sealed class CatalogStructureTests
         await Assert.That(prefs.NumCopies).IsEqualTo(Copies);
         await Assert.That(prefs.PrintPageRange).IsEquivalentTo([1, PacketCount]);
         await Assert.That(prefs.Enforce).IsEquivalentTo(["PrintScaling"]);
-        await Assert.That(plain.GetViewerPreferences().PageMode).IsEqualTo("UseNone");
-        await Assert.That(plain.GetViewerPreferences().NumCopies).IsEqualTo(1);
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentViewerPreferences.GetViewerPreferences(plain).PageMode).IsEqualTo("UseNone");
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentViewerPreferences.GetViewerPreferences(plain).NumCopies).IsEqualTo(1);
         await Assert.That(transition.Style).IsEqualTo("Fly");
         await Assert.That(transition.Duration).IsEqualTo(TransitionDuration);
         await Assert.That(transition.Direction).IsEqualTo(-1);
         await Assert.That(transition.Rectangular).IsTrue();
         await Assert.That(transition.AdvanceAfter).IsEqualTo(AdvanceSeconds);
-        await Assert.That(plain.GetTransition(plain.GetPage(0))).IsNull();
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentViewerPreferences.GetTransition(plain, HyperPdfLibrary.Document.PdfDocumentPages.GetPage(plain, 0))).IsNull();
     }
 
     /// <summary>Output intents, permissions and piece info are read.</summary>
@@ -128,9 +128,9 @@ public sealed class CatalogStructureTests
             "<< /Type /OutputIntent /S /GTS_PDFA1 /OutputConditionIdentifier (sRGB) /DestOutputProfile 5 0 R >>",
             MiniPdf.Stream("/N 3", "icc"),
             "<< /Type /Sig /Reference [<< /TransformMethod /DocMDP /TransformParams << /P 1 >> >>] >>");
-        var intent = document.GetOutputIntents()[0];
-        var permissions = document.GetPermissions()!;
-        var piece = document.GetPieceInfo(document.GetPage(0))[0];
+        var intent = HyperPdfLibrary.Document.PdfDocumentCatalog.GetOutputIntents(document)[0];
+        var permissions = HyperPdfLibrary.Document.PdfDocumentCatalog.GetPermissions(document)!;
+        var piece = HyperPdfLibrary.Document.PdfDocumentCatalog.GetPieceInfo(document, HyperPdfLibrary.Document.PdfDocumentPages.GetPage(document, 0))[0];
 
         await Assert.That(intent.Subtype).IsEqualTo("GTS_PDFA1");
         await Assert.That(intent.OutputConditionIdentifier).IsEqualTo("sRGB");
@@ -144,7 +144,7 @@ public sealed class CatalogStructureTests
         await Assert.That(piece.Name).IsEqualTo("MyApp");
         await Assert.That(piece.LastModified).IsNotNull();
         await Assert.That(piece.Data).IsNotNull();
-        await Assert.That(document.GetPieceInfo().Length).IsEqualTo(0);
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentCatalog.GetPieceInfo(document).Length).IsEqualTo(0);
     }
 
     /// <summary>Web capture content sets and document parts are read.</summary>
@@ -159,8 +159,8 @@ public sealed class CatalogStructureTests
             "/DPartRoot << /DPartRootNode 4 0 R /RecordLevel 1 /NodeNameList [/Root /Doc] >>",
             "<< /DParts [[5 0 R]] /DPM << /Title (T) >> >>",
             "<< /Parent 4 0 R /Start 3 0 R /End 3 0 R /DPM << /N 2 >> >>");
-        var web = capture.GetWebCapture()!;
-        var root = parts.GetDocumentParts()!;
+        var web = HyperPdfLibrary.Document.PdfDocumentWebCapture.GetWebCapture(capture)!;
+        var root = HyperPdfLibrary.Document.PdfDocumentWebCapture.GetDocumentParts(parts)!;
 
         await Assert.That(web.Version).IsEqualTo(1.0);
         await Assert.That(web.ContentSets[0].Subtype).IsEqualTo("SPS");
@@ -170,7 +170,7 @@ public sealed class CatalogStructureTests
         await Assert.That(root.Root!.Metadata["Title"]).IsEqualTo("T");
         await Assert.That(root.Root.Children[0].StartPage).IsEqualTo(0);
         await Assert.That(root.Root.Children[0].Metadata["N"]).IsEqualTo("2");
-        await Assert.That(StructureDocuments.Open(string.Empty).GetWebCapture()).IsNull();
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentWebCapture.GetWebCapture(StructureDocuments.Open(string.Empty))).IsNull();
     }
 
     /// <summary>Viewports read rectilinear and geospatial measures.</summary>
@@ -183,7 +183,7 @@ public sealed class CatalogStructureTests
             "/VP [<< /Type /Viewport /BBox [0 0 50 50] /Name (V) /Measure 4 0 R >> << /Type /Viewport /Measure 5 0 R >>]",
             "<< /Type /Measure /Subtype /RL /R (1 in = 1 mi) /X [<< /U (mi) /C 1 >>] /D [<< /U (mi) /C 1 /D 10 >>] /O [1 2] >>",
             "<< /Type /Measure /Subtype /GEO /GCS << /Type /GEOGCS /EPSG 4326 >> /GPTS [1 2 3 4] /LPTS [0 0 1 1] /PDU [/M /KM] >>");
-        var viewports = document.GetViewports(document.GetPage(0));
+        var viewports = HyperPdfLibrary.Document.PdfDocumentMeasure.GetViewports(document, HyperPdfLibrary.Document.PdfDocumentPages.GetPage(document, 0));
         var rectilinear = viewports[0].Measure!;
         var geo = viewports[1].Measure!.Geo!;
 

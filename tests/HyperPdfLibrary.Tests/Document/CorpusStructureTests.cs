@@ -26,7 +26,7 @@ public sealed class CorpusStructureTests
                 continue;
             }
 
-            using var document = PdfDocument.Open(path, null);
+            using var document = PdfDocumentReader.Open(path, null);
             ReadEverything(document);
             opened++;
         }
@@ -38,22 +38,22 @@ public sealed class CorpusStructureTests
     /// <param name="document">The document.</param>
     private static void ReadEverything(PdfDocument document)
     {
-        _ = document.GetXmp();
-        _ = document.GetPortfolio();
-        _ = document.GetAllAssociatedFiles();
-        _ = document.GetOpenAction();
-        _ = document.GetTriggers();
-        _ = document.GetDocumentScripts();
-        _ = document.GetMultimediaAnnotations();
-        _ = document.GetXfa();
-        _ = document.GetThreads();
-        _ = document.GetViewerPreferences();
-        _ = document.GetOutputIntents();
-        _ = document.GetPermissions();
-        _ = document.GetPieceInfo();
-        _ = document.GetWebCapture();
-        _ = document.GetDocumentParts();
-        _ = document.GetDeveloperExtensions();
-        _ = document.FindUnknownEntries();
+        _ = PdfDocumentMetadata.GetXmp(document);
+        _ = PdfDocumentPortfolio.GetPortfolio(document);
+        _ = PdfDocumentAssociatedFiles.GetAllAssociatedFiles(document);
+        _ = PdfDocumentActions.GetOpenAction(document);
+        _ = PdfDocumentActions.GetTriggers(document);
+        _ = PdfDocumentActions.GetDocumentScripts(document);
+        _ = PdfDocumentMedia.GetMultimediaAnnotations(document);
+        _ = PdfDocumentXfa.GetXfa(document);
+        _ = PdfDocumentCatalog.GetThreads(document);
+        _ = PdfDocumentViewerPreferences.GetViewerPreferences(document);
+        _ = PdfDocumentCatalog.GetOutputIntents(document);
+        _ = PdfDocumentCatalog.GetPermissions(document);
+        _ = PdfDocumentCatalog.GetPieceInfo(document);
+        _ = PdfDocumentWebCapture.GetWebCapture(document);
+        _ = PdfDocumentWebCapture.GetDocumentParts(document);
+        _ = PdfDocumentExtensionDeclarations.GetDeveloperExtensions(document);
+        _ = PdfDocumentExtensionDeclarations.FindUnknownEntries(document);
     }
 }

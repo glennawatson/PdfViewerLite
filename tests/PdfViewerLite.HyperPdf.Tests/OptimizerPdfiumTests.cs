@@ -100,7 +100,7 @@ public sealed class OptimizerPdfiumTests
     {
         var source = Build(sample);
         byte[] optimised;
-        using (var document = PdfDocument.Open(source, null))
+        using (var document = PdfDocumentReader.Open(source, null))
         {
             await using var output = new MemoryStream();
             _ = PdfOptimizer.Optimize(document, output, PdfOptimizeOptions.Balanced with { Language = "en" });

@@ -82,8 +82,8 @@ public sealed class SignatureValidationTests
     public async Task RevisionsAreListed()
     {
         var file = SignatureSamples.AddAnnotation(SignatureSamples.Signed(SignatureFixtures.Signer, 0, string.Empty));
-        using var document = PdfDocument.Open(file, null);
-        var revisions = document.GetRevisions();
+        using var document = PdfDocumentReader.Open(file, null);
+        var revisions = PdfDocumentSignatureValidation.GetRevisions(document);
 
         await Assert.That(revisions.Count).IsEqualTo(RevisionsAfterUpdate);
         await Assert.That(revisions[^1].EndOffset).IsEqualTo(file.Length);

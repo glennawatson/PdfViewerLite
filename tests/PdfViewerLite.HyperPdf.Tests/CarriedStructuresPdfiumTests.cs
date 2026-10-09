@@ -48,9 +48,9 @@ public sealed class CarriedStructuresPdfiumTests
     [Arguments(false)]
     public async Task MergedBooksReadBackInPdfium(bool incremental)
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var target = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        target.InsertPages(target.PageCount, source, [FirstPage, SecondPage]);
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var target = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        PdfDocumentPageOperations.InsertPages(target, target.PageCount, source, [FirstPage, SecondPage]);
 
         var saved = incremental ? PdfIncrementalWriter.Save(target.Objects) : PdfCompactWriter.Save(target.Objects, PdfCompactOptions.Default);
         using var pair = new EnginePair(saved);
@@ -69,8 +69,8 @@ public sealed class CarriedStructuresPdfiumTests
     [Test]
     public async Task ExtractedPagesReadBackInPdfium()
     {
-        using var source = PdfDocument.Open(CarryTestDocuments.CreateBook(), null);
-        using var pair = new EnginePair(source.ExtractPages([FirstPage, SecondPage]));
+        using var source = PdfDocumentReader.Open(CarryTestDocuments.CreateBook(), null);
+        using var pair = new EnginePair(PdfDocumentPageOperations.ExtractPages(source, [FirstPage, SecondPage]));
         await Assert.That(pair.Pdfium.PageCount).IsEqualTo(CarryTestDocuments.BookPages);
         await Assert.That(OutlinePages(pair.Pdfium)).IsEquivalentTo([FirstPage, SecondPage]);
         await Assert.That(LinkPages(pair.Pdfium, FirstPage)).IsEquivalentTo([SecondPage, SecondPage]);

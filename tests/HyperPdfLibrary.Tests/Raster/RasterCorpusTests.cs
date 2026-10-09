@@ -49,7 +49,7 @@ public sealed class RasterCorpusTests
 
             using (document)
             {
-                var report = document.GetRasterReport(CancellationToken.None);
+                var report = PdfDocumentRaster.GetRasterReport(document, CancellationToken.None);
                 var image = report.Pages[0].Images[0];
 
                 await Assert.That(report.Claim).IsNull();
@@ -78,7 +78,7 @@ public sealed class RasterCorpusTests
 
         using (document)
         {
-            var report = document.GetRasterReport(CancellationToken.None);
+            var report = PdfDocumentRaster.GetRasterReport(document, CancellationToken.None);
 
             await Assert.That(report.IsRasterOnly).IsTrue();
             await Assert.That(report.FiltersSeen).IsEquivalentTo(["JPXDecode"]);
@@ -99,7 +99,7 @@ public sealed class RasterCorpusTests
 
         using (document)
         {
-            var report = document.GetRasterReport(CancellationToken.None);
+            var report = PdfDocumentRaster.GetRasterReport(document, CancellationToken.None);
             const float bodyDpi = 600F;
 
             await Assert.That(report.IsRasterOnly).IsFalse();
@@ -115,6 +115,6 @@ public sealed class RasterCorpusTests
     private static PdfDocument? Open(string id)
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "pdfviewerlite", "corpus", $"{id}.pdf");
-        return File.Exists(path) ? PdfDocument.Open(path, null) : null;
+        return File.Exists(path) ? PdfDocumentReader.Open(path, null) : null;
     }
 }

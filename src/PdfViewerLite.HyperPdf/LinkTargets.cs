@@ -57,7 +57,7 @@ internal static class LinkTargets
         }
 
         // An unspecified coordinate means the crop box edge; the page's transform applies the crop box and rotation.
-        var page = document.GetPage(destination.PageIndex);
+        var page = PdfDocumentPages.GetPage(document, destination.PageIndex);
         var point = page.ToViewer(new(destination.Left ?? page.CropBox.Left, destination.Top ?? page.CropBox.Top));
         return LinkTarget.ForPage(destination.PageIndex, new PagePoint(point.X, point.Y));
     }

@@ -37,9 +37,9 @@ public class HyperPdfEditingBenchmarks
             _reverse[i] = Pages - 1 - i;
         }
 
-        _document = PdfDocument.Open(bytes, null);
-        _reordered = PdfDocument.Open(bytes, null);
-        _reordered.ReorderPages(_reverse);
+        _document = PdfDocumentReader.Open(bytes, null);
+        _reordered = PdfDocumentReader.Open(bytes, null);
+        PdfDocumentPageOperations.ReorderPages(_reordered, _reverse);
     }
 
     /// <summary>Closes the documents.</summary>
@@ -55,8 +55,9 @@ public class HyperPdfEditingBenchmarks
     [Benchmark(Baseline = true)]
     public int Reorder()
     {
-        _document!.ReorderPages(_reverse);
-        return _document.PageCount;
+        var document = _document!;
+        PdfDocumentPageOperations.ReorderPages(document, _reverse);
+        return document.PageCount;
     }
 
     /// <summary>Reverses every page, then undoes it.</summary>
@@ -64,9 +65,10 @@ public class HyperPdfEditingBenchmarks
     [Benchmark]
     public int ReorderAndUndo()
     {
-        _document!.ReorderPages(_reverse);
-        _ = _document.Undo();
-        return _document.PageCount;
+        var document = _document!;
+        PdfDocumentPageOperations.ReorderPages(document, _reverse);
+        _ = PdfDocumentEditing.Undo(document);
+        return document.PageCount;
     }
 
     /// <summary>Saves the reordered document as an incremental update.</summary>

@@ -23,7 +23,7 @@ public sealed partial class HyperPdfDocument : IAttachmentSource, ISignatureSour
     private RawSignature[]? _signatures;
 
     /// <inheritdoc/>
-    public int SignatureCount => IsDisposed ? 0 : _document.GetSignatures().Count;
+    public int SignatureCount => IsDisposed ? 0 : HyperPdfLibrary.Document.PdfDocumentAttachments.GetSignatures(_document).Count;
 
     /// <inheritdoc/>
     public IReadOnlyList<DocumentAttachment> GetAttachments()
@@ -38,7 +38,7 @@ public sealed partial class HyperPdfDocument : IAttachmentSource, ISignatureSour
             return cached;
         }
 
-        var source = _document.GetAttachments();
+        var source = HyperPdfLibrary.Document.PdfDocumentAttachments.GetAttachments(_document);
         var attachments = new DocumentAttachment[source.Count];
         for (var i = 0; i < attachments.Length; i++)
         {
@@ -53,7 +53,7 @@ public sealed partial class HyperPdfDocument : IAttachmentSource, ISignatureSour
     public bool SaveAttachment(int index, Stream destination)
     {
         ArgumentNullException.ThrowIfNull(destination);
-        var attachments = IsDisposed ? [] : _document.GetAttachments();
+        var attachments = IsDisposed ? [] : HyperPdfLibrary.Document.PdfDocumentAttachments.GetAttachments(_document);
         if ((uint)index >= (uint)attachments.Count || attachments[index].Data is not { } data)
         {
             return false;
@@ -85,7 +85,7 @@ public sealed partial class HyperPdfDocument : IAttachmentSource, ISignatureSour
             return cached;
         }
 
-        var source = _document.GetSignatures();
+        var source = HyperPdfLibrary.Document.PdfDocumentAttachments.GetSignatures(_document);
         var signatures = new RawSignature[source.Count];
         for (var i = 0; i < signatures.Length; i++)
         {

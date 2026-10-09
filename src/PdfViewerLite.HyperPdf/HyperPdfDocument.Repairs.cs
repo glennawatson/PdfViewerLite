@@ -11,7 +11,7 @@ namespace PdfViewerLite.HyperPdf;
 public sealed partial class HyperPdfDocument : IRepairReport
 {
     /// <inheritdoc/>
-    public bool WasRepaired => !IsDisposed && _document.WasRepaired;
+    public bool WasRepaired => !IsDisposed && PdfDocumentCheck.WasRepaired(_document);
 
     /// <inheritdoc/>
     public IReadOnlyList<RepairNote> GetRepairs()
@@ -21,7 +21,7 @@ public sealed partial class HyperPdfDocument : IRepairReport
             return [];
         }
 
-        var found = _document.GetRepairs();
+        var found = PdfDocumentCheck.GetRepairs(_document);
         var notes = new RepairNote[found.Length];
         for (var i = 0; i < found.Length; i++)
         {

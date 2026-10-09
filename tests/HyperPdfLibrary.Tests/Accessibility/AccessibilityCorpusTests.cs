@@ -31,7 +31,7 @@ public sealed class AccessibilityCorpusTests
 
             using (document)
             {
-                var report = document.GetAccessibilityReport();
+                var report = PdfDocumentAccessibility.GetAccessibilityReport(document);
 
                 await Assert.That(report.Claim.Part).IsEqualTo(1);
                 await Assert.That(report.IsMarked).IsTrue();
@@ -56,7 +56,7 @@ public sealed class AccessibilityCorpusTests
 
         using (document)
         {
-            var page = document.GetAccessibilityReport().Pages[0];
+            var page = PdfDocumentAccessibility.GetAccessibilityReport(document).Pages[0];
 
             await Assert.That(page.AnnotationCount).IsEqualTo(1);
             await Assert.That(page.TabsFollowStructure).IsTrue();
@@ -69,6 +69,6 @@ public sealed class AccessibilityCorpusTests
     private static PdfDocument? Open(string id)
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "pdfviewerlite", "corpus", $"{id}.pdf");
-        return File.Exists(path) ? PdfDocument.Open(path, null) : null;
+        return File.Exists(path) ? PdfDocumentReader.Open(path, null) : null;
     }
 }

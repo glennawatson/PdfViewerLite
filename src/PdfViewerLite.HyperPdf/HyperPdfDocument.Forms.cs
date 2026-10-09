@@ -16,7 +16,7 @@ namespace PdfViewerLite.HyperPdf;
 public sealed partial class HyperPdfDocument : IFormFiller, IFormScriptSource
 {
     /// <inheritdoc/>
-    public bool HasForm => !IsDisposed && _document.Form.HasForm;
+    public bool HasForm => !IsDisposed && HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).HasForm;
 
     /// <summary>Gets a value indicating whether the managed store holds edits that are not saved.</summary>
     internal bool HasManagedEdits => !IsDisposed && _document.Objects.HasEdits;
@@ -30,9 +30,9 @@ public sealed partial class HyperPdfDocument : IFormFiller, IFormScriptSource
             return;
         }
 
-        var page = _document.GetPage(pageIndex);
+        var page = HyperPdfLibrary.Document.PdfDocumentPages.GetPage(_document, pageIndex);
         List<PdfFormWidget> widgets = [];
-        _document.Form.GetWidgets(pageIndex, widgets);
+        HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).GetWidgets(pageIndex, widgets);
         foreach (var widget in widgets)
         {
             output.Add(ToField(widget, page.ToViewerRectangle(widget.Bounds)));
@@ -49,7 +49,7 @@ public sealed partial class HyperPdfDocument : IFormFiller, IFormScriptSource
         }
 
         List<PdfWidgetScripts> widgets = [];
-        _document.Form.GetScripts(pageIndex, widgets);
+        HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).GetScripts(pageIndex, widgets);
         foreach (var widget in widgets)
         {
             FieldScripts scripts = new(
@@ -73,7 +73,7 @@ public sealed partial class HyperPdfDocument : IFormFiller, IFormScriptSource
         ArgumentNullException.ThrowIfNull(text);
         lock (_editGate)
         {
-            return !IsDisposed && FieldChanged(_document.Form.SetText(pageIndex, index, text));
+            return !IsDisposed && FieldChanged(HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).SetText(pageIndex, index, text));
         }
     }
 
@@ -82,7 +82,7 @@ public sealed partial class HyperPdfDocument : IFormFiller, IFormScriptSource
     {
         lock (_editGate)
         {
-            return !IsDisposed && FieldChanged(_document.Form.SetChecked(pageIndex, index, isChecked));
+            return !IsDisposed && FieldChanged(HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).SetChecked(pageIndex, index, isChecked));
         }
     }
 
@@ -91,7 +91,7 @@ public sealed partial class HyperPdfDocument : IFormFiller, IFormScriptSource
     {
         lock (_editGate)
         {
-            return !IsDisposed && FieldChanged(_document.Form.SelectOption(pageIndex, index, option));
+            return !IsDisposed && FieldChanged(HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).SelectOption(pageIndex, index, option));
         }
     }
 

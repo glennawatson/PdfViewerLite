@@ -84,7 +84,7 @@ public class HyperPdfAsyncWorkBenchmarks
         var characters = 0;
         for (var i = 0; i < opened.Document.PageCount; i++)
         {
-            characters += opened.Document.GetTextPage(i).CharCount;
+            characters += PdfDocumentText.GetTextPage(opened.Document, i).CharCount;
         }
 
         return characters;
@@ -97,7 +97,7 @@ public class HyperPdfAsyncWorkBenchmarks
     {
         using var opened = await HyperPdfAsyncSamples.OpenAsync(_path, Source, CancellationToken.None).ConfigureAwait(false);
         var characters = 0;
-        await foreach (var page in opened.Document.GetTextPagesAsync(CancellationToken.None).ConfigureAwait(false))
+        await foreach (var page in PdfDocumentText.GetTextPagesAsync(opened.Document, CancellationToken.None).ConfigureAwait(false))
         {
             characters += page.CharCount;
         }
@@ -114,7 +114,7 @@ public class HyperPdfAsyncWorkBenchmarks
         var found = new List<PdfTextMatch>();
         for (var i = 0; i < opened.Document.PageCount; i++)
         {
-            opened.Document.GetTextPage(i).Find(HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, found);
+            PdfDocumentText.GetTextPage(opened.Document, i).Find(HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, found);
         }
 
         return found.Count;
@@ -127,7 +127,7 @@ public class HyperPdfAsyncWorkBenchmarks
     {
         using var opened = await HyperPdfAsyncSamples.OpenAsync(_path, Source, CancellationToken.None).ConfigureAwait(false);
         var matches = 0;
-        await foreach (var page in opened.Document.FindAsync(HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, CancellationToken.None).ConfigureAwait(false))
+        await foreach (var page in PdfDocumentText.FindAsync(opened.Document, HyperPdfAsyncSamples.Word, PdfTextSearchOptions.None, CancellationToken.None).ConfigureAwait(false))
         {
             matches += page.Matches.Length;
         }
@@ -142,10 +142,10 @@ public class HyperPdfAsyncWorkBenchmarks
     {
         using var opened = HyperPdfAsyncSamples.OpenSync(_path, Source);
         var document = opened.Document;
-        var count = document.GetOutline().Count;
+        var count = PdfDocumentNavigation.GetOutline(document).Count;
         for (var i = 0; i < document.PageCount; i++)
         {
-            count += document.GetLinks(i).Count + (int)document.ScanAnnotations(i);
+            count += PdfDocumentLinks.GetLinks(document, i).Count + (int)PdfDocumentContent.ScanAnnotations(document, i);
         }
 
         return count;
@@ -158,11 +158,11 @@ public class HyperPdfAsyncWorkBenchmarks
     {
         using var opened = await HyperPdfAsyncSamples.OpenAsync(_path, Source, CancellationToken.None).ConfigureAwait(false);
         var document = opened.Document;
-        var count = (await document.GetOutlineAsync(CancellationToken.None).ConfigureAwait(false)).Count;
+        var count = (await PdfDocumentNavigation.GetOutlineAsync(document, CancellationToken.None).ConfigureAwait(false)).Count;
         for (var i = 0; i < document.PageCount; i++)
         {
-            count += (await document.GetLinksAsync(i, CancellationToken.None).ConfigureAwait(false)).Count;
-            count += (int)await document.ScanAnnotationsAsync(i, CancellationToken.None).ConfigureAwait(false);
+            count += (await PdfDocumentLinks.GetLinksAsync(document, i, CancellationToken.None).ConfigureAwait(false)).Count;
+            count += (int)await PdfDocumentContent.ScanAnnotationsAsync(document, i, CancellationToken.None).ConfigureAwait(false);
         }
 
         return count;
@@ -174,7 +174,7 @@ public class HyperPdfAsyncWorkBenchmarks
     public long SaveAfterEditSync()
     {
         using var opened = HyperPdfAsyncSamples.OpenSync(_path, Source);
-        opened.Document.SetMetadata(new PdfMetadataEdit { Title = "Edited" });
+        PdfDocumentMetadataEditing.SetMetadata(opened.Document, new PdfMetadataEdit { Title = "Edited" });
         _saved.SetLength(0);
         PdfIncrementalWriter.Save(opened.Document.Objects, _saved);
         return _saved.Length;
@@ -186,9 +186,9 @@ public class HyperPdfAsyncWorkBenchmarks
     public async ValueTask<long> SaveAfterEditAsync()
     {
         using var opened = await HyperPdfAsyncSamples.OpenAsync(_path, Source, CancellationToken.None).ConfigureAwait(false);
-        opened.Document.SetMetadata(new PdfMetadataEdit { Title = "Edited" });
+        PdfDocumentMetadataEditing.SetMetadata(opened.Document, new PdfMetadataEdit { Title = "Edited" });
         _saved.SetLength(0);
-        await opened.Document.SaveAsync(_saved, CancellationToken.None).ConfigureAwait(false);
+        await PdfDocumentSaving.SaveAsync(opened.Document, _saved, CancellationToken.None).ConfigureAwait(false);
         return _saved.Length;
     }
 }

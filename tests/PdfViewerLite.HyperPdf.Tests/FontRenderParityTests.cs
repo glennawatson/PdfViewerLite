@@ -155,6 +155,7 @@ public sealed class FontRenderParityTests
     private static async Task AssertParity(string name, byte[] pdf, double threshold)
     {
         using var pair = new EnginePair(pdf);
+        await pair.HyperPdf.PreparePageAsync(0, CancellationToken.None);
         var difference = Compare(pair, new(0, 1, PageRotation.None, 0, 0, RenderFlags.FixedDeviceColors), out var images);
         TestContext.Current?.Output.WriteLine($"{name}: mean difference {difference:F3}");
         if (difference >= threshold)

@@ -35,11 +35,11 @@ internal static class DocumentExerciser
         var scripts = new List<string>();
         for (var i = 0; i < document.PageCount; i++)
         {
-            var page = document.GetPage(i);
-            _ = text.Append(CultureInfo.InvariantCulture, $"p{i}={page.Width}x{page.Height}r{page.Rotation}L{document.GetPageLabel(i)};");
-            _ = text.Append(CultureInfo.InvariantCulture, $"links={document.GetLinks(i).Count};ann={document.ScanAnnotations(i)};");
+            var page = PdfDocumentPages.GetPage(document, i);
+            _ = text.Append(CultureInfo.InvariantCulture, $"p{i}={page.Width}x{page.Height}r{page.Rotation}L{PdfDocumentLabels.GetPageLabel(document, i)};");
+            _ = text.Append(CultureInfo.InvariantCulture, $"links={PdfDocumentLinks.GetLinks(document, i).Count};ann={PdfDocumentContent.ScanAnnotations(document, i)};");
             scripts.Clear();
-            document.GetWidgetScripts(i, scripts);
+            PdfDocumentContent.GetWidgetScripts(document, i, scripts);
             _ = text.Append(CultureInfo.InvariantCulture, $"scripts={scripts.Count};");
         }
     }
@@ -49,16 +49,16 @@ internal static class DocumentExerciser
     /// <param name="text">The description.</param>
     private static void AppendNavigation(PdfDocument document, StringBuilder text)
     {
-        var info = document.GetInfo();
+        var info = PdfDocumentMetadata.GetInfo(document);
         _ = text.Append(CultureInfo.InvariantCulture, $"info={info.Title}|{info.Author}|{info.Version};");
-        AppendOutline(document.GetOutline(), text);
-        foreach (var attachment in document.GetAttachments())
+        AppendOutline(PdfDocumentNavigation.GetOutline(document), text);
+        foreach (var attachment in PdfDocumentAttachments.GetAttachments(document))
         {
             var size = attachment.Data?.DecodeToArray().Length ?? -1;
             _ = text.Append(CultureInfo.InvariantCulture, $"att={attachment.Name}:{size};");
         }
 
-        _ = text.Append(CultureInfo.InvariantCulture, $"sigs={document.GetSignatures().Count};js={document.GetJavaScriptActionCount()};");
+        _ = text.Append(CultureInfo.InvariantCulture, $"sigs={PdfDocumentAttachments.GetSignatures(document).Count};js={PdfDocumentContent.GetJavaScriptActionCount(document)};");
     }
 
     /// <summary>Describes outline items depth first.</summary>
@@ -79,7 +79,7 @@ internal static class DocumentExerciser
     /// <param name="text">The description.</param>
     private static void AppendLayers(PdfDocument document, StringBuilder text)
     {
-        foreach (var layer in document.OptionalContent.Layers)
+        foreach (var layer in PdfDocumentLayers.GetOptionalContent(document).Layers)
         {
             _ = text.Append(CultureInfo.InvariantCulture, $"layer={layer.Id}:{layer.Name}:{layer.IsVisible};");
         }

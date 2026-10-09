@@ -36,6 +36,7 @@ public sealed class CjkTextParityTests
     {
         using var pair = new EnginePair(pdf);
         var document = (HyperPdfDocument)pair.HyperPdf;
+        await document.PreparePageAsync(0, CancellationToken.None);
         var count = pair.Pdfium.GetCharacterCount(0);
         var expected = new List<PageCharacter>();
         ((ITextLayoutSource)pair.Pdfium).GetCharacters(0, expected);

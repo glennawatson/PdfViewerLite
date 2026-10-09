@@ -40,8 +40,8 @@ internal sealed class TaggedNodeBuilder
     internal TaggedNodeBuilder(PdfDocument document, int pageIndex)
     {
         _pageIndex = pageIndex;
-        _page = document.GetPage(pageIndex);
-        _content = document.GetMarkedContent(pageIndex);
+        _page = PdfDocumentPages.GetPage(document, pageIndex);
+        _content = PdfDocumentTagged.GetMarkedContent(document, pageIndex);
         _objects = new(document, _page);
     }
 
@@ -122,35 +122,35 @@ internal sealed class TaggedNodeBuilder
         switch (kid.Kind)
         {
             case PdfStructureKidKind.Element when kid.Element is { } child:
-            {
-                if (BuildElement(child) is { } childNode)
                 {
-                    node.Add(childNode);
-                }
+                    if (BuildElement(child) is { } childNode)
+                    {
+                        node.Add(childNode);
+                    }
 
-                break;
-            }
+                    break;
+                }
 
             case PdfStructureKidKind.MarkedContent when IsOnPage(kid.PageIndex):
-            {
-                if (BuildContent(kid.Mcid) is { } leaf)
                 {
-                    node.Add(leaf);
+                    if (BuildContent(kid.Mcid) is { } leaf)
+                    {
+                        node.Add(leaf);
+                    }
+
+                    break;
                 }
 
-                break;
-            }
-
             case PdfStructureKidKind.Object:
-            {
-                _objects.Attach(node, kid);
-                break;
-            }
+                {
+                    _objects.Attach(node, kid);
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 

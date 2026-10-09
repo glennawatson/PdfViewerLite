@@ -52,7 +52,7 @@ public sealed partial class HyperPdfDocument : ITaggedStructureSource
     internal bool GetTaggedBlocksNative(int pageIndex, List<TaggedBlock> output)
     {
         ArgumentNullException.ThrowIfNull(output);
-        if (IsDisposed || (uint)pageIndex >= (uint)PageCount || _document.StructureTree is not { IsMarked: true })
+        if (IsDisposed || (uint)pageIndex >= (uint)PageCount || HyperPdfLibrary.Document.PdfDocumentTagged.GetStructureTree(_document) is not { IsMarked: true })
         {
             return false;
         }

@@ -39,7 +39,7 @@ internal static class StructureDocuments
     /// <param name="extra">The objects numbered from 4.</param>
     /// <returns>The document.</returns>
     internal static PdfDocument OpenPage(string catalogEntries, string pageEntries, params string[] extra) =>
-        PdfDocument.Open(Build(catalogEntries, pageEntries, extra), null);
+        PdfDocumentReader.Open(Build(catalogEntries, pageEntries, extra), null);
 
     /// <summary>Gets an object as a dictionary.</summary>
     /// <param name="document">The document.</param>

@@ -13,11 +13,11 @@ internal static class PdfSignatureValidator
     /// <summary>Checks every signature.</summary>
     /// <param name="document">The document.</param>
     /// <param name="options">How to check.</param>
-    /// <returns>One report per entry of <see cref="PdfDocument.GetSignatures"/>.</returns>
+    /// <returns>One report per entry of <see cref="PdfDocumentAttachments.GetSignatures"/>.</returns>
     internal static PdfSignatureValidationReport[] Validate(PdfDocument document, PdfSignatureValidationOptions options)
     {
-        var details = document.GetSignatureDetails();
-        var revisions = document.GetRevisionArray();
+        var details = PdfDocumentSignatureValidation.GetSignatureDetails(document);
+        var revisions = PdfDocumentSignatureValidation.GetRevisionArray(document);
         var file = document.Objects.Source;
         var ranges = new PdfByteRangeCheck[details.Count];
         for (var i = 0; i < ranges.Length; i++)
@@ -26,7 +26,7 @@ internal static class PdfSignatureValidator
             ranges[i] = PdfByteRangeChecker.Check(field.ByteRange, field.Contents.Length, file, revisions);
         }
 
-        var context = CmsContext.Create(document.GetSecurityStore(), options);
+        var context = CmsContext.Create(PdfDocumentSignatureValidation.GetSecurityStore(document), options);
         var reports = new PdfSignatureValidationReport[ranges.Length];
         for (var i = 0; i < reports.Length; i++)
         {

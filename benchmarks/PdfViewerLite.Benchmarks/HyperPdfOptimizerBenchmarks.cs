@@ -62,9 +62,9 @@ public class HyperPdfOptimizerBenchmarks
         var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "pdfviewerlite", "corpus");
         var scan = Path.Combine(folder, ScanFile);
         var text = Path.Combine(folder, TextFile);
-        _scan = File.Exists(scan) ? PdfDocument.Open(scan, null) : PdfDocument.Open(TestPdf.CreateScan(new byte[PhotoPixels * PhotoPixels], PhotoPixels, PhotoPixels), null);
-        _text = File.Exists(text) ? PdfDocument.Open(text, null) : PdfDocument.Open(TestPdf.CreateArticle(StandInPages), null);
-        _photo = PdfDocument.Open(PhotoPage(), null);
+        _scan = File.Exists(scan) ? PdfDocumentReader.Open(scan, null) : PdfDocumentReader.Open(TestPdf.CreateScan(new byte[PhotoPixels * PhotoPixels], PhotoPixels, PhotoPixels), null);
+        _text = File.Exists(text) ? PdfDocumentReader.Open(text, null) : PdfDocumentReader.Open(TestPdf.CreateArticle(StandInPages), null);
+        _photo = PdfDocumentReader.Open(PhotoPage(), null);
     }
 
     /// <summary>Closes the documents.</summary>

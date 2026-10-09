@@ -105,22 +105,22 @@ internal sealed class TaggedObjectResolver
         switch (target.GetName(KnownName.Subtype).ToKnownName())
         {
             case KnownName.Link:
-            {
-                node.LinkUri = ReadUri(target);
-                break;
-            }
+                {
+                    node.LinkUri = ReadUri(target);
+                    break;
+                }
 
             case KnownName.Widget:
-            {
-                node.FormField = FindWidget(index);
-                node.FieldLabel = ReadToolTip(target) ?? node.FormField?.Name ?? ReadPartialName(target);
-                break;
-            }
+                {
+                    node.FormField = FindWidget(index);
+                    node.FieldLabel = ReadToolTip(target) ?? node.FormField?.Name ?? ReadPartialName(target);
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 
@@ -154,7 +154,7 @@ internal sealed class TaggedObjectResolver
         if (_widgets is null)
         {
             _widgets = [];
-            _document.Form.GetWidgets(_page.Index, _widgets);
+            PdfDocumentForms.GetForm(_document).GetWidgets(_page.Index, _widgets);
         }
 
         foreach (var widget in _widgets)

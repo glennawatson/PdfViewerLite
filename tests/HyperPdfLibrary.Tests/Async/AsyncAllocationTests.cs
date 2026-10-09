@@ -65,23 +65,23 @@ public sealed class AsyncAllocationTests
             await using var stream = new ThrottledStream(bytes, TimeSpan.FromMilliseconds(LatencyMilliseconds));
             using var document = await OpenAsync(source, path, stream);
             using var renderer = new PdfPageRenderer(document);
-            PdfPageRenderer.GetPixelSize(document.GetPage(0), 0, 1F, out var width, out var height);
+            PdfPageRenderer.GetPixelSize(PdfDocumentPages.GetPage(document, 0), 0, 1F, out var width, out var height);
             var pixels = new byte[width * height * BytesPerPixel];
             var request = new PdfTileRequest(0, 1F, 0, 0, 0, PdfRenderFlags.None);
             var token = CancellationToken.None;
 
             // Warm every cache the forms read: the objects, the text page, the recorded page, the links and the outline.
-            _ = await document.GetTextPageAsync(0, token);
-            _ = await document.GetLinksAsync(0, token);
-            _ = await document.GetOutlineAsync(token);
+            _ = await PdfDocumentText.GetTextPageAsync(document, 0, token);
+            _ = await PdfDocumentLinks.GetLinksAsync(document, 0, token);
+            _ = await PdfDocumentNavigation.GetOutlineAsync(document, token);
             _ = await renderer.RenderAsync(request, pixels, width, height, width * BytesPerPixel, token);
 
-            var prefetch = await Measure(() => document.PrefetchPageAsync(0, token));
-            var page = await Measure(() => document.GetPageAsync(0, token));
-            var text = await Measure(() => document.GetTextPageAsync(0, token));
-            var links = await Measure(() => document.GetLinksAsync(0, token));
-            var annotations = await Measure(() => document.ScanAnnotationsAsync(0, token));
-            var outline = await Measure(() => document.GetOutlineAsync(token));
+            var prefetch = await Measure(() => PdfDocumentPages.PrefetchPageAsync(document, 0, token));
+            var page = await Measure(() => PdfDocumentPages.GetPageAsync(document, 0, token));
+            var text = await Measure(() => PdfDocumentText.GetTextPageAsync(document, 0, token));
+            var links = await Measure(() => PdfDocumentLinks.GetLinksAsync(document, 0, token));
+            var annotations = await Measure(() => PdfDocumentContent.ScanAnnotationsAsync(document, 0, token));
+            var outline = await Measure(() => PdfDocumentNavigation.GetOutlineAsync(document, token));
 
             // A page of the large sample takes long to replay, so its render is measured on the small sample's sources only.
             var render = source == LargeSource ? 0L : await Measure(() => renderer.RenderAsync(request, pixels, width, height, width * BytesPerPixel, token));
@@ -103,9 +103,9 @@ public sealed class AsyncAllocationTests
     /// <returns>The document.</returns>
     private static async Task<PdfDocument> OpenAsync(string source, string path, Stream stream) => source switch
     {
-        "mapped" => await PdfDocument.OpenWithAsync(path, new() { Source = PdfSourceKind.Mapped }, CancellationToken.None),
-        "memory" => await PdfDocument.OpenWithAsync(path, new() { Source = PdfSourceKind.Memory }, CancellationToken.None),
-        _ => await PdfDocument.OpenAsync(stream, null, CancellationToken.None),
+        "mapped" => await PdfDocumentReader.OpenWithAsync(path, new() { Source = PdfSourceKind.Mapped }, CancellationToken.None),
+        "memory" => await PdfDocumentReader.OpenWithAsync(path, new() { Source = PdfSourceKind.Memory }, CancellationToken.None),
+        _ => await PdfDocumentReader.OpenAsync(stream, null, CancellationToken.None),
     };
 
     /// <summary>Measures the bytes allocated by awaiting a task-returning form repeatedly, each call completing at once.</summary>

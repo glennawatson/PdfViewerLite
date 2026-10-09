@@ -52,7 +52,7 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
         var pass = new CleanupPass(document, scanner, items, names, report);
         for (var i = 0; i < document.PageCount; i++)
         {
-            pass.CleanPage(document.GetPage(i));
+            pass.CleanPage(PdfDocumentPages.GetPage(document, i));
         }
 
         if ((items & PdfCleanupItems.PieceInfo) != 0)
@@ -60,7 +60,7 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
             pass.CleanCatalog();
         }
 
-        document.RefreshAfterOptimizerEdit();
+        PdfDocumentOptimizing.RefreshAfterOptimizerEdit(document);
     }
 
     /// <summary>Gets the stored size of a value's object, for the report.</summary>

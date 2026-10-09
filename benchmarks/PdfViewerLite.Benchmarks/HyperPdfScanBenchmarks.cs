@@ -70,10 +70,10 @@ public class HyperPdfScanBenchmarks
             return;
         }
 
-        _document = PdfDocument.Open(path, null);
+        _document = PdfDocumentReader.Open(path, null);
         _renderer = new(_document);
         _pdfiumDocument = _pdfium.Open(path, null);
-        _image = FirstImage(_document.GetPage(DecodedPage));
+        _image = FirstImage(PdfDocumentPages.GetPage(_document, DecodedPage));
     }
 
     /// <summary>Closes the documents.</summary>

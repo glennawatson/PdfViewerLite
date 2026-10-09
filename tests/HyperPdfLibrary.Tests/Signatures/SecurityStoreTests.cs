@@ -25,8 +25,8 @@ public sealed class SecurityStoreTests
         using var authority = PdfSigning.CreateCertificate("Store Root", null, true, TimeProvider.System);
         var crl = BuildCrl(authority, null);
         var file = SignatureSamples.AddSecurityStore(Sign(), SignatureSamples.SignedCatalog(0), [authority.RawData, OcspStandIn.ToArray(), crl], new(1, 1), string.Empty);
-        using var document = PdfDocument.Open(file, null);
-        var store = document.GetSecurityStore();
+        using var document = PdfDocumentReader.Open(file, null);
+        var store = PdfDocumentSignatureValidation.GetSecurityStore(document);
 
         await Assert.That(store.Certificates.Length).IsEqualTo(1);
         await Assert.That(store.Certificates[0]).IsEquivalentTo(authority.RawData);
@@ -42,16 +42,16 @@ public sealed class SecurityStoreTests
     {
         var signed = Sign();
         string key;
-        using (var original = PdfDocument.Open(signed, null))
+        using (var original = PdfDocumentReader.Open(signed, null))
         {
-            key = Convert.ToHexString(CryptographicOperations.HashData(HashAlgorithmName.SHA1, original.GetSignatures()[0].Contents));
+            key = Convert.ToHexString(CryptographicOperations.HashData(HashAlgorithmName.SHA1, PdfDocumentAttachments.GetSignatures(original)[0].Contents));
         }
 
         var vri = $"<< /{key} << /Cert [12 0 R] /TU (D:20260102030405Z) >> >>";
         var file = SignatureSamples.AddSecurityStore(signed, SignatureSamples.SignedCatalog(0), [SignatureFixtures.Signer.RawData], new(1, 0), vri);
-        using var document = PdfDocument.Open(file, null);
-        var signature = document.GetSignatures()[0];
-        var entry = document.GetSecurityStore().FindVri(signature.Contents, signature.Contents.Length);
+        using var document = PdfDocumentReader.Open(file, null);
+        var signature = PdfDocumentAttachments.GetSignatures(document)[0];
+        var entry = PdfDocumentSignatureValidation.GetSecurityStore(document).FindVri(signature.Contents, signature.Contents.Length);
 
         await Assert.That(entry).IsNotNull();
         await Assert.That(entry!.Certificates.Length).IsEqualTo(1);

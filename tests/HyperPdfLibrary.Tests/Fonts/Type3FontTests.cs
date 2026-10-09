@@ -93,7 +93,7 @@ public sealed class Type3FontTests
     /// <exception cref="InvalidOperationException">The font did not load.</exception>
     private static PdfFont LoadFont(RenderTestPage page)
     {
-        var fonts = page.Document.GetPage(0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("No fonts.");
+        var fonts = HyperPdfLibrary.Document.PdfDocumentPages.GetPage(page.Document, 0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("No fonts.");
         var dictionary = fonts.Get(fonts.GetKeyAt(0)).AsDictionary() ?? throw new InvalidOperationException("No font.");
         return PdfFontLoader.Load(dictionary) ?? throw new InvalidOperationException("The font did not load.");
     }

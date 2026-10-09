@@ -126,14 +126,14 @@ public sealed class NativeTextLayerTests
         var written = ((ITextLayerWriter)test.Editor).AddTextLayer(0, Other);
         var saved = NativeDocument.Save(test.Editor);
         using var reopened = NativeDocument.OpenWithPdfium(saved, out var path);
-        using var managed = PdfDocument.Open(saved, null);
+        using var managed = PdfDocumentReader.Open(saved, null);
         try
         {
             var greek = new List<TextMatch>();
             var cyrillic = new List<TextMatch>();
             reopened.Find(0, "αβ", default, greek);
             reopened.Find(0, "Ж", default, cyrillic);
-            var fonts = managed.GetPage(0).Dictionary.GetDictionary(KnownName.Resources)!.GetDictionary(KnownName.Font)!;
+            var fonts = PdfDocumentPages.GetPage(managed, 0).Dictionary.GetDictionary(KnownName.Resources)!.GetDictionary(KnownName.Font)!;
             var font = fonts.GetDictionary(fonts.GetKeyAt(0))!;
 
             await Assert.That(written).IsEqualTo(OtherWords);

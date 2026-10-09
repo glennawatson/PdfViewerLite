@@ -33,16 +33,16 @@ public sealed class RedactionCorpusTests
             string secret;
             string before;
             byte[] saved;
-            using (var document = PdfDocument.Open(bytes, null))
+            using (var document = PdfDocumentReader.Open(bytes, null))
             {
-                var target = FindTarget(document.GetPageContent(0));
+                var target = FindTarget(PdfDocumentPageContent.GetPageContent(document, 0));
                 if (target is null)
                 {
                     continue;
                 }
 
                 secret = target.Text;
-                before = document.GetTextPage(0).Text;
+                before = PdfDocumentText.GetTextPage(document, 0).Text;
                 _ = PdfRedactions.Add(document, 0, [target.Bounds], PdfRedactionAppearance.Black);
                 await using var output = new MemoryStream();
                 _ = PdfRedactor.ApplyAndSave(document, output, PdfRedactionOptions.Default);

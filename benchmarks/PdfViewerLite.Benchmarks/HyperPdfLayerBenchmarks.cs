@@ -35,8 +35,8 @@ public class HyperPdfLayerBenchmarks
     public void Setup()
     {
         _file = TestPdf.CreateWithLayers();
-        _document = PdfDocument.Open(_file, null);
-        _content = _document.OptionalContent;
+        _document = PdfDocumentReader.Open(_file, null);
+        _content = PdfDocumentLayers.GetOptionalContent(_document);
         _notes = _content.Layers[1].Id;
     }
 
@@ -49,8 +49,8 @@ public class HyperPdfLayerBenchmarks
     [Benchmark]
     public int ReadLayers()
     {
-        using var document = PdfDocument.Open(_file, null);
-        return document.OptionalContent.Layers.Count;
+        using var document = PdfDocumentReader.Open(_file, null);
+        return PdfDocumentLayers.GetOptionalContent(document).Layers.Count;
     }
 
     /// <summary>Shows or hides a layer.</summary>

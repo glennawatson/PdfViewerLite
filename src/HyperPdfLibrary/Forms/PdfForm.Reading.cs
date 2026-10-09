@@ -93,7 +93,7 @@ public sealed partial class PdfForm
     /// <param name="pageIndex">The zero based page index.</param>
     /// <returns>The array; <see langword="null"/> when the page does not exist or has none.</returns>
     private PdfArray? GetAnnotations(int pageIndex) =>
-        (uint)pageIndex < (uint)_document.PageCount ? _document.GetPage(pageIndex).Dictionary.GetArray(KnownName.Annots) : null;
+        (uint)pageIndex < (uint)_document.PageCount ? HyperPdfLibrary.Document.PdfDocumentPages.GetPage(_document, pageIndex).Dictionary.GetArray(KnownName.Annots) : null;
 
     /// <summary>Finds a page's widget and the field it belongs to.</summary>
     /// <param name="pageIndex">The zero based page index.</param>

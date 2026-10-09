@@ -107,7 +107,7 @@ public class HyperPdfSourceBenchmarks
     /// <returns>The decoded length.</returns>
     private static int DecodePage(PdfDocument document, int index)
     {
-        var contents = document.Objects.Resolve(document.GetPage(index).Dictionary.GetRaw(KnownName.Contents));
+        var contents = document.Objects.Resolve(PdfDocumentPages.GetPage(document, index).Dictionary.GetRaw(KnownName.Contents));
         if (contents.AsArray() is not { } parts)
         {
             return Decode(contents.AsStream());
@@ -166,5 +166,5 @@ public class HyperPdfSourceBenchmarks
 
     /// <summary>Opens the file with the chosen source.</summary>
     /// <returns>The document.</returns>
-    private PdfDocument Open() => PdfDocument.OpenWith(_path, new PdfOpenOptions { Source = Source, CacheBytes = CacheBytes });
+    private PdfDocument Open() => PdfDocumentReader.OpenWith(_path, new PdfOpenOptions { Source = Source, CacheBytes = CacheBytes });
 }

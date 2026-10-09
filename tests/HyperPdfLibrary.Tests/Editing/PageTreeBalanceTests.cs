@@ -32,7 +32,7 @@ public sealed class PageTreeBalanceTests
     [Arguments(TwoLevelPages, 2)]
     public async Task ReorderedTreeIsBalanced(int pageCount, int expectedDepth)
     {
-        using var document = PdfDocument.Open(TestPdf.Create(pageCount), null);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(pageCount), null);
         var before = WritingTestDocuments.PageContents(document.Objects);
         var order = new int[pageCount];
         for (var i = 0; i < order.Length; i++)
@@ -40,8 +40,8 @@ public sealed class PageTreeBalanceTests
             order[i] = pageCount - 1 - i;
         }
 
-        document.ReorderPages(order);
-        using var reopened = PdfDocument.Open(PdfIncrementalWriter.Save(document.Objects), null);
+        PdfDocumentPageOperations.ReorderPages(document, order);
+        using var reopened = PdfDocumentReader.Open(PdfIncrementalWriter.Save(document.Objects), null);
 
         await Assert.That(reopened.PageCount).IsEqualTo(pageCount);
         await Assert.That(MaxFanOut(reopened)).IsLessThanOrEqualTo(PdfPageTreeWriter.FanOut);
@@ -104,7 +104,7 @@ public sealed class PageTreeBalanceTests
         var wrong = 0;
         for (var i = 0; i < document.PageCount; i++)
         {
-            var page = document.GetPage(i);
+            var page = PdfDocumentPages.GetPage(document, i);
             var kids = page.Dictionary.GetDictionary(KnownName.Parent)?.GetArray(KnownName.Kids);
             var found = false;
             for (var k = 0; kids is not null && k < kids.Count && !found; k++)

@@ -27,7 +27,7 @@ public class HyperPdfRasterBenchmarks
     public void Setup()
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".cache", "pdfviewerlite", "corpus", $"{CorpusId}.pdf");
-        _document = File.Exists(path) ? PdfDocument.Open(path, null) : null;
+        _document = File.Exists(path) ? PdfDocumentReader.Open(path, null) : null;
     }
 
     /// <summary>Closes the document.</summary>
@@ -57,7 +57,7 @@ public class HyperPdfRasterBenchmarks
         var total = 0;
         for (var i = 0; i < _document.PageCount; i++)
         {
-            total += _document.ExtractText(i).CharCount;
+            total += PdfDocumentText.ExtractText(_document, i).CharCount;
         }
 
         return total;

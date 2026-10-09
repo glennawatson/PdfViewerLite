@@ -46,8 +46,8 @@ public class AccessibilityReportBenchmarks
     public void Setup()
     {
         _bytes = Generate();
-        _document = PdfDocument.Open(_bytes, null);
-        _ = _document.GetAccessibilityReport();
+        _document = PdfDocumentReader.Open(_bytes, null);
+        _ = PdfDocumentAccessibility.GetAccessibilityReport(_document);
     }
 
     /// <summary>Closes the document.</summary>
@@ -57,15 +57,15 @@ public class AccessibilityReportBenchmarks
     /// <summary>Reads the report from a document whose tags and page content are already read.</summary>
     /// <returns>The report.</returns>
     [Benchmark]
-    public PdfAccessibilityReport Warm() => _document.GetAccessibilityReport();
+    public PdfAccessibilityReport Warm() => PdfDocumentAccessibility.GetAccessibilityReport(_document);
 
     /// <summary>Opens the file and reads the report, including the tags and the content of every page.</summary>
     /// <returns>The report.</returns>
     [Benchmark]
     public PdfAccessibilityReport Cold()
     {
-        using var document = PdfDocument.Open(_bytes, null);
-        return document.GetAccessibilityReport();
+        using var document = PdfDocumentReader.Open(_bytes, null);
+        return PdfDocumentAccessibility.GetAccessibilityReport(document);
     }
 
     /// <summary>Builds the 100-page tagged file.</summary>

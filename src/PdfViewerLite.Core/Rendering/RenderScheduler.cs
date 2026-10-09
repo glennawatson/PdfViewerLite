@@ -226,6 +226,22 @@ public sealed class RenderScheduler : IDisposable
         return true;
     }
 
+    /// <summary>Reports synchronous preparation failures through the returned task.</summary>
+    /// <param name="request">The page request.</param>
+    /// <param name="cancellationToken">Cancels preparation.</param>
+    /// <returns>The preparation task.</returns>
+    private static ValueTask Prepare(in RenderRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return request.Document.PreparePageAsync(request.Info.PageIndex, cancellationToken);
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or HttpRequestException or IOException or InvalidOperationException)
+        {
+            return ValueTask.FromException(exception);
+        }
+    }
+
     /// <summary>The render thread loop.</summary>
     private void Run()
     {
@@ -246,10 +262,55 @@ public sealed class RenderScheduler : IDisposable
                 continue;
             }
 
+            var prepare = Prepare(request, token);
+            if (!prepare.IsCompletedSuccessfully)
+            {
+                _ = PrepareAndRequeueAsync(prepare, request, epoch);
+                continue;
+            }
+
             if (!Execute(request, epoch))
             {
-                Forget(request.Key);
+                Forget(request.Key, epoch);
             }
+        }
+    }
+
+    /// <summary>Checks whether an earlier request was invalidated, with the queue gate held.</summary>
+    /// <param name="key">The tile key.</param>
+    /// <param name="epoch">The request's epoch.</param>
+    /// <returns>Whether the document changed during the request.</returns>
+    private bool IsInvalidated(in TileKey key, long epoch) =>
+        _invalidated.TryGetValue(key.DocumentId, out var changed) && epoch < changed;
+
+    /// <summary>Waits for external resources without occupying the render thread, then requeues the latest tile.</summary>
+    /// <param name="prepare">The resource preparation.</param>
+    /// <param name="request">The request waiting for resources.</param>
+    /// <param name="epoch">The invalidation epoch the preparation started under.</param>
+    /// <returns>A task completing when the request is requeued or dropped.</returns>
+    private async Task PrepareAndRequeueAsync(ValueTask prepare, RenderRequest request, long epoch)
+    {
+        try
+        {
+            await prepare.ConfigureAwait(false);
+            lock (_gate)
+            {
+                if (Volatile.Read(ref _disposed) != 0 || !_pending.TryGetValue(request.Key, out var pending) || IsInvalidated(request.Key, epoch))
+                {
+                    return;
+                }
+
+                _pending[request.Key] = pending with { Started = false };
+                var sequence = _sequence;
+                _sequence = sequence + 1;
+                _queue.Enqueue(pending.Latest, ((long)pending.Latest.Priority << PriorityShift) | sequence);
+                _ = _signal.Release();
+            }
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or HttpRequestException or IOException or InvalidOperationException or ObjectDisposedException)
+        {
+            Debug.WriteLine($"Page preparation failed for {request.Key}: {exception.Message}");
+            Forget(request.Key, epoch);
         }
     }
 
@@ -351,12 +412,13 @@ public sealed class RenderScheduler : IDisposable
 
     /// <summary>Removes a key from the pending map after a failed or skipped render.</summary>
     /// <param name="key">The key.</param>
-    private void Forget(in TileKey key)
+    /// <param name="epoch">The epoch the request started under.</param>
+    private void Forget(in TileKey key, long epoch)
     {
         lock (_gate)
         {
             // Only the entry this render started is removed; a newer request queued after an invalidation stays.
-            if (_pending.TryGetValue(key, out var pending) && pending.Started)
+            if (!IsInvalidated(key, epoch) && _pending.TryGetValue(key, out var pending) && pending.Started)
             {
                 _ = _pending.Remove(key);
             }

@@ -11,7 +11,7 @@ namespace HyperPdfLibrary.Annotations;
 /// Metrics of the built in Latin fonts, from the Adobe Core 14 font metrics, for laying out and measuring text written
 /// in an appearance stream with WinAnsi encoding. Advances and glyph boxes are in ems.
 /// </summary>
-public static partial class AppearanceFontMetrics
+public static class AppearanceFontMetrics
 {
     /// <summary>The first WinAnsi code with metrics: the space.</summary>
     private const int FirstCode = 32;
@@ -61,16 +61,6 @@ public static partial class AppearanceFontMetrics
     /// <summary>The italic style's offset within a family.</summary>
     private const int ItalicStyle = 2;
 
-    /// <summary>Gets each family's ascent and the depth of its descent, in 1/1000 em: Helvetica, Times, then Courier.</summary>
-    private static ReadOnlySpan<short> FamilyExtents => [0x2CE, 0xCF, 0x2AB, 0xD9, 0x275, 0x9D];
-
-    /// <summary>Gets the characters of WinAnsi codes 0x80 to 0x9F; zero marks a code with no character.</summary>
-    private static ReadOnlySpan<ushort> WindowsCharacters =>
-    [
-        0x20AC, 0x0000, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x0000, 0x017D, 0x0000,
-        0x0000, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x0000, 0x017E, 0x0178,
-    ];
-
     /// <summary>Gets a font in a family and style.</summary>
     /// <param name="family">0 for Helvetica, 1 for Times, 2 for Courier; others read as Helvetica.</param>
     /// <param name="bold">Whether bold.</param>
@@ -105,13 +95,13 @@ public static partial class AppearanceFontMetrics
     /// <param name="font">The font.</param>
     /// <returns>The ascent in ems.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float GetAscent(AppearanceFont font) => FamilyExtents[Family(font) * ExtentsPerFamily] / UnitsPerEm;
+    public static float GetAscent(AppearanceFont font) => AppearanceFontMetricsData.FamilyExtents[Family(font) * ExtentsPerFamily] / UnitsPerEm;
 
     /// <summary>Gets how far a font falls below the baseline.</summary>
     /// <param name="font">The font.</param>
     /// <returns>The descent in ems, negative.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float GetDescent(AppearanceFont font) => -FamilyExtents[(Family(font) * ExtentsPerFamily) + 1] / UnitsPerEm;
+    public static float GetDescent(AppearanceFont font) => -AppearanceFontMetricsData.FamilyExtents[(Family(font) * ExtentsPerFamily) + 1] / UnitsPerEm;
 
     /// <summary>Gets the WinAnsi code of a character.</summary>
     /// <param name="codePoint">The character.</param>
@@ -125,7 +115,7 @@ public static partial class AppearanceFontMetrics
             return true;
         }
 
-        var index = WindowsCharacters.IndexOf((ushort)codePoint);
+        var index = AppearanceFontMetricsData.WindowsCharacters.IndexOf((ushort)codePoint);
         code = index >= 0 && codePoint > 0 && codePoint <= ushort.MaxValue ? (byte)(WindowsFirst + index) : (byte)0;
         return code != 0;
     }
@@ -158,7 +148,7 @@ public static partial class AppearanceFontMetrics
     public static float GetAdvance(AppearanceFont font, byte code)
     {
         var at = Offset(font, code);
-        return at < 0 ? 0 : Data[at] / UnitsPerEm;
+        return at < 0 ? 0 : AppearanceFontMetricsData.Data[at] / UnitsPerEm;
     }
 
     /// <summary>Gets the box around a code's glyph.</summary>
@@ -173,7 +163,7 @@ public static partial class AppearanceFontMetrics
             return default;
         }
 
-        var data = Data;
+        var data = AppearanceFontMetricsData.Data;
         return new(data[at + LeftOffset] / UnitsPerEm, data[at + BottomOffset] / UnitsPerEm, data[at + RightOffset] / UnitsPerEm, data[at + TopOffset] / UnitsPerEm);
     }
 
@@ -248,7 +238,7 @@ public static partial class AppearanceFontMetrics
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int Family(AppearanceFont font) => (uint)font < FontCount ? (int)font / StylesPerFamily : 0;
 
-    /// <summary>Gets where a code's metrics start in <see cref="Data"/>.</summary>
+    /// <summary>Gets where a code's metrics start in <see cref="AppearanceFontMetricsData.Data"/>.</summary>
     /// <param name="font">The font.</param>
     /// <param name="code">The WinAnsi code.</param>
     /// <returns>The offset, or -1 for a code without metrics.</returns>

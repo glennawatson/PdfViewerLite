@@ -203,7 +203,7 @@ public sealed class PdfPageImporter
             _ = ImportPageCore(pages[i], ids[i], prepared[i], PdfAnnotationFilter.All);
         }
 
-        if (_source.CollectSourceLabels(pages) is { } labels)
+        if (PdfDocumentLabels.CollectSourceLabels(_source, pages) is { } labels)
         {
             carrier.SetPageLabels(PdfPageLabelWriter.CreateTree(null, PdfPageLabelWriter.Retarget(labels, _objects)));
         }

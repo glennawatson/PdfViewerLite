@@ -38,9 +38,9 @@ public sealed class PageObjectPdfiumTests
         var source = TestPdf.Create(1);
         byte[] saved;
         string deleted;
-        using (var document = PdfDocument.Open(source, null))
+        using (var document = PdfDocumentReader.Open(source, null))
         {
-            var content = document.GetPageContent(0);
+            var content = PdfDocumentPageContent.GetPageContent(document, 0);
             var texts = TextObjects(content);
             deleted = texts[0].Text;
             texts[0].Delete();
@@ -67,9 +67,9 @@ public sealed class PageObjectPdfiumTests
         var source = TestPdf.Create(1);
         string secret;
         byte[] saved;
-        using (var document = PdfDocument.Open(source, null))
+        using (var document = PdfDocumentReader.Open(source, null))
         {
-            var target = TextObjects(document.GetPageContent(0))[0];
+            var target = TextObjects(PdfDocumentPageContent.GetPageContent(document, 0))[0];
             secret = target.Text;
             _ = PdfRedactions.Add(document, 0, [target.Bounds], PdfRedactionAppearance.Black);
             await using var output = new MemoryStream();

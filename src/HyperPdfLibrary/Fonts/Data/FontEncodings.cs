@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 namespace HyperPdfLibrary.Fonts.Data;
 
 /// <summary>The built-in 256-code encodings, mapping each code to a glyph name without allocating.</summary>
-public static partial class FontEncodings
+public static class FontEncodings
 {
     /// <summary>The number of codes in a simple encoding.</summary>
     internal const int CodeCount = 256;
@@ -45,14 +45,14 @@ public static partial class FontEncodings
     /// <returns>The 256 name ids, or empty for <see cref="FontEncoding.None"/>.</returns>
     private static ReadOnlySpan<ushort> GetTable(FontEncoding encoding) => encoding switch
     {
-        FontEncoding.Standard => StandardCodes,
-        FontEncoding.WinAnsi => WinAnsiCodes,
-        FontEncoding.MacRoman => MacRomanCodes,
-        FontEncoding.MacExpert => MacExpertCodes,
-        FontEncoding.PdfDoc => PdfDocCodes,
-        FontEncoding.Symbol => SymbolCodes,
-        FontEncoding.ZapfDingbats => ZapfDingbatsCodes,
-        FontEncoding.Expert => ExpertCodes,
+        FontEncoding.Standard => FontEncodingsData.StandardCodes,
+        FontEncoding.WinAnsi => FontEncodingsData.WinAnsiCodes,
+        FontEncoding.MacRoman => FontEncodingsData.MacRomanCodes,
+        FontEncoding.MacExpert => FontEncodingsData.MacExpertCodes,
+        FontEncoding.PdfDoc => FontEncodingsData.PdfDocCodes,
+        FontEncoding.Symbol => FontEncodingsData.SymbolCodes,
+        FontEncoding.ZapfDingbats => FontEncodingsData.ZapfDingbatsCodes,
+        FontEncoding.Expert => FontEncodingsData.ExpertCodes,
         _ => [],
     };
 }

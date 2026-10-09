@@ -65,8 +65,8 @@ public sealed class RedactionApplyTests
     {
         var pdf = Page(RedactionSamples.ThreeLines, Annotations);
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.SecretLine);
-        using var document = PdfDocument.Open(saved, null);
-        var annotations = PdfPageAnnotations.GetArray(document.Objects, document.GetPage(0))!;
+        using var document = PdfDocumentReader.Open(saved, null);
+        var annotations = PdfPageAnnotations.GetArray(document.Objects, PdfDocumentPages.GetPage(document, 0))!;
 
         await Assert.That(annotations.Count).IsEqualTo(1);
         await Assert.That(RedactionSamples.Contains(saved, "secret.example")).IsFalse();
@@ -86,9 +86,9 @@ public sealed class RedactionApplyTests
     {
         var pdf = Page(RedactionSamples.ThreeLines, Annotations);
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default with { Annotations = mode }, RedactionSamples.SecretLine);
-        using var document = PdfDocument.Open(saved, null);
+        using var document = PdfDocumentReader.Open(saved, null);
 
-        await Assert.That(PdfPageAnnotations.GetArray(document.Objects, document.GetPage(0))!.Count).IsEqualTo(expected);
+        await Assert.That(PdfPageAnnotations.GetArray(document.Objects, PdfDocumentPages.GetPage(document, 0))!.Count).IsEqualTo(expected);
     }
 
     /// <summary>The area is painted with the fill colour, and the overlay text is drawn and can be read.</summary>
@@ -96,7 +96,7 @@ public sealed class RedactionApplyTests
     [Test]
     public async Task OverlayPaintsTheFillAndText()
     {
-        using var document = PdfDocument.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
+        using var document = PdfDocumentReader.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
         var appearance = new PdfRedactionAppearance(Red, Overlay, false, 0, 0xFFFFFFU, PdfRedactionAlignment.Left);
         _ = PdfRedactions.Add(document, 0, [RedactionSamples.SecretLine], appearance);
         await using var output = new MemoryStream();
@@ -115,7 +115,7 @@ public sealed class RedactionApplyTests
     public async Task BarIsPaintedAndMarksAreGone()
     {
         var saved = RedactionSamples.Redact(PageObjectSamples.Page(RedactionSamples.ThreeLines), PdfRedactionOptions.Default, RedactionSamples.SecretLine);
-        using var document = PdfDocument.Open(saved, null);
+        using var document = PdfDocumentReader.Open(saved, null);
         var marks = new List<PdfRedaction>();
         PdfRedactions.GetAll(document, marks);
 
@@ -137,15 +137,15 @@ public sealed class RedactionApplyTests
         pdf.Resources = $"/Font << /F1 {font} 0 R >> /XObject << /Im1 {picture} 0 R >>";
         pdf.PageEntries = $"/Thumb {thumb} 0 R";
         pdf.Content = "BT /F1 20 Tf 20 150 Td (Public text) Tj ET q 30 0 0 30 20 108 cm /Im1 Do Q";
-        using var document = PdfDocument.Open(pdf.ToBytes(), null);
+        using var document = PdfDocumentReader.Open(pdf.ToBytes(), null);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         await using var output = new MemoryStream();
         var options = PdfRedactionOptions.Default with { Images = PdfRedactionImageMode.Remove };
         var report = PdfRedactor.ApplyAndSave(document, output, options);
-        using var saved = PdfDocument.Open(output.ToArray(), null);
+        using var saved = PdfDocumentReader.Open(output.ToArray(), null);
 
         await Assert.That(report.ResourcesRemoved).IsEqualTo(1);
-        await Assert.That(saved.GetPage(0).Resources!.GetDictionary(KnownName.XObject)!.Count).IsEqualTo(0);
+        await Assert.That(PdfDocumentPages.GetPage(saved, 0).Resources!.GetDictionary(KnownName.XObject)!.Count).IsEqualTo(0);
         await Assert.That(RedactionSamples.Contains(output.ToArray(), "THUMBDATA")).IsFalse();
         await Assert.That(RedactionSamples.Contains(output.ToArray(), "IMAGEMARKER")).IsFalse();
     }
@@ -161,12 +161,12 @@ public sealed class RedactionApplyTests
         pdf.Resources = $"/Font << /F1 {font} 0 R >>";
         pdf.Content = "BT /F1 20 Tf 20 120 Td (SE) Tj 0 -60 Td (E) Tj ET";
         var area = new PdfRectangle(RedactionSamples.SecretLine.Left, RedactionSamples.SecretLine.Bottom, RedactionSamples.SecretLine.Left + OneLetter, RedactionSamples.SecretLine.Top);
-        using var document = PdfDocument.Open(pdf.ToBytes(), null);
+        using var document = PdfDocumentReader.Open(pdf.ToBytes(), null);
         RedactionSamples.Mark(document, area);
         await using var output = new MemoryStream();
         var report = PdfRedactor.ApplyAndSave(document, output, PdfRedactionOptions.Default);
-        using var saved = PdfDocument.Open(output.ToArray(), null);
-        var fontDictionary = saved.GetPage(0).Resources!.GetDictionary(KnownName.Font)!.GetDictionary(saved.Objects.Names.Intern("F1"u8))!;
+        using var saved = PdfDocumentReader.Open(output.ToArray(), null);
+        var fontDictionary = PdfDocumentPages.GetPage(saved, 0).Resources!.GetDictionary(KnownName.Font)!.GetDictionary(saved.Objects.Names.Intern("F1"u8))!;
         var rewritten = Encoding.ASCII.GetString(fontDictionary.GetStream(KnownName.ToUnicode)!.DecodeToArray());
 
         await Assert.That(report.ToUnicodeEntriesRemoved).IsEqualTo(1);
@@ -183,13 +183,13 @@ public sealed class RedactionApplyTests
     [Arguments(false)]
     public async Task MetadataIsScrubbedWhenAsked(bool scrub)
     {
-        using var document = PdfDocument.Open(TestPdf.Create(1), null);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(1), null);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         await using var output = new MemoryStream();
         _ = PdfRedactor.ApplyAndSave(document, output, PdfRedactionOptions.Default with { ScrubMetadata = scrub });
-        using var saved = PdfDocument.Open(output.ToArray(), null);
+        using var saved = PdfDocumentReader.Open(output.ToArray(), null);
 
-        await Assert.That(string.IsNullOrEmpty(saved.GetInfo().Title)).IsEqualTo(scrub);
+        await Assert.That(string.IsNullOrEmpty(PdfDocumentMetadata.GetInfo(saved).Title)).IsEqualTo(scrub);
     }
 
     /// <summary>Marks are listed with their areas and look, and can be taken off again.</summary>
@@ -197,7 +197,7 @@ public sealed class RedactionApplyTests
     [Test]
     public async Task MarksCanBeListedAndRemoved()
     {
-        using var document = PdfDocument.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
+        using var document = PdfDocumentReader.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
         var appearance = new PdfRedactionAppearance(Red, Overlay, true, 0, null, PdfRedactionAlignment.Centre);
         var index = PdfRedactions.Add(document, 0, [RedactionSamples.SecretLine, RedactionSamples.AlphaArea], appearance);
         var marks = new List<PdfRedaction>();

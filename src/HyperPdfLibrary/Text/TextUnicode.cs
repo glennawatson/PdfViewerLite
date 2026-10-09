@@ -5,7 +5,7 @@
 namespace HyperPdfLibrary.Text;
 
 /// <summary>The Unicode properties text extraction needs: direction, mirroring and decomposition, matching PDFium's tables.</summary>
-internal static partial class TextUnicode
+internal static class TextUnicode
 {
     /// <summary>The longest decomposition in the table.</summary>
     internal const int MaxDecomposition = 18;
@@ -21,13 +21,13 @@ internal static partial class TextUnicode
     /// <returns>The direction.</returns>
     internal static TextDirection GetDirection(char value)
     {
-        var index = DirectionStarts.BinarySearch((ushort)value);
+        var index = TextUnicodeData.DirectionStarts.BinarySearch((ushort)value);
         if (index < 0)
         {
             index = ~index - 1;
         }
 
-        return (TextDirection)DirectionKinds[index];
+        return (TextDirection)TextUnicodeData.DirectionKinds[index];
     }
 
     /// <summary>Gets a character's mirrored form, as right-to-left text shows brackets.</summary>
@@ -35,8 +35,8 @@ internal static partial class TextUnicode
     /// <returns>The mirrored character, or the character itself.</returns>
     internal static char GetMirror(char value)
     {
-        var index = MirrorKeys.BinarySearch((ushort)value);
-        return index < 0 ? value : (char)MirrorValues[index];
+        var index = TextUnicodeData.MirrorKeys.BinarySearch((ushort)value);
+        return index < 0 ? value : (char)TextUnicodeData.MirrorValues[index];
     }
 
     /// <summary>Determines whether a character is a Latin ligature PDFium splits into letters.</summary>
@@ -50,15 +50,15 @@ internal static partial class TextUnicode
     /// <returns>The characters written.</returns>
     internal static int Decompose(char value, Span<char> destination)
     {
-        var index = DecompositionKeys.BinarySearch((ushort)value);
+        var index = TextUnicodeData.DecompositionKeys.BinarySearch((ushort)value);
         if (index < 0)
         {
             destination[0] = value;
             return 1;
         }
 
-        var offsets = DecompositionOffsets;
-        var values = DecompositionValues[offsets[index]..offsets[index + 1]];
+        var offsets = TextUnicodeData.DecompositionOffsets;
+        var values = TextUnicodeData.DecompositionValues[offsets[index]..offsets[index + 1]];
         for (var i = 0; i < values.Length; i++)
         {
             destination[i] = (char)values[i];

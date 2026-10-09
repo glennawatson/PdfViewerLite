@@ -71,7 +71,7 @@ internal static class RasterPdfs
     /// <returns>The report.</returns>
     internal static HyperPdfLibrary.Raster.PdfRasterReport Report(byte[] bytes)
     {
-        using var document = PdfDocument.Open(bytes, null);
-        return document.GetRasterReport(CancellationToken.None);
+        using var document = PdfDocumentReader.Open(bytes, null);
+        return PdfDocumentRaster.GetRasterReport(document, CancellationToken.None);
     }
 }

@@ -35,11 +35,11 @@ public sealed class TextObjectDeviceTests
         var layer = pdf.AddObject("<< /Type /OCG /Name (Off) >>");
         pdf.Resources = $"/XObject << /Im {image} 0 R >> /Properties << /L1 {layer} 0 R >>";
         pdf.CatalogEntries = $"/OCProperties << /OCGs [{layer} 0 R] /D << /OFF [{layer} 0 R] >> >>";
-        using var document = PdfDocument.Open(pdf.ToBytes(), null);
+        using var document = PdfDocumentReader.Open(pdf.ToBytes(), null);
         var device = new TextDevice();
-        using (var interpreter = new ContentInterpreter(document.RenderCache, device, 0))
+        using (var interpreter = new ContentInterpreter(PdfDocumentRendering.GetRenderCache(document), device, 0))
         {
-            interpreter.RunPage(document.GetPage(0));
+            interpreter.RunPage(PdfDocumentPages.GetPage(document, 0));
         }
 
         await Assert.That(device.TextObjects).IsEqualTo(Shows);

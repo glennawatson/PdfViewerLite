@@ -75,7 +75,7 @@ public sealed partial class PdfPageRenderer : IDisposable
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(options);
         _document = document;
-        _cache = document.RenderCache;
+        _cache = PdfDocumentRendering.GetRenderCache(document);
         _options = options;
         ArgumentOutOfRangeException.ThrowIfNegative(options.PictureCacheBytes, nameof(options));
         _cache.Images.Capacity = options.ImageCacheBytes;
@@ -138,7 +138,7 @@ public sealed partial class PdfPageRenderer : IDisposable
             return false;
         }
 
-        var page = _document.GetPage(request.PageIndex);
+        var page = PdfDocumentPages.GetPage(_document, request.PageIndex);
         var cache = CacheFor(request.Flags);
         var entry = Acquire(request.PageIndex, !ReferenceEquals(cache, _cache));
         try
@@ -178,7 +178,7 @@ public sealed partial class PdfPageRenderer : IDisposable
             return PdfRenderStatus.Failed;
         }
 
-        var page = _document.GetPage(request.PageIndex);
+        var page = PdfDocumentPages.GetPage(_document, request.PageIndex);
         var cache = CacheFor(request.Flags);
         var entry = Acquire(request.PageIndex, !ReferenceEquals(cache, _cache));
         try
@@ -284,12 +284,12 @@ public sealed partial class PdfPageRenderer : IDisposable
     /// <returns>The document's caches, or those that convert device colours through the output intent.</returns>
     private PdfRenderCache CacheFor(PdfRenderFlags flags)
     {
-        if ((flags & PdfRenderFlags.FixedDeviceColors) != 0 || ((flags & PdfRenderFlags.OutputIntent) == 0 && !_document.ClaimsPdfA))
+        if ((flags & PdfRenderFlags.FixedDeviceColors) != 0 || ((flags & PdfRenderFlags.OutputIntent) == 0 && !PdfDocumentOutputIntentRendering.ClaimsPdfA(_document)))
         {
             return _cache;
         }
 
-        var intent = _document.GetOutputIntentRenderCache();
+        var intent = PdfDocumentOutputIntentRendering.GetOutputIntentRenderCache(_document);
         if (intent is null)
         {
             return _cache;
@@ -314,10 +314,10 @@ public sealed partial class PdfPageRenderer : IDisposable
         if (Volatile.Read(ref _registered) == 0 && Interlocked.Exchange(ref _registered, 1) == 0)
         {
             // Registered on first use rather than in the constructor, so the document never sees a half-built renderer.
-            _document.RegisterRenderer(this);
+            PdfDocumentRendering.RegisterRenderer(_document, this);
         }
 
-        var version = _document.OptionalContent.Version;
+        var version = PdfDocumentLayers.GetOptionalContent(_document).Version;
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);

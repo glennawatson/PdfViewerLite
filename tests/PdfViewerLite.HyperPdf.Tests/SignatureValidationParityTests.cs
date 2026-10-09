@@ -26,8 +26,8 @@ public sealed class SignatureValidationParityTests
         var file = SignatureSamples.AddAnnotation(SignatureSamples.FillForm(SignatureSamples.Signed(certificate, FormFill, string.Empty)));
         using var pair = new EnginePair(file);
         var expected = ((ISignatureSource)pair.Pdfium).GetSignatures();
-        using var document = PdfDocument.Open(file, null);
-        var details = document.GetSignatureDetails();
+        using var document = PdfDocumentReader.Open(file, null);
+        var details = PdfDocumentSignatureValidation.GetSignatureDetails(document);
 
         await Assert.That(details.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)

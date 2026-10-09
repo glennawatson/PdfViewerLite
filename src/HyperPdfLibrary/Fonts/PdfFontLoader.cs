@@ -13,6 +13,18 @@ namespace HyperPdfLibrary.Fonts;
 /// </summary>
 public static class PdfFontLoader
 {
+    /// <summary>Loads a font, generating any missing predefined resources on demand.</summary>
+    /// <param name="dictionary">The font dictionary.</param>
+    /// <param name="cancellationToken">Cancels source I/O and generation.</param>
+    /// <returns>The font, or null when the dictionary cannot define one.</returns>
+    public static async ValueTask<PdfFont?> LoadAsync(PdfDictionary dictionary, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(dictionary);
+        await FontDataPrefetcher.PrepareFontAsync(dictionary, cancellationToken).ConfigureAwait(false);
+        using var scope = PdfCancellation.Enter(cancellationToken);
+        return Load(dictionary);
+    }
+
     /// <summary>Loads a font from its dictionary.</summary>
     /// <param name="dictionary">The font dictionary.</param>
     /// <returns>The font, or <see langword="null"/> when a composite font lacks its descendant or encoding.</returns>

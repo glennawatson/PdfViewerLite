@@ -232,5 +232,5 @@ public sealed partial class HyperPdfDocument : ITextLayoutSource
     /// <param name="pageIndex">The zero based page index.</param>
     /// <returns>The text page, or <see langword="null"/> when the document is closed or the page does not exist.</returns>
     private PdfTextPage? TextPage(int pageIndex) =>
-        IsDisposed || (uint)pageIndex >= (uint)PageCount ? null : _document.GetTextPage(pageIndex);
+        IsDisposed || (uint)pageIndex >= (uint)PageCount ? null : HyperPdfLibrary.Document.PdfDocumentText.GetTextPage(_document, pageIndex);
 }

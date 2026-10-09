@@ -37,7 +37,7 @@ public sealed partial class PdfPageContent
         }
 
         _applyMode = mode;
-        Document.ApplyPageContent(this);
+        HyperPdfLibrary.Document.PdfDocumentPageContent.ApplyPageContent(Document, this);
     }
 
     /// <summary>Writes the regenerated content to the page.</summary>

@@ -27,8 +27,8 @@ internal sealed class FontTestDocument : IDisposable
     internal FontTestDocument(FontSpec spec)
     {
         Bytes = Build(spec);
-        Document = PdfDocument.Open(Bytes, null);
-        var fonts = Document.GetPage(0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("The page has no fonts.");
+        Document = PdfDocumentReader.Open(Bytes, null);
+        var fonts = PdfDocumentPages.GetPage(Document, 0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("The page has no fonts.");
         var dictionary = fonts.Get(fonts.GetKeyAt(0)).AsDictionary() ?? throw new InvalidOperationException("The font is not a dictionary.");
         Font = PdfFontLoader.Load(dictionary) ?? throw new InvalidOperationException("The font did not load.");
     }
@@ -58,7 +58,7 @@ internal sealed class FontTestDocument : IDisposable
         {
             var encoding = spec.CidEncoding.StartsWith('/') ? spec.CidEncoding : Invariant($"{pdf.AddStream("/Type /CMap", spec.CidEncoding)} 0 R");
             var map = spec.CidToGidMap is null ? string.Empty : Invariant($"/CIDToGIDMap {pdf.AddStream(string.Empty, spec.CidToGidMap)} 0 R");
-            const string systemInfo = "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >>";
+            var systemInfo = Invariant($"/CIDSystemInfo << /Registry (Adobe) /Ordering ({spec.CidOrdering}) /Supplement 0 >>");
             var descendant = pdf.AddObject(Invariant(
                 $"<< /Type /Font /Subtype /{spec.CidSubtype} /BaseFont /{spec.BaseFont} {systemInfo} {descriptor} {map} {spec.CidEntries} >>"));
             font = pdf.AddObject(Invariant(

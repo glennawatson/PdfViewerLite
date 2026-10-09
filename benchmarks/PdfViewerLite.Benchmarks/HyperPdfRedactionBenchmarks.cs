@@ -62,7 +62,7 @@ public class HyperPdfRedactionBenchmarks
     [Benchmark(Baseline = true)]
     public int OpenAndSaveCompact()
     {
-        using var document = PdfDocument.Open(_text, null);
+        using var document = PdfDocumentReader.Open(_text, null);
         return PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default).Length;
     }
 
@@ -82,7 +82,7 @@ public class HyperPdfRedactionBenchmarks
     /// <returns>The saved length.</returns>
     private static long Redact(byte[] pdf, PdfRectangle area)
     {
-        using var document = PdfDocument.Open(pdf, null);
+        using var document = PdfDocumentReader.Open(pdf, null);
         _ = PdfRedactions.Add(document, 0, [area], PdfRedactionAppearance.Black);
         using var output = new MemoryStream();
         _ = PdfRedactor.ApplyAndSave(document, output, PdfRedactionOptions.Default);

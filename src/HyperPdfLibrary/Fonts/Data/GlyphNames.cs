@@ -11,8 +11,11 @@ namespace HyperPdfLibrary.Fonts.Data;
 /// fonts, the CFF standard strings and the Macintosh glyph order. Each name has a small id, and every lookup is a binary
 /// search over static data, so nothing allocates.
 /// </summary>
-internal static partial class GlyphNames
+internal static class GlyphNames
 {
+    /// <summary>The number of names in the table.</summary>
+    internal const int Count = 4497;
+
     /// <summary>The id that means "no name".</summary>
     internal const int NoName = 0xFFFF;
 
@@ -26,9 +29,9 @@ internal static partial class GlyphNames
             return [];
         }
 
-        var offsets = NameOffsets;
+        var offsets = GlyphNamesData.NameOffsets;
         int start = offsets[id];
-        return NameData[start..offsets[id + 1]];
+        return GlyphNamesData.NameData[start..offsets[id + 1]];
     }
 
     /// <summary>Finds the id of a name.</summary>

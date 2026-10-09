@@ -75,8 +75,8 @@ internal static class PageObjectSamples
     /// <returns>The saved PDF bytes.</returns>
     internal static byte[] Edit(byte[] pdf, Action<PdfPageContent> edit)
     {
-        using var document = PdfDocument.Open(pdf, null);
-        var content = document.GetPageContent(0);
+        using var document = PdfDocumentReader.Open(pdf, null);
+        var content = PdfDocumentPageContent.GetPageContent(document, 0);
         edit(content);
         content.Apply();
         return PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
@@ -85,5 +85,5 @@ internal static class PageObjectSamples
     /// <summary>Reads the first page's content of a PDF.</summary>
     /// <param name="pdf">The PDF bytes.</param>
     /// <returns>The content, which keeps its document open for the life of the test.</returns>
-    internal static PdfPageContent Read(byte[] pdf) => PdfDocument.Open(pdf, null).GetPageContent(0);
+    internal static PdfPageContent Read(byte[] pdf) => PdfDocumentPageContent.GetPageContent(PdfDocumentReader.Open(pdf, null), 0);
 }

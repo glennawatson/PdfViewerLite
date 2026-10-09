@@ -19,8 +19,8 @@ public sealed partial class HyperPdfDocument : IContentCheck
             return UnsupportedContent.None;
         }
 
-        var content = _document.HasXfaForm ? UnsupportedContent.XfaForm : UnsupportedContent.None;
-        return _document.GetJavaScriptActionCount() > 0 ? content | UnsupportedContent.JavaScript : content;
+        var content = PdfDocumentContent.HasXfaForm(_document) ? UnsupportedContent.XfaForm : UnsupportedContent.None;
+        return PdfDocumentContent.GetJavaScriptActionCount(_document) > 0 ? content | UnsupportedContent.JavaScript : content;
     }
 
     /// <inheritdoc/>
@@ -31,7 +31,7 @@ public sealed partial class HyperPdfDocument : IContentCheck
             return UnsupportedContent.None;
         }
 
-        var found = _document.ScanAnnotations(pageIndex);
+        var found = PdfDocumentContent.ScanAnnotations(_document, pageIndex);
         var content = UnsupportedContent.None;
         if ((found & PdfAnnotationContent.Multimedia) != 0)
         {
@@ -43,7 +43,7 @@ public sealed partial class HyperPdfDocument : IContentCheck
             content |= UnsupportedContent.ThreeD;
         }
 
-        return _document.HasAcroForm && HasUnknownScripts(pageIndex) ? content | UnsupportedContent.JavaScript : content;
+        return PdfDocumentContent.HasAcroForm(_document) && HasUnknownScripts(pageIndex) ? content | UnsupportedContent.JavaScript : content;
     }
 
     /// <summary>Determines whether a page has a field script that is not one of the formats and sums that are run.</summary>
@@ -52,7 +52,7 @@ public sealed partial class HyperPdfDocument : IContentCheck
     private bool HasUnknownScripts(int pageIndex)
     {
         List<string> scripts = [];
-        _document.GetWidgetScripts(pageIndex, scripts);
+        PdfDocumentContent.GetWidgetScripts(_document, pageIndex, scripts);
         foreach (var script in scripts)
         {
             if (ReferenceEquals(FormScript.Parse(script), FormScript.None))

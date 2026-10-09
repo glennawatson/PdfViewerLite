@@ -57,13 +57,13 @@ public sealed class PageEditingParityTests
     [Arguments(false)]
     public async Task EditedDocumentMatchesInBothEngines(bool incremental)
     {
-        using var insert = PdfDocument.Open(EditingTestDocuments.CreateFlat(FlatPages), null);
-        using var document = PdfDocument.Open(EditingTestDocuments.CreateStructured(), null);
-        document.ReorderPages([LastPage, FifthPage, FourthPage, ThirdPage, 1, 0]);
-        document.DeletePages([DeletedIndex]);
-        document.InsertPages(0, insert, [FlatSecondPage]);
-        document.RotatePages([1], QuarterTurn);
-        document.SetMetadata(new() { Title = Title, Author = Author });
+        using var insert = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(FlatPages), null);
+        using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
+        PdfDocumentPageOperations.ReorderPages(document, [LastPage, FifthPage, FourthPage, ThirdPage, 1, 0]);
+        PdfDocumentPageOperations.DeletePages(document, [DeletedIndex]);
+        PdfDocumentPageOperations.InsertPages(document, 0, insert, [FlatSecondPage]);
+        PdfDocumentPageOperations.RotatePages(document, [1], QuarterTurn);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = Title, Author = Author });
 
         var saved = incremental ? PdfIncrementalWriter.Save(document.Objects) : PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
         await AssertParity(saved, EditingTestDocuments.Expected("2 6 5 4 2 1"));
@@ -77,13 +77,13 @@ public sealed class PageEditingParityTests
     [Arguments(false)]
     public async Task EncryptedEditsMatchInBothEngines(bool incremental)
     {
-        using var document = PdfDocument.Open(WritingTestDocuments.Encrypt(EditingTestDocuments.CreateFlat(FlatPages)), null);
-        document.MovePages([FlatLastPage], 0);
-        document.SetRotation(0, QuarterTurn);
-        document.SetMetadata(new() { Title = Title, Author = Author });
+        using var document = PdfDocumentReader.Open(WritingTestDocuments.Encrypt(EditingTestDocuments.CreateFlat(FlatPages)), null);
+        PdfDocumentPageOperations.MovePages(document, [FlatLastPage], 0);
+        PdfDocumentPageOperations.SetRotation(document, 0, QuarterTurn);
+        PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = Title, Author = Author });
 
         var saved = incremental ? PdfIncrementalWriter.Save(document.Objects) : PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
-        using (var reopened = PdfDocument.Open(saved, null))
+        using (var reopened = PdfDocumentReader.Open(saved, null))
         {
             await Assert.That(reopened.IsEncrypted).IsTrue();
         }
@@ -101,7 +101,7 @@ public sealed class PageEditingParityTests
         await Assert.That(pair.Pdfium.PageCount).IsEqualTo(texts.Length);
         await Assert.That(pair.HyperPdf.PageCount).IsEqualTo(texts.Length);
         await Assert.That(PdfiumTexts(pair.Pdfium)).IsEquivalentTo(texts);
-        using (var managed = PdfDocument.Open(saved, null))
+        using (var managed = PdfDocumentReader.Open(saved, null))
         {
             await Assert.That(EditingTestDocuments.PageTexts(managed)).IsEquivalentTo(texts);
         }

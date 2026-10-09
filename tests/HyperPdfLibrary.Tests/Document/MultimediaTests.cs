@@ -51,12 +51,12 @@ public sealed class MultimediaTests
     public async Task AnnotationKindsAreRecognised()
     {
         using var document = Open();
-        var media = document.GetMultimediaAnnotations(document.GetPage(0));
+        var media = PdfDocumentMedia.GetMultimediaAnnotations(document, PdfDocumentPages.GetPage(document, 0));
 
         await Assert.That(media.Length).IsEqualTo(AnnotationCount);
         await Assert.That(media[0].Kind).IsEqualTo(PdfMultimediaKind.Screen);
         await Assert.That(media[4].Kind).IsEqualTo(PdfMultimediaKind.ThreeD);
-        await Assert.That(document.GetMultimediaAnnotations().Length).IsEqualTo(AnnotationCount);
+        await Assert.That(PdfDocumentMedia.GetMultimediaAnnotations(document).Length).IsEqualTo(AnnotationCount);
         await Assert.That(media[0].Bounds).IsNotNull();
     }
 
@@ -66,7 +66,7 @@ public sealed class MultimediaTests
     public async Task ScreenReadsRenditionAndClip()
     {
         using var document = Open();
-        var screen = document.GetMultimediaAnnotations()[0].Screen!;
+        var screen = PdfDocumentMedia.GetMultimediaAnnotations(document)[0].Screen!;
         var rendition = ((RenditionAction)screen.Action!.Action.Value!).Rendition!;
         var clip = rendition.Clip!;
 
@@ -85,7 +85,7 @@ public sealed class MultimediaTests
     public async Task MovieReadsActivation()
     {
         using var document = Open();
-        var movie = document.GetMultimediaAnnotations()[1].Movie!;
+        var movie = PdfDocumentMedia.GetMultimediaAnnotations(document)[1].Movie!;
 
         await Assert.That(movie.Title).IsEqualTo("mv");
         await Assert.That(movie.File).IsEqualTo("m.mov");
@@ -104,7 +104,7 @@ public sealed class MultimediaTests
     public async Task SoundReadsParameters()
     {
         using var document = Open();
-        var sound = document.GetMultimediaAnnotations()[2].Sound!;
+        var sound = PdfDocumentMedia.GetMultimediaAnnotations(document)[2].Sound!;
 
         await Assert.That(sound.Rate).IsEqualTo(SoundRate);
         await Assert.That(sound.Channels).IsEqualTo(SoundChannels);
@@ -118,7 +118,7 @@ public sealed class MultimediaTests
     public async Task RichMediaReadsAssetsAndConfigurations()
     {
         using var document = Open();
-        var rich = document.GetMultimediaAnnotations()[3].RichMedia!;
+        var rich = PdfDocumentMedia.GetMultimediaAnnotations(document)[3].RichMedia!;
 
         await Assert.That(rich.Assets.Length).IsEqualTo(1);
         await Assert.That(rich.Assets[0].Name).IsEqualTo("a.swf");
@@ -136,7 +136,7 @@ public sealed class MultimediaTests
     public async Task ThreeDReadsStreamAndViews()
     {
         using var document = Open();
-        var model = document.GetMultimediaAnnotations()[4].ThreeD!;
+        var model = PdfDocumentMedia.GetMultimediaAnnotations(document)[4].ThreeD!;
         var view = model.Stream!.Views[0];
 
         await Assert.That(model.Stream.Subtype).IsEqualTo("U3D");

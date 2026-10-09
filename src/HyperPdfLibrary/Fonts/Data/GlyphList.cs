@@ -13,7 +13,7 @@ namespace HyperPdfLibrary.Fonts.Data;
 /// <c>uXXXX</c> to <c>uXXXXXX</c> code points, <c>.suffix</c> variants and <c>_</c> ligatures. Also finds the preferred
 /// glyph name for a code point. Nothing allocates.
 /// </summary>
-public static partial class GlyphList
+public static class GlyphList
 {
     /// <summary>The hexadecimal digits in one <c>uni</c> group.</summary>
     private const int UniGroupDigits = 4;
@@ -98,8 +98,8 @@ public static partial class GlyphList
     public static bool TryGetDingbatsCodePoint(ReadOnlySpan<byte> name, out int codePoint)
     {
         var id = GlyphNames.Find(name);
-        var index = id == GlyphNames.NoName ? -1 : DingbatsNameIds.BinarySearch((ushort)id);
-        codePoint = index < 0 ? 0 : DingbatsCodePoints[index];
+        var index = id == GlyphNames.NoName ? -1 : GlyphListData.DingbatsNameIds.BinarySearch((ushort)id);
+        codePoint = index < 0 ? 0 : GlyphListData.DingbatsCodePoints[index];
         return index >= 0;
     }
 
@@ -109,8 +109,8 @@ public static partial class GlyphList
     /// <returns><see langword="true"/> when the Adobe Glyph List names the code point.</returns>
     public static bool TryGetName(int codePoint, out ReadOnlySpan<byte> name)
     {
-        var index = (uint)codePoint > MaxBmp ? -1 : ReverseCodePoints.BinarySearch((ushort)codePoint);
-        name = index < 0 ? [] : GlyphNames.Get(ReverseNameIds[index]);
+        var index = (uint)codePoint > MaxBmp ? -1 : GlyphListData.ReverseCodePoints.BinarySearch((ushort)codePoint);
+        name = index < 0 ? [] : GlyphNames.Get(GlyphListData.ReverseNameIds[index]);
         return index >= 0;
     }
 
@@ -124,9 +124,9 @@ public static partial class GlyphList
             return [];
         }
 
-        int start = AglStarts[id];
-        int end = AglStarts[id + 1];
-        return MemoryMarshal.Cast<ushort, char>(AglText[start..end]);
+        int start = GlyphListData.AglStarts[id];
+        int end = GlyphListData.AglStarts[id + 1];
+        return MemoryMarshal.Cast<ushort, char>(GlyphListData.AglText[start..end]);
     }
 
     /// <summary>Appends the text of one name component.</summary>

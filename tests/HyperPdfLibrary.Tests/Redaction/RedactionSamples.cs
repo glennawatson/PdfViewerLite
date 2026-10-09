@@ -62,7 +62,7 @@ internal static class RedactionSamples
     /// <returns>The saved bytes.</returns>
     internal static byte[] Redact(byte[] pdf, PdfRedactionOptions options, params PdfRectangle[] regions)
     {
-        using var document = PdfDocument.Open(pdf, null);
+        using var document = PdfDocumentReader.Open(pdf, null);
         Mark(document, regions);
         using var output = new MemoryStream();
         _ = PdfRedactor.ApplyAndSave(document, output, options);
@@ -86,7 +86,7 @@ internal static class RedactionSamples
             return true;
         }
 
-        using var document = PdfDocument.Open(pdf, null);
+        using var document = PdfDocumentReader.Open(pdf, null);
         for (var number = 1; number < document.Objects.Size; number++)
         {
             if (document.Objects.GetObject(new(number, 0)).AsStream() is { } stream && stream.DecodeToArray().AsSpan().IndexOf(bytes) >= 0)
@@ -103,8 +103,8 @@ internal static class RedactionSamples
     /// <returns>The text.</returns>
     internal static string TextOf(byte[] pdf)
     {
-        using var document = PdfDocument.Open(pdf, null);
-        return document.GetTextPage(0).Text;
+        using var document = PdfDocumentReader.Open(pdf, null);
+        return PdfDocumentText.GetTextPage(document, 0).Text;
     }
 
     /// <summary>Compacts a document as the redactor does, for tests that compare against an unredacted save.</summary>

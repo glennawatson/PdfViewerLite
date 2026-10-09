@@ -8,7 +8,7 @@ using HyperPdfLibrary.IO;
 
 namespace HyperPdfLibrary.Document;
 
-/// <summary>Options for <see cref="PdfDocument.OpenWith(byte[], PdfOpenOptions)"/> and its overloads.</summary>
+/// <summary>Options for <see cref="PdfDocumentReader.OpenWith(byte[], PdfOpenOptions)"/> and its overloads.</summary>
 [DebuggerDisplay("PdfOpenOptions: {Source} sink {Diagnostics != null}")]
 public sealed record PdfOpenOptions
 {

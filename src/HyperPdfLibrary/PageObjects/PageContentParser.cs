@@ -93,7 +93,7 @@ internal sealed partial class PageContentParser
     internal PageContentParser(PdfPageContent owner, byte[] content, PdfDictionary? resources, Matrix3x2 start, ClipNode? clip)
     {
         _owner = owner;
-        _cache = owner.Document.RenderCache;
+        _cache = HyperPdfLibrary.Document.PdfDocumentRendering.GetRenderCache(owner.Document);
         _names = owner.Document.Objects.Names;
         _content = content;
         _resources = resources;

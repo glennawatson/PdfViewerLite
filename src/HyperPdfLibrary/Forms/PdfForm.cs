@@ -31,7 +31,7 @@ public sealed partial class PdfForm
     internal PdfForm(PdfDocument document) => _document = document;
 
     /// <summary>Gets a value indicating whether the document has an AcroForm.</summary>
-    public bool HasForm => _document.HasAcroForm;
+    public bool HasForm => PdfDocumentContent.HasAcroForm(_document);
 
     /// <summary>Gets a value indicating whether the form asks readers to rebuild every field's appearance (<c>/NeedAppearances</c>).</summary>
     public bool NeedAppearances => AcroForm?.GetBoolean(KnownName.NeedAppearances) ?? false;

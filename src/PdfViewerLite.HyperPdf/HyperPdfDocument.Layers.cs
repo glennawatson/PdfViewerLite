@@ -17,7 +17,7 @@ public sealed partial class HyperPdfDocument : ILayerSource
             return [];
         }
 
-        var layers = _document.OptionalContent.Layers;
+        var layers = HyperPdfLibrary.Document.PdfDocumentLayers.GetOptionalContent(_document).Layers;
         var result = new DocumentLayer[layers.Count];
         for (var i = 0; i < result.Length; i++)
         {
@@ -28,5 +28,5 @@ public sealed partial class HyperPdfDocument : ILayerSource
     }
 
     /// <inheritdoc/>
-    public bool SetLayerVisible(int id, bool visible) => !IsDisposed && _document.OptionalContent.SetVisible(id, visible);
+    public bool SetLayerVisible(int id, bool visible) => !IsDisposed && HyperPdfLibrary.Document.PdfDocumentLayers.GetOptionalContent(_document).SetVisible(id, visible);
 }

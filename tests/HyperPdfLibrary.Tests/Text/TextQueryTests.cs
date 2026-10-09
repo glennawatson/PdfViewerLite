@@ -149,7 +149,7 @@ public sealed class TextQueryTests
     {
         var document = TextTestDocument.Open(TextTestDocument.Create(TwoLines).ToBytes());
 
-        await Assert.That(document.GetTextPage(0)).IsSameReferenceAs(document.GetTextPage(0));
+        await Assert.That(HyperPdfLibrary.Document.PdfDocumentText.GetTextPage(document, 0)).IsSameReferenceAs(HyperPdfLibrary.Document.PdfDocumentText.GetTextPage(document, 0));
     }
 
     /// <summary>Counting, hit testing, rectangles, text spans and search allocate nothing once warm.</summary>

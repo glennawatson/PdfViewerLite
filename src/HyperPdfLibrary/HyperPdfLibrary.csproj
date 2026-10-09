@@ -53,6 +53,7 @@
 
   <ItemGroup>
     <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="Refit" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
@@ -62,10 +63,10 @@
     <EmbeddedResource Include="Fonts\Data\Faces\LICENSE.txt" LogicalName="HyperPdfLibrary.Faces.LICENSE.txt" />
   </ItemGroup>
 
-  <!-- The notices of what the library ships: its packages and the bundled fonts and CMaps. The nupkg carries them as THIRD-PARTY-NOTICES.md. -->
+  <!-- The notices of what the library ships: its packages and the font and CMap resource packs. The nupkg carries them as THIRD-PARTY-NOTICES.md. -->
   <PropertyGroup>
     <NoticesResourceName>HyperPdfLibrary.ThirdPartyNotices.md</NoticesResourceName>
-    <NoticesComponents>foxit-fonts;adobe-cmaps</NoticesComponents>
+    <NoticesComponents>open-font-pack;adobe-cmaps</NoticesComponents>
   </PropertyGroup>
   <Import Project="..\..\licenses\ThirdPartyNotices.targets" />
   <ItemGroup>

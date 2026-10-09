@@ -68,13 +68,13 @@ public static class PdfRedactions
     {
         ArgumentNullException.ThrowIfNull(document);
         var store = document.Objects;
-        var page = document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(document, pageIndex);
         var annotation = CreateAnnotation(store, regions, appearance);
         var index = PdfPageAnnotations.Append(store, page, annotation);
         if (index >= 0)
         {
-            document.InvalidateCaches();
-            document.InvalidatePageContent();
+            PdfDocumentEditing.InvalidateCaches(document);
+            PdfDocumentPageContent.InvalidatePageContent(document);
         }
 
         return index;
@@ -133,7 +133,7 @@ public static class PdfRedactions
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(output);
-        var page = document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(document, pageIndex);
         if (PdfPageAnnotations.GetArray(document.Objects, page) is not { } annotations)
         {
             return;
@@ -171,7 +171,7 @@ public static class PdfRedactions
     public static bool Remove(PdfDocument document, int pageIndex, int annotationIndex)
     {
         ArgumentNullException.ThrowIfNull(document);
-        var page = document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(document, pageIndex);
         if (PdfPageAnnotations.Get(document.Objects, page, annotationIndex) is not { } annotation || !annotation.IsName(KnownName.Subtype, KnownName.Redact))
         {
             return false;
@@ -180,8 +180,8 @@ public static class PdfRedactions
         var removed = PdfPageAnnotations.RemoveAt(document.Objects, page, annotationIndex);
         if (removed)
         {
-            document.InvalidateCaches();
-            document.InvalidatePageContent();
+            PdfDocumentEditing.InvalidateCaches(document);
+            PdfDocumentPageContent.InvalidatePageContent(document);
         }
 
         return removed;

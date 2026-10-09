@@ -57,7 +57,7 @@ internal sealed class PdfChangeClassifier
         _fieldsArray = _store.Resolve(acroForm).AsDictionary()?.GetRaw(KnownName.Fields).AsReference().Number ?? 0;
         for (var i = 0; i < document.PageCount; i++)
         {
-            var page = document.GetPage(i).Dictionary;
+            var page = PdfDocumentPages.GetPage(document, i).Dictionary;
             AddReference(_annotationArrays, page.GetRaw(KnownName.Annots));
             var contents = page.GetRaw(KnownName.Contents);
             AddReference(_contentStreams, contents);

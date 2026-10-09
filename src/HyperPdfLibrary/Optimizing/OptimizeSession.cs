@@ -100,10 +100,10 @@ internal sealed partial class OptimizeSession : IObjectTransformer
     internal WritePlan Prepare()
     {
         Report(PdfOptimizePhase.Checking, 0, 0);
-        _working = _ownsSource ? _source : _source.OpenWorkingCopy();
+        _working = _ownsSource ? _source : PdfDocumentOptimizing.OpenWorkingCopy(_source);
         _names = new(Working.Objects.Names);
         _recoder = new(_options, Names);
-        _report.PdfAPart = Working.GetXmp()?.PdfAPart ?? 0;
+        _report.PdfAPart = PdfDocumentMetadata.GetXmp(Working)?.PdfAPart ?? 0;
         _report.WasSigned = IsSigned(Working);
         if (_report.WasSigned)
         {
@@ -130,7 +130,7 @@ internal sealed partial class OptimizeSession : IObjectTransformer
     /// <returns><see langword="true"/> when it is signed.</returns>
     private static bool IsSigned(PdfDocument document)
     {
-        if (document.Catalog.ContainsKey(KnownName.Perms) || document.GetSignatures().Count > 0)
+        if (document.Catalog.ContainsKey(KnownName.Perms) || PdfDocumentAttachments.GetSignatures(document).Count > 0)
         {
             return true;
         }

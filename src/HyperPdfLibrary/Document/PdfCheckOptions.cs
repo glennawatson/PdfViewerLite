@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace HyperPdfLibrary.Document;
 
-/// <summary>Options for a whole-document check with <see cref="PdfDocument.Check(PdfCheckOptions)"/>.</summary>
+/// <summary>Options for a whole-document check with <see cref="PdfDocumentCheck.Check(PdfDocument, PdfCheckOptions)"/>.</summary>
 [DebuggerDisplay("PdfCheckOptions: streams {DecodeStreams} content {ParseContent} recovery {Recovery}")]
 public sealed record PdfCheckOptions
 {

@@ -22,7 +22,7 @@ public sealed partial class HyperPdfDocument : IDocumentRedactor
         try
         {
             // The copy carries the marks and every unsaved edit; the open document keeps its marks and stays as it is.
-            var copy = _document.OpenWorkingCopy();
+            var copy = HyperPdfLibrary.Document.PdfDocumentOptimizing.OpenWorkingCopy(_document);
             var report = await Task.Run(() => PdfRedactor.Apply(copy, options, cancellationToken), cancellationToken).ConfigureAwait(false);
             await PdfCompactWriter.SaveAsync(copy.Objects, options.Layout, destination, cancellationToken).ConfigureAwait(false);
             return new(report.Regions, report.Pages, report.GlyphsRemoved, report.ImagesRemoved + report.ImagesBlanked, report.PathsRemoved, report.AnnotationsRemoved);

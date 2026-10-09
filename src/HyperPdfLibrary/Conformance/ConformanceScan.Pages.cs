@@ -54,7 +54,7 @@ internal sealed partial class ConformanceScan
         for (var i = 0; i < _document.PageCount; i++)
         {
             PdfOpenContext.ThrowIfCancelled(_document.Objects.Context);
-            var page = _document.GetPage(i);
+            var page = PdfDocumentPages.GetPage(_document, i);
             ScanResources(page.Resources, lookForDeviceColor, 0);
             if (lookForDeviceColor && !_usesDeviceColor)
             {

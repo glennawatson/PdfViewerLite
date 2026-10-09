@@ -30,7 +30,7 @@ public sealed class OptimizerCancellationTests
     [Test]
     public async Task CancelledTokenStopsBothForms()
     {
-        using var document = PdfDocument.Open(Heavy, null);
+        using var document = PdfDocumentReader.Open(Heavy, null);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
         await using var output = new MemoryStream();
@@ -44,12 +44,12 @@ public sealed class OptimizerCancellationTests
     [Test]
     public async Task CheckAsyncStopsOnCancel()
     {
-        using var document = PdfDocument.Open(Heavy, null);
+        using var document = PdfDocumentReader.Open(Heavy, null);
         using var source = new CancellationTokenSource(CancelAfterMilliseconds);
         var cancelled = false;
         try
         {
-            _ = await document.CheckAsync(PdfCheckOptions.Default, source.Token);
+            _ = await PdfDocumentCheck.CheckAsync(document, PdfCheckOptions.Default, source.Token);
         }
         catch (OperationCanceledException)
         {
@@ -64,7 +64,7 @@ public sealed class OptimizerCancellationTests
     [Test]
     public async Task CancelInTheMiddleStopsEarly()
     {
-        using var document = PdfDocument.Open(Heavy, null);
+        using var document = PdfDocumentReader.Open(Heavy, null);
         await using var output = new MemoryStream();
         var baseline = Stopwatch.GetTimestamp();
         _ = await PdfOptimizer.OptimizeAsync(document, output, PdfOptimizeOptions.Balanced, null, CancellationToken.None);

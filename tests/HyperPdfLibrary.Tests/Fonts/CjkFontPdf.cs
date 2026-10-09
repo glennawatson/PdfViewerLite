@@ -59,7 +59,7 @@ internal static class CjkFontPdf
     /// <exception cref="InvalidOperationException">The font did not load.</exception>
     internal static PdfFont LoadFont(PdfDocument document)
     {
-        var fonts = document.GetPage(0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("The page has no fonts.");
+        var fonts = PdfDocumentPages.GetPage(document, 0).Resources?.GetDictionary(KnownName.Font) ?? throw new InvalidOperationException("The page has no fonts.");
         var dictionary = fonts.Get(fonts.GetKeyAt(0)).AsDictionary() ?? throw new InvalidOperationException("The font is not a dictionary.");
         return PdfFontLoader.Load(dictionary) ?? throw new InvalidOperationException("The font did not load.");
     }

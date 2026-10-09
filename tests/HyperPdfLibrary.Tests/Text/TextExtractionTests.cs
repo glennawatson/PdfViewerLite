@@ -43,6 +43,9 @@ public sealed class TextExtractionTests
     /// <summary>The text of the single-word tests.</summary>
     private const string Hello = "Hello";
 
+    /// <summary>The content that shows "Hello" on the first line.</summary>
+    private const string HelloContent = "BT /F1 10 Tf 10 100 Td (Hello) Tj ET";
+
     /// <summary>The text of the two-word tests.</summary>
     private const string HelloWorld = "Hello World";
 
@@ -108,7 +111,7 @@ public sealed class TextExtractionTests
     [Test]
     public async Task ShowsGlyphsInOrderWithBoxes()
     {
-        var page = TextTestDocument.Extract("BT /F1 10 Tf 10 100 Td (Hello) Tj ET");
+        var page = TextTestDocument.Extract(HelloContent);
         var first = page.GetChar(0);
 
         await Assert.That(page.Text).IsEqualTo(Hello);
@@ -241,7 +244,7 @@ public sealed class TextExtractionTests
     [Test]
     public async Task RotatedPageKeepsUserSpaceBoxes()
     {
-        var pdf = TextTestDocument.Create("BT /F1 10 Tf 10 100 Td (Hello) Tj ET");
+        var pdf = TextTestDocument.Create(HelloContent);
         pdf.PageEntries = "/Rotate 90";
         var page = TextTestDocument.Extract(pdf);
         var viewer = page.Page.ToViewerRectangle(page.GetChar(0).Box);
@@ -337,5 +340,26 @@ public sealed class TextExtractionTests
 
         await Assert.That(page.CharCount).IsEqualTo(0);
         await Assert.That(page.GetText(0, 1)).IsEqualTo(string.Empty);
+    }
+
+    /// <summary>Each extraction reuses the thread's build state and clears its retained buffers.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task ReusesThreadStateAndClearsBuffers()
+    {
+        var state = TextPageBuild.Current;
+        var first = TextTestDocument.Extract(HelloContent);
+        var reusedAfterFirst = ReferenceEquals(state, TextPageBuild.Current);
+        var retainedItems = state.Chars.Count + state.Temp.Count + state.Text.Count + state.TempText.Count
+            + state.Line.Count + state.Segments.Count + state.SpaceCodes.Count + state.Runs.Count
+            + state.Glyphs.Count + state.Unicode.Count;
+
+        var second = TextTestDocument.Extract("0 0 10 10 re f");
+        var reusedAfterSecond = ReferenceEquals(state, TextPageBuild.Current);
+        var clearAfterSecond = state.Chars.Count + state.Temp.Count + state.Runs.Count == 0;
+
+        await Assert.That(first.Text).IsEqualTo(Hello);
+        await Assert.That(second.CharCount).IsEqualTo(0);
+        await Assert.That(reusedAfterFirst && reusedAfterSecond && retainedItems == 0 && clearAfterSecond).IsTrue();
     }
 }

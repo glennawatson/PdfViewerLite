@@ -85,8 +85,8 @@ internal static class InterchangeSamples
     internal static void AddAnnotations(PdfDocument document)
     {
         var store = document.Objects;
-        var first = document.GetPage(0);
-        var second = document.GetPage(1);
+        var first = PdfDocumentPages.GetPage(document, 0);
+        var second = PdfDocumentPages.GetPage(document, 1);
         var highlight = Add(store, first, Markup(store, KnownName.Highlight, Yellow, HighlightName));
         _ = Add(store, first, Markup(store, KnownName.Underline, Red, "underline-1"));
         _ = Add(store, first, Markup(store, KnownName.StrikeOut, Red, "strikeout-1"));

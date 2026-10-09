@@ -352,8 +352,8 @@ public sealed class PageExportTests
     /// <returns>The number of annotations.</returns>
     private static int CountSubtypes(string path, KnownName subtype)
     {
-        using var document = PdfDocument.Open(path, null);
-        var annotations = document.GetPage(0).Dictionary.GetArray(KnownName.Annots);
+        using var document = PdfDocumentReader.Open(path, null);
+        var annotations = PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(KnownName.Annots);
         var count = 0;
         for (var i = 0; annotations is not null && i < annotations.Count; i++)
         {

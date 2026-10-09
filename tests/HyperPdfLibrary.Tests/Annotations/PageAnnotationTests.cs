@@ -53,9 +53,9 @@ public sealed class PageAnnotationTests
     [Test]
     public async Task AppendsReplacesAndRemoves()
     {
-        using var document = PdfDocument.Open(TestPdf.Create(1), null);
+        using var document = PdfDocumentReader.Open(TestPdf.Create(1), null);
         var store = document.Objects;
-        var page = document.GetPage(0);
+        var page = PdfDocumentPages.GetPage(document, 0);
         var before = PdfPageAnnotations.GetArray(store, page)?.Count ?? 0;
         var first = PdfPageAnnotations.Append(store, page, PdfAnnotations.Create(store, KnownName.Square, Box));
         var second = PdfPageAnnotations.Append(store, page, PdfAnnotations.Create(store, KnownName.Circle, Box));
@@ -171,9 +171,9 @@ public sealed class PageAnnotationTests
     /// <returns>The annotations.</returns>
     private static List<PdfDictionary> Reopen(byte[] bytes)
     {
-        var document = PdfDocument.Open(bytes, null);
+        var document = PdfDocumentReader.Open(bytes, null);
         var annotations = new List<PdfDictionary>();
-        var array = PdfPageAnnotations.GetArray(document.Objects, document.GetPage(0));
+        var array = PdfPageAnnotations.GetArray(document.Objects, PdfDocumentPages.GetPage(document, 0));
         for (var i = 0; i < (array?.Count ?? 0); i++)
         {
             annotations.Add(array!.GetDictionary(i)!);

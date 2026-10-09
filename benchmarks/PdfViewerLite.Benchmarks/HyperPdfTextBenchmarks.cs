@@ -84,9 +84,9 @@ public class HyperPdfTextBenchmarks
         File.WriteAllBytes(_path, bytes);
         _pdfium = new PdfiumEngine().Open(_path, null);
         _ = _pdfium.GetCharacterCount(0);
-        _document = PdfDocument.Open(bytes, null);
+        _document = PdfDocumentReader.Open(bytes, null);
         PdfFont.Factory ??= HyperPdfStandInFont.Create;
-        _page = _document.GetTextPage(0);
+        _page = PdfDocumentText.GetTextPage(_document, 0);
     }
 
     /// <summary>Closes the documents and deletes the file.</summary>
@@ -101,7 +101,7 @@ public class HyperPdfTextBenchmarks
     /// <summary>Builds the page's text page with HyperPDF, fonts already loaded.</summary>
     /// <returns>The character count.</returns>
     [Benchmark]
-    public int HyperPdfBuildTextPage() => _document.ExtractText(0).CharCount;
+    public int HyperPdfBuildTextPage() => PdfDocumentText.ExtractText(_document, 0).CharCount;
 
     /// <summary>Finds a phrase with PDFium, whose text page is already loaded.</summary>
     /// <returns>The match count.</returns>

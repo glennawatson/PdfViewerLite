@@ -180,34 +180,34 @@ internal sealed class RasterPageScanner
         switch (kind)
         {
             case RasterOperatorClass.Save:
-            {
-                Save();
-                break;
-            }
+                {
+                    Save();
+                    break;
+                }
 
             case RasterOperatorClass.Restore:
-            {
-                Restore(floor);
-                break;
-            }
+                {
+                    Restore(floor);
+                    break;
+                }
 
             case RasterOperatorClass.Matrix:
-            {
-                _ctm = new Matrix3x2(reader.Number(0), reader.Number(1), reader.Number(MatrixC), reader.Number(MatrixD), reader.Number(MatrixE), reader.Number(MatrixF)) * _ctm;
-                break;
-            }
+                {
+                    _ctm = new Matrix3x2(reader.Number(0), reader.Number(1), reader.Number(MatrixC), reader.Number(MatrixD), reader.Number(MatrixE), reader.Number(MatrixF)) * _ctm;
+                    break;
+                }
 
             case RasterOperatorClass.PaintXObject:
-            {
-                PaintXObject(reader.Operand(0).Name, formDepth);
-                break;
-            }
+                {
+                    PaintXObject(reader.Operand(0).Name, formDepth);
+                    break;
+                }
 
             default:
-            {
-                ApplyOther(kind, ref reader);
-                break;
-            }
+                {
+                    ApplyOther(kind, ref reader);
+                    break;
+                }
         }
     }
 
@@ -219,34 +219,34 @@ internal sealed class RasterPageScanner
         switch (kind)
         {
             case RasterOperatorClass.InlineImage:
-            {
-                AddInlineImage(ref reader);
-                break;
-            }
+                {
+                    AddInlineImage(ref reader);
+                    break;
+                }
 
             case RasterOperatorClass.Vector:
-            {
-                HasVectorContent = true;
-                break;
-            }
+                {
+                    HasVectorContent = true;
+                    break;
+                }
 
             case RasterOperatorClass.ShowText:
-            {
-                HasOcrText |= _mode == InvisibleMode;
-                HasVisibleText |= _mode != InvisibleMode;
-                break;
-            }
+                {
+                    HasOcrText |= _mode == InvisibleMode;
+                    HasVisibleText |= _mode != InvisibleMode;
+                    break;
+                }
 
             case RasterOperatorClass.RenderMode:
-            {
-                _mode = (int)reader.Number(0);
-                break;
-            }
+                {
+                    _mode = (int)reader.Number(0);
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 
@@ -293,7 +293,7 @@ internal sealed class RasterPageScanner
 
         var dictionary = xobject.Dictionary;
         var membership = dictionary.GetRaw(KnownName.OC);
-        if (!membership.IsNull && !_document.OptionalContent.IsVisible(membership))
+        if (!membership.IsNull && !PdfDocumentLayers.GetOptionalContent(_document).IsVisible(membership))
         {
             return;
         }

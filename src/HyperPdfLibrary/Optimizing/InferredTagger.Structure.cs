@@ -79,7 +79,7 @@ internal sealed partial class InferredTagger
         markInfo.Set(_names.Marked, PdfValue.FromBoolean(true));
         catalog.Set(KnownName.MarkInfo, PdfValue.FromDictionary(markInfo));
         store.Replace(catalogRef.AsReference(), PdfValue.FromDictionary(catalog));
-        _document.RefreshAfterOptimizerEdit();
+        PdfDocumentOptimizing.RefreshAfterOptimizerEdit(_document);
     }
 
     /// <summary>Builds a structure element dictionary.</summary>

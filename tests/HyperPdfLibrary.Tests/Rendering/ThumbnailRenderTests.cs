@@ -59,7 +59,7 @@ public sealed class ThumbnailRenderTests
         var pdf = new RenderTestPdf(Width, Height) { Content = "0 0 1 rg 0 0 200 100 re f" };
         using var page = new RenderTestPage(pdf.ToBytes());
 
-        PdfPageRenderer.GetThumbnailSize(page.Document.GetPage(0), MaxEdge, out var width, out var height);
+        PdfPageRenderer.GetThumbnailSize(HyperPdfLibrary.Document.PdfDocumentPages.GetPage(page.Document, 0), MaxEdge, out var width, out var height);
         using var embedded = page.Renderer.GetEmbeddedThumbnail(0);
         var image = RenderThumbnail(page);
 
@@ -75,7 +75,7 @@ public sealed class ThumbnailRenderTests
     /// <exception cref="InvalidOperationException">The thumbnail could not be rendered.</exception>
     private static RenderedImage RenderThumbnail(RenderTestPage page)
     {
-        PdfPageRenderer.GetThumbnailSize(page.Document.GetPage(0), MaxEdge, out var width, out var height);
+        PdfPageRenderer.GetThumbnailSize(HyperPdfLibrary.Document.PdfDocumentPages.GetPage(page.Document, 0), MaxEdge, out var width, out var height);
         var pixels = new byte[width * height * RenderedImage.BytesPerPixel];
         return page.Renderer.RenderThumbnail(0, MaxEdge, new(pixels, width, height, width * RenderedImage.BytesPerPixel))
             ? new(pixels, width, height)

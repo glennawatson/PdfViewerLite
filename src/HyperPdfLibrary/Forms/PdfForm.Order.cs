@@ -48,7 +48,7 @@ public sealed partial class PdfForm
             return PdfTabOrder.Unspecified;
         }
 
-        var name = _document.GetPage(pageIndex).Dictionary.GetName(KnownName.Tabs);
+        var name = PdfDocumentPages.GetPage(_document, pageIndex).Dictionary.GetName(KnownName.Tabs);
         if (name.Is(KnownName.R))
         {
             return PdfTabOrder.Row;
@@ -78,7 +78,7 @@ public sealed partial class PdfForm
         }
 
         var order = GetTabOrder(pageIndex);
-        var page = _document.GetPage(pageIndex);
+        var page = PdfDocumentPages.GetPage(_document, pageIndex);
         var ordinals = order == PdfTabOrder.Structure ? ReadStructureOrdinals() : null;
         var keys = new List<TabKey>(annotations.Count);
         for (var i = 0; i < annotations.Count; i++)
@@ -191,7 +191,7 @@ public sealed partial class PdfForm
     /// <returns>The places by object number; <see langword="null"/> when the document has no structure tree.</returns>
     private Dictionary<int, int>? ReadStructureOrdinals()
     {
-        if (_document.StructureTree is not { } tree)
+        if (PdfDocumentTagged.GetStructureTree(_document) is not { } tree)
         {
             return null;
         }

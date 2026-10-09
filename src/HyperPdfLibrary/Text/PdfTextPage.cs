@@ -4,6 +4,7 @@
 
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Document;
 using HyperPdfLibrary.Objects;
 
@@ -21,11 +22,11 @@ public sealed partial class PdfTextPage
     /// <summary>The smallest width or height of a box that counts towards rectangles.</summary>
     private const float SizeEpsilon = 0.01F;
 
-    /// <summary>Half, for spreading a tolerance across both sides of a box.</summary>
-    private const float Half = 0.5F;
-
     /// <summary>The characters.</summary>
     private readonly PdfTextChar[] _chars;
+
+    /// <summary>Bounds of contiguous character blocks on larger pages.</summary>
+    private readonly TextHitBlock[] _hitBlocks;
 
     /// <summary>The run each character came from, or -1, which groups characters into rectangles.</summary>
     private readonly int[] _runs;
@@ -46,6 +47,7 @@ public sealed partial class PdfTextPage
     {
         Page = page;
         _chars = chars;
+        _hitBlocks = TextHitTesting.BuildBlocks(chars);
         _runs = runs;
         _text = text;
         _segments = segments;
@@ -219,57 +221,13 @@ public sealed partial class PdfTextPage
     /// <param name="toleranceX">The horizontal tolerance.</param>
     /// <param name="toleranceY">The vertical tolerance.</param>
     /// <returns>The character index, or -1.</returns>
-    public int GetIndexAtPosition(Vector2 point, float toleranceX, float toleranceY)
-    {
-        const double FarAway = 5000;
-        var nearest = -1;
-        var bestX = FarAway;
-        var bestY = FarAway;
-        var useTolerance = toleranceX > 0 || toleranceY > 0;
-        for (var i = 0; i < _chars.Length; i++)
-        {
-            var box = _chars[i].Box;
-            if (TextGeometry.Contains(box, point))
-            {
-                return i;
-            }
-
-            box = TextGeometry.Normalize(box);
-            if (!useTolerance || !TextGeometry.Contains(Expand(box, toleranceX, toleranceY), point))
-            {
-                continue;
-            }
-
-            double dx = MathF.Min(MathF.Abs(point.X - box.Left), MathF.Abs(point.X - box.Right));
-            double dy = MathF.Min(MathF.Abs(point.Y - box.Bottom), MathF.Abs(point.Y - box.Top));
-            if (dx + dy >= bestX + bestY)
-            {
-                continue;
-            }
-
-            bestX = dx;
-            bestY = dy;
-            nearest = i;
-        }
-
-        return nearest;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int GetIndexAtPosition(Vector2 point, float toleranceX, float toleranceY) =>
+        TextHitTesting.Find(_chars, _hitBlocks, point, toleranceX, toleranceY);
 
     /// <summary>Determines whether a character's box is part of the rectangles covering a range.</summary>
     /// <param name="info">The character.</param>
     /// <returns><see langword="true"/> for shown characters with an area.</returns>
     private static bool CountsTowardsRects(in PdfTextChar info) =>
         info.Kind != PdfTextCharKind.Generated && info.Box.Width >= SizeEpsilon && info.Box.Height >= SizeEpsilon;
-
-    /// <summary>Grows a box by half a tolerance on each side.</summary>
-    /// <param name="box">The box.</param>
-    /// <param name="toleranceX">The horizontal tolerance.</param>
-    /// <param name="toleranceY">The vertical tolerance.</param>
-    /// <returns>The grown box.</returns>
-    private static PdfRectangle Expand(in PdfRectangle box, float toleranceX, float toleranceY)
-    {
-        var halfX = toleranceX * Half;
-        var halfY = toleranceY * Half;
-        return new(box.Left - halfX, box.Bottom - halfY, box.Right + halfX, box.Top + halfY);
-    }
 }

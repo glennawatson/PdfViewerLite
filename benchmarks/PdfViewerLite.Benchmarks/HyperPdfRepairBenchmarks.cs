@@ -35,7 +35,7 @@ public class HyperPdfRepairBenchmarks
     {
         _clean = TestPdf.Create(Pages);
         _damaged = Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(_clean).Replace("startxref", "startxxxx", StringComparison.Ordinal));
-        _document = PdfDocument.Open(_clean, null);
+        _document = PdfDocumentReader.Open(_clean, null);
     }
 
     /// <summary>Closes the document.</summary>
@@ -47,8 +47,8 @@ public class HyperPdfRepairBenchmarks
     [Benchmark(Baseline = true)]
     public bool OpenClean()
     {
-        using var document = PdfDocument.Open(_clean, null);
-        return document.WasRepaired;
+        using var document = PdfDocumentReader.Open(_clean, null);
+        return PdfDocumentCheck.WasRepaired(document);
     }
 
     /// <summary>Opens a file whose cross-reference table must be rebuilt, and reads the repairs.</summary>
@@ -56,14 +56,14 @@ public class HyperPdfRepairBenchmarks
     [Benchmark]
     public int OpenDamaged()
     {
-        using var document = PdfDocument.Open(_damaged, null);
-        return document.GetRepairs().Length;
+        using var document = PdfDocumentReader.Open(_damaged, null);
+        return PdfDocumentCheck.GetRepairs(document).Length;
     }
 
     /// <summary>Checks the whole document.</summary>
     /// <returns>The number of faults.</returns>
     [Benchmark]
-    public int Check() => _document.Check(PdfCheckOptions.Default).Faults.Count;
+    public int Check() => PdfDocumentCheck.Check(_document, PdfCheckOptions.Default).Faults.Count;
 
     /// <summary>Saves the document compactly, with the conforming-structure pass.</summary>
     /// <returns>The saved length.</returns>

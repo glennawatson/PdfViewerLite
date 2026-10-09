@@ -42,7 +42,7 @@ public sealed partial class HyperPdfDocument : IFormOrder, IFormActions, IFormHi
         ArgumentNullException.ThrowIfNull(output);
         if (!IsDisposed)
         {
-            _document.Form.GetCalculationOrder(output);
+            HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).GetCalculationOrder(output);
         }
     }
 
@@ -52,7 +52,7 @@ public sealed partial class HyperPdfDocument : IFormOrder, IFormActions, IFormHi
         ArgumentNullException.ThrowIfNull(output);
         if (!IsDisposed)
         {
-            _document.Form.GetTabSequence(pageIndex, output);
+            HyperPdfLibrary.Document.PdfDocumentForms.GetForm(_document).GetTabSequence(pageIndex, output);
         }
     }
 
@@ -61,14 +61,14 @@ public sealed partial class HyperPdfDocument : IFormOrder, IFormActions, IFormHi
     {
         ArgumentNullException.ThrowIfNull(host);
         if (IsDisposed || (uint)pageIndex >= (uint)PageCount
-            || _document.GetPage(pageIndex).Dictionary.GetArray(KnownName.Annots) is not { } annotations
+            || HyperPdfLibrary.Document.PdfDocumentPages.GetPage(_document, pageIndex).Dictionary.GetArray(KnownName.Annots) is not { } annotations
             || (uint)index >= (uint)annotations.Count
             || annotations.GetDictionary(index)?.GetDictionary(KnownName.A) is not { } action)
         {
             return FormActionResult.None;
         }
 
-        var node = _document.ReadActionNode(action);
+        var node = HyperPdfLibrary.Document.PdfDocumentActions.ReadActionNode(_document, action);
         return Complete(await CreateRunner(host).RunAsync(node, pageIndex, cancellationToken).ConfigureAwait(false));
     }
 
