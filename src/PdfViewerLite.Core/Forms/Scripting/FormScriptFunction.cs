@@ -16,7 +16,7 @@ public enum FormScriptFunction
     /// <summary><c>AFPercent_Format</c> or <c>AFPercent_Keystroke</c>: a number shown as a percentage.</summary>
     Percent = 2,
 
-    /// <summary><c>AFDate_FormatEx</c> or <c>AFDate_KeystrokeEx</c>: a date in a given format.</summary>
+    /// <summary><c>AFDate_Format(Ex)</c> or <c>AFDate_Keystroke(Ex)</c>: a date in a given format.</summary>
     Date = 3,
 
     /// <summary><c>AFSpecial_Format</c> or <c>AFSpecial_Keystroke</c>: zip code, zip+4, phone number or social security number.</summary>
@@ -30,4 +30,7 @@ public enum FormScriptFunction
 
     /// <summary>A simplified field notation calculation, such as <c>Price * Quantity</c>.</summary>
     Expression = 7,
+
+    /// <summary><c>AFTime_Format(Ex)</c> or <c>AFTime_Keystroke(Ex)</c>: a time of day in a given format.</summary>
+    Time = 8,
 }

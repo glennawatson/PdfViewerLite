@@ -309,6 +309,7 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SplitViewCommand, static v => v.SplitViewItem));
         BindPageTools(bindings);
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.SaveAsCommand, static v => v.SaveAsItem));
+        BindRedaction(bindings);
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.ReloadCommand, static v => v.ReloadItem));
         bindings.Add(this.Bind(ViewModel, static vm => vm.SidebarVisible, static v => v.SidebarToggle.IsChecked, static on => on, IsOn));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.GoBackCommand, static v => v.BackButton));
@@ -592,6 +593,13 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ContentWarning, static v => v.ContentWarningText.Text));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ContentWarning, static v => v.ContentWarningBar.IsVisible, static warning => warning is not null));
         bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissContentWarningCommand, static v => v.DismissContentWarningButton));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.RepairNotice, static v => v.RepairNoticeText.Text));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.RepairNotice, static v => v.RepairNoticeBar.IsVisible, static notice => notice is not null));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.RepairDetails, static v => v.RepairDetailsText.Text));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.RepairDetails, static v => v.RepairDetailsText.IsVisible, static details => details is not null));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.RepairDetails, static v => v.ToggleRepairDetailsButton.Content, static details => details is null ? "Details" : "Hide details"));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ToggleRepairDetailsCommand, static v => v.ToggleRepairDetailsButton));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.DismissRepairNoticeCommand, static v => v.DismissRepairNoticeButton));
         bindings.Add(this.WhenChanged(static v => v.ViewModel!.FileLaunchRequests).SwitchMap(static requests => requests).SubscribeSafe(LaunchFile, OnError));
         bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.ConfirmOpenFileInteraction), ConfirmOpenFileAsync));
         bindings.Add(this.OneWayBind(ViewModel, static vm => vm.ErrorMessage, static v => v.ErrorText.Text));
@@ -844,6 +852,44 @@ public sealed partial class DocumentView : ReactiveUI.Avalonia.ReactiveUserContr
         }
 
         context.SetOutput(await new CertificateSignWindow { ViewModel = context.Input }.ShowDialog<bool>(owner));
+    }
+
+    /// <summary>Shows the "Save Optimised Copy" window.</summary>
+    /// <param name="context">The interaction context, holding the request.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowOptimizeAsync(IInteractionContext<OptimizeCopyViewModel, RxVoid> context)
+    {
+        if (TopLevel.GetTopLevel(this) is Window owner)
+        {
+            await new OptimizeCopyWindow { ViewModel = context.Input }.ShowDialog(owner);
+        }
+
+        context.SetOutput(RxVoid.Default);
+    }
+
+    /// <summary>Binds the menu items that write a new copy: the optimised copy and the redacted copy, with their windows.</summary>
+    /// <param name="bindings">The bindings.</param>
+    private void BindRedaction(MultipleDisposable bindings)
+    {
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.OptimizeCopyCommand, static v => v.OptimizeCopyItem));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.OptimizeMenuText, static v => v.OptimizeCopyItem.Header));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.OptimizeInteraction), ShowOptimizeAsync));
+        bindings.Add(this.BindCommand(ViewModel, static vm => vm.ApplyRedactionsCommand, static v => v.ApplyRedactionsItem));
+        bindings.Add(this.OneWayBind(ViewModel, static vm => vm.RedactMenuText, static v => v.ApplyRedactionsItem.Header));
+        bindings.Add(HandleInteraction(this.WhenChanged(static v => v.ViewModel!.RedactInteraction), ShowRedactionAsync));
+    }
+
+    /// <summary>Shows the "Apply Redactions" window.</summary>
+    /// <param name="context">The interaction context, holding the request.</param>
+    /// <returns>A task.</returns>
+    private async Task ShowRedactionAsync(IInteractionContext<RedactionViewModel, RxVoid> context)
+    {
+        if (TopLevel.GetTopLevel(this) is Window owner)
+        {
+            await new RedactionWindow { ViewModel = context.Input }.ShowDialog(owner);
+        }
+
+        context.SetOutput(RxVoid.Default);
     }
 
     /// <summary>Shows the print preview window.</summary>

@@ -31,6 +31,7 @@ public static class AnnotationNames
         AnnotationKind.Polygon => "Polygon",
         AnnotationKind.Cloud => "Cloud",
         AnnotationKind.PolyLine => "Connected lines",
+        AnnotationKind.Redaction => "Redaction",
         _ => "Annotation",
     };
 

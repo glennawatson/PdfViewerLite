@@ -60,4 +60,7 @@ public enum AnnotationKind
 
     /// <summary>An open run of straight lines drawn point by point.</summary>
     PolyLine = 17,
+
+    /// <summary>An area marked for redaction: it is removed for good when the redactions are applied.</summary>
+    Redaction = 18,
 }

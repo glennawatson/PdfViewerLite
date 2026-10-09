@@ -50,6 +50,7 @@
               <Separator />
               <MenuItem x:Name="PageToneMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.ComfortPageColour}" Header="_Comfort Page Colour" InputGesture="Ctrl+I" ToggleType="CheckBox" />
               <MenuItem x:Name="PreferencesMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.Preferences}" Header="_Preferences…" InputGesture="Ctrl+OemComma" />
+              <MenuItem x:Name="LicencesMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.Licences}" Header="About and _Licences…" />
               <Separator />
               <MenuItem x:Name="CloseAllMenuItem" views:ControlHelp.Text="{x:Static views:Descriptions.CloseAllTabs}" Header="Close _All Tabs" />
             </MenuFlyout>

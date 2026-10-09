@@ -41,8 +41,11 @@ namespace PdfViewerLite.Scripts
         /// <summary>The exit code for bad arguments.</summary>
         private const int Usage = 2;
 
-        /// <summary>The namespace prefix of the code under audit.</summary>
+        /// <summary>The namespace prefix of the app code under audit.</summary>
         private const string LibraryPrefix = "PdfViewerLite.";
+
+        /// <summary>The namespace prefix of the managed PDF engine under audit.</summary>
+        private const string EnginePrefix = "HyperPdfLibrary.";
 
         /// <summary>How far from a whole count of objects per operation a site may measure and still be that count.</summary>
         private const double WholeSlack = 0.1;
@@ -343,7 +346,7 @@ namespace PdfViewerLite.Scripts
             for (var frame = stack; frame is not null; frame = frame.Caller)
             {
                 var name = frame.CodeAddress.FullMethodName ?? string.Empty;
-                if (name.StartsWith(LibraryPrefix, StringComparison.Ordinal))
+                if (name.StartsWith(LibraryPrefix, StringComparison.Ordinal) || name.StartsWith(EnginePrefix, StringComparison.Ordinal))
                 {
                     return name;
                 }

@@ -37,6 +37,9 @@ public sealed partial class DocumentTabViewModel
         var found = await Task.Run(() => Check(check, document, attachments)).ConfigureAwait(true);
         UnsupportedContent = found;
         ContentWarning = ContentWarnings.Describe(found);
+
+        // The scan above read every page's annotations, which may have shown damage the open did not.
+        CheckRepairs(document);
     }
 
     /// <summary>Checks the document and each page.</summary>

@@ -24,6 +24,48 @@ internal static class FormDates
     /// <summary>Common date forms tried when the text is not in the field's format.</summary>
     private static readonly string[] CommonPatterns = ["yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss", "d MMM yyyy", "d MMMM yyyy", "MMM d, yyyy", "MMMM d, yyyy"];
 
+    /// <summary>Time forms tried when the text is not in the field's format.</summary>
+    private static readonly string[] CommonTimePatterns = ["HH:mm", "H:mm", "h:mm tt", "h:mmtt", "HH:mm:ss", "H:mm:ss", "h:mm:ss tt", "h:mm:sstt"];
+
+    /// <summary>The formats <c>AFDate_Format</c> and <c>AFDate_Keystroke</c> pick by number.</summary>
+    private static readonly string[] IndexedDateFormats =
+    [
+        "m/d", "m/d/yy", "mm/dd/yy", "mm/yy", "d-mmm", "d-mmm-yy", "dd-mmm-yy", "yy-mm-dd", "mmm-yy", "mmmm-yy", "mmm d, yyyy", "mmmm d, yyyy", "m/d/yy h:MM tt", "m/d/yy HH:MM",
+    ];
+
+    /// <summary>The formats <c>AFTime_Format</c> and <c>AFTime_Keystroke</c> pick by number.</summary>
+    private static readonly string[] IndexedTimeFormats = ["HH:MM", "h:MM tt", "HH:MM:ss", "h:MM:ss tt"];
+
+    /// <summary>Gets the date format a numbered <c>AFDate_Format</c> style stands for.</summary>
+    /// <param name="index">The style number.</param>
+    /// <returns>The PDF form format; the first style when the number is unknown.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static string DateFormatOf(int index) => IndexedDateFormats[(uint)index < (uint)IndexedDateFormats.Length ? index : 0];
+
+    /// <summary>Gets the time format a numbered <c>AFTime_Format</c> style stands for.</summary>
+    /// <param name="index">The style number.</param>
+    /// <returns>The PDF form format; the first style when the number is unknown.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static string TimeFormatOf(int index) => IndexedTimeFormats[(uint)index < (uint)IndexedTimeFormats.Length ? index : 0];
+
+    /// <summary>Reads a time written in the field's format, or failing that in a common form.</summary>
+    /// <param name="text">The text.</param>
+    /// <param name="format">The field's PDF form format.</param>
+    /// <param name="value">The time, on today's date.</param>
+    /// <returns><see langword="true"/> when the text is a time.</returns>
+    internal static bool TryParseTime(string? text, string format, out DateTime value)
+    {
+        value = default;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        var trimmed = text.Trim();
+        return DateTime.TryParseExact(trimmed, ToPattern(format), CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out value)
+            || DateTime.TryParseExact(trimmed, CommonTimePatterns, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out value);
+    }
+
     /// <summary>Converts a PDF form date format to a .NET pattern.</summary>
     /// <param name="format">The PDF form format.</param>
     /// <returns>The .NET pattern.</returns>

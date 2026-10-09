@@ -76,6 +76,9 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the interaction asking the view to show the preferences.</summary>
     public Interaction<PreferencesViewModel, RxVoid> ShowPreferencesInteraction { get; } = new();
 
+    /// <summary>Gets the interaction asking the view to show the About and Licences window.</summary>
+    public Interaction<LicencesViewModel, RxVoid> ShowLicencesInteraction { get; } = new();
+
     /// <summary>Gets the interaction asking the view to show document properties.</summary>
     public Interaction<DocumentTabViewModel, RxVoid> ShowPropertiesInteraction { get; } = new();
 
@@ -618,6 +621,15 @@ public sealed partial class MainViewModel : ReactiveObject, IDisposable
     {
         using PreferencesViewModel preferences = new(_services);
         _ = await ShowPreferencesInteraction.Handle(preferences).ToTask().ConfigureAwait(true);
+    }
+
+    /// <summary>Asks the view to show this application's licence and the licences of what it includes.</summary>
+    /// <returns>A task.</returns>
+    [ReactiveCommand]
+    private async Task LicencesAsync()
+    {
+        using LicencesViewModel licences = new(LicenceNotices.Load());
+        _ = await ShowLicencesInteraction.Handle(licences).ToTask().ConfigureAwait(true);
     }
 
     /// <summary>Shows the selected document in the file manager.</summary>

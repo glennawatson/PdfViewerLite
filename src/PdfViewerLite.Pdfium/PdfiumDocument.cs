@@ -19,7 +19,7 @@ namespace PdfViewerLite.Pdfium;
 
 /// <summary>A PDF document backed by PDFium. Every member is serialised through the process wide PDFium lock.</summary>
 [DebuggerDisplay("PdfiumDocument: {FilePath} ({PageCount} pages)")]
-public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, ITextBoxEditor, IFormFiller, IFormScriptSource, ISignatureSource
+public sealed partial class PdfiumDocument : IDocument, IAnnotationEditor, ITextBoxEditor, IFormFiller, IFormScriptSource, IFormHighlight, ISignatureSource
 {
     /// <summary>The number of parsed pages kept loaded.</summary>
     private const int PageCacheSize = 8;

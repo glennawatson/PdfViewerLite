@@ -437,6 +437,12 @@ public static class Descriptions
     /// <summary>The Dismiss button on the message about content that cannot be shown.</summary>
     public static readonly string DismissContentWarning = "Hide this message about parts of the document PdfViewerLite cannot show. It comes back next time the document opens.";
 
+    /// <summary>The Dismiss button on the message about a repaired file.</summary>
+    public static readonly string DismissRepairNotice = "Hide this message about the repaired file. It comes back next time the document opens.";
+
+    /// <summary>The Details button on the message about a repaired file.</summary>
+    public static readonly string ToggleRepairDetails = "Show or hide what was wrong with the file and how it was repaired.";
+
     /// <summary>The Reload button on the changed file bar.</summary>
     public static readonly string ReloadChanged = "Load the changed file from the disk.";
 
@@ -557,6 +563,21 @@ public static class Descriptions
     /// <summary>The comfort page colour menu item.</summary>
     public static readonly string ComfortPageColour = $"Show the pages in a softer colour that is easier on the eyes.{Shortcut}Ctrl+I";
 
+    /// <summary>The About and Licences menu item.</summary>
+    public static readonly string Licences = "Read the licence for this app and for every component it includes or downloads.";
+
+    /// <summary>The search box of the Licences window.</summary>
+    public static readonly string LicenceSearch = "Type part of a name, a licence such as MIT, or where a component comes from, to narrow the list.";
+
+    /// <summary>The licence tree of the Licences window.</summary>
+    public static readonly string LicenceTree = "Choose a component to read its licence. Components are grouped by licence. Use the arrow keys to move.";
+
+    /// <summary>The licence text box of the Licences window.</summary>
+    public static readonly string LicenceText = "The full licence text of the chosen component. You can select and copy parts of it.";
+
+    /// <summary>The Copy button of the Licences window.</summary>
+    public static readonly string CopyLicence = "Copy the full licence text of the chosen component to the clipboard.";
+
     /// <summary>The Preferences menu item.</summary>
     public static readonly string Preferences = $"Change how the app looks and works.{Shortcut}Ctrl+Comma";
 
@@ -601,6 +622,9 @@ public static class Descriptions
 
     /// <summary>The Read Aloud voice service list.</summary>
     public static readonly string SpeechEngine = "Choose which voice service reads aloud.";
+
+    /// <summary>The PDF engine list, and the note under it.</summary>
+    public static readonly string PdfEngine = "Documents opened after the change use the chosen engine.";
 
     /// <summary>The Azure Speech key box.</summary>
     public static readonly string AzureKey = "Type a key from your Azure Speech resource. Azure voices need it.";
@@ -845,6 +869,78 @@ public static class Descriptions
     /// <summary>The preview only fonts preference.</summary>
     public static readonly string PreviewOnlyFonts =
         "Some fonts' licences forbid copying them into documents. When this is on, you can type in them on screen; the saved PDF uses the closest built in font, so the font is never copied.";
+
+    /// <summary>The Save Optimised Copy menu item.</summary>
+    public static readonly string OptimizeCopy =
+        "Save a smaller or more accessible copy of this document. Your open file is never changed. Only the HyperPDF engine can do this; the PDFium engine cannot.";
+
+    /// <summary>The size choices of the optimised copy window.</summary>
+    public static readonly string OptimizePresets = "Choose how much picture detail may be traded for a smaller file. Use the arrow keys to move between the choices.";
+
+    /// <summary>The fill in accessibility box of the optimised copy window.</summary>
+    public static readonly string OptimizeAccessibility = "Add the document language, a window title and tag flags when they are missing, so screen readers read the file correctly.";
+
+    /// <summary>The language box of the optimised copy window.</summary>
+    public static readonly string OptimizeLanguage = "The language of the text, such as en-AU. It is used only when the document does not say.";
+
+    /// <summary>The add tags box of the optimised copy window.</summary>
+    public static readonly string OptimizeTags = "Guess headings, paragraphs and pictures from the page layout when the document has no reading structure. The guess can be wrong, so check it.";
+
+    /// <summary>The clean up box of the optimised copy window.</summary>
+    public static readonly string OptimizeCleanUp = "Remove page thumbnails, private application data, unused resources and empty comment lists. Pages look the same.";
+
+    /// <summary>The progress bar of the optimised copy window.</summary>
+    public static readonly string OptimizeProgress = "Shows how much of the copy is written.";
+
+    /// <summary>The save button of the optimised copy window.</summary>
+    public static readonly string OptimizeSave = "Choose where to save the copy, then write it. The open file is never replaced.";
+
+    /// <summary>The cancel button of the optimised copy window.</summary>
+    public static readonly string OptimizeCancel = "Stop writing the copy. No file is saved.";
+
+    /// <summary>The summary of the optimised copy window.</summary>
+    public static readonly string OptimizeResult = "What the saved copy changed, what was left alone and what needs your attention.";
+
+    /// <summary>The mark area to redact menu item.</summary>
+    public static readonly string RedactArea =
+        "Drag a box on the page to mark an area to redact. Nothing is removed until you apply the redactions. Only the HyperPDF engine can do this.";
+
+    /// <summary>The mark text to redact menu item.</summary>
+    public static readonly string RedactText = "Select text to mark it to redact. Nothing is removed until you apply the redactions. Only the HyperPDF engine can do this.";
+
+    /// <summary>The apply redactions menu item.</summary>
+    public static readonly string ApplyRedactions =
+        "Remove everything under the marks for good and save a redacted copy. Your open file is never changed. Only the HyperPDF engine can do this; the PDFium engine cannot.";
+
+    /// <summary>The pictures choices of the redaction window.</summary>
+    public static readonly string RedactImages = "Choose what happens to a picture that a mark touches. Use the arrow keys to move between the choices.";
+
+    /// <summary>The drawings choices of the redaction window.</summary>
+    public static readonly string RedactLineArt = "Choose what happens to a line or shape that a mark touches. Use the arrow keys to move between the choices.";
+
+    /// <summary>The hidden text box of the redaction window.</summary>
+    public static readonly string RedactHiddenText = "Also remove invisible text under a mark, such as the text layer of a scanned page, so it cannot be searched or copied.";
+
+    /// <summary>The links box of the redaction window.</summary>
+    public static readonly string RedactLinks = "Also remove links, comments and form fields under a mark, with their actions and appearances.";
+
+    /// <summary>The metadata box of the redaction window.</summary>
+    public static readonly string RedactMetadata = "Also remove the title, author and other document information, and the metadata stream.";
+
+    /// <summary>The confirmation box of the redaction window.</summary>
+    public static readonly string RedactConfirm = "Tick this to show you understand that removed content cannot be brought back after the redacted copy is saved.";
+
+    /// <summary>The progress bar of the redaction window.</summary>
+    public static readonly string RedactProgress = "Moves while the redactions are applied and the copy is written.";
+
+    /// <summary>The apply button of the redaction window.</summary>
+    public static readonly string RedactApply = "Choose where to save the redacted copy, then apply the redactions and write it. The open file is never replaced.";
+
+    /// <summary>The cancel button of the redaction window.</summary>
+    public static readonly string RedactCancel = "Stop applying the redactions. No file is saved.";
+
+    /// <summary>The summary of the redaction window.</summary>
+    public static readonly string RedactResult = "What was removed, where the redacted copy is saved, and what to check next.";
 
     /// <summary>Joins an explanation to its shortcut.</summary>
     private const string Shortcut = " Shortcut: ";

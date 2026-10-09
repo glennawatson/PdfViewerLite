@@ -1,0 +1,94 @@
+// Copyright (c) 2026 Glenn Watson. All rights reserved.
+// Glenn Watson licenses this file to you under the MIT license.
+// See the LICENSE file in the project root for full license information.
+
+using System.Diagnostics;
+using SkiaSharp;
+
+namespace HyperPdfLibrary.Fonts;
+
+/// <summary>
+/// Caches one outline per glyph slot (a code or a glyph id below 65536). Slots live in pages of 256 made on first use,
+/// so a font with few glyphs in use stays small. Reads take no lock; a slot is published once with
+/// <see cref="Interlocked.CompareExchange{T}(ref T, T, T)"/>, and a racing thread's copy is disposed.
+/// </summary>
+[DebuggerDisplay("GlyphOutlineCache")]
+internal sealed class GlyphOutlineCache
+{
+    /// <summary>The number of slots the cache covers.</summary>
+    internal const int SlotCount = PageSize * PageCount;
+
+    /// <summary>The bits of a slot that select its place in a page.</summary>
+    private const int PageBits = 8;
+
+    /// <summary>The slots in a page.</summary>
+    private const int PageSize = 1 << PageBits;
+
+    /// <summary>The number of pages.</summary>
+    private const int PageCount = 256;
+
+    /// <summary>The mask of a slot's place in its page.</summary>
+    private const int PageMask = PageSize - 1;
+
+    /// <summary>Marks a slot whose glyph has no outline, so it is not built again.</summary>
+    private static readonly SKPath Blank = new();
+
+    /// <summary>The pages, made on first use.</summary>
+    private readonly SKPath?[]?[] _pages = new SKPath?[]?[PageCount];
+
+    /// <summary>Gets a slot's outline, building it on first use.</summary>
+    /// <typeparam name="TState">The type of the state given to the builder.</typeparam>
+    /// <param name="slot">The slot.</param>
+    /// <param name="state">The state given to the builder, usually the font.</param>
+    /// <param name="build">Builds the outline; returns <see langword="null"/> or an empty path for a blank glyph.</param>
+    /// <returns>The outline, or <see langword="null"/> for a blank glyph or a slot out of range.</returns>
+    internal SKPath? GetOrBuild<TState>(int slot, TState state, Func<TState, int, SKPath?> build)
+    {
+        if ((uint)slot >= SlotCount)
+        {
+            return null;
+        }
+
+        var page = Volatile.Read(ref _pages[slot >> PageBits]) ?? CreatePage(slot >> PageBits);
+        var path = Volatile.Read(ref page[slot & PageMask]);
+        path ??= Publish(page, slot & PageMask, build(state, slot));
+
+        return ReferenceEquals(path, Blank) ? null : path;
+    }
+
+    /// <summary>Stores a built outline unless another thread stored one first.</summary>
+    /// <param name="page">The page.</param>
+    /// <param name="index">The slot's place in the page.</param>
+    /// <param name="built">The outline that was built.</param>
+    /// <returns>The outline now in the slot.</returns>
+    private static SKPath Publish(SKPath?[] page, int index, SKPath? built)
+    {
+        var made = built is null || built.IsEmpty ? Blank : built;
+        if (!ReferenceEquals(made, built))
+        {
+            built?.Dispose();
+        }
+
+        var existing = Interlocked.CompareExchange(ref page[index], made, null);
+        if (existing is null)
+        {
+            return made;
+        }
+
+        if (!ReferenceEquals(made, Blank))
+        {
+            made.Dispose();
+        }
+
+        return existing;
+    }
+
+    /// <summary>Makes a page, keeping another thread's page if it won.</summary>
+    /// <param name="index">The page index.</param>
+    /// <returns>The page.</returns>
+    private SKPath?[] CreatePage(int index)
+    {
+        var page = new SKPath?[PageSize];
+        return Interlocked.CompareExchange(ref _pages[index], page, null) ?? page;
+    }
+}

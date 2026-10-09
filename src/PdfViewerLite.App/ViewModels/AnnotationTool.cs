@@ -54,4 +54,10 @@ public enum AnnotationTool
 
     /// <summary>Clicking adds the points of connected lines; Enter or a double-click finishes them.</summary>
     PolyLine = 17,
+
+    /// <summary>Dragging marks an area to redact.</summary>
+    Redact = 18,
+
+    /// <summary>Selecting text marks it to redact.</summary>
+    RedactText = 19,
 }

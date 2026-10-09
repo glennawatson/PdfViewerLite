@@ -87,8 +87,10 @@ public sealed class ControlHelpTests
             new ConfirmWindow { ViewModel = new(new("Delete?", "This cannot be undone.", "Delete")) },
             new PromptWindow { ViewModel = new(new TextPrompt("Note", "Write a note", string.Empty, "Save", false)) },
             new PropertiesWindow(),
+            new LicencesWindow { ViewModel = new(PdfViewerLite.App.Services.LicenceNotices.Load()) },
             new SignaturesWindow(),
             new CertificateSignWindow(),
+            new OptimizeCopyWindow(),
             new Window { Content = new LayerItemView() },
         ];
         foreach (var window in windows)

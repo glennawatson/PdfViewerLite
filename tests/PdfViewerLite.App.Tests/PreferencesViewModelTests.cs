@@ -13,6 +13,31 @@ namespace PdfViewerLite.App.Tests;
 /// <summary>Tests applying and saving PDF page colour choices.</summary>
 public sealed class PreferencesViewModelTests
 {
+    /// <summary>HyperPDF's place in the PDF engine list.</summary>
+    private const int HyperPdfIndex = 1;
+
+    /// <summary>The PDF engines offered.</summary>
+    private const int PdfEngineCount = 2;
+
+    /// <summary>Preferences offers PDFium and HyperPDF in that order and saves the choice for the next document opened.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task PreferencesOffersEachPdfEngine()
+    {
+        using var test = new TestServices();
+        var preferences = new PreferencesViewModel(test.Services);
+
+        var first = preferences.PdfEngine;
+        preferences.PdfEngine = HyperPdfIndex;
+        var chosen = test.Services.Settings.PdfEngine;
+
+        await Assert.That(PreferencesViewModel.PdfEngineOptions.Count).IsEqualTo(PdfEngineCount);
+        await Assert.That(PreferencesViewModel.PdfEngineOptions[0]).IsEqualTo("PDFium (native)");
+        await Assert.That(PreferencesViewModel.PdfEngineOptions[HyperPdfIndex]).IsEqualTo("HyperPDF (managed)");
+        await Assert.That(first).IsEqualTo(0);
+        await Assert.That(chosen).IsEqualTo(PdfEngineChoice.HyperPdf);
+    }
+
     /// <summary>Verifies that choosing a page colour applies even after comfort page colour was turned off.</summary>
     /// <param name="choice">The page colour chosen in Preferences.</param>
     /// <returns>A task.</returns>

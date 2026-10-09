@@ -103,6 +103,7 @@ internal static class ItemAutomation
         PrintTarget target => target.Label,
         OutlineItemViewModel entry => entry.Title,
         RememberedCertificate certificate => DescribeCertificate(certificate),
+        OptimizePresetChoice preset => $"{preset.Name}. {preset.Description}",
         string text => text,
         _ => count > 0 ? string.Create(CultureInfo.CurrentCulture, $"Item {index + 1} of {count}") : null,
     };

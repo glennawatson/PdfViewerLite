@@ -610,5 +610,655 @@
     "type": "",
     "frame": "PdfViewerLite.Benchmarks.CertificateSigningBenchmarks.Sign",
     "reason": "PdfSigner.Sign is inlined into the signing benchmark methods, so its allocations carry their names: the signed copy of the file and its incremental update as strings and bytes, and the CMS signature's ASN.1 reader and writer state. They are the same work the PdfSigner and PdfUpdateWriter entries explain, once per signature, which is a user action."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfInterchangeBenchmarks.OpenOnly",
+    "reason": "Opening a document reads its cross-reference table and page tree into an object store, a name table and dictionaries. The import benchmarks include this cost, so it is the baseline to subtract from them. Opening a file is a user action."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfInterchangeBenchmarks.Read",
+    "reason": "Reading an XFDF or FDF file builds the data model: one annotation object per annotation with its text as strings and its numbers as arrays. XFDF goes through XmlReader, which keeps its own node, attribute and name-table state and returns attribute values as strings. FDF goes through the PDF object parser into dictionaries and arrays. Reading a file is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfInterchangeBenchmarks.Export",
+    "reason": "Exporting reads each annotation dictionary into the data model and writes it out. XFDF is written through XmlWriter, which formats attribute values as strings and keeps its own element, namespace and buffer state. FDF is written as PDF syntax into a pooled buffer and copied into the result array, with annotation dictionaries built as free objects. Exporting is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfInterchangeBenchmarks.Import",
+    "reason": "Importing reads the file as described for the read benchmarks, then builds one annotation dictionary and object per annotation, queues them per page, links replies and pop-ups, and puts each page's array in place once. It also includes opening the fresh document, which the OpenOnly entry explains. Importing is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfDocumentBenchmarks.HyperPdfEndToEnd",
+    "reason": "Each operation opens a fresh document, so it pays every first-use cost once: the object store, name table, page tree and page objects; the page's first recording (interpreter, graphics state stack, Skia paths, picture recorder and picture); the text page and its characters; the annotation editor and the new highlight's dictionaries; the page tree read again because the edit drops the cached pages; and the compact save's cross-reference rows and one ZLib encoder per compressed stream. All of it is open, edit and save work, which are user actions; later tiles of the same page replay the cached picture without managed allocation."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfDocumentBenchmarks.PdfiumEndToEnd",
+    "reason": "The PDFium adapter's open, text page, annotation and save wrappers: the page size and annotation lists, the text string and the managed write buffer. Native memory is not traced. Open, edit and save are user actions, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfCarryBenchmarks.InsertPlain",
+    "reason": "Inserting pages is an edit transaction: the transaction and its undo record, the page set and page tree read again after the edit, the copied page dictionaries and the rewritten page tree. The carrier objects and their lists are created once per insertion and find nothing to carry in a plain document. Inserting pages is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfCarryBenchmarks.InsertBook",
+    "reason": "Everything InsertPlain allocates, plus what the carried structures need: prepared annotation copies, the field nodes and their rebuilt dictionaries, the outline entries and their reserved objects, the named destination and embedded file name entries merged into new name tree leaves, the layer list, and the merged AcroForm, resources and catalog copies. Each is built once per insertion. Inserting pages is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfCarryBenchmarks.ExtractBook",
+    "reason": "Extracting builds a new document: the builder's object list, the copied page and annotation objects, the same carried structures as InsertBook written into the new catalog, and the file bytes with compressed streams. Extracting pages is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfCarry",
+    "reason": "The carriers (forms, outlines, destinations, layers, files, text, context) build their working lists, dictionaries, arrays and reserved objects once per page copy, sized by what the copied pages reference. Copying pages is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfDocumentCarrier.",
+    "reason": "The carrier runs once per page copy and creates one object per structure it keeps, with the annotation list of each page and the merged catalog. Copying pages is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfNameTreeMerge.",
+    "reason": "Merging into a name tree reads the old entries, sorts old and new together and writes one leaf array, once per tree per page copy."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfFormDefaults.",
+    "reason": "Comparing the form defaults of two documents builds the font rename table and the renamed default appearance string, once per page copy that carries fields."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfPageLabelWriter.",
+    "reason": "Page labels are copied with a style table that keeps pages that shared a style in one run, and written as one number tree, once per page copy."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfStoreImporter.",
+    "reason": "Copying objects between documents allocates the queue of objects still to copy and the copied dictionaries, arrays and stream data holders, once per object copied."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfPageTreeWriter.",
+    "reason": "Rewriting the page tree after an insertion builds the list of old nodes and the new kids array, once per edit."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.PdfEditTransaction.",
+    "reason": "Committing an edit builds the undo record and the lists of changed objects and trailer entries, once per edit."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.InsertCore",
+    "reason": "Inserting pages allocates the carrier, the importer's queue, the reserved ids, the prepared annotation arrays and the page slots, once per insertion. Page editing is a user action, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.RunEdit",
+    "reason": "An edit allocates its transaction and the lists that record changed objects and trailer entries, once per edit."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.ImportPage",
+    "reason": "Copying a page dictionary builds its copy once per inserted page."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.CollectSourceLabels",
+    "reason": "Reading the source labels of the copied pages builds the label array and a decimal style, once per insertion."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.CollectLabels",
+    "reason": "Rebuilding the labels of the new page order builds the label array and a decimal style, once per insertion."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.GetLabelRanges",
+    "reason": "The label ranges are read once after an edit drops the cached ranges."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.CurrentSlots",
+    "reason": "The page slots list is built once per page edit."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.WritePages",
+    "reason": "Writing the page tree after an edit builds the label list and the tree's working state, once per edit."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PageTreeReader.",
+    "reason": "The page tree is read again after an edit drops the cached pages, building the page list and the traversal stack."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfPageSet.",
+    "reason": "The page set is rebuilt after an edit drops the cached pages."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.NameTree.",
+    "reason": "Reading the entries of a name tree for a merge builds the entry list once per tree."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Layers.OptionalContentReader.",
+    "reason": "Reading the source's layer state to copy it builds the group list and the sets of hidden and listed groups, once per page copy that reaches a layer."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Writing.PdfPageImporter.",
+    "reason": "Extracting pages reserves one object per page and keeps the prepared annotation arrays, once per extraction."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Writing.PdfObjectImporter.",
+    "reason": "Copying objects into a new document allocates the queue of objects still to copy and the copied dictionaries, arrays and stream data holders, once per object copied."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Writing.PdfDocumentBuilder.",
+    "reason": "The builder holds the new document's objects and writes them with compressed streams and a cross-reference table, once per extraction."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfDictionary..ctor",
+    "reason": "A new dictionary's key and value arrays, made for each dictionary a page copy builds; their size follows the entries the copied object holds."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfDictionary.Clone",
+    "reason": "Copying a dictionary for editing (an annotation, a field, the catalog or an outline root) allocates its key and value arrays, once per edited dictionary in a page copy."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfNameTable.Intern",
+    "reason": "A name the target has not seen is added to its name table, once per new name in a page copy."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfText.Decode",
+    "reason": "A name tree key or field name is decoded to a string to compare names, once per name checked in a page copy."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Syntax.PdfParser.ParseArray",
+    "reason": "The first copy of a page parses the source's objects that were not read yet, so arrays are allocated once per object."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Syntax.ParseScratch.PopDictionary",
+    "reason": "The first copy of a page parses the source's objects that were not read yet, so dictionaries are allocated once per object."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.IO.",
+    "reason": "Opening a file creates its byte source once per document: the mapped view and its accessor, or the stream source's 64 KiB page cache. The Memory source reads the whole file into one array by design (File.ReadAllBytes), which is why the Memory rows of the source benchmarks show the file size per open. Opening is a user action."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Structure.Xref",
+    "reason": "Opening reads the cross-reference table or streams into one entry array sized to the file's object count, and repair scans a damaged file once. Both run once per open, a user action."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfObjectStore.",
+    "reason": "The object store is created once per open with its object slot array, trailer and catalog. ReadStream and RootResolves load an object the first time it is used and keep it in the slot array, so each object is parsed once per document. Edits keep the edited copies until saved. None of this runs when a recorded tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfNameTable.",
+    "reason": "Each document has one name table. The first spelling of a name not in the static known-name table is interned once and reused for every later use in that document."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Syntax.",
+    "reason": "Parsing an object builds its value: a PdfDictionary or PdfArray allocated once at its final size from the per-thread parse stack, its key and value arrays, and strings with escapes. Parsed objects are cached in the object store, so each is parsed once per document. Inline marked-content property lists are parsed when a page is recorded or its text read, which is once per page; warm tiles replay the recorded picture."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfDictionary.",
+    "reason": "Builds a dictionary that the caller keeps: a parsed object, a clone for an edit, or a generated appearance resource. Runs when an object is first loaded or edited, not when a recorded tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfArray.FromNumbers",
+    "reason": "Builds the number array of a generated annotation appearance (its bounding box or matrix). Appearances are generated once per annotation when the page is recorded."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfText.",
+    "reason": "Decode returns a text string as a .NET string and Encode returns the encoded bytes as a new array; both results belong to the caller (titles, outline entries, metadata, annotation text). They run when the caller asks for text, not when a tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PageTreeReader.",
+    "reason": "Reading the page tree builds one page entry per page and the inherited attribute chain once per document, or again after an edit replaces the tree. It runs on open or first page access."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfPageSet..ctor",
+    "reason": "The page set holds the page array and the reverse lookup from object number to page index. It is built once per document and again after a page edit."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.",
+    "reason": "Document-level reads that return results the caller keeps or the document caches once: Create builds the document and its lazily filled caches, the page set and output intents are read once, and outline, link, URI, info, viewer preference and conformance reads return records and strings. RunContent creates one content interpreter with its graphics state, resource and marked-content stacks per content run, which happens once per text page build or raster scan, and the text page is cached. RunEdit and CurrentSlots copy the page slots for an undoable page edit. None of these run when a recorded tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDictionaryExtensions.",
+    "reason": "Spells PDF names out as strings for the accessibility report, which returns them to the caller. The report is a user action."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Layers.",
+    "reason": "The optional content configuration is read once per document: the group list, the radio button groups, the referenced group numbers and the hidden set. Toggling a layer copies the hidden set under the lock and publishes the new set, so render threads read a stable snapshot without locking; a toggle is a user action and costs one small set."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Content.ContentInterpreter.",
+    "reason": "Recording a page or building its text page runs the content stream once: the interpreter, its path builders and stacks; one Skia path object per painted path, clip or shading (SkiaSharp wraps each detached path in a managed object and registers its handle); a font and colour space the first time a resource is used; the soft mask and transparency group state; and the marked-content stack. The recording is cached as a picture, so warm tiles replay it without managed allocation. When the device is the marked-content recorder, ShowCode, OpFill and the marked-content operators also grow the recorder's glyph list, text buffer and bounds table, which are the recording's result."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PdfRenderCache.",
+    "reason": "The document's render cache is created on the first render, and Decode and ToSkImage decode an image and wrap it in a Skia image once; the entry stays in the 64 MiB image cache until evicted. Large pixel arrays are placed on the pinned object heap and become Skia's own pixel memory, so the decode output is not copied."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.ImageCache..ctor",
+    "reason": "The image cache's dictionary and recency list, created once per document on the first render."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.ObjectCache",
+    "reason": "The colour space, shading, pattern and soft mask caches, created once per document on the first render."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PageRecorder.",
+    "reason": "Recording a page into a picture, once per page while it stays in the renderer's picture cache (bounded by the memory the pictures hold, 128 MiB by default, and 32 pages): the picture recorder, the content device and the annotation pass. Warm tiles replay the picture and allocate nothing."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Draw",
+    "reason": "Draw allocates only when the page has no cached picture yet: it records the page and adds its cache entry. Warm tiles take the cached path and allocate nothing, as the warm tile benchmarks measure."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Acquire",
+    "reason": "Adds a page's cache entry the first time the page is drawn, evicting the least recently used page beyond the page cap. The first use of a renderer also registers it, weakly, with its document so disposing the document releases the renderer's pictures."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.AnnotationAppearance",
+    "reason": "Generates an appearance stream for an annotation that has none (square, circle, ink, markup, polygon, line, note): its content bytes, form dictionary and resources. This runs once per annotation when the page is recorded; the result is drawn into the cached picture."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.SkiaContentDevice.",
+    "reason": "The recording device's soft masks, transparency group stack and Skia paints, created while a page is recorded and released with the device. SkiaSharp registers each native handle in its handle table, which grows under this frame. Recording runs once per page."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Graphics.Images.PdfImageDecoder.",
+    "reason": "Decoding an image returns its pixels (one gray byte, BGRA or alpha coverage) as a new array the size of the image. Arrays of 64 KiB or more are zeroed arrays on the pinned object heap that Skia then uses as its own pixel memory, so nothing is copied; smaller ones are copied into Skia. The gray table (256 bytes) and the unpacker tables are built once per image. Each image is decoded once while it stays in the cache. Scratch rows are rented from the shared or the bounded scratch pool; when a pool has no array of a size yet, the first rent allocates it under this frame."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Graphics.Images.Jpx.",
+    "reason": "Each JPEG 2000 decode builds its header model (coding style, quantization, tiles and tile parts), one block decoder per worker and the component planes' work items, and runs the code blocks and components with Parallel.For, whose task replicas and ranges are allocated per call. A decode runs once per image while it stays in the image cache. Plane buffers are pooled."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Graphics.Images.Jbig2.",
+    "reason": "Each JBIG2 decode builds its segment list, region and symbol dictionary settings, symbol stores and arithmetic contexts: a few hundred bytes to a few kilobytes per page decode. Bitmaps are pooled. A decode runs once per image while it stays in the image cache."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Graphics.Colors.PdfColorSpace.GetDefaultDecode",
+    "reason": "The default decode array of an image's colour space, built once per image decode."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Graphics.Functions.",
+    "reason": "A shading or transfer function is parsed into its coefficient arrays once, when the shading is first used, and cached with the shading."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Graphics.Shadings.",
+    "reason": "A shading's Skia shader and its colour stops are built once and cached with the shading in the document's render cache."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Fonts.",
+    "reason": "Loading a font, once per font dictionary per document: its descriptor, program and tables, encoding and widths, glyph name text (one-character texts are shared across fonts), name words for system font matching, and the substitute face. Glyph outlines are built the first time a code is drawn and kept in the font's outline cache, in pages of 256 slots. Predefined CMaps and CID-to-Unicode tables are read from the assembly once per process. Warm text tiles, width and text lookups and CMap lookups allocate nothing."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Text.",
+    "reason": "Building a text page creates the page's result: its character array, line and word index arrays, the page text string and segments, and one marks record each time the open marked-content levels change. Text pages are cached per document (16 pages, least recently used first), and warm find and hit test allocate nothing."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Structure.",
+    "reason": "Structure reads return their results: the structure tree's elements and kids, the role map chain, the marked-content recording of a page (glyphs, text and bounds per MCID), tagged nodes, and the inferred layout's lines, columns and paragraphs. They run when a reader asks for structure, once per page or document, not when a tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Accessibility.",
+    "reason": "The accessibility report is a user action that returns a report: one page record per page, one finding per problem with its message, counts, the structure scan's element map and visited set, and page classification strings."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Conformance.",
+    "reason": "The conformance report is a user action that returns a report: the PDF/A claim, the output intents and one observation per page and font."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Raster.",
+    "reason": "The raster report returns one page record per page and one image record per scanned image with its filter names. It is a user action that walks the whole document once."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Interchange.",
+    "reason": "XFDF and FDF import and export build the annotation data model and the written file; see the interchange benchmark entries. These are user actions, not a render path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Annotations.",
+    "reason": "Editing annotations creates the new annotation dictionaries, their text, date and colour values and the page's new /Annots array. Editing is a user action."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Editing.",
+    "reason": "A page edit rewrites the page tree: it collects the nodes, copies inherited attributes into moved pages and writes new Kids arrays, all inside one undoable transaction. Editing is a user action."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.TextLayer.",
+    "reason": "Writing an OCR text layer adds new content streams and wraps the page's contents in a new array. It is a user action."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Optimizing.",
+    "reason": "Optimising is a user action that rewrites the whole file once. Each run opens a working copy, so every object is parsed again (OptimizerGraph.Visit inlines those loads) and the reachable-object graph, renumbering map and cross-reference rows are built at the file's size. Duplicate finding keeps one content hash per stream; font subsetting runs each page's content once to collect glyphs and builds the subset font's tables and file as new arrays; image recoding produces the new JPEG or bilevel data; the writer compresses object streams with one ZLib encoder each; the report lists every action and skip. None of it runs while viewing or rendering."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Metadata.XmpParser.",
+    "reason": "Reading an XMP packet goes through a forward-only XmlReader, which keeps its own node, namespace and name-table state and returns element text as strings. The optimiser reads the packet once per run to keep or update document metadata; viewers read it once per document."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Writing.",
+    "reason": "Saving collects the reachable objects, writes the cross-reference rows, computes the file ID and compresses streams with one ZLib encoder per stream. The saved bytes are returned to the caller. Saving is a user action."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.HyperPdfEngine.Open",
+    "reason": "Opening a document through the adapter creates the library document and its wrapper. Opening is a user action."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.HyperPdfDocument.",
+    "reason": "The adapter converts library results into the app's records: the wrapper's state on open, outline items, links and viewer rectangles. RenderNative creates the document's renderer entry on the first render; later tiles find it and allocate nothing, as the warm tile benchmarks measure."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.HyperPdfAnnotations",
+    "reason": "The adapter's annotation editor: its name table, the new markup's dictionaries and the text layer's font list. Annotation and text layer edits are user actions."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.AnnotationNames.",
+    "reason": "The annotation name index, created once per annotation editor."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.Tagged",
+    "reason": "The tagged block walker and character map build the reading order blocks the app asks for, once per page."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Pdfium.",
+    "reason": "The PDFium adapter's open, navigation and text wrappers, measured as the comparison baseline: native handles, outline and link lists, label and URI strings. Native memory is not traced. These run on open or on user actions."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdf",
+    "reason": "Library code inlined into a HyperPDF benchmark method allocates under the benchmark's name. Each such site is the same first-use or result work the library entries explain: opening documents and creating renderers in cold benchmarks, decoder state in the codec benchmarks, the returned encoded bytes, image, report or page records, and the copied hidden set of a layer toggle. Every warm render, text query, font lookup, colour and syntax benchmark measures zero."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.AccessibilityReportBenchmarks.",
+    "reason": "Library code inlined into the accessibility report benchmark: opening the document and the report's result records, as the accessibility entry explains."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.OptimizeMapping.",
+    "reason": "Mapping the app's settings to the library's options and the library's report to the app's creates the option record, the report record and its lists. Once per run, when the user clicks Save a Copy."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.HyperPdfAnnotations.HideRemoved",
+    "reason": "Taking the snapshot lists the pages that hold annotations removed but kept, so they can be left out of the copy and put back. Once per run, only when such annotations exist."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfOptimizeCopyBenchmarks.",
+    "reason": "Benchmark harness code: the output stream that stops the run at its first write, and the mapping calls the benchmark makes on purpose. Not shipped."
+  },
+  {
+    "type": "HyperPdfLibrary.Objects.PdfOpenContext",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfRepairBenchmarks",
+    "reason": "One 64-byte context per open holds the cancellation token, recovery switches and the repair log, so a document can say whether it was repaired. Opening is a user action, not a render path."
+  },
+  {
+    "type": "System.Collections.Generic.List`1[HyperPdfLibrary.Document.PdfDiagnostic]",
+    "frame": "HyperPdfLibrary.Objects.PdfObjectStore.ReadStructure(",
+    "reason": "The repair log is created on the first report only, so a clean open allocates none of it. A damaged open allocates the log list, its de-duplication set and their backing arrays once."
+  },
+  {
+    "type": "System.Collections.Generic.HashSet`1[HyperPdfLibrary.Document.PdfDiagnostic]",
+    "frame": "HyperPdfLibrary.Objects.PdfObjectStore.ReadStructure(",
+    "reason": "The de-duplication set of the repair log, created with the log on the first report of a damaged open."
+  },
+  {
+    "type": "Entry[HyperPdfLibrary.Document.PdfDiagnostic][]",
+    "frame": "HyperPdfLibrary.Objects.PdfObjectStore.ReadStructure(",
+    "reason": "The backing array of the repair log's de-duplication set, created on the first report of a damaged open."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Licences.NoticeDocument.Parse(",
+    "reason": "Reading the notices decodes the UTF-8 file to a string, then builds the data model: one entry per component with its licence text as a string, a field dictionary per component, and the group lists. It runs once, when the user opens the Licences window, and is not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.LicenceNoticesBenchmarks.ParseUtf8",
+    "reason": "Decoding the UTF-8 notices file to one string, which the compiler inlines into the caller; the string holds the whole file (about 800 KB for 70 components). It happens once, when the user opens the Licences window, and is not a render path."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Core.Licences.NoticeReader.",
+    "reason": "The reader keeps a string builder for the licence text and a field dictionary for each component, and fills the entry and group lists. It runs once, when the user opens the Licences window, and is not a render path."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Fonts.BundledFaces.Read(",
+    "reason": "Reads one bundled Foxit face the first time a document needs it: the resource stream and its name, a byte array of the face's CFF data (about 15 to 30 KB, kept by the parsed program for its lifetime), the CffProgram, the glyph source and the face object. The face is cached for the process, so this happens at most once per face and never while rendering."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Fonts.Programs.CffProgram..ctor(",
+    "reason": "Parsing a bundled face builds its charset, encoding and private dictionary tables once, when the face is first read. The program is cached for the process and never rebuilt while rendering."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.PageObjects.",
+    "reason": "Reading a page builds the object model the editor works on: one object per painted operation, a glyph array and a Unicode string for each text object, path segments, marks and the clip chain, and the parser's own state stack. Writing it again builds one byte array per text show so the TJ array can be rewritten and, in Preserve mode, one output buffer. Page object parsing and regeneration are editing actions that run once per edit. The render hot path does not call them."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Redaction.",
+    "reason": "Applying a redaction opens a working copy, reads each marked page into objects, rewrites the content, blanks image pixels, rewrites the ToUnicode maps, prunes resources, scrubs metadata and builds the overlay. Each step allocates its model, its decoded buffers and its rewritten streams. Applying is a user action that ends in a save. The render hot path does not call it."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfRedactionBenchmarks",
+    "reason": "Inlined library calls carry the benchmark's name: opening the document, applying the redaction and writing the saved copy to the output stream. The pages and the picture are built once in setup."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfPageObjectBenchmarks",
+    "reason": "Inlined library calls carry the benchmark's name: the byte array a regenerate returns, and the objects an edit benchmark parses before it changes them."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.IO.StreamPdfByteSource.PrefetchAsync(",
+    "reason": "Async load-ahead of a stream or file source. When a read really waits, the compiler's state machine is boxed once and a continuation is queued; a source whose pages are cached, and every mapped or in-memory source, completes without either."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.IO.StreamPdfByteSource.LoadRunAsync(",
+    "reason": "One async read of a run of cache pages: a pooled run buffer (rented, returned in the same call) and the state machine box and continuation of the awaited read."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.IO.StreamPdfByteSource.ReadInputAsync(",
+    "reason": "The awaited read of the file or stream: the box of the framework's own async read and the continuation that resumes after it."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.IO.StreamPdfByteSource.EnterStreamAsync(",
+    "reason": "Waiting for the stream's turn when another async load holds it; allocates only on contention."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfPrefetcher.",
+    "reason": "A walk that loads a page's objects ahead of use: the walk's sets and lists, the merged range list and the walk's state machine. Made once per page and cache generation, then skipped while nothing is evicted; the per-dictionary mark is a one-off entry in a ConditionalWeakTable."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.OpenWithAsync(",
+    "reason": "Opening with a cancellable token: the options copy that carries the token, plus the state machine box and continuations of the awaited loads. One set per open."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.FindPagesAsync(",
+    "reason": "The async search walk: the iterator's state machine, the reused match list, and one match array for each page that has a match."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.GetTextPagesAsync(",
+    "reason": "The async text walk: the iterator's state machine, once per walk."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.PrefetchPageAsync(",
+    "reason": "Async form whose load-ahead really waited: the state machine box and continuation. Skipped, with no allocation, once the page is loaded; the allocation test checks that."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.PageAfterAsync(",
+    "reason": "Slow path of GetPageAsync, taken only when the load-ahead really waited: state machine box and continuation."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.TextPageAfterAsync(",
+    "reason": "Slow path of GetTextPageAsync, taken only when the load-ahead really waited: state machine box and continuation."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.OutlineAfterAsync(",
+    "reason": "Slow path of GetOutlineAsync, taken only when the load-ahead really waited: state machine box and continuation."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.LinksAfterAsync(",
+    "reason": "Slow path of GetLinksAsync, taken only when the load-ahead really waited: state machine box and continuation."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.AnnotationsAfterAsync(",
+    "reason": "Slow path of ScanAnnotationsAsync, taken only when the load-ahead really waited: state machine box and continuation."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Document.PdfDocument.SaveAsync(",
+    "reason": "Async save: the state machine box and continuation of the awaited copy and write, one set per save."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.RenderAfterAsync(",
+    "reason": "Slow path of RenderAsync, taken only when the load-ahead really waited: state machine box and continuation."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.RenderAsync(",
+    "reason": "Async render whose load-ahead really waited: the slow path's state machine box and continuation. The fast path allocates nothing; the allocation test checks that."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Objects.PdfObjectStore.SortedOffsets(",
+    "reason": "The sorted object offsets used to find the bytes an object spans, built once per store on the first load-ahead of an object graph."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.Benchmarks.HyperPdfAsync",
+    "reason": "The benchmark harness: the opened-document wrapper, the delegates and tasks that start parallel renders, the task array and the throttled streams. Not library allocations."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.ImageCache.Publish(",
+    "reason": "Caching a freshly decoded image, once per image while it stays in the 64 MiB image cache: its map entry, recency node and the growth of the map. Never runs when a recorded tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.ImageEntry..ctor",
+    "reason": "The per-entry lock of a freshly decoded image, once per image while it stays in the image cache."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.ImageDecode.",
+    "reason": "The record of one image decode in progress, made once per image that is not cached so a second thread waits for it instead of decoding again. A thread that waits for another thread's decode adds the monitor state it sleeps on; the task for async waiters exists only when one waits. Never runs for a cached image or when a recorded tile is drawn."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PagePictures.AddHeld(",
+    "reason": "The list of images a page's picture drew, published once per recorded picture so renders can read it without a lock."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.MeasureLocked(",
+    "reason": "Adding up the picture cache's memory counts each shared image once, using a scratch set that grows to the number of distinct images. It runs only after a render recorded a picture, never when a recorded tile is drawn."
+  },
+  {
+    "type": "System.Byte[]",
+    "frame": "HyperPdfLibrary.Objects.PdfStream.DecodeToArray(",
+    "reason": "An object stream (or cross-reference stream) is decoded into one exact-size array. The store keeps only the last 8 decoded object streams within 4 MiB, so a stream that was evicted is decoded again the next time one of its unparsed objects is read. Each object is still parsed once per document, so this is a first-read cost, not a render cost."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Structure.ObjectStreamIndex.Read(",
+    "reason": "Reading an object stream's header builds its object-number and offset arrays and the index that holds them next to the decoded data. It runs once per decode of an object stream, which is again after the bounded cache evicted it, and never when a recorded tile is drawn."
+  },
+  {
+    "type": "HyperPdfLibrary.Objects.PdfOpenContext",
+    "frame": "HyperPdfLibrary.Objects.PdfOpenContext.Create(",
+    "reason": "One 64-byte context per open holds the cancellation token, the recovery switches and the repair log, so a document can report whether it was repaired. Opening is a user action, not a render path."
   }
 ]

@@ -39,11 +39,11 @@ internal sealed unsafe class PdfiumForm : IDisposable
     /// <summary>The space character, which toggles a focused check box.</summary>
     private const int Space = ' ';
 
-    /// <summary>The soft highlight that shows which areas can be filled in, as 0xRRGGBB.</summary>
-    private const uint HighlightColor = 0xB4CCDCU;
+    /// <summary>The bits to shift the red of a 0xRRGGBB colour down by.</summary>
+    private const int RedShift = 16;
 
-    /// <summary>The opacity of the field highlight.</summary>
-    private const byte HighlightAlpha = 72;
+    /// <summary>The mask of the green of a colour.</summary>
+    private const uint GreenMask = 0x00FF00U;
 
     /// <summary>The read-only field flag.</summary>
     private const int FlagReadOnly = 1;
@@ -70,8 +70,7 @@ internal sealed unsafe class PdfiumForm : IDisposable
             return;
         }
 
-        NativeMethods.FPDF_SetFormFieldHighlightColor(_handle, 0, new(HighlightColor));
-        NativeMethods.FPDF_SetFormFieldHighlightAlpha(_handle, HighlightAlpha);
+        SetHighlight(FormHighlight.Default);
     }
 
     /// <summary>Gets a value indicating whether the document has a fillable form.</summary>
@@ -80,6 +79,21 @@ internal sealed unsafe class PdfiumForm : IDisposable
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Dispose() => _handle.Dispose();
+
+    /// <summary>Sets the tint drawn over fillable fields.</summary>
+    /// <param name="highlight">The tint; its colour is 0xRRGGBB.</param>
+    internal void SetHighlight(FormHighlight highlight)
+    {
+        if (!HasForm)
+        {
+            return;
+        }
+
+        // PDFium reads the colour as a Windows colour reference, 0x00BBGGRR, whatever its header says.
+        var colorRef = ((highlight.Color & byte.MaxValue) << RedShift) | (highlight.Color & GreenMask) | ((highlight.Color >> RedShift) & byte.MaxValue);
+        NativeMethods.FPDF_SetFormFieldHighlightColor(_handle, 0, new(colorRef));
+        NativeMethods.FPDF_SetFormFieldHighlightAlpha(_handle, highlight.Alpha);
+    }
 
     /// <summary>Tells the form a page was loaded.</summary>
     /// <param name="page">The page.</param>

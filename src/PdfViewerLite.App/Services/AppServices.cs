@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using PdfViewerLite.App.Rendering;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Documents;
+using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Ocr;
 using PdfViewerLite.Core.Platform;
 using PdfViewerLite.Core.Settings;
@@ -14,7 +15,6 @@ using PdfViewerLite.Core.Speech;
 using PdfViewerLite.Core.Spelling;
 using PdfViewerLite.Core.Theming;
 using PdfViewerLite.Http.Remote;
-using PdfViewerLite.Pdfium;
 using ReactiveUI.Primitives;
 using ReactiveUI.Primitives.Advanced;
 using ReactiveUI.Primitives.Signals;
@@ -152,8 +152,15 @@ public sealed class AppServices : IDisposable
     /// <summary>Creates the services for the current platform.</summary>
     /// <param name="platform">The desktop integration, normally from <see cref="DesktopPlatforms.Detect"/>.</param>
     /// <returns>The services.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static AppServices CreateDefault(IDesktopPlatform platform) => new(new SettingsStore(), new PdfiumEngine(), platform);
+    public static AppServices CreateDefault(IDesktopPlatform platform)
+    {
+        AppServices? services = null;
+
+        // The engine reads the settings each time a document opens, and the settings exist only once the services do.
+        var engine = new SelectableDocumentEngine(() => services?.Settings.PdfEngine ?? PdfEngineChoice.Pdfium, () => ReadHighlight(services));
+        services = new(new SettingsStore(), engine, platform);
+        return services;
+    }
 
     /// <summary>Creates a text recogniser for the configured languages, using downloaded packs first; dispose it when done.</summary>
     /// <returns>The recogniser, which reports whether Tesseract and the language data were found.</returns>
@@ -256,6 +263,13 @@ public sealed class AppServices : IDisposable
         (_spellChecker as IDisposable)?.Dispose();
         FocusAnnouncements.Dispose();
     }
+
+    /// <summary>Reads the tint over fillable form fields from the settings.</summary>
+    /// <param name="services">The services, or <see langword="null"/> before they exist.</param>
+    /// <returns>The tint; the default one before the settings exist.</returns>
+    private static FormHighlight ReadHighlight(AppServices? services) => services is null
+        ? FormHighlight.Default
+        : new(services.Settings.FormHighlightColor, (byte)Math.Clamp(services.Settings.FormHighlightAlpha, 0, byte.MaxValue));
 
     /// <summary>Publishes the theme when it changed.</summary>
     private void RefreshTheme()
