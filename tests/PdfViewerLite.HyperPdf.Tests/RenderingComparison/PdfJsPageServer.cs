@@ -9,7 +9,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 
 namespace PdfViewerLite.HyperPdf.Tests.RenderingComparison;
 
@@ -121,15 +120,7 @@ internal sealed class PdfJsPageServer : IAsyncDisposable
     /// <returns>The owned server after its listener is ready.</returns>
     internal static async Task<PdfJsPageServer> CreateAsync(Dictionary<string, byte[]> assets, CancellationToken cancellationToken)
     {
-        var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { ContentRootPath = Path.GetTempPath(), Args = [] });
-        _ = builder.Logging.ClearProviders();
-        _ = builder.WebHost.ConfigureKestrel(static options =>
-        {
-            options.Listen(IPAddress.Loopback, 0);
-            options.Limits.MaxRequestBodySize = MaximumResponseBytes;
-            options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(RequestSeconds);
-        });
-        var application = builder.Build();
+        var application = CreateBuilder(Path.GetTempPath()).Build();
         var server = new PdfJsPageServer(assets, application);
         application.Run(server.RespondAsync);
         try
@@ -143,6 +134,24 @@ internal sealed class PdfJsPageServer : IAsyncDisposable
             await server.DisposeAsync();
             throw;
         }
+    }
+
+    /// <summary>Configures the in-memory asset server without filesystem configuration reloads.</summary>
+    /// <param name="contentRoot">The host's content root, whose files are not loaded or watched.</param>
+    /// <returns>The explicitly configured loopback application builder.</returns>
+    internal static WebApplicationBuilder CreateBuilder(string contentRoot)
+    {
+        // Slim defaults watch appsettings files recursively under the content root, even when absent.
+        // This server uses only verified in-memory assets and has no file configuration to reload.
+        var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions { ContentRootPath = contentRoot, Args = [] });
+        _ = builder.WebHost.UseKestrelCore();
+        _ = builder.WebHost.ConfigureKestrel(static options =>
+        {
+            options.Listen(IPAddress.Loopback, 0);
+            options.Limits.MaxRequestBodySize = MaximumResponseBytes;
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(RequestSeconds);
+        });
+        return builder;
     }
 
     /// <summary>Publishes an owned PDF for one render and returns its completion task.</summary>
