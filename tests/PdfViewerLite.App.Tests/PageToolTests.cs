@@ -421,7 +421,7 @@ public sealed class PageToolTests
     /// <returns>The window.</returns>
     private static async Task<Window> OpenAsync(TestServices test, MainViewModel main, string name)
     {
-        main.Open([test.CreateDocument(name, Pages)]);
+        await TestServices.OpenAndWaitAsync(main, [test.CreateDocument(name, Pages)]);
         var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };
         window.Show();
         _ = await UiWait.UntilAsync(() => test.Services.RenderHub.Cache.Count > 0 && window.GetVisualDescendants().OfType<PageCanvas>().Any(static c => c.IsFocused));
