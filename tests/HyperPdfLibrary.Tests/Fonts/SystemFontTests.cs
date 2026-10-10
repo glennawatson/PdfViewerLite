@@ -2,8 +2,10 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Buffers.Binary;
 using System.Text;
 using HyperPdfLibrary.Fonts.Programs;
+using PdfViewerLite.TestAssets;
 
 namespace HyperPdfLibrary.Tests.Fonts;
 
@@ -13,8 +15,23 @@ public sealed class SystemFontTests
     /// <summary>The fewest contours the letter A has: its outline and its counter.</summary>
     private const int ContoursOfA = 2;
 
+    /// <summary>The rectangle contour in the generated font's A.</summary>
+    private const int SyntheticContoursOfA = 1;
+
     /// <summary>The code point of Á, a composite glyph in most TrueType fonts.</summary>
     private const int AAcute = 0xC1;
+
+    /// <summary>The format that explicitly omits PostScript glyph names.</summary>
+    private const uint NamelessPostVersion = 0x00030000;
+
+    /// <summary>The size of an SFNT directory header.</summary>
+    private const int DirectoryHeaderSize = 12;
+
+    /// <summary>The size of an SFNT table record.</summary>
+    private const int TableRecordSize = 16;
+
+    /// <summary>The table offset within its directory record.</summary>
+    private const int TableOffsetPosition = 8;
 
     /// <summary>TrueType fonts to try, in order.</summary>
     private static readonly string[] TrueTypeFonts =
@@ -53,8 +70,24 @@ public sealed class SystemFontTests
 
         await Assert.That(result.Parsed).IsTrue();
         await Assert.That(program!.HasCffOutlines).IsFalse();
-        await AssertDrawsA(result);
+        await AssertDrawsA(result, ExpectedTrueTypeName(data), ContoursOfA);
         await Assert.That(Decode(program, AAcute).Count(static command => command == "Z")).IsGreaterThan(ContoursOfA);
+    }
+
+    /// <summary>A format 3 font omits glyph names but retains Unicode, name fallback and outlines.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task NamelessTrueTypeFontKeepsLookupsAndOutlines()
+    {
+        var data = TestFont.Create();
+        await Assert.That(ReadPostVersion(data)).IsEqualTo(NamelessPostVersion);
+        var result = Inspect(TrueTypeProgram.TryParse(data, out var program) ? program : null);
+
+        await Assert.That(result.Parsed).IsTrue();
+        await Assert.That(program!.HasCffOutlines).IsFalse();
+        await Assert.That(result.Glyph).IsEqualTo((int)TestFont.GlyphOf('A'));
+        await Assert.That(result.Width).IsEqualTo((float)TestFont.AdvanceOf('A'));
+        await AssertDrawsA(result, ExpectedTrueTypeName(data), SyntheticContoursOfA);
     }
 
     /// <summary>An OpenType CFF font parses through its 'CFF ' table and draws A inside its bounding box.</summary>
@@ -68,7 +101,7 @@ public sealed class SystemFontTests
         await Assert.That(result.Parsed).IsTrue();
         await Assert.That(program!.HasCffOutlines).IsTrue();
         await Assert.That(Decode(program, 'O').Exists(static command => command.StartsWith('C'))).IsTrue();
-        await AssertDrawsA(result);
+        await AssertDrawsA(result, "A", ContoursOfA);
     }
 
     /// <summary>A Type 1 font draws A exactly as its OpenType CFF twin does.</summary>
@@ -85,7 +118,7 @@ public sealed class SystemFontTests
         await Assert.That(type1.GlyphCount).IsEqualTo(openType.GlyphCount);
         await Assert.That(type1.Width).IsEqualTo(openType.Width);
         await Assert.That(type1.Commands).IsEquivalentTo(openType.Commands);
-        await AssertDrawsA(type1);
+        await AssertDrawsA(type1, "A", ContoursOfA);
     }
 
     /// <summary>Reads the first font that exists, or skips the test.</summary>
@@ -104,19 +137,57 @@ public sealed class SystemFontTests
 
     /// <summary>Checks the glyph count, the A lookups and that A's outline lies inside the font bounding box.</summary>
     /// <param name="result">The inspection.</param>
+    /// <param name="expectedName">The name supplied by the font format.</param>
+    /// <param name="minimumContours">The fewest contours in the fixture's A.</param>
     /// <returns>A task.</returns>
-    private static async Task AssertDrawsA(FontInspection result)
+    private static async Task AssertDrawsA(FontInspection result, string expectedName, int minimumContours)
     {
         await Assert.That(result.GlyphCount).IsGreaterThan(1);
         await Assert.That(result.Glyph).IsGreaterThanOrEqualTo(0);
-        await Assert.That(result.Name).IsEqualTo("A");
+        await Assert.That(result.Name).IsEqualTo(expectedName);
         await Assert.That(result.GlyphByName).IsEqualTo(result.Glyph);
         await Assert.That(result.Width).IsGreaterThan(0);
-        await Assert.That(result.Recorder.Contours).IsGreaterThanOrEqualTo(ContoursOfA);
+        await Assert.That(result.Recorder.Contours).IsGreaterThanOrEqualTo(minimumContours);
         await Assert.That(result.Recorder.MinX).IsGreaterThanOrEqualTo(result.Program!.BoundingBox.Left);
         await Assert.That(result.Recorder.MaxX).IsLessThanOrEqualTo(result.Program.BoundingBox.Right);
         await Assert.That(result.Recorder.MinY).IsGreaterThanOrEqualTo(result.Program.BoundingBox.Bottom);
         await Assert.That(result.Recorder.MaxY).IsLessThanOrEqualTo(result.Program.BoundingBox.Top);
+    }
+
+    /// <summary>Derives the name expectation from the actual table header rather than the font parser.</summary>
+    /// <param name="data">The SFNT bytes.</param>
+    /// <returns>The expected name of A.</returns>
+    /// <exception cref="InvalidDataException">The post format does not define the test's name expectation.</exception>
+    private static string ExpectedTrueTypeName(ReadOnlySpan<byte> data) => ReadPostVersion(data) switch
+    {
+        NamelessPostVersion => string.Empty,
+        0x00010000 or 0x00020000 or 0x00025000 => "A",
+        _ => throw new InvalidDataException("Unsupported post version in the system font fixture."),
+    };
+
+    /// <summary>Reads the post version directly from the SFNT directory, including a collection's first face.</summary>
+    /// <param name="data">The font bytes.</param>
+    /// <returns>The raw 16.16 post version.</returns>
+    /// <exception cref="InvalidDataException">The font has no post table.</exception>
+    private static uint ReadPostVersion(ReadOnlySpan<byte> data)
+    {
+        var directory = data[..sizeof(uint)].SequenceEqual("ttcf"u8)
+            ? checked((int)BinaryPrimitives.ReadUInt32BigEndian(data[DirectoryHeaderSize..]))
+            : 0;
+        var count = BinaryPrimitives.ReadUInt16BigEndian(data[(directory + sizeof(uint))..]);
+        for (var i = 0; i < count; i++)
+        {
+            var record = data.Slice(directory + DirectoryHeaderSize + (i * TableRecordSize), TableRecordSize);
+            if (!record[..sizeof(uint)].SequenceEqual("post"u8))
+            {
+                continue;
+            }
+
+            var offset = checked((int)BinaryPrimitives.ReadUInt32BigEndian(record[TableOffsetPosition..]));
+            return BinaryPrimitives.ReadUInt32BigEndian(data[offset..]);
+        }
+
+        throw new InvalidDataException("The system font fixture has no post table.");
     }
 
     /// <summary>Decodes the glyph of a code point.</summary>
