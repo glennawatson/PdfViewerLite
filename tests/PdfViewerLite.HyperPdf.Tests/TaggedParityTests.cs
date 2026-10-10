@@ -46,7 +46,7 @@ public sealed class TaggedParityTests
         using var pair = new EnginePair(TestPdf.Create(1));
         var blocks = new List<TaggedBlock>();
 
-        await Assert.That(((HyperPdfDocument)pair.HyperPdf).GetTaggedBlocksNative(0, blocks)).IsFalse();
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfTagged.GetTaggedBlocksNative(((HyperPdfDocument)pair.HyperPdf), 0, blocks)).IsFalse();
         await Assert.That(blocks.Count).IsEqualTo(0);
     }
 
@@ -57,8 +57,8 @@ public sealed class TaggedParityTests
     {
         using var pair = new EnginePair(TestPdf.CreateTagged());
         var native = (HyperPdfDocument)pair.HyperPdf;
-        var expected = new ReadingDocument((ITextLayoutSource)pair.Pdfium, pair.Pdfium.GetPageSizes()).GetPage(0);
-        var actual = new ReadingDocument(new NativeTaggedSource(native), native.GetPageSizes()).GetPage(0);
+        var expected = new ReadingDocument((ITextLayoutSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(ITextLayoutSource))!, pair.Pdfium.GetPageSizes()).GetPage(0);
+        var actual = new ReadingDocument(new NativeTaggedSource(native), PdfViewerLite.HyperPdf.HyperPdfNavigation.GetPageSizes(native)).GetPage(0);
 
         await Assert.That(actual.Blocks.All(static block => block.IsTagged)).IsTrue();
         await Assert.That(actual.Blocks.Select(static block => block.Text)).IsEquivalentTo(
@@ -104,8 +104,8 @@ public sealed class TaggedParityTests
     {
         var expected = new List<TaggedBlock>();
         var actual = new List<TaggedBlock>();
-        var expectedTagged = ((ITaggedStructureSource)pdfium).GetTaggedBlocks(pageIndex, expected);
-        var actualTagged = native.GetTaggedBlocksNative(pageIndex, actual);
+        var expectedTagged = ((ITaggedStructureSource)DocumentFeatures.CastFeature(pdfium, typeof(ITaggedStructureSource))!).GetTaggedBlocks(pageIndex, expected);
+        var actualTagged = PdfViewerLite.HyperPdf.HyperPdfTagged.GetTaggedBlocksNative(native, pageIndex, actual);
 
         await Assert.That(actualTagged).IsEqualTo(expectedTagged);
         await Assert.That(actual.Count).IsEqualTo(expected.Count);

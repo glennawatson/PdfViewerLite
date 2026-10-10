@@ -20,10 +20,14 @@ public static class PdfDocumentReader
     /// <exception cref="PdfException">The file cannot be read, is not a PDF, or the password is wrong.</exception>
     /// <exception cref="OperationCanceledException">The token was cancelled.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ValueTask<PdfDocument> OpenAsync(string path, string? password, CancellationToken cancellationToken) => PdfDocumentReader.OpenWithAsync(
-path,
-password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password },
-cancellationToken);
+    public static ValueTask<PdfDocument> OpenAsync(
+        string path,
+        string? password,
+        CancellationToken cancellationToken) =>
+        PdfDocumentReader.OpenWithAsync(
+        path,
+        password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password },
+        cancellationToken);
 
     /// <summary>Opens a document read from a seekable stream with async I/O.</summary>
     /// <param name="stream">The readable, seekable stream; it must stay open and unchanged until the document is disposed.</param>
@@ -34,10 +38,14 @@ cancellationToken);
     /// <exception cref="PdfException">The stream is not a PDF, or the password is wrong.</exception>
     /// <exception cref="OperationCanceledException">The token was cancelled.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ValueTask<PdfDocument> OpenAsync(Stream stream, string? password, CancellationToken cancellationToken) => PdfDocumentReader.OpenWithAsync(
-stream,
-password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password },
-cancellationToken);
+    public static ValueTask<PdfDocument> OpenAsync(
+        Stream stream,
+        string? password,
+        CancellationToken cancellationToken) =>
+        PdfDocumentReader.OpenWithAsync(
+        stream,
+        password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password },
+        cancellationToken);
 
     /// <summary>Opens a document held in memory; there is nothing to wait for, so the result is ready at once.</summary>
     /// <param name="bytes">The file's bytes; kept, not copied, and must not change.</param>
@@ -115,7 +123,10 @@ cancellationToken);
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(options);
         var bound = cancellationToken.CanBeCanceled
-            ? options with { CancellationToken = cancellationToken }
+            ? options with
+            {
+                CancellationToken = cancellationToken
+            }
             : options;
         PdfObjectStore objects;
         try
@@ -167,9 +178,12 @@ cancellationToken);
     /// <exception cref="PdfException">The bytes are not a PDF, or the certificate is not a recipient.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="certificate"/> is <see langword="null"/>.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfDocument OpenWithCertificate(byte[] bytes, X509Certificate2 certificate) => PdfDocumentReader.OpenWith(
-bytes,
-new() { Certificate = certificate ?? throw new ArgumentNullException(nameof(certificate)) });
+    public static PdfDocument OpenWithCertificate(
+        byte[] bytes,
+        X509Certificate2 certificate) =>
+        PdfDocumentReader.OpenWith(
+        bytes,
+        new() { Certificate = certificate ?? throw new ArgumentNullException(nameof(certificate)) });
 
     /// <summary>Opens a file with options; <see cref="PdfOpenOptions.Source"/> chooses how the file is read.</summary>
     /// <param name="path">The file path.</param>
@@ -209,7 +223,7 @@ new() { Certificate = certificate ?? throw new ArgumentNullException(nameof(cert
     {
         ArgumentNullException.ThrowIfNull(bytes);
         ArgumentNullException.ThrowIfNull(options);
-        return PdfDocumentReader.Create(PdfObjectStore.OpenWith(bytes, options));
+        return PdfDocumentReader.Create(StoreOpening.OpenWith(bytes, options));
     }
 
     /// <summary>
@@ -240,7 +254,7 @@ new() { Certificate = certificate ?? throw new ArgumentNullException(nameof(cert
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(options);
-        return PdfDocumentReader.Create(PdfObjectStore.OpenWith(source, ownsSource, options));
+        return PdfDocumentReader.Create(StoreOpening.OpenWith(source, ownsSource, options));
     }
 
     /// <summary>
@@ -252,8 +266,7 @@ new() { Certificate = certificate ?? throw new ArgumentNullException(nameof(cert
     /// <returns>The document.</returns>
     /// <exception cref="PdfException">The file cannot be read, is not a PDF, or the password is wrong.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfDocument Open(string path, string? password) =>
-PdfDocumentReader.OpenWith(path, password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password });
+    public static PdfDocument Open(string path, string? password) => PdfDocumentReader.OpenWith(path, password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password });
 
     /// <summary>Opens a document held in memory; the bytes are kept, not copied, and must not change.</summary>
     /// <param name="bytes">The file's bytes.</param>
@@ -263,7 +276,7 @@ PdfDocumentReader.OpenWith(path, password is null ? PdfOpenOptions.Default : new
     public static PdfDocument Open(byte[] bytes, string? password)
     {
         ArgumentNullException.ThrowIfNull(bytes);
-        return PdfDocumentReader.Create(PdfObjectStore.Open(bytes, password));
+        return PdfDocumentReader.Create(StoreOpening.Open(bytes, password));
     }
 
     /// <summary>
@@ -276,8 +289,7 @@ PdfDocumentReader.OpenWith(path, password is null ? PdfOpenOptions.Default : new
     /// <exception cref="ArgumentException">The stream cannot read or seek.</exception>
     /// <exception cref="PdfException">The stream is not a PDF, or the password is wrong.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfDocument Open(Stream stream, string? password) =>
-        PdfDocumentReader.OpenWith(stream, password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password });
+    public static PdfDocument Open(Stream stream, string? password) => PdfDocumentReader.OpenWith(stream, password is null ? PdfOpenOptions.Default : new PdfOpenOptions { Password = password });
 
     /// <summary>Creates a document over opened objects, disposing them if initialization fails.</summary>
     /// <param name="objects">The objects owned by the document.</param>
@@ -287,7 +299,7 @@ PdfDocumentReader.OpenWith(path, password is null ? PdfOpenOptions.Default : new
         try
         {
             var document = new PdfDocument(objects);
-            objects.SetChangeCallback(document.OnObjectsChanged);
+            StoreTransactions.SetChangeCallback(objects, document.OnObjectsChanged);
             return document;
         }
         catch
@@ -306,7 +318,7 @@ PdfDocumentReader.OpenWith(path, password is null ? PdfOpenOptions.Default : new
     private static PdfObjectStore OpenObjects(PdfByteSource source, bool ownsSource, PdfOpenOptions options, CancellationToken cancellationToken)
     {
         using var scope = PdfCancellation.Enter(cancellationToken);
-        return PdfObjectStore.OpenWith(source, ownsSource, options);
+        return StoreOpening.OpenWith(source, ownsSource, options);
     }
 
     /// <summary>Makes the document, reading the page tree, with the token in force.</summary>

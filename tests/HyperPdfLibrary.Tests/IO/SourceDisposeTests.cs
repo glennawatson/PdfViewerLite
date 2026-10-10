@@ -68,10 +68,9 @@ public sealed class SourceDisposeTests
             foreach (var kind in FileKinds)
             {
                 var document = SourceOpener.Open(kind, RobustnessSeeds.CreateMini(), PdfOpenOptions.Default, directory);
-                var stream = document.Objects.GetObject(new(ContentStream, 0)).AsStream()!;
+                var stream = StoreReading.GetObject(document.Objects, new(ContentStream, 0)).AsStream()!;
                 document.Dispose();
-
-                await Assert.That(() => document.Objects.GetObject(new(1, 0))).Throws<ObjectDisposedException>();
+                await Assert.That(() => StoreReading.GetObject(document.Objects, new(1, 0))).Throws<ObjectDisposedException>();
                 await Assert.That(() => stream.DecodeToArray()).Throws<ObjectDisposedException>();
                 await Assert.That(document.Objects.Source.IsDisposed).IsTrue();
             }

@@ -34,7 +34,7 @@ public sealed class SaveOverOpenFileTests
         {
             using (var document = new HyperPdfEngine().Open(path, null))
             {
-                var editor = (IAnnotationEditor)document;
+                var editor = (IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
                 _ = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sage, "Saved over");
                 await Assert.That(SaveOver(editor, path)).IsTrue();
 
@@ -47,7 +47,7 @@ public sealed class SaveOverOpenFileTests
 
             using var reopened = new HyperPdfEngine().Open(path, null);
             var annotations = new List<PageAnnotation>();
-            ((IAnnotationEditor)reopened).GetAnnotations(0, annotations);
+            ((IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
             await Assert.That(annotations.Count).IsEqualTo(1);
             await Assert.That(Directory.GetFiles(directory).Length).IsEqualTo(1);
         }

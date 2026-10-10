@@ -42,7 +42,6 @@ public sealed class Pdf2Tests
     {
         using var document = PdfDocumentReader.Open(Pdf2Documents.CreateText(), null);
         var info = PdfDocumentMetadata.GetInfo(document);
-
         await Assert.That(info.Title).IsEqualTo(Pdf2Documents.HelloText);
         await Assert.That(info.Author).IsEqualTo("Jörn");
         await Assert.That(info.Version).IsEqualTo("2.0");
@@ -68,8 +67,7 @@ public sealed class Pdf2Tests
         using var document = PdfDocumentReader.Open(Pdf2Documents.CreateText(), null);
         var page = PdfDocumentPages.GetPage(document, 0);
         var content = WritingTestDocuments.PageContents(document.Objects);
-        var profile = document.Objects.GetObject(new(ProfileNumber, 0)).AsStream()!;
-
+        var profile = StoreReading.GetObject(document.Objects, new(ProfileNumber, 0)).AsStream()!;
         await Assert.That(document.PageCount).IsEqualTo(1);
         await Assert.That(page.Width).IsEqualTo(TextPageWidth);
         await Assert.That(page.Height).IsEqualTo(TextPageHeight);
@@ -87,7 +85,6 @@ public sealed class Pdf2Tests
         var encrypted = Pdf2Documents.EncryptAes256(plain, string.Empty, RobustnessSeeds.OwnerPassword);
         using var plainDocument = PdfDocumentReader.Open(plain, null);
         using var document = PdfDocumentReader.Open(encrypted, null);
-
         await Assert.That(document.IsEncrypted).IsTrue();
         await Assert.That(document.Objects.Security!.Revision).IsEqualTo(Revision6);
         await Assert.That(document.Objects.Version).IsEqualTo("2.0");
@@ -104,12 +101,10 @@ public sealed class Pdf2Tests
     {
         var plain = RobustnessSeeds.Create()[0].Bytes;
         var encrypted = Pdf2Documents.EncryptAes256(plain, UserPassword, RobustnessSeeds.OwnerPassword);
-
         using var asUser = PdfDocumentReader.Open(encrypted, UserPassword);
         using var asOwner = PdfDocumentReader.Open(encrypted, RobustnessSeeds.OwnerPassword);
         var none = await Assert.That(() => PdfDocumentReader.Open(encrypted, null)).Throws<PdfException>();
         var wrong = await Assert.That(() => PdfDocumentReader.Open(encrypted, WrongPassword)).Throws<PdfException>();
-
         await Assert.That(asUser.PageCount).IsEqualTo(PlainPages);
         await Assert.That(asOwner.PageCount).IsEqualTo(PlainPages);
         await Assert.That(none!.Error).IsEqualTo(PdfError.Password);
@@ -123,7 +118,6 @@ public sealed class Pdf2Tests
     {
         var encrypted = Pdf2Documents.EncryptAes256(Pdf2Documents.CreateText(), string.Empty, RobustnessSeeds.OwnerPassword);
         using var document = PdfDocumentReader.Open(encrypted, null);
-
         await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsEqualTo(Pdf2Documents.HelloText);
         await Assert.That(PdfDocumentNavigation.GetOutline(document)[0].Title).IsEqualTo(Pdf2Documents.HelloText);
     }
@@ -136,7 +130,6 @@ public sealed class Pdf2Tests
         var aes256 = Create("/CFM /AESV3");
         var rc4 = Create("/CFM /V2");
         var aes128 = Create("/CFM /AESV2");
-
         await Assert.That(PdfSecurityHandler.TryCreate(aes256, Pdf2Documents.FirstId(), null, out var handler)).IsEqualTo(PdfSecurityResult.Success);
         handler!.Dispose();
         await Assert.That(PdfSecurityHandler.TryCreate(rc4, Pdf2Documents.FirstId(), null, out _)).IsEqualTo(PdfSecurityResult.UnsupportedHandler);

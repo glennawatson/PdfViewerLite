@@ -31,15 +31,14 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
 
     /// <summary>Gets the resource categories cleaned.</summary>
     private static ReadOnlySpan<int> Categories =>
-    [
-        (int)KnownName.XObject,
+        [(int)KnownName.XObject,
         (int)KnownName.Font,
         (int)KnownName.ExtGState,
         (int)KnownName.ColorSpace,
         (int)KnownName.Pattern,
         (int)KnownName.Shading,
         (int)KnownName.Properties,
-    ];
+        ];
 
     /// <summary>Runs the cleanup.</summary>
     /// <param name="document">The working copy.</param>
@@ -66,14 +65,14 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
     /// <summary>Gets the stored size of a value's object, for the report.</summary>
     /// <param name="value">The value.</param>
     /// <returns>The raw stream length plus overhead, or the overhead alone.</returns>
-    private long SizeOf(PdfValue value) => (document.Objects.Resolve(value).AsStream()?.RawLength ?? 0) + ObjectOverhead;
+    private long SizeOf(PdfValue value) => (StoreReading.Resolve(document.Objects, value).AsStream()?.RawLength ?? 0) + ObjectOverhead;
 
     /// <summary>Cleans one page.</summary>
     /// <param name="page">The page.</param>
     private void CleanPage(PdfPage page)
     {
         var store = document.Objects;
-        if (store.GetObject(page.Id).AsDictionary() is not { } current)
+        if (StoreReading.GetObject(store, page.Id).AsDictionary() is not { } current)
         {
             return;
         }
@@ -85,7 +84,7 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
         changed |= (items & PdfCleanupItems.UnusedResources) != 0 && CleanResources(copy, page);
         if (changed)
         {
-            store.Replace(page.Id, PdfValue.FromDictionary(copy));
+            StoreEditing.Replace(store, page.Id, PdfValue.FromDictionary(copy));
         }
     }
 
@@ -152,7 +151,7 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
         if (raw.IsReference)
         {
             _ = _replaced.Add(raw.AsReference().Number);
-            document.Objects.Replace(raw.AsReference(), PdfValue.FromDictionary(cleaned));
+            StoreEditing.Replace(document.Objects, raw.AsReference(), PdfValue.FromDictionary(cleaned));
             return false;
         }
 
@@ -192,9 +191,7 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
 
             copy ??= resources.Clone();
             copy.Set((KnownName)category, PdfValue.FromDictionary(kept));
-            var description = string.Create(
-                CultureInfo.InvariantCulture,
-                $"Removed {entries.Count - kept.Count} unused /{document.Objects.Names.GetString((KnownName)category)} resources.");
+            var description = string.Create(CultureInfo.InvariantCulture, $"Removed {entries.Count - kept.Count} unused /{document.Objects.Names.GetString((KnownName)category)} resources.");
             report.Changed(PdfOptimizeCategory.Cleanup, pageNumber, description, 0, 0);
         }
 
@@ -206,16 +203,22 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
     /// <param name="name">The entry's name.</param>
     /// <param name="used">The names used, or <see langword="null"/>.</param>
     /// <returns><see langword="true"/> when it stays.</returns>
-    private bool IsKept(KnownName category, PdfName name, HashSet<ResourceUse>? used) =>
-        (category == KnownName.ColorSpace && document.Objects.Names.GetSpelling(name).StartsWith("Default"u8))
-        || used?.Contains(new(category, name)) == true;
+    private bool IsKept(
+        KnownName category,
+        PdfName name,
+        HashSet<ResourceUse>? used) =>
+        (category == KnownName.ColorSpace
+        && document.Objects.Names.GetSpelling(name).StartsWith("Default"u8))
+        || used?.Contains(new(
+        category,
+        name)) == true;
 
     /// <summary>Removes the catalog's private application data.</summary>
     private void CleanCatalog()
     {
         var store = document.Objects;
         var root = store.Trailer.GetRaw(KnownName.Root);
-        if (!root.IsReference || store.Resolve(root).AsDictionary() is not { } catalog || !catalog.ContainsKey(names.PieceInfo))
+        if (!root.IsReference || StoreReading.Resolve(store, root).AsDictionary() is not { } catalog || !catalog.ContainsKey(names.PieceInfo))
         {
             return;
         }
@@ -223,7 +226,7 @@ internal sealed class CleanupPass(PdfDocument document, ContentUsageScanner scan
         var copy = catalog.Clone();
         var size = SizeOf(copy.GetRaw(names.PieceInfo));
         _ = copy.Remove(names.PieceInfo);
-        store.Replace(root.AsReference(), PdfValue.FromDictionary(copy));
+        StoreEditing.Replace(store, root.AsReference(), PdfValue.FromDictionary(copy));
         report.Changed(PdfOptimizeCategory.Cleanup, root.AsReference().Number, "Removed private application data from the catalog.", size, 0);
     }
 }

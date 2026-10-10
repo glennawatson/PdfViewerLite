@@ -57,9 +57,9 @@ public sealed class CertificateSigningTests
             byte[] saved;
             using (var document = new PdfiumEngine().Open(path, null))
             {
-                _ = ((IAnnotationEditor)document).AddNote(1, NoteAt, "Before signing", AnnotationColors.Sand);
+                _ = ((IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).AddNote(1, NoteAt, "Before signing", AnnotationColors.Sand);
                 await using var stream = new MemoryStream();
-                _ = ((IAnnotationEditor)document).Save(stream);
+                _ = ((IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).Save(stream);
                 saved = stream.ToArray();
             }
 
@@ -111,7 +111,7 @@ public sealed class CertificateSigningTests
         try
         {
             using var document = new PdfiumEngine().Open(path, null);
-            var raw = ((ISignatureSource)document).GetSignatures();
+            var raw = ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ISignatureSource))!).GetSignatures();
             var results = new List<DocumentSignature>();
             foreach (var signature in raw)
             {

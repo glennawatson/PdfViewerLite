@@ -107,7 +107,7 @@ internal sealed class PdfCarryForms
         var next = number;
         while (next != 0 && chain.Count < PdfLimits.MaxPageTreeDepth && !_nodes.ContainsKey(next) && visited.Add(next))
         {
-            if (_context.Source.GetDictionary(new(next, 0)) is not { } field)
+            if (StoreReading.GetDictionary(_context.Source, new(next, 0)) is not { } field)
             {
                 break;
             }
@@ -132,7 +132,7 @@ internal sealed class PdfCarryForms
     /// <param name="parentNumber">The registered parent's object number, or 0 for a root.</param>
     private void Register(int number, int parentNumber)
     {
-        var field = _context.Source.GetDictionary(new(number, 0))!;
+        var field = StoreReading.GetDictionary(_context.Source, new(number, 0))!;
         _context.Sink.MapObject(new(number, 0), _context.Sink.Reserve());
         if (parentNumber != 0)
         {

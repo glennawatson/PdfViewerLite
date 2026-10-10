@@ -60,12 +60,12 @@ public sealed class CarryStructuresTests
         await Assert.That(CarryTestDocuments.WidgetNames(target, FourthPage)).IsEquivalentTo(["Address_1.City"]);
         await Assert.That(target.Catalog.GetDictionary(KnownName.AcroForm)!.GetArray(KnownName.Fields)!.Count).IsEqualTo(MergedPages);
 
-        await Assert.That(PdfDocumentForms.GetForm(target).SetText(ThirdPage, 0, Typed)).IsTrue();
-        await Assert.That(PdfDocumentForms.GetForm(target).SetText(FourthPage, 0, Typed)).IsTrue();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(target), ThirdPage, 0, Typed)).IsTrue();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(target), FourthPage, 0, Typed)).IsTrue();
 
         using var saved = PdfDocumentReader.Open(PdfIncrementalWriter.Save(target.Objects), null);
         var widgets = new List<HyperPdfLibrary.Forms.PdfFormWidget>();
-        PdfDocumentForms.GetForm(saved).GetWidgets(ThirdPage, widgets);
+        HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(PdfDocumentForms.GetForm(saved), ThirdPage, widgets);
         await Assert.That(widgets[0].Value).IsEqualTo(Typed);
         await Assert.That(WritingTestDocuments.CountMissing(saved.Objects)).IsEqualTo(0);
     }
@@ -193,7 +193,7 @@ public sealed class CarryStructuresTests
         await Assert.That(PdfDocumentLayers.GetOptionalContent(extracted).Layers[0].IsVisible).IsFalse();
         await Assert.That(PdfDocumentAttachments.GetAttachments(extracted).Count).IsEqualTo(1);
         await Assert.That(WritingTestDocuments.CountMissing(extracted.Objects)).IsEqualTo(0);
-        await Assert.That(PdfDocumentForms.GetForm(extracted).SetText(FirstPage, 0, Typed)).IsTrue();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(extracted), FirstPage, 0, Typed)).IsTrue();
     }
 
     /// <summary>Extracting one page leaves out the outline entries and links to the others.</summary>

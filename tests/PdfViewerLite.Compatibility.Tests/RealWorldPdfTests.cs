@@ -179,7 +179,7 @@ public sealed class RealWorldPdfTests
     public async Task AnnotatesAndSaves(RealWorldPdf document)
     {
         using var opened = await OpenAsync(document);
-        var editor = (IAnnotationEditor)opened;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(opened, typeof(IAnnotationEditor))!;
         var page = FindTextPage(opened) ?? 0;
         var before = Annotations(editor, page).Count;
         var size = opened.GetPageSizes()[page];
@@ -202,7 +202,7 @@ public sealed class RealWorldPdfTests
 
         await Assert.That(added).IsEqualTo(bounds.Count > 0 ? NoteAndHighlight : 1);
         await Assert.That(reopened.PageCount).IsEqualTo(opened.PageCount);
-        await Assert.That(Annotations((IAnnotationEditor)reopened, page).Count).IsEqualTo(before + added);
+        await Assert.That(Annotations((IAnnotationEditor)DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!, page).Count).IsEqualTo(before + added);
     }
 
     /// <summary>Text fields and check boxes can be filled, saved and read back.</summary>
@@ -213,7 +213,7 @@ public sealed class RealWorldPdfTests
     public async Task FillsAndSaves(RealWorldPdf document)
     {
         using var opened = await OpenAsync(document);
-        var filler = (IFormFiller)opened;
+        var filler = (IFormFiller)DocumentFeatures.CastFeature(opened, typeof(IFormFiller))!;
         var filled = new List<FormField>();
         var names = new HashSet<string>(StringComparer.Ordinal);
         for (var page = 0; page < opened.PageCount && page < PageLimit; page++)
@@ -224,11 +224,11 @@ public sealed class RealWorldPdfTests
         using var saved = TempFile.Create();
         await using (var stream = File.Create(saved.Path))
         {
-            _ = ((IAnnotationEditor)opened).Save(stream);
+            _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(opened, typeof(IAnnotationEditor))!).Save(stream);
         }
 
         using var reopened = new PdfiumEngine().Open(saved.Path, document.Password);
-        var lost = Lost((IFormFiller)reopened, filled);
+        var lost = Lost((IFormFiller)DocumentFeatures.CastFeature(reopened, typeof(IFormFiller))!, filled);
 
         await Assert.That(filler.HasForm).IsTrue();
         await Assert.That(string.Join(", ", lost)).IsEqualTo(string.Empty);
@@ -253,7 +253,7 @@ public sealed class RealWorldPdfTests
         PdfSigner.Sign(path, signed.Path, certificate, new(0, "Compatibility check", "Corpus", TimeProvider.System.GetUtcNow()));
 
         using var reopened = new PdfiumEngine().Open(signed.Path, null);
-        var signatures = ((ISignatureSource)reopened).GetSignatures();
+        var signatures = ((ISignatureSource)DocumentFeatures.CastFeature(reopened, typeof(ISignatureSource))!).GetSignatures();
         var mine = SignatureVerifier.Verify(signatures[^1], signed.Path, [certificate]);
 
         await Assert.That(reopened.PageCount).IsGreaterThan(0);
@@ -270,7 +270,7 @@ public sealed class RealWorldPdfTests
     {
         var path = await RealWorldPdfCache.GetAsync(document);
         using var opened = new PdfiumEngine().Open(path, document.Password);
-        var signatures = ((ISignatureSource)opened).GetSignatures();
+        var signatures = ((ISignatureSource)DocumentFeatures.CastFeature(opened, typeof(ISignatureSource))!).GetSignatures();
         var results = signatures.Select(s => SignatureVerifier.Verify(s, path, [])).ToList();
 
         await Assert.That(signatures.Count).IsGreaterThan(0);
@@ -291,12 +291,12 @@ public sealed class RealWorldPdfTests
         using var four = TempFile.Create();
         await using (var stream = File.Create(single.Path))
         {
-            await Assert.That(((IPageExporter)opened).ExportPages(pages, SheetLayout.Default, stream)).IsTrue();
+            await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(opened, typeof(IPageExporter))!).ExportPages(pages, SheetLayout.Default, stream)).IsTrue();
         }
 
         await using (var stream = File.Create(four.Path))
         {
-            await Assert.That(((IPageExporter)opened).ExportPages(pages, new(PagesPerSheet, PaperSize.Letter, true), stream)).IsTrue();
+            await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(opened, typeof(IPageExporter))!).ExportPages(pages, new(PagesPerSheet, PaperSize.Letter, true), stream)).IsTrue();
         }
 
         using var printed = new PdfiumEngine().Open(single.Path, null);
@@ -321,7 +321,7 @@ public sealed class RealWorldPdfTests
             return;
         }
 
-        var reading = new ReadingDocument((ITextLayoutSource)opened, opened.GetPageSizes());
+        var reading = new ReadingDocument((ITextLayoutSource)DocumentFeatures.CastFeature(opened, typeof(ITextLayoutSource))!, opened.GetPageSizes());
         var flat = ReadingDocument.Flatten(reading.GetPage(page), out var map);
         var sentences = new List<SpeechSentence>();
         SentenceSplitter.Split(flat, sentences);
@@ -342,7 +342,7 @@ public sealed class RealWorldPdfTests
     {
         using var opened = await OpenAsync(document);
         var transcript = await RealWorldPdfCache.GetGroundTruthAsync(document);
-        var reading = new ReadingDocument((ITextLayoutSource)opened, opened.GetPageSizes());
+        var reading = new ReadingDocument((ITextLayoutSource)DocumentFeatures.CastFeature(opened, typeof(ITextLayoutSource))!, opened.GetPageSizes());
         var text = new StringBuilder();
         for (var page = 0; page < opened.PageCount && page < PageLimit; page++)
         {

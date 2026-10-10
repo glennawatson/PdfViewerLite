@@ -62,7 +62,7 @@ public class HyperPdfTextLayerBenchmarks
     private HyperPdfAnnotations _nativeWriter = null!;
 
     /// <summary>The document opened with PDFium for this iteration.</summary>
-    private PdfViewerLite.Core.Documents.IDocument? _pdfium;
+    private Core.Documents.IDocument? _pdfium;
 
     /// <summary>Makes the blank page and the words.</summary>
     [GlobalSetup]
@@ -90,7 +90,7 @@ public class HyperPdfTextLayerBenchmarks
     {
         var native = (HyperPdfDocument)new HyperPdfEngine().Open(_path, null);
         _native = native;
-        _nativeWriter = native.Annotations;
+        _nativeWriter = HyperPdfAnnotationStateAccess.GetAnnotations(native);
         _pdfium = new PdfiumEngine().Open(_path, null);
     }
 
@@ -105,10 +105,10 @@ public class HyperPdfTextLayerBenchmarks
     /// <summary>Writes the words natively.</summary>
     /// <returns>The number written.</returns>
     [Benchmark]
-    public int WriteNative() => _nativeWriter.AddTextLayer(0, _words);
+    public int WriteNative() => HyperPdfAnnotationTextLayer.AddTextLayer(_nativeWriter, 0, _words);
 
     /// <summary>Writes the words with PDFium.</summary>
     /// <returns>The number written.</returns>
     [Benchmark(Baseline = true)]
-    public int WritePdfium() => ((ITextLayerWriter)_pdfium!).AddTextLayer(0, _words);
+    public int WritePdfium() => ((ITextLayerWriter)Core.Documents.DocumentFeatures.CastFeature(_pdfium!, typeof(ITextLayerWriter))!).AddTextLayer(0, _words);
 }

@@ -19,7 +19,7 @@ public sealed class TaggedStructureTests
         using var document = new PdfiumEngine().Open(file.Path, null);
         var blocks = new List<TaggedBlock>();
 
-        var tagged = ((ITaggedStructureSource)document).GetTaggedBlocks(0, blocks);
+        var tagged = ((ITaggedStructureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ITaggedStructureSource))!).GetTaggedBlocks(0, blocks);
 
         await Assert.That(tagged).IsTrue();
         await Assert.That(blocks.Select(static b => b.Kind)).IsEquivalentTo(
@@ -38,7 +38,7 @@ public sealed class TaggedStructureTests
     {
         using var file = new TaggedFile(TestPdf.CreateTagged());
         using var document = new PdfiumEngine().Open(file.Path, null);
-        var reading = new ReadingDocument((ITextLayoutSource)document, document.GetPageSizes());
+        var reading = new ReadingDocument((ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ITextLayoutSource))!, document.GetPageSizes());
 
         var page = reading.GetPage(0);
 
@@ -55,7 +55,7 @@ public sealed class TaggedStructureTests
     {
         using var file = new TaggedFile(TestPdf.CreateTagged());
         using var document = new PdfiumEngine().Open(file.Path, null);
-        var reading = new ReadingDocument((ITextLayoutSource)document, document.GetPageSizes());
+        var reading = new ReadingDocument((ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ITextLayoutSource))!, document.GetPageSizes());
         var first = reading.GetPage(0).Blocks[1];
         var start = Array.Find(first.CharIndices, static i => i >= 0);
 
@@ -71,7 +71,7 @@ public sealed class TaggedStructureTests
         using var document = new PdfiumEngine().Open(file.Path, null);
         var blocks = new List<TaggedBlock>();
 
-        await Assert.That(((ITaggedStructureSource)document).GetTaggedBlocks(0, blocks)).IsFalse();
+        await Assert.That(((ITaggedStructureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ITaggedStructureSource))!).GetTaggedBlocks(0, blocks)).IsFalse();
         await Assert.That(blocks.Count).IsEqualTo(0);
     }
 

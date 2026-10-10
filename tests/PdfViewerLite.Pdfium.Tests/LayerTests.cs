@@ -64,7 +64,7 @@ public sealed class LayerTests
         {
             using var document = new PdfiumEngine().Open(path, null);
 
-            await Assert.That(((ILayerSource)document).GetLayers().Count).IsEqualTo(0);
+            await Assert.That(((ILayerSource)DocumentFeatures.CastFeature(document, typeof(ILayerSource))!).GetLayers().Count).IsEqualTo(0);
         }
         finally
         {
@@ -99,7 +99,7 @@ public sealed class LayerTests
         }
 
         /// <summary>Gets the document's layers.</summary>
-        public ILayerSource Layers => (ILayerSource)_document;
+        public ILayerSource Layers => (ILayerSource)DocumentFeatures.CastFeature(_document, typeof(ILayerSource))!;
 
         /// <inheritdoc/>
         public void Dispose()

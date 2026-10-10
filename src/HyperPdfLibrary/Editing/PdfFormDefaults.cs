@@ -148,7 +148,11 @@ internal sealed class PdfFormDefaults
     /// <param name="b">The second font.</param>
     /// <param name="namesB">The second font's name table.</param>
     /// <returns><see langword="true"/> when their type and base font agree.</returns>
-    private static bool SameFont(PdfDictionary a, PdfNameTable namesA, PdfDictionary b, PdfNameTable namesB) =>
+    private static bool SameFont(
+        PdfDictionary a,
+        PdfNameTable namesA,
+        PdfDictionary b,
+        PdfNameTable namesB) =>
         namesA.GetSpelling(a.GetName(KnownName.Subtype)).SequenceEqual(namesB.GetSpelling(b.GetName(KnownName.Subtype)))
         && namesA.GetSpelling(a.GetName(KnownName.BaseFont)).SequenceEqual(namesB.GetSpelling(b.GetName(KnownName.BaseFont)))
         && namesA.GetSpelling(a.GetName(KnownName.Encoding)).SequenceEqual(namesB.GetSpelling(b.GetName(KnownName.Encoding)));
@@ -167,8 +171,15 @@ internal sealed class PdfFormDefaults
             return true;
         }
 
-        return context.Source.Resolve(sourceRaw).AsDictionary() is { } a && targetFonts.Get(name).AsDictionary() is { } b
-            && SameFont(a, context.Source.Names, b, context.TargetStore!.Names);
+        return StoreReading.Resolve(
+        context.Source,
+        sourceRaw).AsDictionary() is { } a
+        && targetFonts.Get(name).AsDictionary() is { } b
+        && SameFont(
+        a,
+        context.Source.Names,
+        b,
+        context.TargetStore!.Names);
     }
 
     /// <summary>Gets the font resources of a form's default resources.</summary>
@@ -183,8 +194,17 @@ internal sealed class PdfFormDefaults
     /// <param name="targetFonts">The target font resources.</param>
     /// <param name="name">The name in the target.</param>
     /// <returns><see langword="true"/> when the target uses the name for another font.</returns>
-    private static bool IsClash(PdfCarryContext context, PdfValue sourceRaw, PdfDictionary targetFonts, PdfName name) =>
-        targetFonts.ContainsKey(name) && !IsSameResource(context, sourceRaw, targetFonts, name);
+    private static bool IsClash(
+        PdfCarryContext context,
+        PdfValue sourceRaw,
+        PdfDictionary targetFonts,
+        PdfName name) =>
+        targetFonts.ContainsKey(name)
+        && !IsSameResource(
+        context,
+        sourceRaw,
+        targetFonts,
+        name);
 
     /// <summary>Picks a font resource name that neither the source nor the target uses.</summary>
     /// <param name="spelling">The clashing name.</param>
@@ -242,7 +262,6 @@ internal sealed class PdfFormDefaults
         /// <summary>Determines whether either side has a font resource of a name.</summary>
         /// <param name="spelling">The name's spelling.</param>
         /// <returns><see langword="true"/> when one does.</returns>
-        internal bool Contain(byte[] spelling) =>
-            TargetFonts.ContainsKey(TargetNames.Intern(spelling)) || SourceFonts.ContainsKey(SourceNames.Intern(spelling));
+        internal bool Contain(byte[] spelling) => TargetFonts.ContainsKey(TargetNames.Intern(spelling)) || SourceFonts.ContainsKey(SourceNames.Intern(spelling));
     }
 }

@@ -26,8 +26,8 @@ public sealed class ExtensionTests
 
     /// <summary>The catalog entries of the sample document.</summary>
     private const string CatalogEntries =
-        "/Extensions << /ADBE << /BaseVersion /1.7 /ExtensionLevel 8 >> /XYZ << /BaseVersion /2.0 /ExtensionLevel 1 /URL (http://x) >> >> "
-        + "/ADBE_Thing 4 0 R /Odd 99 0 R /Plain 5 /XYZ_Other 4 0 R";
+            "/Extensions << /ADBE << /BaseVersion /1.7 /ExtensionLevel 8 >> /XYZ << /BaseVersion /2.0 /ExtensionLevel 1 /URL (http://x) >> >> "
+            + "/ADBE_Thing 4 0 R /Odd 99 0 R /Plain 5 /XYZ_Other 4 0 R";
 
     /// <summary>The page entries of the sample document.</summary>
     private const string PageEntries = "/XYZ_Info << /A 1 >>";
@@ -45,7 +45,6 @@ public sealed class ExtensionTests
     {
         using var document = Open();
         var extensions = PdfDocumentExtensionDeclarations.GetDeveloperExtensions(document);
-
         await Assert.That(extensions.Length).IsEqualTo(ExtensionCount);
         await Assert.That(extensions[0].Prefix).IsEqualTo("ADBE");
         await Assert.That(extensions[0].BaseVersion).IsEqualTo("1.7");
@@ -60,7 +59,6 @@ public sealed class ExtensionTests
     {
         using var document = Open();
         var entries = PdfDocumentExtensionDeclarations.FindUnknownEntries(document);
-
         await Assert.That(entries.Length).IsEqualTo(UnknownCount);
         await Assert.That(Find(entries, DeclaredKey).ParsedCleanly).IsTrue();
         await Assert.That(Find(entries, DeclaredKey).HasDeveloperPrefix).IsTrue();
@@ -86,7 +84,6 @@ public sealed class ExtensionTests
         var saved = Save(StructureDocuments.Build(CatalogEntries, PageEntries, "<< /Kept true >>", "1"), mode);
         using var reopened = PdfDocumentReader.Open(saved, null);
         var entries = PdfDocumentExtensionDeclarations.FindUnknownEntries(reopened);
-
         var names = reopened.Objects.Names;
         var pageInfo = PdfDocumentPages.GetPage(reopened, 0).Dictionary.GetDictionary(names.Intern(PageKey))!;
         var thing = reopened.Catalog.GetDictionary(names.Intern(DeclaredKey))!;
@@ -117,10 +114,10 @@ public sealed class ExtensionTests
     /// <returns>The saved file.</returns>
     private static byte[] Save(byte[] original, string mode)
     {
-        using var store = PdfObjectStore.Open(original, null);
+        using var store = StoreOpening.Open(original, null);
         var catalog = store.Catalog.Clone();
         catalog.Set(store.Names.Intern(MarkerKey), PdfValue.FromInteger(1));
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
         return mode switch
         {
             "incremental" => PdfIncrementalWriter.Save(store),

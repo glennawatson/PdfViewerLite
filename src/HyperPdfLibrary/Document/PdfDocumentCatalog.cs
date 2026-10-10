@@ -67,7 +67,7 @@ public static class PdfDocumentCatalog
         var counts = new Dictionary<string, long>(StringComparer.Ordinal);
         for (var i = 0; legal is not null && i < legal.Count; i++)
         {
-            if (document.Objects.Resolve(legal.GetValueAt(i)) is { IsNumber: true } count)
+            if (StoreReading.Resolve(document.Objects, legal.GetValueAt(i)) is { IsNumber: true } count)
             {
                 counts[document.Objects.Names.GetString(legal.GetKeyAt(i))] = count.AsInteger();
             }
@@ -110,7 +110,7 @@ public static class PdfDocumentCatalog
         var pieces = new List<PdfPieceData>(info.Count);
         for (var i = 0; i < info.Count; i++)
         {
-            var data = document.Objects.Resolve(info.GetValueAt(i)).AsDictionary();
+            var data = StoreReading.Resolve(document.Objects, info.GetValueAt(i)).AsDictionary();
             pieces.Add(new(document.Objects.Names.GetString(info.GetKeyAt(i)), data is null ? null : PdfDate.Parse(data.Value("LastModified").AsStringBytes()), data?.Dict("Private")));
         }
 
@@ -133,13 +133,15 @@ public static class PdfDocumentCatalog
 
             var profile = intent.Stream("DestOutputProfile");
             intents.Add(new(
-intent.NameText("S") ?? string.Empty,
-intent.Text("OutputCondition"),
-intent.Text("OutputConditionIdentifier"),
-intent.Text("RegistryName"),
-intent.Text("Info"),
-profile?.Dictionary.Int("N", 0) ?? 0,
-profile));
+        intent.NameText("S") ?? string.Empty,
+        intent.Text("OutputCondition"),
+        intent.Text("OutputConditionIdentifier"),
+        intent.Text("RegistryName"),
+        intent.Text("Info"),
+        profile?.Dictionary.Int(
+        "N",
+        0) ?? 0,
+        profile));
         }
 
         return [.. intents];

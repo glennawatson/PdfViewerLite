@@ -49,24 +49,23 @@ public static class PdfEmbeddedFonts
         descendant.Set(KnownName.Subtype, PdfValue.FromName(KnownName.CIDFontType2));
         descendant.Set(KnownName.BaseFont, name);
         descendant.Set(KnownName.CIDSystemInfo, PdfValue.FromDictionary(CreateSystemInfo(store)));
-        descendant.Set(KnownName.FontDescriptor, PdfValue.FromReference(store.Add(PdfValue.FromDictionary(CreateDescriptor(store, font, name)))));
+        descendant.Set(KnownName.FontDescriptor, PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromDictionary(CreateDescriptor(store, font, name)))));
         descendant.Set(KnownName.W, PdfValue.FromArray(CreateWidths(store, font.Widths)));
         descendant.Set(KnownName.CIDToGIDMap, PdfValue.FromName(KnownName.Identity));
-
         var composite = new PdfDictionary(store, FontEntries);
         composite.Set(KnownName.Type, PdfValue.FromName(KnownName.Font));
         composite.Set(KnownName.Subtype, PdfValue.FromName(KnownName.Type0));
         composite.Set(KnownName.BaseFont, name);
         composite.Set(KnownName.Encoding, PdfValue.FromName(KnownName.IdentityH));
         var descendants = new PdfArray(store, 1);
-        descendants.Add(PdfValue.FromReference(store.Add(PdfValue.FromDictionary(descendant))));
+        descendants.Add(PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromDictionary(descendant))));
         composite.Set(KnownName.DescendantFonts, PdfValue.FromArray(descendants));
         if (font.ToUnicode.Length > 0)
         {
-            composite.Set(KnownName.ToUnicode, PdfValue.FromReference(store.Add(PdfValue.FromStream(Compress(store, font.ToUnicode, default)))));
+            composite.Set(KnownName.ToUnicode, PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromStream(Compress(store, font.ToUnicode, default)))));
         }
 
-        return store.Add(PdfValue.FromDictionary(composite));
+        return StoreEditing.Add(store, PdfValue.FromDictionary(composite));
     }
 
     /// <summary>Creates the Adobe-Identity CID system information.</summary>
@@ -99,7 +98,7 @@ public static class PdfEmbeddedFonts
         descriptor.Set(KnownName.CapHeight, PdfNumber.ToValue(MathF.Round(font.CapHeight)));
         descriptor.Set(KnownName.StemV, PdfValue.FromInteger(DefaultStemWidth));
         var file = Compress(store, font.FontFile, store.Names.Intern(Length1));
-        descriptor.Set(KnownName.FontFile2, PdfValue.FromReference(store.Add(PdfValue.FromStream(file))));
+        descriptor.Set(KnownName.FontFile2, PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromStream(file))));
         return descriptor;
     }
 

@@ -107,7 +107,7 @@ public class HyperPdfSourceBenchmarks
     /// <returns>The decoded length.</returns>
     private static int DecodePage(PdfDocument document, int index)
     {
-        var contents = document.Objects.Resolve(PdfDocumentPages.GetPage(document, index).Dictionary.GetRaw(KnownName.Contents));
+        var contents = StoreReading.Resolve(document.Objects, PdfDocumentPages.GetPage(document, index).Dictionary.GetRaw(KnownName.Contents));
         if (contents.AsArray() is not { } parts)
         {
             return Decode(contents.AsStream());
@@ -116,7 +116,7 @@ public class HyperPdfSourceBenchmarks
         var total = 0;
         for (var i = 0; i < parts.Count; i++)
         {
-            total += Decode(document.Objects.Resolve(parts.Get(i)).AsStream());
+            total += Decode(StoreReading.Resolve(document.Objects, parts.Get(i)).AsStream());
         }
 
         return total;

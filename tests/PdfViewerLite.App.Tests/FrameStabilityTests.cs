@@ -84,7 +84,7 @@ public sealed class FrameStabilityTests
     [Test]
     public async Task ScrollingDrawsSettledFrames()
     {
-        using var test = new TestServices();
+        using var test = new TestServices(TestEngineChoice.Pdfium);
         using var main = new MainViewModel(test.Services);
         main.Open([test.CreateDocument("scroll.pdf", Pages)]);
         var window = new MainWindow { DataContext = main, Width = WindowWidth, Height = WindowHeight };

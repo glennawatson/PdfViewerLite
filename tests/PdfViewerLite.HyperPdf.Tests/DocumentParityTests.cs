@@ -75,8 +75,8 @@ public sealed class DocumentParityTests
     public async Task LayersMatch()
     {
         using var pair = new EnginePair(TestPdf.CreateWithLayers());
-        var expected = ((ILayerSource)pair.Pdfium).GetLayers();
-        var actual = ((ILayerSource)pair.HyperPdf).GetLayers();
+        var expected = ((ILayerSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(ILayerSource))!).GetLayers();
+        var actual = ((ILayerSource)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(ILayerSource))!).GetLayers();
 
         await Assert.That(actual).IsEquivalentTo(expected);
     }

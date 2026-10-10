@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Text;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Document;
@@ -19,10 +18,10 @@ internal static class FontDataDemand
     private const int MaxStreams = 4096;
 
     /// <summary>Collects the fonts a requested page can draw.</summary>
-    /// <param name="page">The requested page.</param>
-    /// <param name="cancellationToken">Cancels content inspection.</param>
+    /// <param name = "page">The requested page.</param>
+    /// <param name = "cancellationToken">Cancels content inspection.</param>
     /// <returns>The selected font dictionaries.</returns>
-    /// <exception cref="InvalidDataException">The content graph exceeds the traversal limit.</exception>
+    /// <exception cref = "InvalidDataException">The content graph exceeds the traversal limit.</exception>
     internal static HashSet<PdfDictionary> Collect(PdfPage page, CancellationToken cancellationToken)
     {
         var fonts = new HashSet<PdfDictionary>();
@@ -31,7 +30,7 @@ internal static class FontDataDemand
         var content = new PooledBuffer(0);
         try
         {
-            ContentInterpreter.DecodeContents(page, ref content);
+            ContentExecution.DecodeContents(page, ref content);
             Scan(content.WrittenSpan, page.Dictionary.Owner!.Names, scope, fonts, queue, cancellationToken);
         }
         finally
@@ -62,12 +61,12 @@ internal static class FontDataDemand
     }
 
     /// <summary>Scans operators and queues only referenced resources.</summary>
-    /// <param name="content">The decoded content.</param>
-    /// <param name="names">The document's names.</param>
-    /// <param name="scope">The resources visible to the stream.</param>
-    /// <param name="fonts">Receives selected fonts.</param>
-    /// <param name="queue">Receives referenced content streams.</param>
-    /// <param name="cancellationToken">Cancels inspection.</param>
+    /// <param name = "content">The decoded content.</param>
+    /// <param name = "names">The document's names.</param>
+    /// <param name = "scope">The resources visible to the stream.</param>
+    /// <param name = "fonts">Receives selected fonts.</param>
+    /// <param name = "queue">Receives referenced content streams.</param>
+    /// <param name = "cancellationToken">Cancels inspection.</param>
     private static void Scan(ReadOnlySpan<byte> content, PdfNameTable names, FontResourceScope scope, HashSet<PdfDictionary> fonts, Queue<FontDataContent> queue, CancellationToken cancellationToken)
     {
         Span<ContentOperand> operands = stackalloc ContentOperand[ContentReader.OperandSlots];
@@ -79,43 +78,43 @@ internal static class FontDataDemand
             switch (operation)
             {
                 case ContentOperator.SetFont:
-                {
-                    AddFont(scope.Find(KnownName.Font, name).AsDictionary(), scope, fonts, queue);
-                    break;
-                }
+                    {
+                        AddFont(scope.Find(KnownName.Font, name).AsDictionary(), scope, fonts, queue);
+                        break;
+                    }
 
                 case ContentOperator.PaintXObject:
-                {
-                    AddStream(scope.Find(KnownName.XObject, name).AsStream(), scope, queue);
-                    break;
-                }
+                    {
+                        AddStream(scope.Find(KnownName.XObject, name).AsStream(), scope, queue);
+                        break;
+                    }
 
                 case ContentOperator.SetFillColorN or ContentOperator.SetStrokeColorN:
-                {
-                    var pattern = reader.Operand(reader.OperandCount - 1).Name;
-                    AddStream(scope.Find(KnownName.Pattern, pattern).AsStream(), scope, queue);
-                    break;
-                }
+                    {
+                        var pattern = reader.Operand(reader.OperandCount - 1).Name;
+                        AddStream(scope.Find(KnownName.Pattern, pattern).AsStream(), scope, queue);
+                        break;
+                    }
 
                 case ContentOperator.SetGraphicsState:
-                {
-                    AddGraphicsState(scope.Find(KnownName.ExtGState, name).AsDictionary(), scope, fonts, queue);
-                    break;
-                }
+                    {
+                        AddGraphicsState(scope.Find(KnownName.ExtGState, name).AsDictionary(), scope, fonts, queue);
+                        break;
+                    }
 
                 default:
-                {
-                    break;
-                }
+                    {
+                        break;
+                    }
             }
         }
     }
 
     /// <summary>Adds a selected font and the content of its Type 3 glyphs.</summary>
-    /// <param name="font">The selected font.</param>
-    /// <param name="scope">The inherited resources.</param>
-    /// <param name="fonts">Receives selected fonts.</param>
-    /// <param name="queue">Receives glyph streams.</param>
+    /// <param name = "font">The selected font.</param>
+    /// <param name = "scope">The inherited resources.</param>
+    /// <param name = "fonts">Receives selected fonts.</param>
+    /// <param name = "queue">Receives glyph streams.</param>
     private static void AddFont(PdfDictionary? font, FontResourceScope scope, HashSet<PdfDictionary> fonts, Queue<FontDataContent> queue)
     {
         if (font is null || !fonts.Add(font) || font.GetDictionary(KnownName.CharProcs) is not { } glyphs)
@@ -131,9 +130,9 @@ internal static class FontDataDemand
     }
 
     /// <summary>Queues a referenced form or pattern with its visible resources.</summary>
-    /// <param name="stream">The referenced stream.</param>
-    /// <param name="scope">The inherited resources.</param>
-    /// <param name="queue">Receives the stream.</param>
+    /// <param name = "stream">The referenced stream.</param>
+    /// <param name = "scope">The inherited resources.</param>
+    /// <param name = "queue">Receives the stream.</param>
     private static void AddStream(PdfStream? stream, FontResourceScope scope, Queue<FontDataContent> queue)
     {
         if (stream is not null && !stream.Dictionary.IsName(KnownName.Subtype, KnownName.Image) && scope.Depth < PdfLimits.MaxNesting)
@@ -143,10 +142,10 @@ internal static class FontDataDemand
     }
 
     /// <summary>Collects fonts and soft-mask content selected by a graphics state.</summary>
-    /// <param name="state">The selected state.</param>
-    /// <param name="scope">The visible resources.</param>
-    /// <param name="fonts">Receives selected fonts.</param>
-    /// <param name="queue">Receives mask streams.</param>
+    /// <param name = "state">The selected state.</param>
+    /// <param name = "scope">The visible resources.</param>
+    /// <param name = "fonts">Receives selected fonts.</param>
+    /// <param name = "queue">Receives mask streams.</param>
     private static void AddGraphicsState(PdfDictionary? state, FontResourceScope scope, HashSet<PdfDictionary> fonts, Queue<FontDataContent> queue)
     {
         AddFont(state?.GetArray(KnownName.Font)?.GetDictionary(0), scope, fonts, queue);
@@ -154,9 +153,9 @@ internal static class FontDataDemand
     }
 
     /// <summary>Collects normal appearances and the font of generated text appearances.</summary>
-    /// <param name="page">The requested page.</param>
-    /// <param name="fonts">Receives selected fonts.</param>
-    /// <param name="queue">Receives appearance streams.</param>
+    /// <param name = "page">The requested page.</param>
+    /// <param name = "fonts">Receives selected fonts.</param>
+    /// <param name = "queue">Receives appearance streams.</param>
     private static void AddAnnotations(PdfPage page, HashSet<PdfDictionary> fonts, Queue<FontDataContent> queue)
     {
         if (page.Dictionary.GetArray(KnownName.Annots) is not { } annotations)
@@ -185,21 +184,18 @@ internal static class FontDataDemand
     }
 
     /// <summary>Finds the same default font used when an annotation appearance is generated.</summary>
-    /// <param name="page">The requested page.</param>
-    /// <param name="annotation">The widget or FreeText annotation.</param>
-    /// <param name="fonts">Receives the selected font.</param>
-    /// <param name="queue">Receives any Type 3 content.</param>
+    /// <param name = "page">The requested page.</param>
+    /// <param name = "annotation">The widget or FreeText annotation.</param>
+    /// <param name = "fonts">Receives the selected font.</param>
+    /// <param name = "queue">Receives any Type 3 content.</param>
     private static void AddAppearanceFont(PdfPage page, PdfDictionary annotation, HashSet<PdfDictionary> fonts, Queue<FontDataContent> queue)
     {
         var store = page.Dictionary.Owner!;
         var form = store.Catalog.GetDictionary(KnownName.AcroForm);
         var appearance = DefaultAppearance.Find(annotation, annotation, form);
         var name = store.Names.Intern(Encoding.UTF8.GetBytes(appearance.FontName));
-        var scope = new FontResourceScope(
-            FieldAttributes.Find(annotation, KnownName.DR).AsDictionary(),
-            new(form?.GetDictionary(KnownName.DR), new(page.Resources, null)));
-        var font = scope.Find(KnownName.Font, name).AsDictionary()
-            ?? FormFont.CreateFallback(store).Resource.AsDictionary();
+        var scope = new FontResourceScope(FieldAttributes.Find(annotation, KnownName.DR).AsDictionary(), new(form?.GetDictionary(KnownName.DR), new(page.Resources, null)));
+        var font = scope.Find(KnownName.Font, name).AsDictionary() ?? FormFont.CreateFallback(store).Resource.AsDictionary();
         AddFont(font, scope, fonts, queue);
     }
 }

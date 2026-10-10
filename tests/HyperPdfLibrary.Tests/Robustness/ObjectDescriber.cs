@@ -23,7 +23,7 @@ internal static class ObjectDescriber
         for (var number = 1; number < store.Size; number++)
         {
             var text = new StringBuilder();
-            AppendValue(store, store.GetObject(new(number, 0)), text, null, 0);
+            AppendValue(store, StoreReading.GetObject(store, new(number, 0)), text, null, 0);
             lines.Add(text.ToString());
         }
 
@@ -62,34 +62,34 @@ internal static class ObjectDescriber
         switch (value.Kind)
         {
             case PdfKind.Reference:
-            {
-                AppendReference(store, value.AsReference(), text, order, depth);
-                break;
-            }
+                {
+                    AppendReference(store, value.AsReference(), text, order, depth);
+                    break;
+                }
 
             case PdfKind.Array:
-            {
-                AppendArray(store, value.AsArray()!, text, order, depth);
-                break;
-            }
+                {
+                    AppendArray(store, value.AsArray()!, text, order, depth);
+                    break;
+                }
 
             case PdfKind.Dictionary:
-            {
-                AppendDictionary(store, value.AsDictionary()!, text, order, depth);
-                break;
-            }
+                {
+                    AppendDictionary(store, value.AsDictionary()!, text, order, depth);
+                    break;
+                }
 
             case PdfKind.Stream:
-            {
-                AppendStream(store, value.AsStream()!, text, order, depth);
-                break;
-            }
+                {
+                    AppendStream(store, value.AsStream()!, text, order, depth);
+                    break;
+                }
 
             default:
-            {
-                AppendSimple(store, value, text);
-                break;
-            }
+                {
+                    AppendSimple(store, value, text);
+                    break;
+                }
         }
     }
 
@@ -116,7 +116,7 @@ internal static class ObjectDescriber
         var index = order.Count;
         order[id.Number] = index;
         _ = text.Append(CultureInfo.InvariantCulture, $"@{index}=");
-        AppendValue(store, store.GetObject(id), text, order, depth + 1);
+        AppendValue(store, StoreReading.GetObject(store, id), text, order, depth + 1);
     }
 
     /// <summary>Appends an array.</summary>
@@ -188,40 +188,40 @@ internal static class ObjectDescriber
         switch (value.Kind)
         {
             case PdfKind.Boolean:
-            {
-                _ = text.Append(value.AsBoolean() ? "true" : "false");
-                break;
-            }
+                {
+                    _ = text.Append(value.AsBoolean() ? "true" : "false");
+                    break;
+                }
 
             case PdfKind.Integer:
-            {
-                _ = text.Append(value.AsInteger());
-                break;
-            }
+                {
+                    _ = text.Append(value.AsInteger());
+                    break;
+                }
 
             case PdfKind.Real:
-            {
-                _ = text.Append(value.AsNumber().ToString("R", CultureInfo.InvariantCulture));
-                break;
-            }
+                {
+                    _ = text.Append(value.AsNumber().ToString("R", CultureInfo.InvariantCulture));
+                    break;
+                }
 
             case PdfKind.Name:
-            {
-                _ = text.Append('/').Append(store.Names.GetString(value.AsName()));
-                break;
-            }
+                {
+                    _ = text.Append('/').Append(store.Names.GetString(value.AsName()));
+                    break;
+                }
 
             case PdfKind.String:
-            {
-                _ = text.Append('<').Append(Convert.ToHexString(value.AsStringBytes())).Append('>');
-                break;
-            }
+                {
+                    _ = text.Append('<').Append(Convert.ToHexString(value.AsStringBytes())).Append('>');
+                    break;
+                }
 
             default:
-            {
-                _ = text.Append("null");
-                break;
-            }
+                {
+                    _ = text.Append("null");
+                    break;
+                }
         }
     }
 }

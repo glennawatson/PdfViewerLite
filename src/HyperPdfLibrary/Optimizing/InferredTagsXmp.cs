@@ -42,7 +42,7 @@ internal static class InferredTagsXmp
     {
         var store = document.Objects;
         var raw = document.Catalog.GetRaw(KnownName.Metadata);
-        if (store.Resolve(raw).AsStream() is { } stream)
+        if (StoreReading.Resolve(store, raw).AsStream() is { } stream)
         {
             var change = new XmpChange(new(Prefix, Namespace, Property, XmpShape.Simple), "true");
             if (!raw.IsReference || XmpEditor.Apply(stream.DecodeToArray(), [change]) is not { } packet)
@@ -55,25 +55,25 @@ internal static class InferredTagsXmp
             _ = dictionary.Remove(KnownName.Filter);
             _ = dictionary.Remove(KnownName.DecodeParms);
             _ = dictionary.Remove(KnownName.Length);
-            store.Replace(raw.AsReference(), PdfValue.FromStream(new(dictionary, packet)));
+            StoreEditing.Replace(store, raw.AsReference(), PdfValue.FromStream(new(dictionary, packet)));
             return;
         }
 
         var metadata = new PdfDictionary(store, MetadataEntries);
         metadata.Set(KnownName.Type, PdfValue.FromName(KnownName.Metadata));
         metadata.Set(KnownName.Subtype, PdfValue.FromName(store.Names.Intern("XML"u8)));
-        var reference = store.Add(PdfValue.FromStream(new(metadata, NewPacket())));
+        var reference = StoreEditing.Add(store, PdfValue.FromStream(new(metadata, NewPacket())));
         var catalogRef = store.Trailer.GetRaw(KnownName.Root);
-        var catalog = store.Resolve(catalogRef).AsDictionary()!.Clone();
+        var catalog = StoreReading.Resolve(store, catalogRef).AsDictionary()!.Clone();
         catalog.Set(KnownName.Metadata, PdfValue.FromReference(reference));
-        store.Replace(catalogRef.AsReference(), PdfValue.FromDictionary(catalog));
+        StoreEditing.Replace(store, catalogRef.AsReference(), PdfValue.FromDictionary(catalog));
     }
 
     /// <summary>Writes a minimal XMP packet holding only the inferred-tags property.</summary>
     /// <returns>The packet as UTF-8 bytes.</returns>
     private static byte[] NewPacket()
     {
-        var settings = new XmlWriterSettings { Encoding = new UTF8Encoding(false), OmitXmlDeclaration = true };
+        var settings = new XmlWriterSettings { Encoding = new UTF8Encoding(false), OmitXmlDeclaration = true, };
         using var memory = new MemoryStream();
         using (var writer = XmlWriter.Create(memory, settings))
         {

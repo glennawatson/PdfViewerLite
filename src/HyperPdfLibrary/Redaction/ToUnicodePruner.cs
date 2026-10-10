@@ -28,7 +28,7 @@ internal static class ToUnicodePruner
         for (var page = 0; page < document.PageCount; page++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Collect(PdfPageContent.Read(document, page, cancellationToken), tally.RemovedCodes, stillUsed);
+            Collect(PdfPageContentReader.Read(document, page, cancellationToken), tally.RemovedCodes, stillUsed);
         }
 
         foreach (var (font, codes) in tally.RemovedCodes)
@@ -101,7 +101,7 @@ internal static class ToUnicodePruner
         {
             FlateFilter.Encode(rewritten, ref compressed);
             dictionary.Set(KnownName.Filter, PdfValue.FromName(KnownName.FlateDecode));
-            store.Replace(id, PdfValue.FromStream(new(dictionary, compressed.ToArray())));
+            StoreEditing.Replace(store, id, PdfValue.FromStream(new(dictionary, compressed.ToArray())));
         }
         finally
         {

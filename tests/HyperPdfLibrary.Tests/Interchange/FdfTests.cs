@@ -70,7 +70,7 @@ public sealed class FdfTests
         var result = PdfInterchange.ImportFdf(document, ThreeFields.ToArray());
 
         var widgets = new List<PdfFormWidget>();
-        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
+        HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(PdfDocumentForms.GetForm(document), 0, widgets);
         await Assert.That(result.FieldsApplied).IsEqualTo(AppliedFields);
         await Assert.That(result.FieldsSkipped).IsEqualTo(1);
         await Assert.That(widgets[FormSamples.NotesIndex].Value).IsEqualTo("hello");

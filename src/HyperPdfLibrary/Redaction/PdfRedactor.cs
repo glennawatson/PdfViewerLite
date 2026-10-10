@@ -16,7 +16,7 @@ namespace HyperPdfLibrary.Redaction;
 /// Applies the redact annotations of a document (ISO 32000-2, 12.5.6.23) so the covered content is really removed: text
 /// glyphs, image pixels, line art, links, widgets and other annotations under the areas go from the page, not just out of
 /// sight. Applying cannot be undone once the file is saved, and the document can only be saved compactly afterwards:
-/// <see cref="PdfObjectStore.RequiresCompactSave"/> stops an incremental update, which would keep the removed bytes.
+/// <see cref = "StoreRedaction.RequiresCompactSave"/> stops an incremental update, which would keep the removed bytes.
 /// </summary>
 public static class PdfRedactor
 {
@@ -48,12 +48,17 @@ public static class PdfRedactor
 
         var tally = new RedactionTally();
         PdfDocumentPageContent.RunInTransaction(
-            document,
-            "Apply redactions",
-            PdfChangeKinds.Annotations | PdfChangeKinds.Metadata | PdfChangeKinds.Other,
-            new RunState(document, marks, options, tally, cancellationToken),
-            Run);
-        document.Objects.RequireCompactSave();
+        document,
+        "Apply redactions",
+        PdfChangeKinds.Annotations | PdfChangeKinds.Metadata | PdfChangeKinds.Other,
+        new RunState(
+        document,
+        marks,
+        options,
+        tally,
+        cancellationToken),
+        Run);
+        StoreRedaction.RequireCompactSave(document.Objects);
         PdfDocumentPageContent.InvalidatePageContent(document);
         return tally.ToReport();
     }
@@ -138,16 +143,16 @@ public static class PdfRedactor
         }
 
         var areas = regions.ToArray();
-        var content = PdfPageContent.Read(document, pageIndex, state.Token);
+        var content = PdfPageContentReader.Read(document, pageIndex, state.Token);
         new ContentRedactor(areas, state.Options, state.Tally, state.Token).Redact(content);
         if (state.Options.DrawOverlay)
         {
             OverlayWriter.Write(content, sources);
         }
 
-        if (content.IsModified)
+        if (PdfPageContentEditing.IsModified(content))
         {
-            content.Apply();
+            PdfPageContentApplication.Apply(content);
         }
 
         AnnotationRedactor.Run(document, pageIndex, areas, state.Options.Annotations, state.Tally);
@@ -175,7 +180,7 @@ public static class PdfRedactor
 
         var copy = dictionary.Clone();
         _ = copy.Remove(document.Objects.Names.Intern("Thumb"u8));
-        document.Objects.Replace(page.Id, PdfValue.FromDictionary(copy));
+        StoreEditing.Replace(document.Objects, page.Id, PdfValue.FromDictionary(copy));
     }
 
     /// <summary>The work an apply run does inside its transaction.</summary>

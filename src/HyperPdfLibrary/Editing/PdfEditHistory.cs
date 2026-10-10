@@ -165,7 +165,7 @@ public sealed class PdfEditHistory
     {
         lock (_store.Gate)
         {
-            if (_store.CurrentTransaction is not null)
+            if (StoreTransactions.GetCurrentTransaction(_store) is not null)
             {
                 throw new InvalidOperationException("Undo and redo are not allowed while a transaction is open.");
             }
@@ -179,18 +179,18 @@ public sealed class PdfEditHistory
             from.RemoveAt(from.Count - 1);
             if (undo)
             {
-                _store.RestoreLocked(record.Before, record.TrailerBefore);
+                StoreTransactions.RestoreLocked(_store, record.Before, record.TrailerBefore);
             }
             else
             {
-                _store.RestoreLocked(record.After, record.TrailerAfter);
+                StoreTransactions.RestoreLocked(_store, record.After, record.TrailerAfter);
             }
 
             to.Add(record);
             Trim(to, _depth);
         }
 
-        _store.NotifyChanged();
+        StoreTransactions.NotifyChanged(_store);
         return true;
     }
 }

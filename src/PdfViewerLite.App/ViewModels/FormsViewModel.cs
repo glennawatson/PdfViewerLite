@@ -55,7 +55,7 @@ public sealed partial class FormsViewModel : ReactiveObject
     public partial string EditText { get; set; } = string.Empty;
 
     /// <summary>Gets the document's form filler, or <see langword="null"/>.</summary>
-    private IFormFiller? Filler => _owner.TryGetDocument() as IFormFiller;
+    private IFormFiller? Filler => ((_owner.TryGetDocument())?.GetFeature(typeof(IFormFiller)) as IFormFiller);
 
     /// <summary>Finds the fillable field under a point.</summary>
     /// <param name="page">The page.</param>
@@ -91,36 +91,36 @@ public sealed partial class FormsViewModel : ReactiveObject
         switch (field.Kind)
         {
             case FormFieldKind.Text:
-            {
-                Commit();
-                EditText = field.Value;
-                Editing = field;
-                return true;
-            }
+                {
+                    Commit();
+                    EditText = field.Value;
+                    Editing = field;
+                    return true;
+                }
 
             case FormFieldKind.CheckBox:
-            {
-                Refresh(field, Filler?.SetChecked(field.PageIndex, field.Index, !field.IsChecked) == true);
-                Recalculate();
-                return true;
-            }
+                {
+                    Refresh(field, Filler?.SetChecked(field.PageIndex, field.Index, !field.IsChecked) == true);
+                    Recalculate();
+                    return true;
+                }
 
             case FormFieldKind.RadioButton:
-            {
-                Refresh(field, Filler?.SetChecked(field.PageIndex, field.Index, true) == true);
-                Recalculate();
-                return true;
-            }
+                {
+                    Refresh(field, Filler?.SetChecked(field.PageIndex, field.Index, true) == true);
+                    Recalculate();
+                    return true;
+                }
 
             case FormFieldKind.PushButton:
-            {
-                return StartButton(field);
-            }
+                {
+                    return StartButton(field);
+                }
 
             default:
-            {
-                return false;
-            }
+                {
+                    return false;
+                }
         }
     }
 
@@ -133,7 +133,9 @@ public sealed partial class FormsViewModel : ReactiveObject
     public async Task<FormActionResult> RunButtonAsync(FormField field)
     {
         ArgumentNullException.ThrowIfNull(field);
-        if (_owner.TryGetDocument() is not IFormActions actions)
+        if (((_owner.TryGetDocument())?.GetFeature(typeof(IFormActions)) as IFormActions) is not
+            {
+            } actions)
         {
             return FormActionResult.None;
         }
@@ -152,7 +154,7 @@ public sealed partial class FormsViewModel : ReactiveObject
     /// <param name="pageIndex">The zero based page index.</param>
     public void OnPageShown(int pageIndex)
     {
-        if (_owner.TryGetDocument() is IFormActions && PageOpenedCommand is ICommand command && command.CanExecute(pageIndex))
+        if (((_owner.TryGetDocument())?.GetFeature(typeof(IFormActions)) as IFormActions) is not null && PageOpenedCommand is ICommand command && command.CanExecute(pageIndex))
         {
             command.Execute(pageIndex);
         }
@@ -163,7 +165,9 @@ public sealed partial class FormsViewModel : ReactiveObject
     /// <returns>What happened.</returns>
     public async Task<FormActionResult> RunPageOpenedAsync(int pageIndex)
     {
-        if (_owner.TryGetDocument() is not IFormActions actions)
+        if (((_owner.TryGetDocument())?.GetFeature(typeof(IFormActions)) as IFormActions) is not
+            {
+            } actions)
         {
             return FormActionResult.None;
         }
@@ -402,7 +406,7 @@ public sealed partial class FormsViewModel : ReactiveObject
             return all;
         }
 
-        var order = _owner.TryGetDocument() as IFormOrder;
+        var order = ((_owner.TryGetDocument())?.GetFeature(typeof(IFormOrder)) as IFormOrder);
         var sequence = new List<int>();
         for (var page = 0; page < _owner.PageCount; page++)
         {
@@ -478,7 +482,9 @@ public sealed partial class FormsViewModel : ReactiveObject
 
         _scripts = [with(StringComparer.Ordinal)];
         _calculated = [];
-        if (_owner.TryGetDocument() is not IFormScriptSource source)
+        if (((_owner.TryGetDocument())?.GetFeature(typeof(IFormScriptSource)) as IFormScriptSource) is not
+            {
+            } source)
         {
             return _calculated;
         }
@@ -506,7 +512,9 @@ public sealed partial class FormsViewModel : ReactiveObject
     /// <param name="calculated">The calculated fields in page order, reordered in place.</param>
     private void OrderCalculations(List<FieldScripts> calculated)
     {
-        if (calculated.Count < 2 || _owner.TryGetDocument() is not IFormOrder source)
+        if (calculated.Count < 2 || ((_owner.TryGetDocument())?.GetFeature(typeof(IFormOrder)) as IFormOrder) is not
+            {
+            } source)
         {
             return;
         }
@@ -544,7 +552,8 @@ public sealed partial class FormsViewModel : ReactiveObject
     private bool StartButton(FormField field)
     {
         Focused = field;
-        if (_owner.TryGetDocument() is not IFormActions || RunButtonCommand is not ICommand command || !command.CanExecute(field))
+        var actions = ((_owner.TryGetDocument()?.GetFeature(typeof(IFormActions))) as IFormActions);
+        if (actions is null || RunButtonCommand is not ICommand command || !command.CanExecute(field))
         {
             return false;
         }

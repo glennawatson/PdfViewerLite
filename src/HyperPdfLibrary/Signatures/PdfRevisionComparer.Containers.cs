@@ -123,7 +123,7 @@ internal sealed partial class PdfRevisionComparer
             var item = now.GetRaw(i);
             if (item.IsReference && !Contains(before, item.AsReference().Number))
             {
-                kinds |= KindOfTarget(_current.GetObject(item.AsReference()).AsDictionary(), _tables.Left);
+                kinds |= KindOfTarget(StoreReading.GetObject(_current, item.AsReference()).AsDictionary(), _tables.Left);
             }
         }
 
@@ -132,7 +132,7 @@ internal sealed partial class PdfRevisionComparer
             var item = before.GetRaw(i);
             if (item.IsReference && !Contains(now, item.AsReference().Number))
             {
-                kinds |= KindOfTarget(_signed.GetObject(item.AsReference()).AsDictionary(), _tables.Right);
+                kinds |= KindOfTarget(StoreReading.GetObject(_signed, item.AsReference()).AsDictionary(), _tables.Right);
             }
         }
 
@@ -173,7 +173,7 @@ internal sealed partial class PdfRevisionComparer
             {
                 if (_owned.TryAdd(value.AsReference().Number, change))
                 {
-                    pending.Push(_current.GetObject(value.AsReference()));
+                    pending.Push(StoreReading.GetObject(_current, value.AsReference()));
                 }
 
                 continue;

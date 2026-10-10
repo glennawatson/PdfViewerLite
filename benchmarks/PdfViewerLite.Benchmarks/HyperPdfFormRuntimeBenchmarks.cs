@@ -74,7 +74,7 @@ public class HyperPdfFormRuntimeBenchmarks
     public int TabSequence()
     {
         _order.Clear();
-        PdfDocumentForms.GetForm(_document).GetTabSequence(0, _order);
+        HyperPdfLibrary.Forms.PdfFormOrder.GetTabSequence(PdfDocumentForms.GetForm(_document), 0, _order);
         return _order.Count;
     }
 
@@ -84,14 +84,14 @@ public class HyperPdfFormRuntimeBenchmarks
     public int CalculationOrder()
     {
         _names.Clear();
-        PdfDocumentForms.GetForm(_document).GetCalculationOrder(_names);
+        HyperPdfLibrary.Forms.PdfFormOrder.GetCalculationOrder(PdfDocumentForms.GetForm(_document), _names);
         return _names.Count;
     }
 
     /// <summary>Resets every field.</summary>
     /// <returns>The number of fields reset.</returns>
     [Benchmark]
-    public int ResetForm() => PdfDocumentForms.GetForm(_document).Reset(Reset);
+    public int ResetForm() => HyperPdfLibrary.Forms.PdfFormActions.Reset(PdfDocumentForms.GetForm(_document), Reset);
 
     /// <summary>Formats a time with a script.</summary>
     /// <returns>The text.</returns>

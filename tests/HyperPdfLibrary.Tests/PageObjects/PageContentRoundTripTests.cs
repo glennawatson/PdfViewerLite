@@ -39,8 +39,8 @@ public sealed class PageContentRoundTripTests
         using var document = PdfDocumentReader.Open(PageObjectSamples.Mixed(), null);
         var content = PdfDocumentPageContent.GetPageContent(document, 0);
 
-        await Assert.That(content.Regenerate().AsSpan().SequenceEqual(content.Source)).IsTrue();
-        await Assert.That(content.IsModified).IsFalse();
+        await Assert.That(PdfPageContentWriter.Regenerate(content).AsSpan().SequenceEqual(content.Source)).IsTrue();
+        await Assert.That(PdfPageContentEditing.IsModified(content)).IsFalse();
     }
 
     /// <summary>Both modes keep the mixed page drawing and reading the same.</summary>
@@ -73,7 +73,7 @@ public sealed class PageContentRoundTripTests
             var before = Render(original.Document, original.Renderer, page);
             var text = PdfDocumentText.GetTextPage(original.Document, page).Text;
             var content = PdfDocumentPageContent.GetPageContent(original.Document, page);
-            content.Apply(mode);
+            PdfPageContentApplication.Apply(content, mode);
             var after = Render(original.Document, original.Renderer, page);
 
             await Assert.That(after.Pixels.AsSpan().SequenceEqual(before.Pixels)).IsTrue();
@@ -128,7 +128,7 @@ public sealed class PageContentRoundTripTests
     private static byte[] RoundTrip(byte[] pdf, PdfRegenerateMode mode)
     {
         using var document = PdfDocumentReader.Open(pdf, null);
-        PdfDocumentPageContent.GetPageContent(document, 0).Apply(mode);
+        PdfPageContentApplication.Apply(PdfDocumentPageContent.GetPageContent(document, 0), mode);
         return PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
     }
 
@@ -200,7 +200,7 @@ public sealed class PageContentRoundTripTests
         var before = Render(page.Document, page.Renderer, index);
         var text = PdfDocumentText.GetTextPage(page.Document, index).Text;
         var content = PdfDocumentPageContent.GetPageContent(page.Document, index);
-        content.Apply(mode);
+        PdfPageContentApplication.Apply(content, mode);
         var after = Render(page.Document, page.Renderer, index);
         var differing = CountDifferences(before, after, exact ? 0 : RewriteTolerance);
         var message = string.Create(CultureInfo.InvariantCulture, $"{Path.GetFileName(file)} page {index + 1} ({mode}): {content.Objects.Count} objects, {differing} pixels differ");

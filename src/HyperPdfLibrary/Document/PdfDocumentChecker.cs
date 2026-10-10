@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Diagnostics;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Filters;
@@ -39,10 +38,10 @@ internal sealed class PdfDocumentChecker
     /// <summary>The pages checked.</summary>
     private int _pages;
 
-    /// <summary>Initializes a new instance of the <see cref="PdfDocumentChecker"/> class.</summary>
-    /// <param name="document">The document.</param>
-    /// <param name="options">The checks to run.</param>
-    /// <param name="cancellationToken">The token that stops the check.</param>
+    /// <summary>Initializes a new instance of the <see cref = "PdfDocumentChecker"/> class.</summary>
+    /// <param name = "document">The document.</param>
+    /// <param name = "options">The checks to run.</param>
+    /// <param name = "cancellationToken">The token that stops the check.</param>
     internal PdfDocumentChecker(PdfDocument document, PdfCheckOptions options, CancellationToken cancellationToken)
     {
         _document = document;
@@ -75,18 +74,18 @@ internal sealed class PdfDocumentChecker
     }
 
     /// <summary>Reads one object and, for a stream, decodes it.</summary>
-    /// <param name="number">The object number.</param>
+    /// <param name = "number">The object number.</param>
     internal void CheckObject(int number)
     {
         _context.ThrowIfCancelled();
         var objects = _document.Objects;
-        if (objects.GetEntryType(number) == XrefEntryType.Free)
+        if (StoreRepairs.GetEntryType(objects, number) == XrefEntryType.Free)
         {
             return;
         }
 
         _objects++;
-        if (_options.DecodeStreams && objects.GetObject(new(number, 0)).AsStream() is { } stream)
+        if (_options.DecodeStreams && StoreReading.GetObject(objects, new(number, 0)).AsStream() is { } stream)
         {
             CheckStream(stream, number);
         }
@@ -100,7 +99,7 @@ internal sealed class PdfDocumentChecker
     }
 
     /// <summary>Parses one page's content.</summary>
-    /// <param name="index">The zero based page index.</param>
+    /// <param name = "index">The zero based page index.</param>
     internal void CheckContent(int index)
     {
         _context.ThrowIfCancelled();
@@ -114,7 +113,7 @@ internal sealed class PdfDocumentChecker
         var content = default(PooledBuffer);
         try
         {
-            ContentInterpreter.DecodeContents(page, ref content);
+            ContentExecution.DecodeContents(page, ref content);
             ContentChecker.Scan(content.WrittenSpan, _document.Objects.Names, page.Id.Number, _faults);
         }
         catch (Exception e) when (e is InvalidDataException or PdfException)
@@ -133,7 +132,7 @@ internal sealed class PdfDocumentChecker
     {
         var report = new List<PdfDiagnostic>();
         var seen = new HashSet<FaultKey>();
-        foreach (var fault in _document.Objects.GetDiagnostics())
+        foreach (var fault in StoreRepairs.GetDiagnostics(_document.Objects))
         {
             AddOnce(fault, seen, report);
         }
@@ -147,9 +146,9 @@ internal sealed class PdfDocumentChecker
     }
 
     /// <summary>Adds a fault unless the same fault is already in the report.</summary>
-    /// <param name="fault">The fault.</param>
-    /// <param name="seen">The faults added.</param>
-    /// <param name="report">The report being built.</param>
+    /// <param name = "fault">The fault.</param>
+    /// <param name = "seen">The faults added.</param>
+    /// <param name = "report">The report being built.</param>
     private static void AddOnce(in PdfDiagnostic fault, HashSet<FaultKey> seen, List<PdfDiagnostic> report)
     {
         if (seen.Add(new(fault.Code, fault.ObjectNumber, fault.Message)))
@@ -159,8 +158,8 @@ internal sealed class PdfDocumentChecker
     }
 
     /// <summary>Decodes a stream and reports damage; a JPEG without an end marker is truncated.</summary>
-    /// <param name="stream">The stream.</param>
-    /// <param name="number">The stream's object number.</param>
+    /// <param name = "stream">The stream.</param>
+    /// <param name = "number">The stream's object number.</param>
     private void CheckStream(PdfStream stream, int number)
     {
         _streams++;
@@ -184,8 +183,8 @@ internal sealed class PdfDocumentChecker
     }
 
     /// <summary>The identity of a fault for removing repeats; the offset is left out because two steps may know it differently.</summary>
-    /// <param name="Code">The fault.</param>
-    /// <param name="ObjectNumber">The object number.</param>
-    /// <param name="Message">The description.</param>
+    /// <param name = "Code">The fault.</param>
+    /// <param name = "ObjectNumber">The object number.</param>
+    /// <param name = "Message">The description.</param>
     private readonly record struct FaultKey(PdfDiagnosticCode Code, int ObjectNumber, string Message);
 }

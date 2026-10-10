@@ -29,7 +29,7 @@ internal static class AccessibilityPass
     {
         var store = document.Objects;
         var root = store.Trailer.GetRaw(KnownName.Root);
-        if (!root.IsReference || store.Resolve(root).AsDictionary() is not { } catalog)
+        if (!root.IsReference || StoreReading.Resolve(store, root).AsDictionary() is not { } catalog)
         {
             return;
         }
@@ -45,7 +45,7 @@ internal static class AccessibilityPass
             return;
         }
 
-        store.Replace(root.AsReference(), PdfValue.FromDictionary(copy));
+        StoreEditing.Replace(store, root.AsReference(), PdfValue.FromDictionary(copy));
         PdfDocumentOptimizing.RefreshAfterOptimizerEdit(document);
     }
 
@@ -87,7 +87,7 @@ internal static class AccessibilityPass
     private static bool FillTitle(PdfDocument document, XmpMetadata? xmp, OptimizeReportBuilder report)
     {
         var store = document.Objects;
-        var infoTitle = store.Resolve(store.Trailer.GetRaw(KnownName.Info)).AsDictionary()?.GetText(KnownName.Title);
+        var infoTitle = StoreReading.Resolve(store, store.Trailer.GetRaw(KnownName.Info)).AsDictionary()?.GetText(KnownName.Title);
         var xmpTitle = xmp?.Title;
         var hasInfo = !string.IsNullOrWhiteSpace(infoTitle);
         var hasXmp = !string.IsNullOrWhiteSpace(xmpTitle);
@@ -110,15 +110,15 @@ internal static class AccessibilityPass
     private static void WriteInfoTitle(PdfObjectStore store, string title, OptimizeReportBuilder report)
     {
         var raw = store.Trailer.GetRaw(KnownName.Info);
-        var copy = store.Resolve(raw).AsDictionary()?.Clone() ?? new PdfDictionary(store);
+        var copy = StoreReading.Resolve(store, raw).AsDictionary()?.Clone() ?? new PdfDictionary(store);
         copy.Set(KnownName.Title, PdfValue.FromString(PdfText.Encode(title)));
         if (raw.IsReference)
         {
-            store.Replace(raw.AsReference(), PdfValue.FromDictionary(copy));
+            StoreEditing.Replace(store, raw.AsReference(), PdfValue.FromDictionary(copy));
         }
         else
         {
-            store.Trailer.Set(KnownName.Info, PdfValue.FromReference(store.Add(PdfValue.FromDictionary(copy))));
+            store.Trailer.Set(KnownName.Info, PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromDictionary(copy))));
         }
 
         report.Noted(PdfOptimizeCategory.Accessibility, 0, "Copied the XMP title into the document information.");
@@ -132,7 +132,7 @@ internal static class AccessibilityPass
     {
         var store = document.Objects;
         var raw = document.Catalog.GetRaw(KnownName.Metadata);
-        if (!raw.IsReference || store.Resolve(raw).AsStream() is not { } stream)
+        if (!raw.IsReference || StoreReading.Resolve(store, raw).AsStream() is not { } stream)
         {
             return;
         }
@@ -148,7 +148,7 @@ internal static class AccessibilityPass
         _ = dictionary.Remove(KnownName.DecodeParms);
         _ = dictionary.Remove(KnownName.Length);
         _ = dictionary.Remove(KnownName.DL);
-        store.Replace(raw.AsReference(), PdfValue.FromStream(new(dictionary, packet)));
+        StoreEditing.Replace(store, raw.AsReference(), PdfValue.FromStream(new(dictionary, packet)));
         report.Noted(PdfOptimizeCategory.Accessibility, 0, "Copied the document information title into the XMP.");
     }
 
@@ -161,7 +161,7 @@ internal static class AccessibilityPass
     private static bool ShowTitle(PdfDictionary catalog, PdfObjectStore store, OptimizerNames names, OptimizeReportBuilder report)
     {
         var raw = catalog.GetRaw(KnownName.ViewerPreferences);
-        var preferences = store.Resolve(raw).AsDictionary();
+        var preferences = StoreReading.Resolve(store, raw).AsDictionary();
         if (preferences?.GetBoolean(names.DisplayDocTitle, false) == true)
         {
             return false;
@@ -171,7 +171,7 @@ internal static class AccessibilityPass
         copy.Set(names.DisplayDocTitle, PdfValue.FromBoolean(true));
         if (raw.IsReference)
         {
-            store.Replace(raw.AsReference(), PdfValue.FromDictionary(copy));
+            StoreEditing.Replace(store, raw.AsReference(), PdfValue.FromDictionary(copy));
         }
         else
         {

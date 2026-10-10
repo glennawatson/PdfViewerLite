@@ -77,12 +77,16 @@ public class HyperPdfObjectStreamBenchmarks
     [Benchmark]
     public int RandomObjectAccess()
     {
-        using var store = PdfObjectStore.Open(_file, null);
+        using var store = StoreOpening.Open(_file, null);
         var read = 0;
         for (var i = 0; i < PageCount; i++)
         {
-            if (store.GetObject(new(ObjectStreamPdf.PageObject((i * ScatterStep) % PageCount), 0)).AsDictionary() is { } dictionary
-                && dictionary.Get(KnownName.Contents).AsStream() is not null)
+            if (StoreReading.GetObject(
+        store,
+        new(
+        ObjectStreamPdf.PageObject((i * ScatterStep) % PageCount),
+        0)).AsDictionary() is { } dictionary
+        && dictionary.Get(KnownName.Contents).AsStream() is not null)
             {
                 read++;
             }

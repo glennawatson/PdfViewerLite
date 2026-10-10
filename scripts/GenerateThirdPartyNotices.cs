@@ -9,6 +9,8 @@
 // Writes THIRD-PARTY-NOTICES.md from the resolved NuGet graph (project.assets.json files plus the local package cache,
 // with no network access) and the components listed in licenses/components.json that are bundled with the app or
 // downloaded by it. Every shipped package appears with its licence text, transitive packages included.
+// Shared app notices require --assets inputs for every supported runtime, including each native OCR package;
+// one host's restore graph omits the other platforms. Repeated --assets inputs are merged by package and version.
 // Usage: dotnet run --file scripts/GenerateThirdPartyNotices.cs -- --out <file> --licences <licenses folder>
 //        --project-licence <LICENSE file> [--assets <project.assets.json>]... [--component <id>]...
 using System.Text;
@@ -71,7 +73,7 @@ namespace PdfViewerLite.Scripts
         {
             var text = File.ReadAllText(options.ProjectLicence).Trim();
             var copyright = Array.Find(text.Split('\n'), static line => line.StartsWith("Copyright", StringComparison.Ordinal))?.Trim() ?? string.Empty;
-            return new("PdfViewerLite", string.Empty, ThisApplication, "MIT", copyright, "https://github.com/glennawatson/PdfViewerLite", text);
+            return new(options.ProjectName, string.Empty, ThisApplication, "MIT", copyright, "https://github.com/glennawatson/PdfViewerLite", text);
         }
 
         /// <summary>Adds every shipped package of the assets files.</summary>
@@ -82,6 +84,7 @@ namespace PdfViewerLite.Scripts
         private static void AddPackages(Options options, Overrides overrides, List<Component> components, List<string> problems)
         {
             var packages = new SortedDictionary<string, PackageRef>(StringComparer.OrdinalIgnoreCase);
+            var includesPdfium = false;
             foreach (var assets in options.Assets)
             {
                 foreach (var package in AssetsFile.ShippedPackages(assets))
@@ -92,6 +95,7 @@ namespace PdfViewerLite.Scripts
 
             foreach (var package in packages.Values)
             {
+                includesPdfium |= package.Id.StartsWith("bblanchon.PDFium.", StringComparison.OrdinalIgnoreCase);
                 if (PackageReader.Read(package, overrides) is { } component)
                 {
                     components.Add(component);
@@ -100,6 +104,11 @@ namespace PdfViewerLite.Scripts
                 {
                     problems.Add($"error: {package.Id} {package.Version} has no licence the tool can read; add it to licenses/packages.json.");
                 }
+            }
+
+            if (includesPdfium)
+            {
+                components.AddRange(ComponentFile.Load(Path.Combine(options.Licences, "components.json"), ["pdfium-bundled"]));
             }
         }
 
@@ -122,7 +131,7 @@ namespace PdfViewerLite.Scripts
 
             var text = new StringBuilder();
             _ = text.Append("# Third-party notices\n\n");
-            _ = text.Append("PdfViewerLite is released under the MIT licence below. It includes or downloads the components listed after it, grouped by licence.\n");
+            _ = text.Append(components[0].Name).Append(" is released under the MIT licence below. It includes or downloads the components listed after it, grouped by licence.\n");
             foreach (var licence in GroupOrder(groups))
             {
                 _ = text.Append("\n## ").Append(licence).Append('\n');
@@ -169,7 +178,13 @@ namespace PdfViewerLite.Scripts
             AppendField(text, nameof(Component.Origin), component.Origin);
             AppendField(text, nameof(Component.Copyright), component.Copyright);
             AppendField(text, nameof(Component.Link), component.Link);
-            _ = text.Append('\n').Append(Fence).Append("text\n").Append(component.Text.Replace("\r\n", "\n", StringComparison.Ordinal).Trim()).Append('\n').Append(Fence).Append('\n');
+            _ = text.Append('\n').Append(Fence).Append("text\n");
+            foreach (var line in component.Text.ReplaceLineEndings("\n").Trim().AsSpan().EnumerateLines())
+            {
+                _ = text.Append(line.TrimEnd()).Append('\n');
+            }
+
+            _ = text.Append(Fence).Append('\n');
         }
 
         /// <summary>Appends a field line when it has a value.</summary>
@@ -462,7 +477,7 @@ namespace PdfViewerLite.Scripts
                 using var document = JsonDocument.Parse(File.ReadAllText(file));
                 foreach (var entry in document.RootElement.EnumerateArray())
                 {
-                    if (ids.Contains(Json.Read(entry, "id")))
+                    if (ids.Contains(Json.Read(entry, "id")) || ids.Contains(Json.Read(entry, "bundle")))
                     {
                         result.Add(Make(entry, folder));
                     }
@@ -507,6 +522,9 @@ namespace PdfViewerLite.Scripts
             /// <summary>The arguments each option takes: its name and its value.</summary>
             private const int OptionWidth = 2;
 
+            /// <summary>Gets the name of the project whose notices are generated.</summary>
+            internal string ProjectName { get; private init; } = "PdfViewerLite";
+
             /// <summary>Parses the arguments.</summary>
             /// <param name="args">The arguments.</param>
             /// <returns>The options, or <see langword="null"/> when a required one is missing.</returns>
@@ -515,6 +533,7 @@ namespace PdfViewerLite.Scripts
                 string? output = null;
                 string? licences = null;
                 string? projectLicence = null;
+                var projectName = "PdfViewerLite";
                 var assets = new List<string>();
                 var components = new List<string>();
                 for (var i = 0; i + 1 < args.Length; i += OptionWidth)
@@ -540,6 +559,12 @@ namespace PdfViewerLite.Scripts
                             break;
                         }
 
+                        case "--project-name":
+                        {
+                            projectName = value;
+                            break;
+                        }
+
                         case "--assets":
                         {
                             assets.Add(value);
@@ -559,7 +584,7 @@ namespace PdfViewerLite.Scripts
                     }
                 }
 
-                return output is null || licences is null || projectLicence is null ? null : new(output, licences, projectLicence, assets, components);
+                return output is null || licences is null || projectLicence is null ? null : new(output, licences, projectLicence, assets, components) { ProjectName = projectName };
             }
         }
 

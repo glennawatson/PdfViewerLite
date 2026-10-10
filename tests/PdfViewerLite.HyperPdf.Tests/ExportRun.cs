@@ -54,7 +54,7 @@ internal sealed class ExportRun : IDisposable
         using (var document = useHyperPdf ? new HyperPdfEngine().Open(source, null) : new PdfiumEngine().Open(source, null))
         {
             using var stream = File.Create(path);
-            written = ((IPageExporter)document).ExportPages(pages, layout, stream);
+            written = ((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages(pages, layout, stream);
         }
 
         return new(path, written);
@@ -74,7 +74,7 @@ internal sealed class ExportRun : IDisposable
             using var document = new PdfiumEngine().Open(original, null);
             edit(document);
             using var stream = File.Create(edited);
-            _ = ((IAnnotationEditor)document).Save(stream);
+            _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).Save(stream);
         }
         finally
         {

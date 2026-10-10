@@ -82,7 +82,7 @@ public sealed class PdfEditTransaction : IDisposable
     public PdfObjectId Add(PdfValue value)
     {
         ThrowIfEnded();
-        return _store.Add(value);
+        return StoreEditing.Add(_store, value);
     }
 
     /// <summary>Replaces an indirect object.</summary>
@@ -92,7 +92,7 @@ public sealed class PdfEditTransaction : IDisposable
     public void Replace(PdfObjectId id, PdfValue value)
     {
         ThrowIfEnded();
-        _store.Replace(id, value);
+        StoreEditing.Replace(_store, id, value);
     }
 
     /// <summary>Deletes an indirect object.</summary>
@@ -101,14 +101,13 @@ public sealed class PdfEditTransaction : IDisposable
     public void Delete(PdfObjectId id)
     {
         ThrowIfEnded();
-        _store.Delete(id);
+        StoreEditing.Delete(_store, id);
     }
 
     /// <summary>Copies an object's dictionary for editing; nested values are shared, so copy them before changing them too.</summary>
     /// <param name="id">The object id.</param>
     /// <returns>The copy, or <see langword="null"/> when the object is not a dictionary.</returns>
-    public PdfDictionary? CloneDictionary(PdfObjectId id) =>
-        _store.GetObject(id) is { Kind: PdfKind.Dictionary } value ? value.AsDictionary()!.Clone() : null;
+    public PdfDictionary? CloneDictionary(PdfObjectId id) => StoreReading.GetObject(_store, id) is { Kind: PdfKind.Dictionary } value ? value.AsDictionary()!.Clone() : null;
 
     /// <summary>Sets or removes a trailer entry, such as /Info.</summary>
     /// <param name="key">The key.</param>
@@ -124,7 +123,7 @@ public sealed class PdfEditTransaction : IDisposable
                 _trailerBefore.Add(new(key, _store.Trailer.GetRaw(key)));
             }
 
-            _store.SetTrailerLocked(new(key, value));
+            StoreTransactions.SetTrailerLocked(_store, new(key, value));
         }
     }
 
@@ -149,7 +148,7 @@ public sealed class PdfEditTransaction : IDisposable
             var after = new PdfObjectState[before.Length];
             for (var i = 0; i < before.Length; i++)
             {
-                after[i] = _store.CaptureLocked(before[i].Number);
+                after[i] = StoreTransactions.CaptureLocked(_store, before[i].Number);
             }
 
             var trailerBefore = _trailerBefore.ToArray();
@@ -160,15 +159,15 @@ public sealed class PdfEditTransaction : IDisposable
             }
 
             _state = CommittedState;
-            _store.EndTransactionLocked(this);
-            _store.RefreshCatalogLocked();
+            StoreTransactions.EndTransactionLocked(_store, this);
+            StoreTransactions.RefreshCatalogLocked(_store);
             if (before.Length > 0 || trailerBefore.Length > 0)
             {
-                _store.History.PushLocked(new(Label, Kinds, before, after, trailerBefore, trailerAfter));
+                StoreTransactions.GetHistory(_store).PushLocked(new(Label, Kinds, before, after, trailerBefore, trailerAfter));
             }
         }
 
-        _store.NotifyChanged();
+        StoreTransactions.NotifyChanged(_store);
     }
 
     /// <summary>Ends the transaction, putting back every object and trailer entry it changed.</summary>
@@ -181,7 +180,7 @@ public sealed class PdfEditTransaction : IDisposable
             RollbackLocked();
         }
 
-        _store.NotifyChanged();
+        StoreTransactions.NotifyChanged(_store);
     }
 
     /// <summary>Rolls the transaction back when it is still open.</summary>
@@ -197,7 +196,7 @@ public sealed class PdfEditTransaction : IDisposable
             RollbackLocked();
         }
 
-        _store.NotifyChanged();
+        StoreTransactions.NotifyChanged(_store);
     }
 
     /// <summary>Records an object's entry before its first change, while holding the store's lock.</summary>
@@ -214,8 +213,8 @@ public sealed class PdfEditTransaction : IDisposable
     private void RollbackLocked()
     {
         _state = RolledBackState;
-        _store.RestoreLocked(CollectionsMarshal.AsSpan(_before), CollectionsMarshal.AsSpan(_trailerBefore));
-        _store.EndTransactionLocked(this);
+        StoreTransactions.RestoreLocked(_store, CollectionsMarshal.AsSpan(_before), CollectionsMarshal.AsSpan(_trailerBefore));
+        StoreTransactions.EndTransactionLocked(_store, this);
     }
 
     /// <summary>Throws when the transaction has ended.</summary>

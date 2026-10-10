@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -15,7 +14,7 @@ namespace HyperPdfLibrary.Optimizing;
 
 /// <summary>
 /// Builds a basic structure tree for an untagged document: Document, one Sect per page, then P and H1 to H6 elements
-/// in the reading order <see cref="PdfReadingStructure.InferLayout"/> finds, and a Figure for each image. Each page's
+/// in the reading order <see cref = "PdfReadingStructure.InferLayout"/> finds, and a Figure for each image. Each page's
 /// top-level text and image operators are wrapped in marked content with ids; the page is first marked with one id per
 /// operator so the layout analysis can say which operators each paragraph holds, then marked again with the final tags.
 /// Content that belongs to no element becomes an artifact. Figures get no alternative text; the report counts them.
@@ -48,21 +47,21 @@ internal sealed partial class InferredTagger
     /// <summary>The next page's parent tree key.</summary>
     private int _nextKey;
 
-    /// <summary>Initializes a new instance of the <see cref="InferredTagger"/> class.</summary>
-    /// <param name="document">The working copy.</param>
-    /// <param name="names">The optimiser's names.</param>
+    /// <summary>Initializes a new instance of the <see cref = "InferredTagger"/> class.</summary>
+    /// <param name = "document">The working copy.</param>
+    /// <param name = "names">The optimiser's names.</param>
     private InferredTagger(PdfDocument document, OptimizerNames names)
     {
         _document = document;
         _names = names;
-        _documentElement = document.Objects.Add(PdfValue.Null);
+        _documentElement = StoreEditing.Add(document.Objects, PdfValue.Null);
     }
 
     /// <summary>Tags the document when it has no structure tree.</summary>
-    /// <param name="document">The working copy.</param>
-    /// <param name="names">The optimiser's names.</param>
-    /// <param name="report">Receives the changes.</param>
-    /// <param name="cancellationToken">Stops the pass between pages.</param>
+    /// <param name = "document">The working copy.</param>
+    /// <param name = "names">The optimiser's names.</param>
+    /// <param name = "report">Receives the changes.</param>
+    /// <param name = "cancellationToken">Stops the pass between pages.</param>
     internal static void Run(PdfDocument document, OptimizerNames names, OptimizeReportBuilder report, CancellationToken cancellationToken)
     {
         if (!document.Catalog.GetRaw(KnownName.StructTreeRoot).IsNull)
@@ -98,16 +97,16 @@ internal sealed partial class InferredTagger
     }
 
     /// <summary>Determines whether every unit has an owning element.</summary>
-    /// <param name="owners">The block owning each unit, or -1.</param>
+    /// <param name = "owners">The block owning each unit, or -1.</param>
     /// <returns><see langword="true"/> when every unit is owned.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool AllOwned(int[] owners) => Array.IndexOf(owners, -1) < 0;
 
     /// <summary>Claims the units a node's glyphs came from that no earlier node claimed.</summary>
-    /// <param name="items">The node's glyph indices.</param>
-    /// <param name="content">The page's marked content from the probe pass.</param>
-    /// <param name="owners">The block owning each unit, or -1.</param>
-    /// <param name="block">The node's block index.</param>
+    /// <param name = "items">The node's glyph indices.</param>
+    /// <param name = "content">The page's marked content from the probe pass.</param>
+    /// <param name = "owners">The block owning each unit, or -1.</param>
+    /// <param name = "block">The node's block index.</param>
     /// <returns>The units claimed, in content order.</returns>
     private static List<int> OwnUnits(List<int> items, PdfMarkedContentPage? content, int[] owners, int block)
     {
@@ -134,7 +133,7 @@ internal sealed partial class InferredTagger
     }
 
     /// <summary>Tags one page.</summary>
-    /// <param name="index">The page index.</param>
+    /// <param name = "index">The page index.</param>
     private void TagPage(int index)
     {
         var store = _document.Objects;
@@ -143,7 +142,7 @@ internal sealed partial class InferredTagger
         var marked = default(PooledBuffer);
         try
         {
-            ContentInterpreter.DecodeContents(page, ref content);
+            ContentExecution.DecodeContents(page, ref content);
             var units = MarkedContentRewriter.FindUnits(content.WrittenSpan, store.Names, page.Resources, store);
             if (units.Count == 0)
             {
@@ -175,9 +174,9 @@ internal sealed partial class InferredTagger
     }
 
     /// <summary>Replaces a page's content with one compressed stream and sets its structure keys.</summary>
-    /// <param name="page">The page.</param>
-    /// <param name="content">The new content.</param>
-    /// <param name="structParents">The page's parent tree key, or -1 while probing.</param>
+    /// <param name = "page">The page.</param>
+    /// <param name = "content">The new content.</param>
+    /// <param name = "structParents">The page's parent tree key, or -1 while probing.</param>
     private void SetContents(PdfPage page, ReadOnlySpan<byte> content, int structParents)
     {
         var store = _document.Objects;
@@ -187,8 +186,8 @@ internal sealed partial class InferredTagger
         try
         {
             StreamRecompressor.Deflate(content, ref compressed);
-            var stream = store.Add(PdfValue.FromStream(new(dictionary, compressed.ToArray())));
-            var copy = (store.GetObject(page.Id).AsDictionary() ?? page.Dictionary).Clone();
+            var stream = StoreEditing.Add(store, PdfValue.FromStream(new(dictionary, compressed.ToArray())));
+            var copy = (StoreReading.GetObject(store, page.Id).AsDictionary() ?? page.Dictionary).Clone();
             copy.Set(KnownName.Contents, PdfValue.FromReference(stream));
             if (structParents >= 0)
             {
@@ -196,7 +195,7 @@ internal sealed partial class InferredTagger
                 copy.Set(KnownName.Tabs, PdfValue.FromName(KnownName.S));
             }
 
-            store.Replace(page.Id, PdfValue.FromDictionary(copy));
+            StoreEditing.Replace(store, page.Id, PdfValue.FromDictionary(copy));
             PdfDocumentOptimizing.RefreshAfterOptimizerEdit(_document);
         }
         finally
@@ -206,8 +205,8 @@ internal sealed partial class InferredTagger
     }
 
     /// <summary>Groups the units into elements from the page's inferred layout, figures placed where they fall in the content.</summary>
-    /// <param name="index">The page index.</param>
-    /// <param name="units">The units.</param>
+    /// <param name = "index">The page index.</param>
+    /// <param name = "units">The units.</param>
     /// <returns>The elements in reading order.</returns>
     private List<TagBlock> Blocks(int index, List<TagUnit> units)
     {
@@ -236,15 +235,14 @@ internal sealed partial class InferredTagger
     }
 
     /// <summary>Gets the structure type of a layout node: a heading of its level, otherwise a paragraph.</summary>
-    /// <param name="node">The node.</param>
+    /// <param name = "node">The node.</param>
     /// <returns>The type.</returns>
-    private PdfName TagFor(PdfSemanticNode node) =>
-        node.Role == PdfSemanticRole.Heading ? _names.Headings[Math.Clamp(node.Level, 1, MaxHeading) - 1] : KnownName.P;
+    private PdfName TagFor(PdfSemanticNode node) => node.Role == PdfSemanticRole.Heading ? _names.Headings[Math.Clamp(node.Level, 1, MaxHeading) - 1] : KnownName.P;
 
     /// <summary>Adds a figure for each image unit, after the element whose content comes before it.</summary>
-    /// <param name="units">The units.</param>
-    /// <param name="owners">The block owning each unit, or -1.</param>
-    /// <param name="blocks">The elements, in reading order.</param>
+    /// <param name = "units">The units.</param>
+    /// <param name = "owners">The block owning each unit, or -1.</param>
+    /// <param name = "blocks">The elements, in reading order.</param>
     private void AddFigures(List<TagUnit> units, int[] owners, List<TagBlock> blocks)
     {
         for (var unit = 0; unit < units.Count; unit++)
@@ -266,8 +264,8 @@ internal sealed partial class InferredTagger
     }
 
     /// <summary>Gives each owned unit its final tag and a marked content id in reading order; the rest become artifacts.</summary>
-    /// <param name="blocks">The elements, in reading order.</param>
-    /// <param name="count">The number of units.</param>
+    /// <param name = "blocks">The elements, in reading order.</param>
+    /// <param name = "count">The number of units.</param>
     /// <returns>The labels by unit.</returns>
     private TagLabel[] Label(List<TagBlock> blocks, int count)
     {

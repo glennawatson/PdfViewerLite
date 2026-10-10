@@ -86,8 +86,8 @@ public sealed class NativeTextLayerTests
     public async Task LatinWordsAreSearchableAndInTheirBoxes()
     {
         using var test = Open(Blank(string.Empty));
-        var written = ((ITextLayerWriter)test.Editor).AddTextLayer(0, Latin);
-        var unsaved = test.Editor.HasUnsavedChanges;
+        var written = HyperPdfAnnotationTextLayer.AddTextLayer(test.Editor, 0, Latin);
+        var unsaved = HyperPdfAnnotationReading.GetHasUnsavedChanges(test.Editor);
         var saved = NativeDocument.Save(test.Editor);
         var found = new List<int>();
         var overshoot = 0F;
@@ -123,7 +123,7 @@ public sealed class NativeTextLayerTests
     public async Task NonLatinWordsUseAnEmbeddedFont()
     {
         using var test = Open(Blank(string.Empty));
-        var written = ((ITextLayerWriter)test.Editor).AddTextLayer(0, Other);
+        var written = HyperPdfAnnotationTextLayer.AddTextLayer(test.Editor, 0, Other);
         var saved = NativeDocument.Save(test.Editor);
         using var reopened = NativeDocument.OpenWithPdfium(saved, out var path);
         using var managed = PdfDocumentReader.Open(saved, null);
@@ -156,7 +156,7 @@ public sealed class NativeTextLayerTests
     public async Task RotatedPagesKeepWordsInTheirBoxes()
     {
         using var test = Open(Blank("/Rotate 90"));
-        _ = ((ITextLayerWriter)test.Editor).AddTextLayer(0, Latin);
+        _ = HyperPdfAnnotationTextLayer.AddTextLayer(test.Editor, 0, Latin);
         var saved = NativeDocument.Save(test.Editor);
         using var reopened = NativeDocument.OpenWithPdfium(saved, out var path);
         try
@@ -180,10 +180,10 @@ public sealed class NativeTextLayerTests
     {
         using var test = new NativeDocument(1);
         var writer = test.Editor;
-        var none = writer.AddTextLayer(0, []);
-        var badPage = writer.AddTextLayer(1, Latin);
-        var unchanged = test.Editor.HasUnsavedChanges;
-        _ = writer.AddTextLayer(0, Latin);
+        var none = HyperPdfAnnotationTextLayer.AddTextLayer(writer, 0, []);
+        var badPage = HyperPdfAnnotationTextLayer.AddTextLayer(writer, 1, Latin);
+        var unchanged = HyperPdfAnnotationReading.GetHasUnsavedChanges(test.Editor);
+        _ = HyperPdfAnnotationTextLayer.AddTextLayer(writer, 0, Latin);
         var saved = NativeDocument.Save(test.Editor);
         using var reopened = NativeDocument.OpenWithPdfium(saved, out var path);
         try
@@ -212,7 +212,7 @@ public sealed class NativeTextLayerTests
     {
         var bytes = Blank(string.Empty);
         using var native = Open(bytes);
-        _ = ((ITextLayerWriter)native.Editor).AddTextLayer(0, Latin);
+        _ = HyperPdfAnnotationTextLayer.AddTextLayer(native.Editor, 0, Latin);
         var nativeSaved = NativeDocument.Save(native.Editor);
         var pdfiumSaved = SaveWithPdfium(bytes);
         using var fromNative = NativeDocument.OpenWithPdfium(nativeSaved, out var nativePath);
@@ -244,7 +244,7 @@ public sealed class NativeTextLayerTests
     private static NativeDocument Open(byte[] bytes)
     {
         var test = new NativeDocument(bytes);
-        test.Editor.FontCatalog = TestFont.Catalog;
+        HyperPdfAnnotationReading.SetFontCatalog(test.Editor, TestFont.Catalog);
         return test;
     }
 
@@ -267,8 +267,8 @@ public sealed class NativeTextLayerTests
         {
             using var document = new PdfiumEngine().Open(path, null);
             ((PdfiumDocument)document).FontCatalog = TestFont.Catalog;
-            _ = ((ITextLayerWriter)document).AddTextLayer(0, Latin);
-            return NativeDocument.Save((IAnnotationEditor)document);
+            _ = ((ITextLayerWriter)DocumentFeatures.CastFeature(document, typeof(ITextLayerWriter))!).AddTextLayer(0, Latin);
+            return NativeDocument.Save((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!);
         }
         finally
         {

@@ -19,7 +19,7 @@ internal sealed class PageTreeChecker(PdfObjectStore objects, List<PdfDiagnostic
     internal void Check()
     {
         var root = objects.Catalog.GetRaw(KnownName.Pages);
-        if (objects.Resolve(root).AsDictionary() is null)
+        if (StoreReading.Resolve(objects, root).AsDictionary() is null)
         {
             Add(PdfDiagnosticCode.BadStructure, "The catalog has no page tree (/Pages).", 0);
             return;
@@ -37,7 +37,7 @@ internal sealed class PageTreeChecker(PdfObjectStore objects, List<PdfDiagnostic
     private int CheckNode(PdfValue raw, int parentNumber, bool hasMediaBox, int depth)
     {
         var id = raw.IsReference ? raw.AsReference() : default;
-        if (objects.Resolve(raw).AsDictionary() is not { } node)
+        if (StoreReading.Resolve(objects, raw).AsDictionary() is not { } node)
         {
             Add(PdfDiagnosticCode.BadStructure, "A page tree entry is not a dictionary.", id.Number);
             return 0;
@@ -142,5 +142,5 @@ internal sealed class PageTreeChecker(PdfObjectStore objects, List<PdfDiagnostic
     /// <param name="message">The description.</param>
     /// <param name="number">The object number.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void Add(PdfDiagnosticCode code, string message, int number) => faults.Add(new(code, message, number, objects.GetEntryLocation(number)));
+    private void Add(PdfDiagnosticCode code, string message, int number) => faults.Add(new(code, message, number, StoreRepairs.GetEntryLocation(objects, number)));
 }

@@ -22,7 +22,7 @@ internal sealed partial class ContentUsageScanner
     {
         Use(resources, KnownName.Font, name);
         var raw = resources?.GetDictionary(KnownName.Font)?.GetRaw(name) ?? default;
-        if (_document.Objects.Resolve(raw).AsDictionary() is not { } font)
+        if (StoreReading.Resolve(_document.Objects, raw).AsDictionary() is not { } font)
         {
             return;
         }
@@ -90,7 +90,7 @@ internal sealed partial class ContentUsageScanner
     /// <param name="depth">The nesting depth.</param>
     private void WalkFixed(PdfValue raw, PdfDictionary? fallback, int depth)
     {
-        if (!raw.IsReference || depth >= PdfLimits.MaxDrawDepth || _document.Objects.Resolve(raw).AsStream() is not { } stream)
+        if (!raw.IsReference || depth >= PdfLimits.MaxDrawDepth || StoreReading.Resolve(_document.Objects, raw).AsStream() is not { } stream)
         {
             return;
         }
@@ -135,7 +135,7 @@ internal sealed partial class ContentUsageScanner
     /// <param name="resources">The resources a form without its own uses.</param>
     private void MarkFixedXObject(PdfValue raw, PdfDictionary resources)
     {
-        if (!raw.IsReference || _document.Objects.Resolve(raw).AsStream() is not { } xobject)
+        if (!raw.IsReference || StoreReading.Resolve(_document.Objects, raw).AsStream() is not { } xobject)
         {
             return;
         }
@@ -185,7 +185,7 @@ internal sealed partial class ContentUsageScanner
         foreach (var key in AppearanceKeys)
         {
             var raw = appearances.GetRaw((KnownName)key);
-            var value = _document.Objects.Resolve(raw);
+            var value = StoreReading.Resolve(_document.Objects, raw);
             if (value.Kind != PdfKind.Dictionary)
             {
                 WalkFixed(raw, pageResources, 0);

@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -21,7 +20,7 @@ namespace HyperPdfLibrary.Structure.Tagged;
 /// marked content it is drawn in, and the bounds of the paths and images each marked content id paints.
 /// </summary>
 /// <remarks>
-/// Text is kept to what <see cref="GlyphEvent"/> gives, so the recorder can move onto the shared text page once it exists.
+/// Text is kept to what <see cref = "GlyphEvent"/> gives, so the recorder can move onto the shared text page once it exists.
 /// </remarks>
 [DebuggerDisplay("MarkedContentRecorder: {_glyphs.Count} glyphs")]
 internal sealed class MarkedContentRecorder : IContentDevice
@@ -59,9 +58,9 @@ internal sealed class MarkedContentRecorder : IContentDevice
     /// <summary>Whether the page draws an image.</summary>
     private bool _hasImages;
 
-    /// <summary>Initializes a new instance of the <see cref="MarkedContentRecorder"/> class.</summary>
-    /// <param name="names">The document's name table.</param>
-    /// <param name="scanned">The page's marked content operators in running order.</param>
+    /// <summary>Initializes a new instance of the <see cref = "MarkedContentRecorder"/> class.</summary>
+    /// <param name = "names">The document's name table.</param>
+    /// <param name = "scanned">The page's marked content operators in running order.</param>
     private MarkedContentRecorder(PdfNameTable names, List<ScannedMark> scanned)
     {
         _names = names;
@@ -152,8 +151,8 @@ internal sealed class MarkedContentRecorder : IContentDevice
     public IPictureDevice CreatePictureDevice(SKRect cull) => new NullPictureDevice(cull);
 
     /// <summary>Records a page.</summary>
-    /// <param name="document">The document.</param>
-    /// <param name="page">The page.</param>
+    /// <param name = "document">The document.</param>
+    /// <param name = "page">The page.</param>
     /// <returns>The page's marked content.</returns>
     internal static PdfMarkedContentPage Record(PdfDocument document, PdfPage page)
     {
@@ -162,7 +161,7 @@ internal sealed class MarkedContentRecorder : IContentDevice
         var device = new MarkedContentRecorder(document.Objects.Names, scanned);
         using (var interpreter = new ContentInterpreter(PdfDocumentRendering.GetRenderCache(document), device, 0))
         {
-            interpreter.RunPage(page);
+            ContentExecution.RunPage(interpreter, page);
         }
 
         // The scan sees images the interpreter cannot decode, such as JBIG2 or JPEG 2000 scans.
@@ -170,13 +169,13 @@ internal sealed class MarkedContentRecorder : IContentDevice
     }
 
     /// <summary>Determines whether a marked content tag is <c>/Artifact</c>.</summary>
-    /// <param name="spelling">The tag's bytes.</param>
+    /// <param name = "spelling">The tag's bytes.</param>
     /// <returns><see langword="true"/> for an artifact.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsArtifactTag(ReadOnlySpan<byte> spelling) => spelling.SequenceEqual("Artifact"u8);
 
     /// <summary>Finds the scanned operator the interpreter just ran, by its tag.</summary>
-    /// <param name="tag">The tag's bytes.</param>
+    /// <param name = "tag">The tag's bytes.</param>
     /// <returns>The operator, or one with no id when none matches.</returns>
     private ScannedMark Match(ReadOnlySpan<byte> tag)
     {
@@ -211,8 +210,8 @@ internal sealed class MarkedContentRecorder : IContentDevice
     }
 
     /// <summary>Adds what a path or image covers to the marked content id in force.</summary>
-    /// <param name="bounds">The bounds in user space.</param>
-    /// <param name="ctm">The matrix from user space to viewer space.</param>
+    /// <param name = "bounds">The bounds in user space.</param>
+    /// <param name = "ctm">The matrix from user space to viewer space.</param>
     private void AddGraphic(SKRect bounds, Matrix3x2 ctm)
     {
         if (_mcid < 0 || _artifact)

@@ -36,10 +36,10 @@ public static class PdfDocumentNavigation
     public static ValueTask<IReadOnlyList<PdfOutlineItem>> GetOutlineAsync(PdfDocument document, CancellationToken cancellationToken)
     {
         var load = document.Catalog.GetDictionary(KnownName.Outlines) is { } root ? PdfPrefetcher.PrefetchAsync(
-document.Objects,
-root,
-PdfPrefetchKind.Outline,
-cancellationToken) : ValueTask.CompletedTask;
+        document.Objects,
+        root,
+        PdfPrefetchKind.Outline,
+        cancellationToken) : ValueTask.CompletedTask;
         return load.IsCompletedSuccessfully ? PdfDocumentNavigation.OutlineReady(document, cancellationToken) : PdfDocumentNavigation.OutlineAfterAsync(document, load, cancellationToken);
     }
 
@@ -68,7 +68,7 @@ cancellationToken) : ValueTask.CompletedTask;
     /// <returns>The destination, or <see langword="null"/> when it leads nowhere.</returns>
     public static PdfDestination? ResolveDestination(PdfDocument document, PdfValue value)
     {
-        value = document.Objects.Resolve(value);
+        value = StoreReading.Resolve(document.Objects, value);
         if (value.Kind is PdfKind.Name or PdfKind.String)
         {
             value = PdfDocumentNavigation.FindNamedDestination(document, value);
@@ -100,7 +100,7 @@ cancellationToken) : ValueTask.CompletedTask;
     internal static PdfValue FindNamedDestination(PdfDocument document, PdfValue name)
     {
         var bytes = name.Kind == PdfKind.Name ? document.Objects.Names.GetSpelling(name.AsName()) : name.AsStringBytes();
-        var found = document.Objects.Resolve(NameTree.Find(document.Catalog.GetDictionary(KnownName.Names)?.GetDictionary(KnownName.Dests), bytes));
+        var found = StoreReading.Resolve(document.Objects, NameTree.Find(document.Catalog.GetDictionary(KnownName.Names)?.GetDictionary(KnownName.Dests), bytes));
         if (!found.IsNull)
         {
             return found;
@@ -217,11 +217,19 @@ cancellationToken) : ValueTask.CompletedTask;
         var index = page.IsReference ? PdfDocumentPages.GetPageIndex(document, page.AsReference()) : page.AsInt32(-1);
         return (uint)index >= (uint)document.PageCount ? null : array.GetName(1).ToKnownName() switch
         {
-            KnownName.XYZ => new(
-index,
-PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.LeftSlot),
-PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.XyzTopSlot),
-PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.XyzZoomSlot)),
+            KnownName.XYZ =>
+        new(
+        index,
+        PdfDocumentNavigation.Optional(
+        array,
+        PdfDocumentNavigation.LeftSlot),
+        PdfDocumentNavigation.Optional(
+        array,
+        PdfDocumentNavigation.XyzTopSlot),
+        PdfDocumentNavigation.Optional(
+        array,
+        PdfDocumentNavigation.XyzZoomSlot)),
+
             KnownName.FitH or KnownName.FitBH => new(index, null, PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.LeftSlot), null),
             KnownName.FitV or KnownName.FitBV => new(index, PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.LeftSlot), null, null),
             KnownName.FitR => new(index, PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.LeftSlot), PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.FitRTopSlot), null),
@@ -233,9 +241,12 @@ PdfDocumentNavigation.Optional(array, PdfDocumentNavigation.XyzZoomSlot)),
     /// <param name="document">The document.</param>
     /// <param name="action">The action dictionary.</param>
     /// <returns>The action, or no action when the destination is not in the document.</returns>
-    private static PdfAction ReadGoTo(PdfDocument document, PdfDictionary action) => PdfDocumentNavigation.ResolveDestination(
-document,
-action.Get(KnownName.D)) is { } destination ? new GoToAction(destination) : default(PdfAction);
+    private static PdfAction ReadGoTo(
+        PdfDocument document,
+        PdfDictionary action) =>
+        PdfDocumentNavigation.ResolveDestination(
+        document,
+        action.Get(KnownName.D)) is { } destination ? new GoToAction(destination) : default(PdfAction);
 
     /// <summary>Reads a remote go-to action: the other file and a page number in it, or page zero.</summary>
     /// <param name="document">The document.</param>
@@ -253,11 +264,11 @@ action.Get(KnownName.D)) is { } destination ? new GoToAction(destination) : defa
             return new UriAction(file);
         }
 
-        var destination = document.Objects.Resolve(action.Get(KnownName.D));
+        var destination = StoreReading.Resolve(document.Objects, action.Get(KnownName.D));
         if (destination.Kind is PdfKind.Name or PdfKind.String)
         {
             var named = destination.Kind == PdfKind.Name ? document.Objects.Names.GetString(destination.AsName()) : PdfText.Decode(destination.AsStringBytes());
-            return new RemoteGoToAction(PdfDocumentFileSpecs.ToPlatformPath(file), 0) { NamedDestination = named };
+            return new RemoteGoToAction(PdfDocumentFileSpecs.ToPlatformPath(file), 0) { NamedDestination = named, };
         }
 
         var page = destination.AsArray()?.Get(0) ?? default;

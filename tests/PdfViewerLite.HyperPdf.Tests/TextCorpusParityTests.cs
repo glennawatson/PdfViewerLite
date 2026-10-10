@@ -83,13 +83,13 @@ public sealed class TextCorpusParityTests
     {
         var document = (HyperPdfDocument)pair.HyperPdf;
         var expectedCount = pair.Pdfium.GetCharacterCount(page);
-        var actualCount = document.GetCharacterCountNative(page);
+        var actualCount = PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterCountNative(document, page);
         var textMatches = expectedCount == actualCount
-            && string.Equals(pair.Pdfium.GetText(page, 0, expectedCount), document.GetTextNative(page, 0, actualCount), StringComparison.Ordinal);
+            && string.Equals(pair.Pdfium.GetText(page, 0, expectedCount), PdfViewerLite.HyperPdf.HyperPdfText.GetTextNative(document, page, 0, actualCount), StringComparison.Ordinal);
         var expected = new List<PageCharacter>();
-        ((ITextLayoutSource)pair.Pdfium).GetCharacters(page, expected);
+        ((ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.Pdfium, typeof(ITextLayoutSource))!).GetCharacters(page, expected);
         var actual = new List<PageCharacter>();
-        document.GetCharactersNative(page, actual);
+        PdfViewerLite.HyperPdf.HyperPdfText.GetCharactersNative(document, page, actual);
         var offsets = new List<float>();
         for (var i = 0; i < Math.Min(expected.Count, actual.Count); i++)
         {

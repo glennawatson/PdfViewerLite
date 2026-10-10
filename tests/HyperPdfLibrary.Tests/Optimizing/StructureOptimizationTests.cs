@@ -33,14 +33,15 @@ public sealed class StructureOptimizationTests
         }
 
         var source = MiniPdf.Build(
-            "<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
-            MiniPdf.Stream(string.Empty, content.ToString()));
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+        MiniPdf.Stream(
+        string.Empty,
+        content.ToString()));
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality);
-        using var before = PdfObjectStore.Open(source, null);
-        using var after = PdfObjectStore.Open(result.Bytes, null);
-
+        using var before = StoreOpening.Open(source, null);
+        using var after = StoreOpening.Open(result.Bytes, null);
         await Assert.That(result.Bytes.Length).IsLessThan(source.Length);
         await Assert.That(result.Report.GetSaving(PdfOptimizeCategory.Streams).Count).IsGreaterThan(0);
         await Assert.That(WritingTestDocuments.PageContents(after)[0]).IsEquivalentTo(WritingTestDocuments.PageContents(before)[0]);
@@ -61,14 +62,14 @@ public sealed class StructureOptimizationTests
             samples.AsSpan(y * Width, Width).CopyTo(predicted.AsSpan((y * (Width + 1)) + 1));
         }
 
-        var entries = OptimizerSamples.Format(
+        var entries =
+            OptimizerSamples.Format(
             $"/Type /XObject /Subtype /Image /Width {Width} /Height {Height} {OptimizerSamples.Grey} /Filter /FlateDecode /DecodeParms << /Predictor 15 /Columns {Width} >>");
         var image = MiniPdf.Stream(entries, OptimizerTestKit.Latin1(OptimizerTestKit.Deflate(predicted)));
         var source = OptimizerSamples.ImagePage(image, Width);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality);
         using var document = PdfDocumentReader.Open(result.Bytes, null);
         var stream = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
-
         await Assert.That(stream.DecodeToArray()).IsEquivalentTo(samples);
         await Assert.That(OptimizerTestKit.MaxDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsEqualTo(0);
     }
@@ -84,7 +85,6 @@ public sealed class StructureOptimizationTests
         var name = document.Objects.Names.Intern("Im1"u8);
         var first = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name).AsReference();
         var second = PdfDocumentPages.GetPage(document, 1).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name).AsReference();
-
         await Assert.That(first).IsEqualTo(second);
         await Assert.That(result.Report.GetSaving(PdfOptimizeCategory.Duplicates).Count).IsGreaterThan(0);
     }
@@ -97,9 +97,11 @@ public sealed class StructureOptimizationTests
         var result = OptimizerTestKit.Optimize(OptimizerSamples.Duplicates(), PdfOptimizeOptions.KeepQuality with { RemoveDuplicates = false });
         using var document = PdfDocumentReader.Open(result.Bytes, null);
         var name = document.Objects.Names.Intern("Im1"u8);
-
-        await Assert.That(PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name))
-            .IsNotEqualTo(PdfDocumentPages.GetPage(document, 1).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name));
+        await Assert.That(PdfDocumentPages.GetPage(
+        document,
+        0).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name)).IsNotEqualTo(PdfDocumentPages.GetPage(
+        document,
+        1).Resources!.GetDictionary(KnownName.XObject)!.GetRaw(name));
     }
 
     /// <summary>Objects nothing reaches are dropped and counted.</summary>
@@ -108,12 +110,11 @@ public sealed class StructureOptimizationTests
     public async Task DropsUnreachableObjects()
     {
         var source = MiniPdf.Build(
-            "<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
-            "(an orphan nobody uses)");
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+        "(an orphan nobody uses)");
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality);
-
         await Assert.That(Encoding.Latin1.GetString(result.Bytes)).DoesNotContain("orphan");
         await Assert.That(result.Report.GetSaving(PdfOptimizeCategory.UnusedObjects).Count).IsEqualTo(1);
     }
@@ -128,11 +129,10 @@ public sealed class StructureOptimizationTests
     {
         var source = TestPdf.Create(PageCount);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced with { UseObjectStreams = objectStreams });
-        using var before = PdfObjectStore.Open(source, null);
-        using var after = PdfObjectStore.Open(result.Bytes, null);
+        using var before = StoreOpening.Open(source, null);
+        using var after = StoreOpening.Open(result.Bytes, null);
         var expected = WritingTestDocuments.PageContents(before);
         var actual = WritingTestDocuments.PageContents(after);
-
         await Assert.That(actual.Count).IsEqualTo(PageCount);
         for (var i = 0; i < PageCount; i++)
         {
@@ -156,7 +156,6 @@ public sealed class StructureOptimizationTests
     {
         var source = Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(TestPdf.Create(1)).Replace("%PDF-1.7", $"%PDF-{version}", StringComparison.Ordinal));
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced);
-
         await Assert.That(Encoding.ASCII.GetString(result.Bytes, 0, expected.Length + "%PDF-".Length)).IsEqualTo($"%PDF-{expected}");
     }
 }

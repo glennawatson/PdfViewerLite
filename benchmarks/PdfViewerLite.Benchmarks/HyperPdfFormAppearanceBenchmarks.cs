@@ -41,18 +41,18 @@ public class HyperPdfFormAppearanceBenchmarks
         await PdfDocumentPages.PrefetchPageAsync(_textDocument, PageIndex, CancellationToken.None);
         await PdfDocumentPages.PrefetchPageAsync(_listDocument, PageIndex, CancellationToken.None);
 
-        if (!PdfDocumentForms.GetForm(_textDocument).SetText(PageIndex, FormSamples.NotesIndex, NotesText)
-            || !PdfDocumentForms.GetForm(_textDocument).SetText(PageIndex, FormSamples.ZipIndex, ZipText)
+        if (!HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(_textDocument), PageIndex, FormSamples.NotesIndex, NotesText)
+            || !HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(_textDocument), PageIndex, FormSamples.ZipIndex, ZipText)
             || !RegenerateText()
-            || !PdfDocumentForms.GetForm(_listDocument).RegenerateAppearance(PageIndex, FormSamples.PickIndex))
+            || !HyperPdfLibrary.Forms.PdfFormEditing.RegenerateAppearance(PdfDocumentForms.GetForm(_listDocument), PageIndex, FormSamples.PickIndex))
         {
             throw new InvalidOperationException("A text, comb or list widget could not regenerate its appearance.");
         }
 
         using var buttonDocument = PdfDocumentReader.Open(_pdf, null);
         await PdfDocumentPages.PrefetchPageAsync(buttonDocument, PageIndex, CancellationToken.None);
-        if (!PdfDocumentForms.GetForm(buttonDocument).SetChecked(PageIndex, FormSamples.AgreeIndex, true)
-            || !PdfDocumentForms.GetForm(buttonDocument).SetChecked(PageIndex, FormSamples.PlanFirstIndex, true))
+        if (!HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(buttonDocument), PageIndex, FormSamples.AgreeIndex, true)
+            || !HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(buttonDocument), PageIndex, FormSamples.PlanFirstIndex, true))
         {
             throw new InvalidOperationException("A check box or radio button could not generate its appearance.");
         }
@@ -71,8 +71,8 @@ public class HyperPdfFormAppearanceBenchmarks
     [Benchmark]
     public bool RegenerateText()
     {
-        var notes = PdfDocumentForms.GetForm(_textDocument).RegenerateAppearance(PageIndex, FormSamples.NotesIndex);
-        var zip = PdfDocumentForms.GetForm(_textDocument).RegenerateAppearance(PageIndex, FormSamples.ZipIndex);
+        var notes = HyperPdfLibrary.Forms.PdfFormEditing.RegenerateAppearance(PdfDocumentForms.GetForm(_textDocument), PageIndex, FormSamples.NotesIndex);
+        var zip = HyperPdfLibrary.Forms.PdfFormEditing.RegenerateAppearance(PdfDocumentForms.GetForm(_textDocument), PageIndex, FormSamples.ZipIndex);
         return notes && zip;
     }
 
@@ -82,13 +82,13 @@ public class HyperPdfFormAppearanceBenchmarks
     public int GenerateButtons()
     {
         using var document = PdfDocumentReader.Open(_pdf, null);
-        var count = PdfDocumentForms.GetForm(document).SetChecked(PageIndex, FormSamples.AgreeIndex, true) ? 1 : 0;
-        count += PdfDocumentForms.GetForm(document).SetChecked(PageIndex, FormSamples.PlanFirstIndex, true) ? 1 : 0;
+        var count = HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(document), PageIndex, FormSamples.AgreeIndex, true) ? 1 : 0;
+        count += HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(document), PageIndex, FormSamples.PlanFirstIndex, true) ? 1 : 0;
         return count;
     }
 
     /// <summary>Regenerates a selected list box appearance.</summary>
     /// <returns><see langword="true"/> when the appearance was regenerated.</returns>
     [Benchmark]
-    public bool RegenerateList() => PdfDocumentForms.GetForm(_listDocument).RegenerateAppearance(PageIndex, FormSamples.PickIndex);
+    public bool RegenerateList() => HyperPdfLibrary.Forms.PdfFormEditing.RegenerateAppearance(PdfDocumentForms.GetForm(_listDocument), PageIndex, FormSamples.PickIndex);
 }

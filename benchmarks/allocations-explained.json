@@ -1324,7 +1324,7 @@
   {
     "type": "",
     "frame": "HyperPdfLibrary.Forms.PdfForm.Resolve",
-    "reason": "Resolving a form field for filling creates its inherited attributes, control list and resolved widget record. This occurs per edit, outside warmed rendering."
+    "reason": "Resolving a form field for reading or filling creates its inherited attributes, control list and resolved widget record. Form inspection and editing run outside warmed rendering."
   },
   {
     "type": "",
@@ -1340,6 +1340,61 @@
     "type": "",
     "frame": "HyperPdfLibrary.Forms.PdfForm.WriteButtonValue",
     "reason": "Writing a button value creates the PDF value and state names stored in its field and widget dictionaries during filling."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.GetCalculationOrder",
+    "reason": "Reading calculation order tracks visited field names in a hash set to omit duplicates. The set and its entry and index arrays are scratch for this form-order query."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.GetTabSequence",
+    "reason": "Reading tab order collects widget sort keys in a list and its backing array, then appends their indexes to the caller's output. These keys preserve row, column or structure order during the query."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfForm.ResetField",
+    "reason": "Resetting a field creates a form-edit builder, its replacement dictionary mappings and cloned field or widget dictionaries. The builder commits the default value and regenerated appearances as one field update."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormEditing.RegenerateAppearances",
+    "reason": "Regenerating widgets creates one form-edit builder and the rewritten appearance data for each resolved control. These objects support the edit; warmed rendering uses cached pictures."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormReading.Resolve",
+    "reason": "Resolving a form field for reading or filling creates its inherited attributes, control list and resolved widget record. Form inspection and editing run outside warmed rendering."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormEditing.ApplyCheck",
+    "reason": "Filling a checkbox creates a form-edit builder and rewrites its checked state and appearance references."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormEditing.EnsureOnState",
+    "reason": "A checkbox without an on-state appearance gets a new appearance dictionary and generated mark stream when it is filled."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormEditing.WriteButtonValue",
+    "reason": "Writing a button value creates the PDF value and state names stored in its field and widget dictionaries during filling."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormOrder.GetCalculationOrder",
+    "reason": "Reading calculation order tracks visited field names in a hash set to omit duplicates. The set and its entry and index arrays are scratch for this form-order query."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormOrder.GetTabSequence",
+    "reason": "Reading tab order collects widget sort keys in a list and its backing array, then appends their indexes to the caller's output. These keys preserve row, column or structure order during the query."
+  },
+  {
+    "type": "",
+    "frame": "HyperPdfLibrary.Forms.PdfFormActions.ResetField",
+    "reason": "Resetting a field creates a form-edit builder, its replacement dictionary mappings and cloned field or widget dictionaries. The builder commits the default value and regenerated appearances as one field update."
   },
   {
     "type": "",
@@ -1370,5 +1425,15 @@
     "type": "System.Threading.Lock",
     "frame": "HyperPdfLibrary.Objects.PdfOpenContext.Create",
     "reason": "Each newly opened document creates the lock protecting its diagnostic log. This accompanies the open context and does not run on warmed rendering."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.HyperPdfPageManager+<ApplyAsync>",
+    "reason": "A page action copies the selected indexes before awaiting resource loads. It creates an edit transaction, its open-transaction guard and lists of original objects and trailer entries for undo. Inlined page validation and cache rebuilds also create integer selections and visited sets. These allocations belong to the user-requested edit and its undo history; warmed reading and rendering do not enter ApplyAsync."
+  },
+  {
+    "type": "",
+    "frame": "PdfViewerLite.HyperPdf.HyperPdfPageManager.ApplyAsync(",
+    "reason": "Runtime async reports the page action directly on .NET 11. The action freezes selected indexes, starts an undoable edit transaction and its guard, records original objects and trailer entries, and validates or rebuilds page selections using integer arrays and visited sets. These allocations belong to an explicit page edit and never run during warmed reading or rendering."
   }
 ]

@@ -4,7 +4,7 @@
 
 using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Editing;
-
+using HyperPdfLibrary.Objects;
 namespace HyperPdfLibrary.Document;
 
 /// <summary>Manages document edit transactions and cache invalidation.</summary>
@@ -14,7 +14,7 @@ public static class PdfDocumentEditing
     /// <param name="document">The document.</param>
     /// <returns>The document's edit history.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfEditHistory GetHistory(PdfDocument document) => document.Objects.History;
+    public static PdfEditHistory GetHistory(PdfDocument document) => StoreTransactions.GetHistory(document.Objects);
 
     /// <summary>
     /// Starts an edit transaction. Page and metadata operations called while it is open join it, so they commit, roll
@@ -26,21 +26,21 @@ public static class PdfDocumentEditing
     /// <exception cref="ArgumentNullException"><paramref name="label"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">A transaction is already open.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfEditTransaction BeginEdit(PdfDocument document, string label) => document.Objects.BeginTransaction(label);
+    public static PdfEditTransaction BeginEdit(PdfDocument document, string label) => StoreTransactions.BeginTransaction(document.Objects, label);
 
     /// <summary>Reverts the most recent committed edit; pages, links, labels and the outline are read again.</summary>
     /// <param name="document">The document.</param>
     /// <returns><see langword="true"/> when an edit was reverted.</returns>
     /// <exception cref="InvalidOperationException">A transaction is open.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Undo(PdfDocument document) => PdfDocumentPageContent.AfterHistory(document, document.Objects.History.Undo());
+    public static bool Undo(PdfDocument document) => PdfDocumentPageContent.AfterHistory(document, StoreTransactions.GetHistory(document.Objects).Undo());
 
     /// <summary>Applies the most recently undone edit again.</summary>
     /// <param name="document">The document.</param>
     /// <returns><see langword="true"/> when an edit was applied.</returns>
     /// <exception cref="InvalidOperationException">A transaction is open.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Redo(PdfDocument document) => PdfDocumentPageContent.AfterHistory(document, document.Objects.History.Redo());
+    public static bool Redo(PdfDocument document) => PdfDocumentPageContent.AfterHistory(document, StoreTransactions.GetHistory(document.Objects).Redo());
 
     /// <summary>Drops every cache read from the objects, so the next reads see the current edits.</summary>
     /// <param name="document">The document.</param>
@@ -99,14 +99,14 @@ public static class PdfDocumentEditing
     {
         lock (document.Objects.Gate)
         {
-            if (document.Objects.CurrentTransaction is { } open)
+            if (StoreTransactions.GetCurrentTransaction(document.Objects) is { } open)
             {
                 owned = false;
                 return open;
             }
 
             owned = true;
-            return document.Objects.BeginTransaction(label);
+            return StoreTransactions.BeginTransaction(document.Objects, label);
         }
     }
 }

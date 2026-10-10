@@ -94,10 +94,8 @@ public sealed class XrefRepairTests
     [Test]
     public async Task NullObjectAtRightPlaceDoesNotRepair()
     {
-        using var store = PdfObjectStore.Open(TableFile([]), null);
-
-        var value = store.GetObject(new(NullObject, 0));
-
+        using var store = StoreOpening.Open(TableFile([]), null);
+        var value = StoreReading.GetObject(store, new(NullObject, 0));
         await Assert.That(value.IsNull).IsTrue();
         await Assert.That(store.WasRepaired).IsFalse();
     }
@@ -107,10 +105,8 @@ public sealed class XrefRepairTests
     [Test]
     public async Task WrongOffsetRepairsAndFindsObject()
     {
-        using var store = PdfObjectStore.Open(TableFile(new() { [PlainObject] = WrongOffset }), null);
-
-        var value = store.GetObject(new(PlainObject, 0));
-
+        using var store = StoreOpening.Open(TableFile(new() { [PlainObject] = WrongOffset }), null);
+        var value = StoreReading.GetObject(store, new(PlainObject, 0));
         await Assert.That(value.AsInteger()).IsEqualTo(PlainValue);
         await Assert.That(store.WasRepaired).IsTrue();
     }
@@ -122,15 +118,14 @@ public sealed class XrefRepairTests
     {
         var wrong = new Dictionary<int, int>();
         var probe = TableFile(wrong);
-        using (var first = PdfObjectStore.Open(probe, null))
+        using (var first = StoreOpening.Open(probe, null))
         {
             await Assert.That(first.WasRepaired).IsFalse();
         }
 
         wrong[PlainObject] = OffsetOfObject(probe, SecondObject);
-        using var store = PdfObjectStore.Open(TableFile(wrong), null);
-
-        await Assert.That(store.GetObject(new(PlainObject, 0)).AsInteger()).IsEqualTo(PlainValue);
+        using var store = StoreOpening.Open(TableFile(wrong), null);
+        await Assert.That(StoreReading.GetObject(store, new(PlainObject, 0)).AsInteger()).IsEqualTo(PlainValue);
         await Assert.That(store.WasRepaired).IsTrue();
     }
 
@@ -139,12 +134,10 @@ public sealed class XrefRepairTests
     [Test]
     public async Task RepairKeepsCachedObjects()
     {
-        using var store = PdfObjectStore.Open(TableFile(new() { [PlainObject] = WrongOffset }), null);
-        var before = store.GetObject(new(PagesNumber, 0)).AsDictionary();
-
-        _ = store.GetObject(new(PlainObject, 0));
-        var after = store.GetObject(new(PagesNumber, 0)).AsDictionary();
-
+        using var store = StoreOpening.Open(TableFile(new() { [PlainObject] = WrongOffset }), null);
+        var before = StoreReading.GetObject(store, new(PagesNumber, 0)).AsDictionary();
+        _ = StoreReading.GetObject(store, new(PlainObject, 0));
+        var after = StoreReading.GetObject(store, new(PagesNumber, 0)).AsDictionary();
         await Assert.That(store.WasRepaired).IsTrue();
         await Assert.That(before).IsNotNull();
         await Assert.That(ReferenceEquals(before, after)).IsTrue();
@@ -155,10 +148,8 @@ public sealed class XrefRepairTests
     [Test]
     public async Task CompressedEntryNotInStreamRepairs()
     {
-        using var store = PdfObjectStore.Open(XrefStreamFile(), null);
-
-        var value = store.GetObject(new(Lost, 0));
-
+        using var store = StoreOpening.Open(XrefStreamFile(), null);
+        var value = StoreReading.GetObject(store, new(Lost, 0));
         await Assert.That(value.AsInteger()).IsEqualTo(LostValue);
         await Assert.That(store.WasRepaired).IsTrue();
     }
@@ -168,10 +159,8 @@ public sealed class XrefRepairTests
     [Test]
     public async Task CompressedEntryInStreamDoesNotRepair()
     {
-        using var store = PdfObjectStore.Open(XrefStreamFile(), null);
-
-        var value = store.GetObject(new(Packed, 0));
-
+        using var store = StoreOpening.Open(XrefStreamFile(), null);
+        var value = StoreReading.GetObject(store, new(Packed, 0));
         await Assert.That(value.AsInteger()).IsEqualTo(PackedValue);
         await Assert.That(store.WasRepaired).IsFalse();
     }
@@ -181,10 +170,9 @@ public sealed class XrefRepairTests
     [Test]
     public async Task LaterObjectStreamWins()
     {
-        using var store = PdfObjectStore.Open(OrderingFile(), null);
-
+        using var store = StoreOpening.Open(OrderingFile(), null);
         await Assert.That(store.WasRepaired).IsTrue();
-        await Assert.That(store.GetObject(new(Shared, 0)).AsInteger()).IsEqualTo(Second);
+        await Assert.That(StoreReading.GetObject(store, new(Shared, 0)).AsInteger()).IsEqualTo(Second);
     }
 
     /// <summary>A plain object before an object stream loses to it.</summary>
@@ -192,9 +180,8 @@ public sealed class XrefRepairTests
     [Test]
     public async Task ObjectStreamBeatsEarlierPlainObject()
     {
-        using var store = PdfObjectStore.Open(OrderingFile(), null);
-
-        await Assert.That(store.GetObject(new(PlainBeforeStream, 0)).AsInteger()).IsEqualTo(Second);
+        using var store = StoreOpening.Open(OrderingFile(), null);
+        await Assert.That(StoreReading.GetObject(store, new(PlainBeforeStream, 0)).AsInteger()).IsEqualTo(Second);
     }
 
     /// <summary>A plain object after an object stream beats it.</summary>
@@ -202,40 +189,29 @@ public sealed class XrefRepairTests
     [Test]
     public async Task PlainObjectAfterStreamWins()
     {
-        using var store = PdfObjectStore.Open(OrderingFile(), null);
-
-        await Assert.That(store.GetObject(new(PlainAfterStream, 0)).AsInteger()).IsEqualTo(Third);
+        using var store = StoreOpening.Open(OrderingFile(), null);
+        await Assert.That(StoreReading.GetObject(store, new(PlainAfterStream, 0)).AsInteger()).IsEqualTo(Third);
     }
 
     /// <summary>Finds an object's offset in a file by searching for its header.</summary>
     /// <param name="file">The file.</param>
     /// <param name="number">The object number.</param>
     /// <returns>The offset.</returns>
-    private static int OffsetOfObject(byte[] file, int number) =>
-        file.AsSpan().IndexOf(Encoding.ASCII.GetBytes($"\n{number} 0 obj")) + 1;
+    private static int OffsetOfObject(byte[] file, int number) => file.AsSpan().IndexOf(Encoding.ASCII.GetBytes($"\n{number} 0 obj")) + 1;
 
     /// <summary>Builds a file with a classic table.</summary>
     /// <param name="wrongOffsets">Offsets to write instead of the real ones.</param>
     /// <returns>The file.</returns>
     private static byte[] TableFile(Dictionary<int, int> wrongOffsets) =>
-        new RawPdf()
-            .Object(1, Catalog)
-            .Object(PagesNumber, Pages)
-            .Object(NullObject, "null")
-            .Object(PlainObject, Digit(PlainValue))
-            .Object(SecondObject, "55")
-            .Table(TableSize, Trailer, wrongOffsets)
-            .ToArray();
+        new RawPdf().Object(1, Catalog).Object(PagesNumber, Pages)
+            .Object(NullObject, "null").Object(PlainObject, Digit(PlainValue))
+            .Object(SecondObject, "55").Table(TableSize, Trailer, wrongOffsets).ToArray();
 
     /// <summary>Builds a file whose cross-reference stream puts one object in an object stream correctly and one wrongly.</summary>
     /// <returns>The file.</returns>
     private static byte[] XrefStreamFile()
     {
-        var pdf = new RawPdf()
-            .Object(1, Catalog)
-            .Object(PagesNumber, Pages)
-            .Object(Lost, Digit(LostValue))
-            .ObjectStream(Container, [Packed], [Digit(PackedValue)]);
+        var pdf = new RawPdf().Object(1, Catalog).Object(PagesNumber, Pages).Object(Lost, Digit(LostValue)).ObjectStream(Container, [Packed], [Digit(PackedValue)]);
         var self = pdf.Position;
         var entries = new List<RawPdf.XrefStreamEntry>();
         for (var number = 0; number < StreamSize; number++)
@@ -266,15 +242,27 @@ public sealed class XrefRepairTests
     /// </summary>
     /// <returns>The file.</returns>
     private static byte[] OrderingFile() =>
-        new RawPdf()
-            .Object(1, Catalog)
-            .Object(PagesNumber, Pages)
-            .Object(PlainBeforeStream, "9")
-            .ObjectStream(EarlyStream, [Shared, PlainBeforeStream, PlainAfterStream], [Digit(First), Digit(First), Digit(First)])
-            .Object(PlainAfterStream, Digit(Third))
-            .ObjectStream(LateStream, [Shared, PlainBeforeStream], [Digit(Second), Digit(Second)])
-            .Append("trailer\n<< /Size 40 /Root 1 0 R >>\n%%EOF\n")
-            .ToArray();
+        new RawPdf().Object(
+        1,
+        Catalog).Object(
+        PagesNumber,
+        Pages).Object(
+        PlainBeforeStream,
+        "9").ObjectStream(
+        EarlyStream,
+        [Shared,
+        PlainBeforeStream,
+        PlainAfterStream],
+        [Digit(First),
+        Digit(First),
+        Digit(First)]).Object(
+        PlainAfterStream,
+        Digit(Third)).ObjectStream(
+        LateStream,
+        [Shared,
+        PlainBeforeStream],
+        [Digit(Second),
+        Digit(Second)]).Append("trailer\n<< /Size 40 /Root 1 0 R >>\n%%EOF\n").ToArray();
 
     /// <summary>Formats a small number.</summary>
     /// <param name="value">The number.</param>

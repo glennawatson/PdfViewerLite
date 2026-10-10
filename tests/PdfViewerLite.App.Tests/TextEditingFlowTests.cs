@@ -116,7 +116,9 @@ public sealed class TextEditingFlowTests
             var stillEditing = annotations.IsEditingText && view.PageTextEditor.Text == Words;
             Save(window, "font-list.png");
             _ = annotations.CommitText();
-            var format = ((ITextBoxEditor)tab.TryGetDocument()!).GetTextBox(0, annotations.Items[0].Annotation.Index)!.Format;
+            var format = ((ITextBoxEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(ITextBoxEditor))!).GetTextBox(
+                0,
+                annotations.Items[0].Annotation.Index)!.Format;
 
             await Assert.That(listed).IsTrue();
             await Assert.That(families.Take(StandardFontFamilies.All.Count)).IsEquivalentTo(StandardFontFamilies.All);
@@ -171,7 +173,9 @@ public sealed class TextEditingFlowTests
             var composedShown = Lines(editor.Text) == Expected;
             window.KeyPress(Key.Enter, RawInputModifiers.Control, PhysicalKey.Enter, null);
             var written = await UiWait.UntilAsync(() => annotations.Items.Count == 1);
-            var stored = ((ITextBoxEditor)tab.TryGetDocument()!).GetTextBox(0, annotations.Items[0].Annotation.Index)!.Text;
+            var stored = ((ITextBoxEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(ITextBoxEditor))!).GetTextBox(
+                0,
+                annotations.Items[0].Annotation.Index)!.Text;
 
             await Assert.That(inputMethod).IsTrue();
             await Assert.That(selected).IsEqualTo(Words);
@@ -285,7 +289,9 @@ public sealed class TextEditingFlowTests
             var afterCommit = editor.Text;
             window.KeyPress(Key.Enter, RawInputModifiers.Control, PhysicalKey.Enter, null);
             var written = await UiWait.UntilAsync(() => annotations.Items.Count == 1);
-            var stored = ((ITextBoxEditor)tab.TryGetDocument()!).GetTextBox(0, annotations.Items[0].Annotation.Index)!.Text;
+            var stored = ((ITextBoxEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(ITextBoxEditor))!).GetTextBox(
+                0,
+                annotations.Items[0].Annotation.Index)!.Text;
 
             await Assert.That(firstShown).IsEqualTo(FirstPreedit);
             await Assert.That(textWhileComposing).IsEqualTo(Words);
@@ -353,6 +359,7 @@ public sealed class TextEditingFlowTests
     /// format and place. Editing it again loads its format into the format row.
     /// </summary>
     /// <returns>A task.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when <c>tab.TryGetDocument()</c> is <see langword="null"/>.</exception>
     [Test]
     public async Task SavedTextReopensForEditing()
     {
@@ -370,19 +377,22 @@ public sealed class TextEditingFlowTests
             var annotations = tab.Annotations;
             var canvas = await ReadyAsync(reopenedWindow, tab);
             var view = reopenedWindow.GetVisualDescendants().OfType<DocumentView>().Single();
-            var boxes = (ITextBoxEditor)tab.TryGetDocument()!;
+            var document = tab.TryGetDocument() ?? throw new InvalidOperationException();
+            var editor = (IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
+            var boxes = (ITextBoxEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ITextBoxEditor))!;
             var found = new List<PageAnnotation>();
-            ((IAnnotationEditor)boxes).GetAnnotations(0, found);
+            (editor).GetAnnotations(0, found);
             var first = found.Find(static a => a.Kind == AnnotationKind.TextBox && a.Contents.StartsWith("Grüße", StringComparison.Ordinal))!;
             var content = boxes.GetTextBox(0, first.Index)!;
             var middle = ToWindow(canvas, reopenedWindow, new(first.Bounds.Left + (first.Bounds.Width * HalfPoint), first.Bounds.Top + (first.Bounds.Height * HalfPoint)));
 
-            // Picking the box first lets its first-time work finish, so the two clicks after it land as one double-click.
             Click(reopenedWindow, middle);
             _ = await UiWait.UntilAsync(() => annotations.Selected?.Kind == AnnotationKind.TextBox);
-            Click(reopenedWindow, middle);
-            Click(reopenedWindow, middle);
-            var editing = await UiWait.UntilAsync(() => annotations.IsEditingText && view.PageTextEditor.IsKeyboardFocusWithin);
+            reopenedWindow.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            var editing = await UiWait.UntilAsync(
+                () => annotations.IsEditingText && view.PageTextEditor.IsKeyboardFocusWithin,
+                state: () => $"Selected={annotations.Selected?.Kind}, Editing={annotations.IsEditingText}, Visible={view.PageTextEditor.IsVisible}, "
+                    + $"Focus={reopenedWindow.FocusManager?.GetFocusedElement()}");
             var shown = view.PageTextEditor.Text;
             var loaded = annotations.CurrentTextFormat;
             Save(reopenedWindow, "text-reopened.png");

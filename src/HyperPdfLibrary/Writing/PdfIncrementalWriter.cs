@@ -139,7 +139,7 @@ public static class PdfIncrementalWriter
     /// <param name="writer">The writer; its first byte follows the original file.</param>
     private static void WriteUpdate(PdfObjectStore store, ref PdfObjectWriter writer)
     {
-        store.ThrowIfCompactSaveRequired();
+        StoreRedaction.ThrowIfCompactSaveRequired(store);
         var file = store.Source;
         if (file.ByteAt(file.Length - 1) is not ('\n' or '\r'))
         {
@@ -150,7 +150,7 @@ public static class PdfIncrementalWriter
         var standalone = store.WasRepaired || store.StartXref < 0;
 
         // One snapshot of the edits, so an edit made during the save cannot split the update.
-        var edits = store.GetEditedObjects(out var storeSize);
+        var edits = StoreEditing.GetEditedObjects(store, out var storeSize);
         var objects = standalone ? LiveObjects(store) : edits;
         var rows = new XrefRow[objects.Length + ExtraRows];
         var count = WriteObjects(store, objects, standalone, ref writer, rows);
@@ -212,7 +212,10 @@ public static class PdfIncrementalWriter
             if (item.Deleted)
             {
                 // Each free entry names the next one; the last names zero.
-                rows[previousFree] = rows[previousFree] with { Location = item.Number };
+                rows[previousFree] = rows[previousFree] with
+                {
+                    Location = item.Number
+                };
                 rows[count] = new(item.Number, XrefEntryType.Free, 0, item.Generation);
                 previousFree = count;
                 count++;
@@ -251,10 +254,10 @@ public static class PdfIncrementalWriter
         var objects = new List<PdfEditedObject>();
         for (var number = 1; number < store.Size; number++)
         {
-            var value = store.GetObject(new(number, 0));
+            var value = StoreReading.GetObject(store, new(number, 0));
             if (!value.IsNull && !IsStructureStream(value))
             {
-                objects.Add(new(number, value, false, store.GetGeneration(number)));
+                objects.Add(new(number, value, false, StoreEditing.GetGeneration(store, number)));
             }
         }
 
@@ -318,5 +321,9 @@ public static class PdfIncrementalWriter
     /// <returns><see langword="true"/> when it is.</returns>
     private static bool IsStructureStream(PdfValue value) =>
         value.AsStream()?.Dictionary is { } dictionary
-        && (dictionary.IsName(KnownName.Type, KnownName.XRef) || dictionary.IsName(KnownName.Type, KnownName.ObjStm));
+        && (dictionary.IsName(
+        KnownName.Type,
+        KnownName.XRef) || dictionary.IsName(
+        KnownName.Type,
+        KnownName.ObjStm));
 }

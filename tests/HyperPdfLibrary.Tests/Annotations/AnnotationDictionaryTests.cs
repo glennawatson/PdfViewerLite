@@ -56,7 +56,6 @@ public sealed class AnnotationDictionaryTests
         var array = annotation.GetArray(KnownName.C)!;
         var gray = new PdfDictionary(store);
         gray.Set(KnownName.C, PdfValue.FromArray(PdfArray.FromNumbers(store, [Gray])));
-
         await Assert.That(PdfAnnotations.TryGetColor(annotation, KnownName.C, out var color)).IsTrue();
         await Assert.That(color).IsEqualTo(Clay);
         var truncated = new byte[array.Count];
@@ -66,7 +65,6 @@ public sealed class AnnotationDictionaryTests
         }
 
         await Assert.That(truncated).IsEquivalentTo(ClayChannels);
-
         await Assert.That(PdfAnnotations.TryGetColor(gray, KnownName.C, out var grayColor)).IsTrue();
         await Assert.That(grayColor).IsEqualTo(GrayColor);
         await Assert.That(PdfAnnotations.GetRectangle(annotation)).IsEqualTo(Box);
@@ -89,7 +87,6 @@ public sealed class AnnotationDictionaryTests
         PdfAnnotations.SetText(annotation, subject, "Arrow");
         PdfAnnotations.SetDate(annotation, KnownName.M, date);
         PdfAnnotations.SetNumberText(annotation, key, Size);
-
         await Assert.That(PdfAnnotations.GetBorderWidth(annotation)).IsEqualTo(Width);
         await Assert.That(PdfAnnotations.GetFlags(annotation)).IsEqualTo(PdfAnnotationFlags.Print | PdfAnnotationFlags.Hidden);
         await Assert.That(PdfAnnotations.GetText(annotation, KnownName.T)).IsEqualTo("Zoë");
@@ -110,7 +107,6 @@ public sealed class AnnotationDictionaryTests
         PdfAnnotations.SetInkList(annotation, Points, Lengths);
         PdfAnnotations.SetPoints(annotation, KnownName.Vertices, Points);
         var read = ReadBack(annotation);
-
         await Assert.That(read.Lengths).IsEquivalentTo(Lengths);
         await Assert.That(read.Ink).IsEquivalentTo(Points);
         await Assert.That(read.Vertices).IsEquivalentTo(Points);
@@ -124,11 +120,10 @@ public sealed class AnnotationDictionaryTests
     {
         using var store = Open();
         var comment = PdfAnnotations.Create(store, KnownName.Text, Box);
-        var id = store.Add(PdfValue.FromDictionary(comment));
+        var id = StoreEditing.Add(store, PdfValue.FromDictionary(comment));
         var reply = PdfAnnotations.Create(store, KnownName.Text, Box);
         PdfAnnotations.SetInReplyTo(reply, id);
         PdfAnnotations.SetReviewState(reply, "Accepted"u8);
-
         await Assert.That(PdfAnnotations.GetInReplyTo(reply)).IsSameReferenceAs(comment);
         await Assert.That(reply.IsName(KnownName.RT, KnownName.R)).IsTrue();
         await Assert.That(PdfAnnotations.TextEquals(reply, KnownName.State, "Accepted"u8)).IsTrue();
@@ -137,7 +132,7 @@ public sealed class AnnotationDictionaryTests
 
     /// <summary>Opens a one page document.</summary>
     /// <returns>The objects.</returns>
-    private static PdfObjectStore Open() => PdfObjectStore.Open(TestPdf.Create(1), null);
+    private static PdfObjectStore Open() => StoreOpening.Open(TestPdf.Create(1), null);
 
     /// <summary>Reads an annotation's ink list and vertices back, outside any await.</summary>
     /// <param name="annotation">The annotation.</param>

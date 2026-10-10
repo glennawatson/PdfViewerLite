@@ -34,13 +34,11 @@ public sealed class EncryptedRepairTests
     public async Task RepairedEncryptedFileIndexesObjectStreamsAfterAuthentication()
     {
         var file = DamagedEncryptedFile();
-
-        using var store = PdfObjectStore.Open(file, null);
-
+        using var store = StoreOpening.Open(file, null);
         await Assert.That(store.WasRepaired).IsTrue();
         await Assert.That(store.Security).IsNotNull();
         await Assert.That(store.Catalog.IsName(KnownName.Type, KnownName.Catalog)).IsTrue();
-        await Assert.That(store.GetObject(new(PagesNumber, 0)).AsDictionary()!.IsName(KnownName.Type, KnownName.Pages)).IsTrue();
+        await Assert.That(StoreReading.GetObject(store, new(PagesNumber, 0)).AsDictionary()!.IsName(KnownName.Type, KnownName.Pages)).IsTrue();
     }
 
     /// <summary>Builds an encrypted file with no cross-reference table whose catalog lives in an encrypted object stream.</summary>
@@ -48,10 +46,19 @@ public sealed class EncryptedRepairTests
     private static byte[] DamagedEncryptedFile()
     {
         using var setup = EncryptionSetup.Revision4(true, new());
-        return new RawPdf()
-            .Object(EncryptNumber, setup.EncryptText)
-            .ObjectStream(ContainerNumber, [1, PagesNumber], [Catalog, Pages], data => setup.Handler.EncryptStream(new(ContainerNumber, 0), data))
-            .Append($"trailer\n<< /Size {FileSize} /Root 1 0 R /Encrypt {EncryptNumber} 0 R /ID [<{setup.FileIdHex}> <{setup.FileIdHex}>] >>\n%%EOF\n")
-            .ToArray();
+        return new RawPdf().Object(
+        EncryptNumber,
+        setup.EncryptText).ObjectStream(
+        ContainerNumber,
+        [1,
+        PagesNumber],
+        [Catalog,
+        Pages],
+        data =>
+        setup.Handler.EncryptStream(
+        new(
+        ContainerNumber,
+        0),
+        data)).Append($"trailer\n<< /Size {FileSize} /Root 1 0 R /Encrypt {EncryptNumber} 0 R /ID [<{setup.FileIdHex}> <{setup.FileIdHex}>] >>\n%%EOF\n").ToArray();
     }
 }

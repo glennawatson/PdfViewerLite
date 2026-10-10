@@ -9,8 +9,7 @@ namespace HyperPdfLibrary.Raster;
 /// <summary>
 /// Whether a file is a raster-only (scanned) document and whether it follows the shape of PDF/R (ISO 23504-1). The
 /// report judges structure only: every page paints images and no vector or visible text. It does not prove
-/// conformance, since the standard text was not available. See docs/hyperpdf/coverage.md section 11 for the rules
-/// that were confirmed and the ones that are inferred.
+/// conformance, since the standard text was not available.
 /// </summary>
 /// <param name="Claim">
 /// The file's PDF/R claim, for example "PDF-raster-1.0", read from a <c>%PDF-raster-x.y</c> comment in the last

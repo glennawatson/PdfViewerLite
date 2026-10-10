@@ -62,7 +62,6 @@ public sealed class EncryptedWriterTests
     public async Task ObjectWriterRoundTripsStreams(bool encryptMetadata)
     {
         var encrypted = WriteEncrypted(PlainFile(), encryptMetadata);
-
         await Assert.That(Problems(encrypted, encryptMetadata)).IsEqualTo(string.Empty);
     }
 
@@ -76,7 +75,7 @@ public sealed class EncryptedWriterTests
     {
         var encrypted = WriteEncrypted(PlainFile(), encryptMetadata);
         byte[] saved;
-        using (var store = PdfObjectStore.Open(encrypted, null))
+        using (var store = StoreOpening.Open(encrypted, null))
         {
             saved = PdfCompactWriter.Save(store, new(false, false));
         }
@@ -94,11 +93,11 @@ public sealed class EncryptedWriterTests
     {
         var encrypted = WriteEncrypted(PlainFile(), encryptMetadata);
         byte[] saved;
-        using (var store = PdfObjectStore.Open(encrypted, null))
+        using (var store = StoreOpening.Open(encrypted, null))
         {
             foreach (var number in StreamNumbers)
             {
-                store.Replace(new(number, 0), store.GetObject(new(number, 0)));
+                StoreEditing.Replace(store, new(number, 0), StoreReading.GetObject(store, new(number, 0)));
             }
 
             saved = PdfIncrementalWriter.Save(store);
@@ -113,7 +112,7 @@ public sealed class EncryptedWriterTests
     /// <returns>An empty string when everything matches.</returns>
     private static string Problems(byte[] file, bool encryptMetadata)
     {
-        using var store = PdfObjectStore.Open(file, null);
+        using var store = StoreOpening.Open(file, null);
         var problems = new StringBuilder();
         var streams = store.Catalog.GetArray(KnownName.Fields)!;
         foreach (var number in StreamNumbers)
@@ -150,15 +149,25 @@ public sealed class EncryptedWriterTests
     /// <summary>Builds a plain file with the four kinds of stream.</summary>
     /// <returns>The file.</returns>
     private static byte[] PlainFile() =>
-        new RawPdf()
-            .Object(1, Catalog)
-            .Object(PagesNumber, Pages)
-            .Stream(Ordinary, string.Empty, OrdinaryText)
-            .Stream(Metadata, "/Type /Metadata /Subtype /XML", MetadataText)
-            .Stream(Identity, "/Filter /Crypt /DecodeParms << /Name /Identity >>", IdentityText)
-            .Stream(Named, "/Filter /Crypt /DecodeParms << /Name /Other >>", NamedText)
-            .Table(PlainSize, "/Root 1 0 R")
-            .ToArray();
+        new RawPdf().Object(
+        1,
+        Catalog).Object(
+        PagesNumber,
+        Pages).Stream(
+        Ordinary,
+        string.Empty,
+        OrdinaryText).Stream(
+        Metadata,
+        "/Type /Metadata /Subtype /XML",
+        MetadataText).Stream(
+        Identity,
+        "/Filter /Crypt /DecodeParms << /Name /Identity >>",
+        IdentityText).Stream(
+        Named,
+        "/Filter /Crypt /DecodeParms << /Name /Other >>",
+        NamedText).Table(
+        PlainSize,
+        "/Root 1 0 R").ToArray();
 
     /// <summary>Writes every object of a plain file encrypted with the object writer, then a table and trailer.</summary>
     /// <param name="plainFile">The plain file.</param>
@@ -166,17 +175,17 @@ public sealed class EncryptedWriterTests
     /// <returns>The encrypted file.</returns>
     private static byte[] WriteEncrypted(byte[] plainFile, bool encryptMetadata)
     {
-        using var plain = PdfObjectStore.Open(plainFile, null);
+        using var plain = StoreOpening.Open(plainFile, null);
         using var setup = EncryptionSetup.Revision4(encryptMetadata, plain.Names);
         var writer = new PdfObjectWriter(plain.Names, setup.Handler);
         try
         {
             writer.WriteRaw("%PDF-1.7\n"u8);
-            var rows = new List<XrefRow> { XrefRow.FreeHead };
+            var rows = new List<XrefRow> { XrefRow.FreeHead, };
             for (var number = 1; number < plain.Size; number++)
             {
                 rows.Add(new(number, XrefEntryType.InFile, writer.Length, 0));
-                writer.WriteIndirectObject(new(number, 0), plain.GetObject(new(number, 0)));
+                writer.WriteIndirectObject(new(number, 0), StoreReading.GetObject(plain, new(number, 0)));
             }
 
             var encryptNumber = plain.Size;

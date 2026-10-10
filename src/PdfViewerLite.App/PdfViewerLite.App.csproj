@@ -27,7 +27,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
-    <ProjectReference Include="..\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />
     <ProjectReference Include="..\PdfViewerLite.HyperPdf\PdfViewerLite.HyperPdf.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Ocr\PdfViewerLite.Ocr.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Http\PdfViewerLite.Http.csproj" />
@@ -57,7 +56,7 @@
   <!-- The Licences window shows these notices: the packages in this project's assets, the font and CMap resource packs, and the data the app downloads. -->
   <PropertyGroup>
     <NoticesResourceName>PdfViewerLite.ThirdPartyNotices.md</NoticesResourceName>
-    <NoticesComponents>open-font-pack;adobe-cmaps;tessdata-fast;kokoro;misaki;melotts;bert-base-uncased;g2p-en;cmudict</NoticesComponents>
+    <NoticesComponents>open-font-pack;adobe-cmaps;tessdata-fast;kokoro;misaki;melotts;bert-base-uncased;g2p-en;cmudict;pdfium-cmyk-table</NoticesComponents>
   </PropertyGroup>
   <Import Project="..\..\licenses\ThirdPartyNotices.targets" />
 

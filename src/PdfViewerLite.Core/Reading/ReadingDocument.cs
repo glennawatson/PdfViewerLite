@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using PdfViewerLite.Core.Geometry;
 
 namespace PdfViewerLite.Core.Reading;
@@ -17,11 +18,14 @@ public sealed class ReadingDocument
     /// <summary>The most pages sampled for running headers and footers.</summary>
     private const int MaxSamples = 16;
 
+    /// <summary>The sentinel before any page character can extend a run.</summary>
+    private const int NoPreviousCharacter = -2;
+
     /// <summary>The separator placed between blocks in flattened text, which also ends a sentence.</summary>
     private const string BlockSeparator = "\n\n";
 
     /// <summary>Gets the character source, which may be closed and reopened while the document is in the background.</summary>
-    private readonly Func<ITextLayoutSource?> _source;
+    private readonly Func<ReadingSources?> _source;
 
     /// <summary>The page sizes.</summary>
     private readonly PageSize[] _sizes;
@@ -39,9 +43,11 @@ public sealed class ReadingDocument
     /// <param name="source">The document's characters.</param>
     /// <param name="sizes">The page sizes in points.</param>
     public ReadingDocument(ITextLayoutSource source, PageSize[] sizes)
-        : this(() => source, sizes)
     {
+        ArgumentNullException.ThrowIfNull(sizes);
         ArgumentNullException.ThrowIfNull(source);
+        _source = () => new ReadingSources(source, source as ITaggedStructureSource);
+        _sizes = sizes;
     }
 
     /// <summary>Initializes a new instance of the <see cref="ReadingDocument"/> class for a document that may be reopened.</summary>
@@ -51,12 +57,29 @@ public sealed class ReadingDocument
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(sizes);
+        _source = () => source() is { } layout ? new ReadingSources(layout, layout as ITaggedStructureSource) : null;
+        _sizes = sizes;
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="ReadingDocument"/> class with features from one opened document.</summary>
+    /// <param name="source">Gets the character layout and logical structure together.</param>
+    /// <param name="sizes">The page sizes in points.</param>
+    private ReadingDocument(Func<ReadingSources?> source, PageSize[] sizes)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(sizes);
         _source = source;
         _sizes = sizes;
     }
 
     /// <summary>Gets the number of pages.</summary>
     public int PageCount => _sizes.Length;
+
+    /// <summary>Creates reading order from features resolved together on one opened document.</summary>
+    /// <param name="source">Gets the character layout and logical structure together.</param>
+    /// <param name="sizes">The page sizes in points.</param>
+    /// <returns>The document's reading order.</returns>
+    public static ReadingDocument Create(Func<ReadingSources?> source, PageSize[] sizes) => new(source, sizes);
 
     /// <summary>Joins a page's blocks into one text for reading aloud, each block ending a sentence.</summary>
     /// <param name="page">The page.</param>
@@ -95,12 +118,12 @@ public sealed class ReadingDocument
     /// <param name="start">The first character of the range.</param>
     /// <param name="length">The range's length.</param>
     /// <param name="runs">Receives each run of consecutive page characters as a start and count.</param>
-    public static void GetRuns(int[] map, int start, int length, List<(int Start, int Count)> runs)
+    public static void GetRuns(int[] map, int start, int length, List<ReadingCharacterRun> runs)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(runs);
         var runStart = -1;
-        var previous = -2;
+        var previous = NoPreviousCharacter;
         for (var i = start; i < start + length && i < map.Length; i++)
         {
             var index = map[i];
@@ -111,7 +134,7 @@ public sealed class ReadingDocument
 
             if (index != previous + 1 && runStart >= 0)
             {
-                runs.Add((runStart, previous - runStart + 1));
+                runs.Add(new(runStart, previous - runStart + 1));
                 runStart = -1;
             }
 
@@ -121,7 +144,7 @@ public sealed class ReadingDocument
 
         if (runStart >= 0)
         {
-            runs.Add((runStart, previous - runStart + 1));
+            runs.Add(new(runStart, previous - runStart + 1));
         }
     }
 
@@ -139,7 +162,7 @@ public sealed class ReadingDocument
                 return cached;
             }
 
-            if (_source() is not { } source)
+            if (_source() is not { Characters: { } source } sources)
             {
                 return new(pageIndex, []);
             }
@@ -147,9 +170,9 @@ public sealed class ReadingDocument
             var characters = new List<PageCharacter>();
             source.GetCharacters(pageIndex, characters);
             var tagged = new List<TaggedBlock>();
-            var page = source is ITaggedStructureSource structure && structure.GetTaggedBlocks(pageIndex, tagged)
+            var page = sources.Structure is { } structure && structure.GetTaggedBlocks(pageIndex, tagged)
                 ? ReadingOrder.FromStructure(pageIndex, characters, tagged)
-                : ReadingOrder.Analyze(pageIndex, _sizes[pageIndex], characters, GetRepeatedMargins(source));
+                : AnalyzePage(pageIndex, source, characters);
             _pages[pageIndex] = page;
             return page;
         }
@@ -164,6 +187,15 @@ public sealed class ReadingDocument
             _repeatedMargins = null;
         }
     }
+
+    /// <summary>Builds a page when it has no usable tagged structure.</summary>
+    /// <param name="pageIndex">The page.</param>
+    /// <param name="source">The character source.</param>
+    /// <param name="characters">The page characters.</param>
+    /// <returns>The analyzed page.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ReadingPage AnalyzePage(int pageIndex, ITextLayoutSource source, List<PageCharacter> characters) =>
+        ReadingOrder.Analyze(pageIndex, _sizes[pageIndex], characters, GetRepeatedMargins(source));
 
     /// <summary>Samples pages spread across the document for repeated header and footer lines. Callers hold the gate.</summary>
     /// <param name="source">The character source.</param>

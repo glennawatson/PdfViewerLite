@@ -24,35 +24,71 @@ internal static class RobustnessSeeds
     {
         var plain = TestPdf.Create(PageCount);
         var compressed = TestPdf.CreateCompressed();
-        return
-        [
-            new("basic", plain),
-            new("objstm", compressed),
-            new("layers", TestPdf.CreateWithLayers()),
-            new("attachment", TestPdf.CreateWithAttachment()),
-            new("links", TestPdf.CreateWithFileLinks()),
-            new("form", TestPdf.CreateForm()),
-            new("tagged", TestPdf.CreateTagged()),
-            new("viewport", TestPdf.CreateWithViewport()),
-            new("mini", CreateMini()),
-            new("encrypted", WritingTestDocuments.Encrypt(plain)),
-            new("aes256", Pdf2Documents.EncryptAes256(plain, string.Empty, OwnerPassword)),
-            new("pdf2", Pdf2Documents.CreateText()),
-            new("linearized", LinearizedDocuments.Create(false)),
-            new("linearized-streams", LinearizedDocuments.Create(true)),
-            new("compact", Compact(plain)),
-            new("compact-objstm", Compact(compressed)),
+        return [new(
+        "basic",
+        plain),
+        new(
+        "objstm",
+        compressed),
+        new(
+        "layers",
+        TestPdf.CreateWithLayers()),
+        new(
+        "attachment",
+        TestPdf.CreateWithAttachment()),
+        new(
+        "links",
+        TestPdf.CreateWithFileLinks()),
+        new(
+        "form",
+        TestPdf.CreateForm()),
+        new(
+        "tagged",
+        TestPdf.CreateTagged()),
+        new(
+        "viewport",
+        TestPdf.CreateWithViewport()),
+        new(
+        "mini",
+        CreateMini()),
+        new(
+        "encrypted",
+        WritingTestDocuments.Encrypt(plain)),
+        new(
+        "aes256",
+        Pdf2Documents.EncryptAes256(
+        plain,
+        string.Empty,
+        OwnerPassword)),
+        new(
+        "pdf2",
+        Pdf2Documents.CreateText()),
+        new(
+        "linearized",
+        LinearizedDocuments.Create(false)),
+        new(
+        "linearized-streams",
+        LinearizedDocuments.Create(true)),
+        new(
+        "compact",
+        Compact(plain)),
+        new(
+        "compact-objstm",
+        Compact(compressed)),
         ];
     }
 
     /// <summary>Builds a small document with labels, an outline, a link and an ASCIIHex stream.</summary>
     /// <returns>The file.</returns>
-    internal static byte[] CreateMini() => MiniPdf.Build(
+    internal static byte[] CreateMini() =>
+        MiniPdf.Build(
         "<< /Type /Catalog /Pages 2 0 R /Outlines 6 0 R /PageLabels << /Nums [0 << /S /r >> 1 << /S /D /P (A-) >>] >> >>",
         "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << >> /Contents 5 0 R /Annots [7 0 R] >>",
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 200] /Resources << >> /Rotate 90 >>",
-        MiniPdf.Stream("/Filter /ASCIIHexDecode", "48656C6C6F20776F726C64>"),
+        MiniPdf.Stream(
+        "/Filter /ASCIIHexDecode",
+        "48656C6C6F20776F726C64>"),
         "<< /Type /Outlines /First 8 0 R /Last 8 0 R /Count 1 >>",
         "<< /Type /Annot /Subtype /Link /Rect [0 0 100 50] /A << /S /URI /URI (http://example.com) >> >>",
         "<< /Title (Chapter) /Parent 6 0 R /Dest [3 0 R /Fit] >>");
@@ -62,7 +98,7 @@ internal static class RobustnessSeeds
     /// <returns>The rewritten file.</returns>
     private static byte[] Compact(byte[] file)
     {
-        using var store = PdfObjectStore.Open(file, null);
+        using var store = StoreOpening.Open(file, null);
         return PdfCompactWriter.Save(store, PdfCompactOptions.Default);
     }
 

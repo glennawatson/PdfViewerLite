@@ -5,7 +5,6 @@
 using System.Windows.Input;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Optimizing;
-using PdfViewerLite.Core.Settings;
 using PdfViewerLite.TestAssets;
 using ReactiveUI.Primitives;
 
@@ -31,9 +30,6 @@ public sealed class OptimizeCopyViewModelTests
 
     /// <summary>The PDF/A part a document claims.</summary>
     private const int PdfAPart = 2;
-
-    /// <summary>The environment variable that picks the engine.</summary>
-    private const string EngineVariable = "PDFVIEWERLITE_ENGINE";
 
     /// <summary>The ending of the temporary file a copy is written to.</summary>
     private const string TemporarySuffix = ".optimising";
@@ -258,16 +254,15 @@ public sealed class OptimizeCopyViewModelTests
         await Assert.That(OptimizeReportText.OverallPercent(new(OptimizeStep.Done, 0, 0))).IsEqualTo(Complete);
     }
 
-    /// <summary>The command is on with HyperPDF and off, with its reason in the menu text, with PDFium.</summary>
+    /// <summary>The command is available with HyperPDF and explains its limit with the PDFium reference engine.</summary>
     /// <returns>A task.</returns>
     [Test]
     public async Task CommandFollowsTheEngine()
     {
-        var hyper = string.Equals(Environment.GetEnvironmentVariable(EngineVariable), "hyperpdf", StringComparison.OrdinalIgnoreCase);
-        using var pdfium = new TestServices(PdfEngineChoice.Pdfium);
+        using var pdfium = new TestServices(TestEngineChoice.Pdfium);
         using var pdfiumMain = new MainViewModel(pdfium.Services);
         pdfiumMain.Open([pdfium.CreateDocument(SourceName, Pages)]);
-        using var native = new TestServices(PdfEngineChoice.HyperPdf);
+        using var native = new TestServices(TestEngineChoice.HyperPdf);
         using var nativeMain = new MainViewModel(native.Services);
         nativeMain.Open([native.CreateDocument(SourceName, Pages)]);
 
@@ -277,9 +272,9 @@ public sealed class OptimizeCopyViewModelTests
 
         using (Assert.Multiple())
         {
-            await Assert.That(pdfiumTab.CanOptimize).IsEqualTo(hyper);
-            await Assert.That(pdfiumCan).IsEqualTo(hyper);
-            await Assert.That(pdfiumTab.OptimizeMenuText).Contains(hyper ? "Optimised Copy…" : "needs the HyperPDF engine");
+            await Assert.That(pdfiumTab.CanOptimize).IsFalse();
+            await Assert.That(pdfiumCan).IsFalse();
+            await Assert.That(pdfiumTab.OptimizeMenuText).Contains("needs the HyperPDF engine");
             await Assert.That(nativeTab.CanOptimize).IsTrue();
             await Assert.That(nativeTab.OptimizeMenuText).IsEqualTo("Save _Optimised Copy…");
         }
@@ -290,7 +285,7 @@ public sealed class OptimizeCopyViewModelTests
     [Test]
     public async Task RealCopyReopensWithTheSamePages()
     {
-        using var test = new TestServices(PdfEngineChoice.HyperPdf);
+        using var test = new TestServices(TestEngineChoice.HyperPdf);
         using var main = new MainViewModel(test.Services);
         main.Open([test.CreateDocument(SourceName, Pages)]);
         var tab = main.SelectedTab!;

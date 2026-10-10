@@ -25,7 +25,7 @@ public class AttachmentBenchmarks
     public void Setup()
     {
         _document = new(TestPdf.CreateWithAttachment());
-        _source = (IAttachmentSource)_document.Document;
+        _source = (IAttachmentSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_document.Document, typeof(IAttachmentSource))!;
         _ = _source.GetAttachments();
     }
 

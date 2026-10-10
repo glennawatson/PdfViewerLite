@@ -55,9 +55,8 @@ public static class FdfReader
         // with every offset unchanged.
         var copy = (byte[])fdf.Clone();
         copy[header + LetterOffset] = (byte)'P';
-        using var store = PdfObjectStore.Open(copy, null);
-        var root = store.Catalog.GetDictionary(store.Names.Intern("FDF"))
-            ?? throw new PdfException(PdfError.Format, "The FDF file has no FDF dictionary.");
+        using var store = StoreOpening.Open(copy, null);
+        var root = store.Catalog.GetDictionary(store.Names.Intern("FDF")) ?? throw new PdfException(PdfError.Format, "The FDF file has no FDF dictionary.");
         var data = new PdfInterchangeData();
         FdfDictionaryReader.Read(root, data);
         return data;

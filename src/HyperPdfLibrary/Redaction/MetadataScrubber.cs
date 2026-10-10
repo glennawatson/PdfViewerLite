@@ -28,6 +28,6 @@ internal static class MetadataScrubber
 
         var catalog = store.Catalog.Clone();
         _ = catalog.Remove(KnownName.Metadata);
-        store.Replace(root, PdfValue.FromDictionary(catalog));
+        StoreEditing.Replace(store, root, PdfValue.FromDictionary(catalog));
     }
 }

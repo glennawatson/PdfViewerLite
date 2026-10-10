@@ -73,7 +73,7 @@ internal sealed class JpxTileWork
     /// <param name="transform">Whether the tile uses the multiple component transform.</param>
     /// <param name="image">The output planes.</param>
     /// <param name="blocks">The block decoder used when the blocks decode on the calling thread.</param>
-    internal void Run(JpxTile tile, byte[] data, bool transform, JpxDecodedImage image, JpxBlockDecoder blocks)
+    internal void Run(JpxTile tile, byte[] data, bool transform, JpxDecodedImage image, JpxBlockState blocks)
     {
         _tile = tile;
         _data = data;
@@ -121,11 +121,11 @@ internal sealed class JpxTileWork
     /// <summary>Disposes a worker's block decoder.</summary>
     /// <param name="decoder">The decoder.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ReleaseDecoder(JpxBlockDecoder decoder) => decoder.Dispose();
+    private static void ReleaseDecoder(JpxBlockState decoder) => decoder.Dispose();
 
     /// <summary>Creates a worker's block decoder.</summary>
     /// <returns>The decoder.</returns>
-    private static JpxBlockDecoder CreateDecoder() => new();
+    private static JpxBlockState CreateDecoder() => new();
 
     /// <summary>Gets a zeroed coefficient buffer and wavelet scratch for each tile-component; the buffer is the output plane itself when the tile covers it.</summary>
     private void PrepareBuffers()
@@ -165,7 +165,7 @@ internal sealed class JpxTileWork
 
     /// <summary>Decodes every code-block into its tile-component buffer, in parallel for larger tiles.</summary>
     /// <param name="blocks">The block decoder used on the calling thread.</param>
-    private void DecodeBlocks(JpxBlockDecoder blocks)
+    private void DecodeBlocks(JpxBlockState blocks)
     {
         var count = _tile.Blocks.Count;
         if (count >= ParallelBlocks && Environment.ProcessorCount > 1)
@@ -185,11 +185,11 @@ internal sealed class JpxTileWork
     /// <param name="state">The parallel loop state, unused.</param>
     /// <param name="decoder">The worker's block decoder.</param>
     /// <returns>The same decoder, for the worker's next block.</returns>
-    private JpxBlockDecoder DecodeBlock(int index, ParallelLoopState? state, JpxBlockDecoder decoder)
+    private JpxBlockState DecodeBlock(int index, ParallelLoopState? state, JpxBlockState decoder)
     {
         var component = _tile.Bands[_tile.Blocks[index].Band].Component;
         var info = _tile.Components[component];
-        decoder.Decode(_tile, index, _data, new(_buffers[component], info.Area.Width, info.Reversible, info.RoiShift, info.BlockStyle));
+        JpxBlockDecoder.Decode(decoder, _tile, index, _data, new(_buffers[component], info.Area.Width, info.Reversible, info.RoiShift, info.BlockStyle));
         return decoder;
     }
 

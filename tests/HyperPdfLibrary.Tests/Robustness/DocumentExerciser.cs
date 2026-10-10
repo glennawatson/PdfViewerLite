@@ -93,7 +93,7 @@ internal static class DocumentExerciser
         var objects = document.Objects;
         for (var number = 1; number < objects.Size; number++)
         {
-            if (objects.GetObject(new(number, 0)).AsStream() is not { } stream)
+            if (StoreReading.GetObject(objects, new(number, 0)).AsStream() is not { } stream)
             {
                 continue;
             }

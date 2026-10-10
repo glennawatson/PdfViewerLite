@@ -73,7 +73,7 @@ internal sealed class PdfCarryLayers
     /// <param name="group">The group.</param>
     /// <returns>The reference.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private PdfValue Reference(CopiedGroup group) =>PdfValue.FromReference(new(_context.Sink.GetMapped(group.Number), 0));
+    private PdfValue Reference(CopiedGroup group) => PdfValue.FromReference(new(_context.Sink.GetMapped(group.Number), 0));
 
     /// <summary>Finds the optional content groups among the objects copied, with whether the source hides each.</summary>
     /// <returns>The groups.</returns>
@@ -100,7 +100,15 @@ internal sealed class PdfCarryLayers
     /// <param name="number">The source object number.</param>
     /// <returns><see langword="true"/> when it is.</returns>
     private bool IsCopiedGroup(int number) =>
-        _context.Sink.GetMapped(number) > 0 && _context.Source.GetDictionary(new(number, 0)) is { } group && group.IsName(KnownName.Type, KnownName.OCG);
+        _context.Sink.GetMapped(number) > 0
+        && StoreReading.GetDictionary(
+        _context.Source,
+        new(
+        number,
+        0)) is { } group
+        && group.IsName(
+        KnownName.Type,
+        KnownName.OCG);
 
     /// <summary>Makes a configuration list each group in the state the source showed it.</summary>
     /// <param name="configuration">The target's configuration, or <see langword="null"/>.</param>

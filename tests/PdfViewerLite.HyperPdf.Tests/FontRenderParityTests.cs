@@ -31,9 +31,8 @@ public sealed class FontRenderParityTests
     private const double SubstituteThreshold = 0.5;
 
     /// <summary>
-    /// The largest mean difference accepted for a corpus page. The corpus is mostly scans whose JPX and JBIG2 images
-    /// HyperPDF does not decode yet, so this only catches a page that fails to draw at all; the per-page numbers are
-    /// written to the test output.
+    /// The broad corpus smoke-test limit. It detects severe render failures; per-page pixel differences are written
+    /// to the test output and do not establish standards conformance.
     /// </summary>
     private const double CorpusThreshold = 200.0;
 

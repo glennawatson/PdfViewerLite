@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Buffers;
 using System.Diagnostics;
 using HyperPdfLibrary.Content;
@@ -14,7 +13,7 @@ namespace HyperPdfLibrary.Rendering;
 /// <summary>
 /// Records a page's content a slice of operators at a time, like FPDF_RenderPageBitmap_Start and _Continue, so a large
 /// page can be paused or cancelled between slices. The interpreter, the device and the decoded content live here
-/// between calls. Not thread-safe; the owning <see cref="PagePictures"/> serialises access.
+/// between calls. Not thread-safe; the owning <see cref = "PagePictures"/> serialises access.
 /// </summary>
 [DebuggerDisplay("ProgressiveRecording: {_position} of {_length} bytes")]
 internal sealed class ProgressiveRecording : IDisposable
@@ -37,20 +36,20 @@ internal sealed class ProgressiveRecording : IDisposable
     /// <summary>The offset to resume at.</summary>
     private int _position;
 
-    /// <summary>Initializes a new instance of the <see cref="ProgressiveRecording"/> class.</summary>
-    /// <param name="cache">The document's caches.</param>
-    /// <param name="page">The page.</param>
-    /// <param name="printing">Whether optional content follows print usage.</param>
+    /// <summary>Initializes a new instance of the <see cref = "ProgressiveRecording"/> class.</summary>
+    /// <param name = "cache">The document's caches.</param>
+    /// <param name = "page">The page.</param>
+    /// <param name = "printing">Whether optional content follows print usage.</param>
     internal ProgressiveRecording(PdfRenderCache cache, PdfPage page, bool printing)
     {
         Printing = printing;
         _device = PageRecorder.Begin(page);
-        _interpreter = new(cache, _device, 0) { Printing = printing };
-        _interpreter.BeginPage(page);
+        _interpreter = new(cache, _device, 0) { Printing = printing, };
+        ContentExecution.BeginPage(_interpreter, page);
         var buffer = default(PooledBuffer);
         try
         {
-            ContentInterpreter.DecodeContents(page, ref buffer);
+            ContentExecution.DecodeContents(page, ref buffer);
             _length = buffer.Length;
             _content = ArrayPool<byte>.Shared.Rent(Math.Max(1, _length));
             buffer.WrittenSpan.CopyTo(_content);
@@ -85,9 +84,9 @@ internal sealed class ProgressiveRecording : IDisposable
     }
 
     /// <summary>Runs slices until the content ends, the token is cancelled or the pause callback asks to stop.</summary>
-    /// <param name="shouldPause">Asked after each slice; returning <see langword="true"/> pauses. Null runs to the end.</param>
-    /// <param name="cancellationToken">Cancels the recording between slices.</param>
-    /// <param name="picture">Receives the finished picture, which the caller owns, when the status is <see cref="PdfRenderStatus.Done"/>.</param>
+    /// <param name = "shouldPause">Asked after each slice; returning <see langword="true"/> pauses. Null runs to the end.</param>
+    /// <param name = "cancellationToken">Cancels the recording between slices.</param>
+    /// <param name = "picture">Receives the finished picture, which the caller owns, when the status is <see cref = "PdfRenderStatus.Done"/>.</param>
     /// <returns>The status.</returns>
     internal PdfRenderStatus Continue(Func<bool>? shouldPause, CancellationToken cancellationToken, out SKPicture? picture)
     {
@@ -99,9 +98,9 @@ internal sealed class ProgressiveRecording : IDisposable
                 return PdfRenderStatus.Cancelled;
             }
 
-            if (_interpreter.RunSlice(_content.AsSpan(0, _length), ref _position, SliceOperators))
+            if (ContentExecution.RunSlice(_interpreter, _content.AsSpan(0, _length), ref _position, SliceOperators))
             {
-                _interpreter.EndPage();
+                ContentExecution.EndPage(_interpreter);
                 picture = PageRecorder.Finish(_device, out var bytes, out var images);
                 Bytes = bytes;
                 Images = images;

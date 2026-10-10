@@ -52,8 +52,6 @@ Small in-memory operations, such as setting metadata or form values, stay synchr
 
 ## What to expect
 
-- When the work is already done, an async call returns at once without allocating.
+- When the data is already available, an async call returns at once.
 - A cancelled operation throws `OperationCanceledException` from the awaited task and releases its buffers.
 - Argument errors throw at the call; other failures come back through the task.
-
-Measurements are in [benchmarks/hyperpdf-async-performance.md](../../benchmarks/hyperpdf-async-performance.md).

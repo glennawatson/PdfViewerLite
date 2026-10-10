@@ -45,7 +45,6 @@ public sealed class BrotliTests
     public async Task BrotliRoundTrips()
     {
         var original = Sample();
-
         await Assert.That(Decode(PdfValue.FromName(KnownName.BrotliDecode), default, Compress(original))).IsEquivalentTo(original);
     }
 
@@ -57,7 +56,6 @@ public sealed class BrotliTests
         var original = Sample();
         var compressed = Compress(original);
         var decoded = Decode(PdfValue.FromName(KnownName.BrotliDecode), default, compressed.AsSpan(0, compressed.Length / TruncateDivisor).ToArray());
-
         await Assert.That(original.AsSpan().StartsWith(decoded)).IsTrue();
     }
 
@@ -69,7 +67,6 @@ public sealed class BrotliTests
         var parms = new PdfDictionary(null);
         parms.Add(KnownName.Predictor, PdfValue.FromInteger(PngPredictor));
         parms.Add(KnownName.Columns, PdfValue.FromInteger(Columns));
-
         await Assert.That(Decode(PdfValue.FromName(KnownName.BrotliDecode), PdfValue.FromDictionary(parms), Compress(PngRows))).IsEquivalentTo(PngDecoded);
     }
 
@@ -79,18 +76,16 @@ public sealed class BrotliTests
     public async Task SavingReplacesBrotliWithFlate()
     {
         var original = Sample();
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         var dictionary = new PdfDictionary(store);
         dictionary.Set(KnownName.Filter, PdfValue.FromName(KnownName.BrotliDecode));
-        var id = store.Add(PdfValue.FromStream(new(dictionary, Compress(original))));
+        var id = StoreEditing.Add(store, PdfValue.FromStream(new(dictionary, Compress(original))));
         var catalog = store.Catalog.Clone();
         catalog.Set(KnownName.Metadata, PdfValue.FromReference(id));
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
-
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
         var saved = PdfCompactWriter.Save(store, new(false, false));
-        using var reopened = PdfObjectStore.Open(saved, null);
+        using var reopened = StoreOpening.Open(saved, null);
         var stream = reopened.Catalog.GetStream(KnownName.Metadata);
-
         await Assert.That(stream is not null).IsTrue();
         await Assert.That(stream!.Dictionary.GetName(KnownName.Filter).Is(KnownName.FlateDecode)).IsTrue();
         await Assert.That(Encoding.Latin1.GetString(saved).Contains("BrotliDecode", StringComparison.Ordinal)).IsFalse();
@@ -103,15 +98,13 @@ public sealed class BrotliTests
     public async Task SavingKeepsTheImageCodecAfterBrotli()
     {
         var jpeg = Sample();
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         var dictionary = new PdfDictionary(store);
         var filters = new PdfArray(store);
         filters.Add(PdfValue.FromName(KnownName.BrotliDecode));
         filters.Add(PdfValue.FromName(KnownName.DCTDecode));
         dictionary.Set(KnownName.Filter, PdfValue.FromArray(filters));
-
         var data = Rewrite(dictionary, Compress(jpeg), out var rewritten);
-
         await Assert.That(rewritten.GetName(KnownName.Filter).Is(KnownName.DCTDecode)).IsTrue();
         await Assert.That(data).IsEquivalentTo(jpeg);
     }
@@ -137,8 +130,7 @@ public sealed class BrotliTests
 
     /// <summary>Makes compressible sample data.</summary>
     /// <returns>The bytes.</returns>
-    private static byte[] Sample() =>
-        Encoding.ASCII.GetBytes(string.Concat(Enumerable.Range(0, Numbers).Select(static i => i.ToString(CultureInfo.InvariantCulture))));
+    private static byte[] Sample() => Encoding.ASCII.GetBytes(string.Concat(Enumerable.Range(0, Numbers).Select(static i => i.ToString(CultureInfo.InvariantCulture))));
 
     /// <summary>Compresses data with Brotli.</summary>
     /// <param name="data">The data.</param>

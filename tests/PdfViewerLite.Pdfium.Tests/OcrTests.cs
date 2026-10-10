@@ -52,7 +52,7 @@ public sealed class OcrTests
         using var engine = RequireEngine();
         using var scan = new TempDocument(Scan.Value);
         var before = scan.Document.GetCharacterCount(0);
-        var result = OcrRunner.RecognizePage(scan.Document, (ITextLayerWriter)scan.Document, engine, 0, []);
+        var result = OcrRunner.RecognizePage(scan.Document, (ITextLayerWriter)DocumentFeatures.CastFeature(scan.Document, typeof(ITextLayerWriter))!, engine, 0, []);
         var matches = new List<TextMatch>();
         scan.Document.Find(0, "quick", default, matches);
         var bounds = new List<PageRect>();
@@ -61,13 +61,13 @@ public sealed class OcrTests
             scan.Document.GetTextBounds(0, matches[0].Start, matches[0].Length, bounds);
         }
 
-        var unsaved = ((IAnnotationEditor)scan.Document).HasUnsavedChanges;
+        var unsaved = ((IAnnotationEditor)DocumentFeatures.CastFeature(scan.Document, typeof(IAnnotationEditor))!).HasUnsavedChanges;
         var saved = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-ocr-{Guid.NewGuid():N}.pdf");
         try
         {
             await using (var stream = File.Create(saved))
             {
-                _ = ((IAnnotationEditor)scan.Document).Save(stream);
+                _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(scan.Document, typeof(IAnnotationEditor))!).Save(stream);
             }
 
             using var reopened = new PdfiumEngine().Open(saved, null);
@@ -97,11 +97,11 @@ public sealed class OcrTests
         using var engine = RequireEngine();
         using var text = new TempDocument(TestPdf.Create(1));
         var count = text.Document.GetCharacterCount(0);
-        var result = OcrRunner.RecognizePage(text.Document, (ITextLayerWriter)text.Document, engine, 0, []);
+        var result = OcrRunner.RecognizePage(text.Document, (ITextLayerWriter)DocumentFeatures.CastFeature(text.Document, typeof(ITextLayerWriter))!, engine, 0, []);
 
         await Assert.That(result.Status).IsEqualTo(OcrPageStatus.AlreadyHasText);
         await Assert.That(text.Document.GetCharacterCount(0)).IsEqualTo(count);
-        await Assert.That(((IAnnotationEditor)text.Document).HasUnsavedChanges).IsFalse();
+        await Assert.That(((IAnnotationEditor)DocumentFeatures.CastFeature(text.Document, typeof(IAnnotationEditor))!).HasUnsavedChanges).IsFalse();
     }
 
     /// <summary>Verifies a missing language reports the engine as unavailable instead of failing.</summary>
@@ -111,7 +111,7 @@ public sealed class OcrTests
     {
         using var engine = new TesseractEngine("no-such-language");
         using var scan = new TempDocument(Scan.Value);
-        var result = OcrRunner.RecognizePage(scan.Document, (ITextLayerWriter)scan.Document, engine, 0, []);
+        var result = OcrRunner.RecognizePage(scan.Document, (ITextLayerWriter)DocumentFeatures.CastFeature(scan.Document, typeof(ITextLayerWriter))!, engine, 0, []);
 
         await Assert.That(engine.IsAvailable).IsFalse();
         await Assert.That(result.Status).IsEqualTo(OcrPageStatus.Unavailable);
@@ -146,7 +146,7 @@ public sealed class OcrTests
             File.Copy(Path.Combine(installed, EnglishData), Path.Combine(folder, EnglishData));
             using var engine = new TesseractEngine("eng", folder);
             using var scan = new TempDocument(Scan.Value);
-            var result = OcrRunner.RecognizePage(scan.Document, (ITextLayerWriter)scan.Document, engine, 0, []);
+            var result = OcrRunner.RecognizePage(scan.Document, (ITextLayerWriter)DocumentFeatures.CastFeature(scan.Document, typeof(ITextLayerWriter))!, engine, 0, []);
 
             await Assert.That(TesseractEngine.FindDataDirectory("eng", folder)).IsEqualTo(folder);
             await Assert.That(engine.Status).IsEqualTo(OcrEngineStatus.Ready);

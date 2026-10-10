@@ -78,13 +78,7 @@ internal static class InterchangeAnnotationImporter
     /// <param name="batches">The queued annotations by page.</param>
     /// <param name="replaced">Whether an existing annotation was replaced.</param>
     /// <returns>The object id of the annotation.</returns>
-    private static PdfObjectId Place(
-        PdfInterchangeAnnotation source,
-        PdfPage page,
-        PdfDictionary dictionary,
-        Dictionary<NameKey, int> existing,
-        Dictionary<int, PageBatch> batches,
-        out bool replaced)
+    private static PdfObjectId Place(PdfInterchangeAnnotation source, PdfPage page, PdfDictionary dictionary, Dictionary<NameKey, int> existing, Dictionary<int, PageBatch> batches, out bool replaced)
     {
         var store = dictionary.Owner!;
         replaced = false;
@@ -93,13 +87,13 @@ internal static class InterchangeAnnotationImporter
             var id = PdfPageAnnotations.MakeIndirect(store, page, index);
             if (id.IsValid)
             {
-                store.Replace(id, PdfValue.FromDictionary(dictionary));
+                StoreEditing.Replace(store, id, PdfValue.FromDictionary(dictionary));
                 replaced = true;
                 return id;
             }
         }
 
-        var added = store.Add(PdfValue.FromDictionary(dictionary));
+        var added = StoreEditing.Add(store, PdfValue.FromDictionary(dictionary));
         GetBatch(page, source.Page, batches).Added.Add(PdfValue.FromReference(added));
         return added;
     }
@@ -127,7 +121,7 @@ internal static class InterchangeAnnotationImporter
                 continue;
             }
 
-            var dictionary = store.GetDictionary(item.Id)!.Clone();
+            var dictionary = StoreReading.GetDictionary(store, item.Id)!.Clone();
             if (parent.IsValid)
             {
                 InterchangeAnnotationBuilder.LinkReply(dictionary, parent, item.Source.ReplyType, store.Names);
@@ -138,7 +132,7 @@ internal static class InterchangeAnnotationImporter
                 AddPopup(store, item, dictionary, popup, batches);
             }
 
-            store.Replace(item.Id, PdfValue.FromDictionary(dictionary));
+            StoreEditing.Replace(store, item.Id, PdfValue.FromDictionary(dictionary));
         }
     }
 
@@ -158,7 +152,7 @@ internal static class InterchangeAnnotationImporter
             window.Set(KnownName.P, PdfValue.FromReference(item.Page.Id));
         }
 
-        var id = store.Add(PdfValue.FromDictionary(window));
+        var id = StoreEditing.Add(store, PdfValue.FromDictionary(window));
         dictionary.Set(KnownName.Popup, PdfValue.FromReference(id));
         GetBatch(item.Page, item.Source.Page, batches).Added.Add(PdfValue.FromReference(id));
     }
@@ -257,7 +251,7 @@ internal static class InterchangeAnnotationImporter
     {
         /// <inheritdoc/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PdfValue Add(PdfStream stream) => PdfValue.FromReference(store.Add(PdfValue.FromStream(stream)));
+        public PdfValue Add(PdfStream stream) => PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromStream(stream)));
     }
 
     /// <summary>An annotation as it was placed in the document.</summary>

@@ -42,11 +42,10 @@ public sealed class NavigationTests
     public async Task NameTreeSearchBacktracksAcrossOverlappingKids()
     {
         using var document = Open(
-            "/Names << /Dests << /Kids [5 0 R 6 0 R 7 0 R] >> >>",
-            "<< /Limits [(a) (z)] /Names [(m) [3 0 R /Fit]] >>",
-            "<< /Limits [(b) (c)] /Names [(bb) [4 0 R /Fit]] >>",
-            "<< /Names [(zz) [3 0 R /Fit]] >>");
-
+        "/Names << /Dests << /Kids [5 0 R 6 0 R 7 0 R] >> >>",
+        "<< /Limits [(a) (z)] /Names [(m) [3 0 R /Fit]] >>",
+        "<< /Limits [(b) (c)] /Names [(bb) [4 0 R /Fit]] >>",
+        "<< /Names [(zz) [3 0 R /Fit]] >>");
         await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromString("bb"u8.ToArray()))?.PageIndex).IsEqualTo(SecondPage);
     }
 
@@ -55,10 +54,7 @@ public sealed class NavigationTests
     [Test]
     public async Task NameTreeFallsBackToAFullTableWhenLimitsAreWrong()
     {
-        using var document = Open(
-            "/Names << /Dests << /Kids [5 0 R] >> >>",
-            "<< /Limits [(a) (b)] /Names [(a) [3 0 R /Fit] (zz) [4 0 R /Fit]] >>");
-
+        using var document = Open("/Names << /Dests << /Kids [5 0 R] >> >>", "<< /Limits [(a) (b)] /Names [(a) [3 0 R /Fit] (zz) [4 0 R /Fit]] >>");
         await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromString("zz"u8.ToArray()))?.PageIndex).IsEqualTo(SecondPage);
         await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromString("absent"u8.ToArray()))).IsNull();
     }
@@ -68,9 +64,7 @@ public sealed class NavigationTests
     [Test]
     public async Task NameTreeComesBeforeTheDestsDictionary()
     {
-        using var document = Open(
-            "/Names << /Dests << /Names [(x) [4 0 R /Fit]] >> >> /Dests << /x [3 0 R /Fit] >>");
-
+        using var document = Open("/Names << /Dests << /Names [(x) [4 0 R /Fit]] >> >> /Dests << /x [3 0 R /Fit] >>");
         await Assert.That(PdfDocumentNavigation.ResolveDestination(document, PdfValue.FromName(document.Objects.Names.Intern("x")))?.PageIndex).IsEqualTo(SecondPage);
     }
 
@@ -79,13 +73,9 @@ public sealed class NavigationTests
     [Test]
     public async Task RelativeUriUsesTheBase()
     {
-        using var document = Open(
-            "/URI << /Base (https://example.com/docs/) >>",
-            "<< /S /URI /URI (a.pdf) >>",
-            "<< /S /URI /URI (mailto:me@example.com) >>");
+        using var document = Open("/URI << /Base (https://example.com/docs/) >>", "<< /S /URI /URI (a.pdf) >>", "<< /S /URI /URI (mailto:me@example.com) >>");
         var relative = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject));
         var absolute = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject + 1));
-
         await Assert.That(relative.Value is UriAction { Uri: "https://example.com/docs/a.pdf" }).IsTrue();
         await Assert.That(absolute.Value is UriAction { Uri: "mailto:me@example.com" }).IsTrue();
     }
@@ -95,13 +85,8 @@ public sealed class NavigationTests
     [Test]
     public async Task ScriptStreamsAreCapped()
     {
-        using var document = Open(
-            string.Empty,
-            "<< /S /JavaScript /JS 6 0 R >>",
-            MiniPdf.Stream(string.Empty, new('a', OversizedScript)));
-
+        using var document = Open(string.Empty, "<< /S /JavaScript /JS 6 0 R >>", MiniPdf.Stream(string.Empty, new('a', OversizedScript)));
         var script = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject)).Value as JavaScriptAction;
-
         await Assert.That(script?.Script.Length).IsEqualTo(ScriptLimit);
     }
 
@@ -110,11 +95,7 @@ public sealed class NavigationTests
     [Test]
     public async Task LaunchReadsDosAndUrlSpecifications()
     {
-        using var document = Open(
-            string.Empty,
-            "<< /S /Launch /F << /Type /Filespec /DOS (FILE.TXT) >> >>",
-            "<< /S /Launch /F << /Type /Filespec /FS /URL /F (https://example.com/a) >> >>");
-
+        using var document = Open(string.Empty, "<< /S /Launch /F << /Type /Filespec /DOS (FILE.TXT) >> >>", "<< /S /Launch /F << /Type /Filespec /FS /URL /F (https://example.com/a) >> >>");
         await Assert.That(PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject)).Value is LaunchAction { File: "FILE.TXT" }).IsTrue();
         await Assert.That(PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject + 1)).Value is UriAction { Uri: "https://example.com/a" }).IsTrue();
     }
@@ -124,11 +105,7 @@ public sealed class NavigationTests
     [Test]
     public async Task RemoteGoToExposesNamedDestination()
     {
-        using var document = Open(
-            string.Empty,
-            "<< /S /GoToR /F (other.pdf) /D (Chapter1) >>",
-            "<< /S /GoToR /F << /FS /URL /F (https://example.com/o.pdf) >> /D (Chapter1) >>");
-
+        using var document = Open(string.Empty, "<< /S /GoToR /F (other.pdf) /D (Chapter1) >>", "<< /S /GoToR /F << /FS /URL /F (https://example.com/o.pdf) >> /D (Chapter1) >>");
         var remoteAction = PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject)).Value;
         await Assert.That(remoteAction is RemoteGoToAction { File: "other.pdf", PageIndex: 0, NamedDestination: "Chapter1" }).IsTrue();
         await Assert.That(PdfDocumentNavigation.ReadAction(document, Action(document, ActionObject + 1)).Value is UriAction).IsTrue();
@@ -150,8 +127,7 @@ public sealed class NavigationTests
     /// <param name="document">The document.</param>
     /// <param name="number">The object number.</param>
     /// <returns>The dictionary.</returns>
-    private static PdfDictionary Action(PdfDocument document, int number) =>
-        document.Objects.GetDictionary(new(number, 0))!;
+    private static PdfDictionary Action(PdfDocument document, int number) => StoreReading.GetDictionary(document.Objects, new(number, 0))!;
 
     /// <summary>Opens a two page document; the catalog takes extra entries and objects 5 onwards follow.</summary>
     /// <param name="catalogEntries">The extra catalog entries.</param>

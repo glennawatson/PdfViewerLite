@@ -18,9 +18,20 @@ public static class PdfDocumentPages
     /// <returns>A task that completes when the page's objects are cached.</returns>
     /// <exception cref="ArgumentOutOfRangeException">The page does not exist.</exception>
     /// <exception cref="OperationCanceledException">The token was cancelled.</exception>
-    public static async ValueTask PrefetchPageAsync(PdfDocument document, int pageIndex, CancellationToken cancellationToken)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ValueTask PrefetchPageAsync(PdfDocument document, int pageIndex, CancellationToken cancellationToken) =>
+        PrefetchPageAsync(document, GetPage(document, pageIndex), cancellationToken);
+
+    /// <summary>Loads the resources of a captured page, even when its position in the document changes.</summary>
+    /// <param name="document">The document owning the page.</param>
+    /// <param name="page">The captured page.</param>
+    /// <param name="cancellationToken">Cancels the loading.</param>
+    /// <returns>A task completing when the page's objects and font bytes are cached.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="page"/> is null.</exception>
+    /// <exception cref="OperationCanceledException">The token was cancelled.</exception>
+    public static async ValueTask PrefetchPageAsync(PdfDocument document, PdfPage page, CancellationToken cancellationToken)
     {
-        var page = PdfDocumentPages.GetPage(document, pageIndex);
+        ArgumentNullException.ThrowIfNull(page);
         cancellationToken.ThrowIfCancellationRequested();
         await PdfPrefetcher.PrefetchAsync(document.Objects, page.Dictionary, PdfPrefetchKind.Page, cancellationToken).ConfigureAwait(false);
         await FontDataPrefetcher.PrepareAsync(page, cancellationToken).ConfigureAwait(false);
@@ -71,10 +82,18 @@ public static class PdfDocumentPages
             return pages;
         }
 
-        // Two readers may both rebuild; both read the same tree, so either result is right.
-        pages = PdfPageSet.Read(document.Objects);
-        _ = Interlocked.CompareExchange(ref document.State.PageSet, pages, null);
-        return Volatile.Read(ref document.State.PageSet) ?? pages;
+        lock (document.Objects.Gate)
+        {
+            if (Volatile.Read(ref document.State.PageSet) is { } current)
+            {
+                return current;
+            }
+
+            // Publish while holding the edit lock so undo cannot invalidate a tree that is still being read.
+            pages = PdfPageSet.Read(document.Objects);
+            Volatile.Write(ref document.State.PageSet, pages);
+            return pages;
+        }
     }
 
     /// <summary>Waits for a page's load to finish, then hands the page back.</summary>

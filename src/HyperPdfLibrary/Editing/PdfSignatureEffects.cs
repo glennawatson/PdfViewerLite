@@ -114,7 +114,7 @@ internal static class PdfSignatureEffects
         var field = signature.Field;
         var name = PdfChangeClassifier.FullName(field);
         var valueRaw = field.GetRaw(KnownName.V);
-        var value = store.Resolve(valueRaw).AsDictionary();
+        var value = StoreReading.Resolve(store, valueRaw).AsDictionary();
         var signed = value?.ContainsKey(KnownName.Contents) == true;
         var touched = SignatureTouched(store, changes, signature, valueRaw);
         var docMdp = ReadDocMdp(value, signed && valueRaw.IsReference && valueRaw.AsReference().Number == certifying);
@@ -122,14 +122,7 @@ internal static class PdfSignatureEffects
         var lockLevel = signed ? lockDictionary?.GetInt32(KnownName.P, 0) ?? 0 : 0;
         var permission = Strictest(docMdp, lockLevel);
         var locked = signed ? LockedChanges(store, value!, lockDictionary, changes.ChangedFields, name) : [];
-        return new(
-            name,
-            signed,
-            docMdp != 0,
-            permission,
-            incremental && signed && !touched,
-            changes.Kinds & ~Allowed(permission),
-            locked);
+        return new(name, signed, docMdp != 0, permission, incremental && signed && !touched, changes.Kinds & ~Allowed(permission), locked);
     }
 
     /// <summary>Determines whether the edits change a field's signature value or its signature dictionary.</summary>
@@ -145,8 +138,14 @@ internal static class PdfSignatureEffects
             return true;
         }
 
-        return signature.Id.IsValid && changes.ChangedObjects.Contains(signature.Id.Number)
-            && !PdfValueEquality.KeyEqual(store.GetOriginal(signature.Id.Number).AsDictionary(), signature.Field, KnownName.V);
+        return signature.Id.IsValid
+        && changes.ChangedObjects.Contains(signature.Id.Number)
+        && !PdfValueEquality.KeyEqual(
+        StoreTransactions.GetOriginal(
+        store,
+        signature.Id.Number).AsDictionary(),
+        signature.Field,
+        KnownName.V);
     }
 
     /// <summary>Reads a signature's DocMDP level from its /Reference transforms.</summary>
@@ -171,8 +170,7 @@ internal static class PdfSignatureEffects
     /// <param name="first">The first level.</param>
     /// <param name="second">The second level.</param>
     /// <returns>The stricter level.</returns>
-    private static int Strictest(int first, int second) =>
-        first == 0 || second == 0 ? Math.Max(first, second) : Math.Clamp(Math.Min(first, second), NoChanges, Annotating);
+    private static int Strictest(int first, int second) => first == 0 || second == 0 ? Math.Max(first, second) : Math.Clamp(Math.Min(first, second), NoChanges, Annotating);
 
     /// <summary>Lists the changed fields that a signature's FieldMDP transform or its field's /Lock locks.</summary>
     /// <param name="store">The document's objects.</param>
@@ -192,8 +190,10 @@ internal static class PdfSignatureEffects
         var references = signature.GetArray(KnownName.Reference);
         for (var i = 0; references is not null && i < references.Count; i++)
         {
-            if (references.GetDictionary(i) is { } reference && store.Names.NameEquals(reference.GetName(KnownName.TransformMethod), "FieldMDP"u8)
-                && reference.GetDictionary(KnownName.TransformParams) is { } parameters)
+            if (references.GetDictionary(i) is { } reference
+        && store.Names.NameEquals(
+        reference.GetName(KnownName.TransformMethod),
+        "FieldMDP"u8) && reference.GetDictionary(KnownName.TransformParams) is { } parameters)
             {
                 rules.Add(parameters);
             }
@@ -247,8 +247,7 @@ internal static class PdfSignatureEffects
         for (var i = 0; fields is not null && i < fields.Count; i++)
         {
             var name = PdfText.Decode(fields.Get(i).AsStringBytes());
-            if (string.Equals(name, field, StringComparison.Ordinal)
-                || (field.Length > name.Length && field.StartsWith(name, StringComparison.Ordinal) && field[name.Length] == '.'))
+            if (string.Equals(name, field, StringComparison.Ordinal) || (field.Length > name.Length && field.StartsWith(name, StringComparison.Ordinal) && field[name.Length] == '.'))
             {
                 return true;
             }

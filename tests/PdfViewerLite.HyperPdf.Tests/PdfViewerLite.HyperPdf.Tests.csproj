@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Refit" />
     <ProjectReference Include="..\..\src\PdfViewerLite.HyperPdf\PdfViewerLite.HyperPdf.csproj" />
     <!-- PDFium is the comparison baseline for the parity tests; the adapter itself does not reference it. -->
     <ProjectReference Include="..\..\src\PdfViewerLite.Pdfium\PdfViewerLite.Pdfium.csproj" />

@@ -60,9 +60,10 @@ public static class PdfDocumentSignatureValidation
     /// <param name="document">The document.</param>
     /// <returns>One report per entry of <see cref="PdfDocumentAttachments.GetSignatures"/>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IReadOnlyList<PdfSignatureValidationReport> ValidateSignatures(PdfDocument document) => PdfDocumentSignatureValidation.ValidateSignatures(
-document,
-PdfSignatureValidationOptions.Default);
+    public static IReadOnlyList<PdfSignatureValidationReport> ValidateSignatures(PdfDocument document) =>
+        PdfDocumentSignatureValidation.ValidateSignatures(
+        document,
+        PdfSignatureValidationOptions.Default);
 
     /// <summary>Checks every signature: byte ranges, changes after signing and whether MDP allows them, digests, signatures, timestamps and chains.</summary>
     /// <param name="document">The document.</param>
@@ -84,7 +85,7 @@ PdfSignatureValidationOptions.Default);
             return cached;
         }
 
-        var revisions = document.Objects.ReadRevisions();
+        var revisions = StoreRevisions.ReadRevisions(document.Objects);
         Volatile.Write(ref document.State.Revisions, revisions);
         return revisions;
     }

@@ -60,7 +60,7 @@ internal sealed partial class ConformanceScan
         for (var number = 1; number < objects.Size; number++)
         {
             PdfOpenContext.ThrowIfCancelled(objects.Context);
-            var value = objects.GetObject(new(number, 0));
+            var value = StoreReading.GetObject(objects, new(number, 0));
             if (value.AsStream() is { } stream)
             {
                 CheckStream(stream.Dictionary);

@@ -61,11 +61,11 @@ public sealed class FormTests
         {
             await using (var stream = File.Create(path))
             {
-                _ = ((PdfViewerLite.Core.Annotations.IAnnotationEditor)test.Document).Save(stream);
+                _ = ((PdfViewerLite.Core.Annotations.IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(PdfViewerLite.Core.Annotations.IAnnotationEditor))!).Save(stream);
             }
 
             using var reopened = new PdfiumEngine().Open(path, null);
-            var saved = Read((IFormFiller)reopened);
+            var saved = Read((IFormFiller)DocumentFeatures.CastFeature(reopened, typeof(IFormFiller))!);
 
             await Assert.That(typed).IsTrue();
             await Assert.That(ticked).IsTrue();
@@ -140,7 +140,7 @@ public sealed class FormTests
         public IDocument Document { get; }
 
         /// <summary>Gets the form filler.</summary>
-        public IFormFiller Filler => (IFormFiller)Document;
+        public IFormFiller Filler => (IFormFiller)DocumentFeatures.CastFeature(Document, typeof(IFormFiller))!;
 
         /// <inheritdoc/>
         public void Dispose()

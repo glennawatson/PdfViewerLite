@@ -154,7 +154,7 @@ jobs:
         architecture: ${{ matrix.rpm-architecture }}
         summary: Fast, tabbed PDF viewer
         description: |
-          Renders with PDFium, follows the KDE colour scheme and opens documents launched
+          Renders with HyperPDF, follows the KDE colour scheme and opens documents launched
           from the file manager as tabs in the running window.
         license: MIT
         url: https://github.com/glennawatson/PdfViewerLite
@@ -184,7 +184,7 @@ jobs:
         maintainer: Glenn Watson
         summary: Fast, tabbed PDF viewer
         description: |
-          Renders with PDFium, follows the KDE colour scheme and opens documents launched
+          Renders with HyperPDF, follows the KDE colour scheme and opens documents launched
           from the file manager as tabs in the running window.
         homepage: https://github.com/glennawatson/PdfViewerLite
         section: graphics

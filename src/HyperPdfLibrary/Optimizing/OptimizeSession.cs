@@ -68,8 +68,18 @@ internal sealed partial class OptimizeSession : IObjectTransformer
     /// <param name="options">The options.</param>
     /// <param name="progress">Receives progress, or <see langword="null"/>.</param>
     /// <param name="cancellationToken">Stops the run.</param>
-    internal OptimizeSession(PdfDocument source, PdfOptimizeOptions options, IProgress<PdfOptimizeProgress>? progress, CancellationToken cancellationToken)
-        : this(source, options, progress, false, cancellationToken)
+    internal OptimizeSession(
+        PdfDocument source,
+        PdfOptimizeOptions options,
+        IProgress<PdfOptimizeProgress>? progress,
+        CancellationToken cancellationToken)
+
+        : this(
+        source,
+        options,
+        progress,
+        false,
+        cancellationToken)
     {
     }
 
@@ -157,8 +167,7 @@ internal sealed partial class OptimizeSession : IObjectTransformer
                 continue;
             }
 
-            if ((field.IsName(KnownName.FT, KnownName.Sig) && !field.GetRaw(KnownName.V).IsNull)
-                || (field.GetArray(KnownName.Kids) is { } kids && HasSignedField(kids, depth + 1)))
+            if ((field.IsName(KnownName.FT, KnownName.Sig) && !field.GetRaw(KnownName.V).IsNull) || (field.GetArray(KnownName.Kids) is { } kids && HasSignedField(kids, depth + 1)))
             {
                 return true;
             }
@@ -170,15 +179,18 @@ internal sealed partial class OptimizeSession : IObjectTransformer
     /// <summary>Compares two PDF versions such as "1.4" and "2.0".</summary>
     /// <param name="version">The version.</param>
     /// <returns>The version as a number, or zero.</returns>
-    private static double VersionNumber(string version) =>
-        double.TryParse(version, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number) ? number : 0;
+    private static double VersionNumber(string version) => double.TryParse(version, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number) ? number : 0;
 
     /// <summary>Determines whether an object is file structure the rewrite replaces rather than drops.</summary>
     /// <param name="value">The object.</param>
     /// <returns><see langword="true"/> for cross-reference and object streams.</returns>
     private static bool IsStructural(PdfValue value) =>
         value.AsStream()?.Dictionary is { } dictionary
-        && (dictionary.IsName(KnownName.Type, KnownName.XRef) || dictionary.IsName(KnownName.Type, KnownName.ObjStm));
+        && (dictionary.IsName(
+        KnownName.Type,
+        KnownName.XRef) || dictionary.IsName(
+        KnownName.Type,
+        KnownName.ObjStm));
 
     /// <summary>Plans a signed document: only additions, appended as an incremental update, or an unchanged copy.</summary>
     /// <returns>The plan.</returns>
@@ -193,7 +205,7 @@ internal sealed partial class OptimizeSession : IObjectTransformer
         }
 
         AddTextLayers();
-        if (!Working.Objects.HasEdits)
+        if (!StoreEditing.HasEdits(Working.Objects))
         {
             return WritePlan.Copy(_source.Objects.Source);
         }
@@ -421,7 +433,7 @@ internal sealed partial class OptimizeSession : IObjectTransformer
                 continue;
             }
 
-            var value = store.GetObject(new(number, 0));
+            var value = StoreReading.GetObject(store, new(number, 0));
             if (!value.IsNull && !IsStructural(value))
             {
                 _report.Measure(PdfOptimizeCategory.UnusedObjects, value.AsStream()?.RawLength ?? 0, 0);

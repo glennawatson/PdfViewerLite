@@ -738,7 +738,7 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
 
         SpokenWord = word;
         var rects = new List<PageRect>();
-        var runs = new List<(int Start, int Count)>();
+        var runs = new List<ReadingCharacterRun>();
         ReadingDocument.GetRuns(_map, word.Start, word.Length, runs);
         foreach (var (start, count) in runs)
         {
@@ -840,7 +840,7 @@ public sealed partial class ReadAloudViewModel : ReactiveObject, IDisposable
         SpokenRange = new(sentence.Start, sentence.Length);
         RememberPosition();
         var rects = new List<PageRect>();
-        var runs = new List<(int Start, int Count)>();
+        var runs = new List<ReadingCharacterRun>();
         ReadingDocument.GetRuns(_map, sentence.Start, sentence.Length, runs);
         foreach (var (start, count) in runs)
         {

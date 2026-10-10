@@ -75,7 +75,7 @@ internal sealed class OptionalContentReader
         var printHidden = new HashSet<int>();
         for (var i = 0; i < layers.Length; i++)
         {
-            var dictionary = objects.GetDictionary(groups[i]);
+            var dictionary = StoreReading.GetDictionary(objects, groups[i]);
             var visible = reader.IsDefaultVisible(dictionary, groups[i].Number);
             if (dictionary is not null && !HasIntent(dictionary, true))
             {
@@ -180,8 +180,7 @@ internal sealed class OptionalContentReader
     /// <param name="entry">The /AS entry.</param>
     /// <param name="id">The group's object number.</param>
     /// <returns><see langword="true"/> when it applies.</returns>
-    private static bool AppliesTo(PdfDictionary? entry, int id) =>
-        entry is not null && (!entry.ContainsKey(KnownName.Event) || entry.IsName(KnownName.Event, KnownName.View)) && Lists(entry, id);
+    private static bool AppliesTo(PdfDictionary? entry, int id) => entry is not null && (!entry.ContainsKey(KnownName.Event) || entry.IsName(KnownName.Event, KnownName.View)) && Lists(entry, id);
 
     /// <summary>Determines whether an /AS entry's /OCGs lists a group.</summary>
     /// <param name="entry">The /AS entry.</param>
@@ -264,9 +263,7 @@ internal sealed class OptionalContentReader
         }
 
         var view = group.GetDictionary(KnownName.Usage)?.GetDictionary(KnownName.View);
-        return view is not null && view.ContainsKey(_viewState)
-            ? !view.IsName(_viewState, KnownName.OFF)
-            : _configuration is null || ConfigurationState(group, id);
+        return view is not null && view.ContainsKey(_viewState) ? !view.IsName(_viewState, KnownName.OFF) : _configuration is null || ConfigurationState(group, id);
     }
 
     /// <summary>
@@ -290,9 +287,13 @@ internal sealed class OptionalContentReader
             return !print.IsName(_printState, KnownName.OFF);
         }
 
-        return usage?.GetDictionary(KnownName.View) is { } view && view.ContainsKey(_viewState)
-            ? !view.IsName(_viewState, KnownName.OFF)
-            : _configuration is null || PrintConfigurationState(group, id);
+        return usage?.GetDictionary(KnownName.View) is { } view
+        && view.ContainsKey(_viewState) ? !view.IsName(
+        _viewState,
+        KnownName.OFF) : _configuration is null
+        || PrintConfigurationState(
+        group,
+        id);
     }
 
     /// <summary>Applies the configuration's base state, /ON, /OFF and the Print event's /AS entries to a group.</summary>

@@ -59,7 +59,7 @@ internal static class CarryTestDocuments
     internal static string[] WidgetNames(PdfDocument document, int pageIndex)
     {
         var widgets = new List<PdfFormWidget>();
-        PdfDocumentForms.GetForm(document).GetWidgets(pageIndex, widgets);
+        HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(PdfDocumentForms.GetForm(document), pageIndex, widgets);
         return [.. widgets.ConvertAll(static widget => widget.Name)];
     }
 

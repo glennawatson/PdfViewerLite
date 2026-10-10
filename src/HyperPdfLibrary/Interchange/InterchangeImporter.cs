@@ -38,7 +38,7 @@ internal static class InterchangeImporter
         var skipped = 0;
         foreach (var field in data.Fields)
         {
-            if (widgets.TryGetValue(field.Name, out var widget) && form.ImportValue(widget.PageIndex, widget.Index, field.Values))
+            if (widgets.TryGetValue(field.Name, out var widget) && HyperPdfLibrary.Forms.PdfFormImport.ImportValue(form, widget.PageIndex, widget.Index, field.Values))
             {
                 applied++;
             }
@@ -58,7 +58,7 @@ internal static class InterchangeImporter
     private static Dictionary<string, PdfFormWidget> IndexWidgets(PdfDocument document, PdfForm form)
     {
         var widgets = new Dictionary<string, PdfFormWidget>(StringComparer.Ordinal);
-        if (!form.HasForm)
+        if (!HyperPdfLibrary.Forms.PdfFormReading.HasForm(form))
         {
             return widgets;
         }
@@ -67,7 +67,7 @@ internal static class InterchangeImporter
         for (var i = 0; i < document.PageCount; i++)
         {
             page.Clear();
-            form.GetWidgets(i, page);
+            HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(form, i, page);
             foreach (var widget in page)
             {
                 _ = widgets.TryAdd(widget.Name, widget);

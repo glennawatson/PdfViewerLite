@@ -3,11 +3,14 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Document;
-using HyperPdfLibrary.Navigation;
+using HyperPdfLibrary.Rendering;
+using PdfViewerLite.Core.Attachments;
 using PdfViewerLite.Core.Documents;
+using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Geometry;
-
+using PdfViewerLite.Core.Signatures;
 namespace PdfViewerLite.HyperPdf;
 
 /// <summary>
@@ -15,13 +18,34 @@ namespace PdfViewerLite.HyperPdf;
 /// Safe to call from any thread.
 /// </summary>
 [DebuggerDisplay("HyperPdfDocument: {FilePath}")]
-public sealed partial class HyperPdfDocument : IDocument
+public sealed class HyperPdfDocument : IDocument
 {
     /// <summary>The managed document.</summary>
     private readonly PdfDocument _document;
 
-    /// <summary>The page sizes, read once.</summary>
-    private readonly PageSize[] _pageSizes;
+    /// <summary>Allows concurrent page reads and excludes them while page structure changes.</summary>
+    private readonly ReaderWriterLockSlim _pageAccess = new(LockRecursionPolicy.SupportsRecursion);
+
+    /// <summary>Serialises edits and saves, so each edit and the caches it drops change together.</summary>
+    private readonly Lock _editGate = new();
+
+    /// <summary>The native annotation editor, once made.</summary>
+    private HyperPdfAnnotations? _annotations;
+
+    /// <summary>The attachments, read once; viewing never adds or removes them.</summary>
+    private DocumentAttachment[]? _attachments;
+
+    /// <summary>The signatures, read once; they cannot change while the document is open.</summary>
+    private RawSignature[]? _signatures;
+
+    /// <summary>The registered page callers and the bit that stops registration after cleanup.</summary>
+    private int _pageAccessLeases;
+
+    /// <summary>The page sizes, replaced after editing the page tree.</summary>
+    private PageSize[] _pageSizes;
+
+    /// <summary>Owns page edit history and imported document lifetimes after the first page action.</summary>
+    private HyperPdfPageManager? _pageManager;
 
     /// <summary>The outline, read on first use.</summary>
     private OutlineNode[]? _outline;
@@ -31,6 +55,21 @@ public sealed partial class HyperPdfDocument : IDocument
 
     /// <summary>1 once disposed.</summary>
     private int _disposed;
+
+    /// <summary>The number of edits made since opening.</summary>
+    private long _editVersion;
+
+    /// <summary>The edit version the last successful save wrote.</summary>
+    private long _savedVersion;
+
+    /// <summary>The tint over fillable fields, packed by <see cref="HyperPdfFormRuntime.Pack"/> so one atomic write publishes it.</summary>
+    private long _highlight = HyperPdfFormRuntime.Pack(FormHighlight.Default);
+
+    /// <summary>The renderer, made on first use and replaced after each edit so no picture of the old page is replayed.</summary>
+    private PdfPageRenderer? _renderer;
+
+    /// <summary>The optional services, created and retained under the edit gate.</summary>
+    private object?[]? _featureSlots;
 
     /// <summary>Initializes a new instance of the <see cref="HyperPdfDocument"/> class.</summary>
     /// <param name="document">The managed document.</param>
@@ -51,81 +90,82 @@ public sealed partial class HyperPdfDocument : IDocument
     public string FilePath { get; }
 
     /// <inheritdoc/>
-    public int PageCount => _pageSizes.Length;
+    public int PageCount => Volatile.Read(ref _pageSizes).Length;
 
     /// <inheritdoc/>
     public bool IsDisposed => Volatile.Read(ref _disposed) != 0;
 
+    /// <summary>Gets or sets the owned AnnotationState state.</summary>
+    internal ref HyperPdfAnnotations? AnnotationState => ref _annotations;
+
+    /// <summary>Gets or sets the owned Attachments state.</summary>
+    internal ref DocumentAttachment[]? Attachments => ref _attachments;
+
+    /// <summary>Gets or sets the owned Signatures state.</summary>
+    internal ref RawSignature[]? Signatures => ref _signatures;
+
+    /// <summary>Gets the owned PageAccess state.</summary>
+    internal ReaderWriterLockSlim PageAccess => _pageAccess;
+
+    /// <summary>Gets or sets the owned PageAccessLeases state.</summary>
+    internal ref int PageAccessLeases => ref _pageAccessLeases;
+
+    /// <summary>Gets or sets the owned PageSizes state.</summary>
+    internal ref PageSize[] PageSizes => ref _pageSizes;
+
+    /// <summary>Gets or sets the owned PageManager state.</summary>
+    internal ref HyperPdfPageManager? PageManager => ref _pageManager;
+
+    /// <summary>Gets or sets the owned Outline state.</summary>
+    internal ref OutlineNode[]? Outline => ref _outline;
+
+    /// <summary>Gets or sets the owned Links state.</summary>
+    internal ref PageLink[]?[]? Links => ref _links;
+
     /// <summary>Gets the managed document.</summary>
     internal PdfDocument Document => _document;
 
-    /// <inheritdoc/>
-    public PageSize[] GetPageSizes() => (PageSize[])_pageSizes.Clone();
+    /// <summary>Gets the owned EditGate state.</summary>
+    internal Lock EditGate => _editGate;
+
+    /// <summary>Gets or sets the owned EditVersion state.</summary>
+    internal ref long EditVersion => ref _editVersion;
+
+    /// <summary>Gets or sets the owned SavedVersion state.</summary>
+    internal ref long SavedVersion => ref _savedVersion;
+
+    /// <summary>Gets or sets the owned Highlight state.</summary>
+    internal ref long Highlight => ref _highlight;
+
+    /// <summary>Gets or sets the owned RendererState state.</summary>
+    internal ref PdfPageRenderer? RendererState => ref _renderer;
+
+    /// <summary>Gets or sets the cached feature services.</summary>
+    internal ref object?[]? FeatureSlots => ref _featureSlots;
 
     /// <inheritdoc/>
-    public DocumentMetadata GetMetadata()
-    {
-        ObjectDisposedException.ThrowIf(IsDisposed, this);
-        var info = PdfDocumentMetadata.GetInfo(_document);
-        return new()
-        {
-            Title = info.Title,
-            Author = info.Author,
-            Subject = info.Subject,
-            Keywords = info.Keywords,
-            Creator = info.Creator,
-            Producer = info.Producer,
-            Created = info.Created,
-            Modified = info.Modified,
-            FormatVersion = info.Version,
-            IsEncrypted = info.IsEncrypted,
-        };
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public PageSize[] GetPageSizes() => HyperPdfNavigation.GetPageSizes(this);
 
     /// <inheritdoc/>
-    public string? GetPageLabel(int pageIndex) => IsDisposed ? null : PdfDocumentLabels.GetPageLabel(_document, pageIndex);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public DocumentMetadata GetMetadata() => HyperPdfNavigation.GetMetadata(this);
 
     /// <inheritdoc/>
-    public IReadOnlyList<OutlineNode> GetOutline()
-    {
-        if (IsDisposed)
-        {
-            return [];
-        }
-
-        var outline = Volatile.Read(ref _outline);
-        if (outline is null)
-        {
-            outline = ConvertOutline(PdfDocumentNavigation.GetOutline(_document));
-            Volatile.Write(ref _outline, outline);
-        }
-
-        return outline;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public string? GetPageLabel(int pageIndex) => HyperPdfNavigation.GetPageLabel(
+            this,
+            pageIndex);
 
     /// <inheritdoc/>
-    public IReadOnlyList<PageLink> GetLinks(int pageIndex)
-    {
-        if (IsDisposed || (uint)pageIndex >= (uint)PageCount)
-        {
-            return [];
-        }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IReadOnlyList<OutlineNode> GetOutline() => HyperPdfNavigation.GetOutline(this);
 
-        if (Volatile.Read(ref _links) is null)
-        {
-            _ = Interlocked.CompareExchange(ref _links, new PageLink[]?[PageCount], null);
-        }
-
-        var cache = Volatile.Read(ref _links)!;
-        var links = Volatile.Read(ref cache[pageIndex]);
-        if (links is null)
-        {
-            links = ReadLinks(pageIndex);
-            Volatile.Write(ref cache[pageIndex], links);
-        }
-
-        return links;
-    }
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IReadOnlyList<PageLink> GetLinks(int pageIndex) => HyperPdfNavigation.GetLinks(
+            this,
+            pageIndex);
 
     /// <inheritdoc/>
     public void Dispose()
@@ -135,55 +175,86 @@ public sealed partial class HyperPdfDocument : IDocument
             return;
         }
 
-        ResetRenderer();
-        _document.Dispose();
-    }
-
-    /// <summary>
-    /// Reads a page's link annotations as viewer links, followed by the web and email addresses written as text, as
-    /// the PDFium engine lists them.
-    /// </summary>
-    /// <param name="pageIndex">The page index.</param>
-    /// <returns>The links.</returns>
-    private PageLink[] ReadLinks(int pageIndex)
-    {
-        var links = ReadAnnotationLinks(pageIndex);
-        GetWebLinksNative(pageIndex, links);
-        return [.. links];
-    }
-
-    /// <summary>Reads a page's link annotations as viewer links.</summary>
-    /// <param name="pageIndex">The page index.</param>
-    /// <returns>The links.</returns>
-    private List<PageLink> ReadAnnotationLinks(int pageIndex)
-    {
-        var page = PdfDocumentPages.GetPage(_document, pageIndex);
-        var source = PdfDocumentLinks.GetLinks(_document, pageIndex);
-        var links = new List<PageLink>(source.Count);
-        foreach (var link in source)
+        lock (_editGate)
         {
-            var target = LinkTargets.From(_document, link.Action, pageIndex);
-            if (target.Kind != LinkTargetKind.None)
+            try
             {
-                links.Add(new(LinkTargets.ToPageRect(page.ToViewerRectangle(link.Bounds)), target));
+                using (HyperPdfNavigation.EnterPageWrite(this))
+                {
+                    _pageManager?.Dispose();
+                    HyperPdfRendering.ResetRenderer(this);
+                    _document.Dispose();
+                }
+            }
+            finally
+            {
+                HyperPdfPageAccess.Close(_pageAccess, ref _pageAccessLeases);
             }
         }
-
-        return links;
     }
 
-    /// <summary>Converts outline entries.</summary>
-    /// <param name="items">The library entries.</param>
-    /// <returns>The viewer entries.</returns>
-    private OutlineNode[] ConvertOutline(IReadOnlyList<PdfOutlineItem> items)
-    {
-        var nodes = new OutlineNode[items.Count];
-        for (var i = 0; i < nodes.Length; i++)
-        {
-            var item = items[i];
-            nodes[i] = new(item.Title, LinkTargets.From(_document, item.Action), ConvertOutline(item.Children), item.IsOpen);
-        }
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ValueTask PreparePageAsync(int pageIndex, CancellationToken cancellationToken) => HyperPdfRendering.PreparePageAsync(
+            this,
+            pageIndex,
+            cancellationToken);
 
-        return nodes;
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Render(in PageRenderInfo info, RenderTarget target) => HyperPdfRendering.Render(
+            this,
+            in info,
+            target);
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int GetCharacterCount(int pageIndex) => HyperPdfText.GetCharacterCount(
+            this,
+            pageIndex);
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int GetCharacterIndexAt(int pageIndex, PagePoint point, float tolerance) => HyperPdfText.GetCharacterIndexAt(
+            this,
+            pageIndex,
+            point,
+            tolerance);
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public string GetText(int pageIndex, int start, int count) => HyperPdfText.GetText(
+            this,
+            pageIndex,
+            start,
+            count);
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void GetTextBounds(int pageIndex, int start, int count, List<PageRect> output) => HyperPdfText.GetTextBounds(
+            this,
+            pageIndex,
+            start,
+            count,
+            output);
+
+    /// <inheritdoc/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Find(int pageIndex, string query, SearchOptions options, List<TextMatch> output) => HyperPdfText.Find(
+            this,
+            pageIndex,
+            query,
+            options,
+            output);
+
+    /// <summary>Gets an optional feature while the document is open.</summary>
+    /// <param name="featureType">The feature interface type.</param>
+    /// <returns>The stable feature, or null when unsupported.</returns>
+    /// <exception cref="ArgumentNullException">The feature type is null.</exception>
+    /// <exception cref="ObjectDisposedException">The document is closed.</exception>
+    public object? GetFeature(Type featureType)
+    {
+        ArgumentNullException.ThrowIfNull(featureType);
+        return HyperPdfFeatureRegistry.Get(this, featureType);
     }
 }

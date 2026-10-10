@@ -43,11 +43,17 @@ public sealed class ObjectStreamCacheTests
     [Arguments(ObjectStreamCache.DefaultMaxStreams, ObjectStreamCache.DefaultMaxBytes)]
     public async Task EveryObjectReadsBackWithAnyBudget(int maxStreams, long maxBytes)
     {
-        foreach (var order in new[] { Forward(), Reverse(), Scattered() })
+        foreach (var order in new[]
         {
-            using var store = PdfObjectStore.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
-            store.SetObjectStreamLimits(maxStreams, maxBytes);
+            Forward(),
+            Reverse(),
+            Scattered(),
+        }
 
+        )
+        {
+            using var store = StoreOpening.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
+            StoreObjectStreams.SetObjectStreamLimits(store, maxStreams, maxBytes);
             foreach (var page in order)
             {
                 await Assert.That(PageIsIntact(store, page)).IsTrue();
@@ -64,9 +70,8 @@ public sealed class ObjectStreamCacheTests
     {
         var file = ObjectStreamPdf.Create(PageCount, ObjectsPerStream);
         var containers = ObjectStreamPdf.ContainerCount(PageCount, ObjectsPerStream);
-        using var store = PdfObjectStore.Open(file, null);
-        store.SetObjectStreamLimits(FewStreams, SmallBytes);
-
+        using var store = StoreOpening.Open(file, null);
+        StoreObjectStreams.SetObjectStreamLimits(store, FewStreams, SmallBytes);
         for (var page = 0; page < PageCount; page++)
         {
             _ = PageIsIntact(store, page);
@@ -82,8 +87,7 @@ public sealed class ObjectStreamCacheTests
     [Test]
     public async Task DefaultBudgetBoundsTheCount()
     {
-        using var store = PdfObjectStore.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
-
+        using var store = StoreOpening.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
         for (var page = 0; page < PageCount; page++)
         {
             _ = PageIsIntact(store, page);
@@ -98,9 +102,8 @@ public sealed class ObjectStreamCacheTests
     [Test]
     public async Task NewestStreamStaysEvenOverTheByteBudget()
     {
-        using var store = PdfObjectStore.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
-        store.SetObjectStreamLimits(ObjectStreamCache.DefaultMaxStreams, TinyBytes);
-
+        using var store = StoreOpening.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
+        StoreObjectStreams.SetObjectStreamLimits(store, ObjectStreamCache.DefaultMaxStreams, TinyBytes);
         for (var page = 0; page < PageCount; page++)
         {
             await Assert.That(PageIsIntact(store, page)).IsTrue();
@@ -113,9 +116,8 @@ public sealed class ObjectStreamCacheTests
     [Test]
     public async Task ConcurrentReadersSeeEveryObject()
     {
-        using var store = PdfObjectStore.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
-        store.SetObjectStreamLimits(1, TinyBytes);
-
+        using var store = StoreOpening.Open(ObjectStreamPdf.Create(PageCount, ObjectsPerStream), null);
+        StoreObjectStreams.SetObjectStreamLimits(store, 1, TinyBytes);
         var tasks = new Task<bool>[Readers];
         for (var reader = 0; reader < Readers; reader++)
         {
@@ -124,7 +126,6 @@ public sealed class ObjectStreamCacheTests
         }
 
         var results = await Task.WhenAll(tasks);
-
         foreach (var result in results)
         {
             await Assert.That(result).IsTrue();
@@ -154,11 +155,11 @@ public sealed class ObjectStreamCacheTests
     /// <returns><see langword="true"/> when all three read back.</returns>
     private static bool PageIsIntact(PdfObjectStore store, int page)
     {
-        var dictionary = store.GetObject(new(ObjectStreamPdf.PageObject(page), 0)).AsDictionary();
+        var dictionary = StoreReading.GetObject(store, new(ObjectStreamPdf.PageObject(page), 0)).AsDictionary();
         return dictionary is not null
-            && dictionary.GetDictionary(KnownName.Parent) is { } parent
-            && parent.GetInt32(KnownName.Count) == PageCount
-            && dictionary.Get(KnownName.Contents).AsStream() is not null;
+        && dictionary.GetDictionary(KnownName.Parent) is { } parent
+        && parent.GetInt32(KnownName.Count) == PageCount
+        && dictionary.Get(KnownName.Contents).AsStream() is not null;
     }
 
     /// <summary>Gets the page indexes in order.</summary>

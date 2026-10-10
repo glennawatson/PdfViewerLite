@@ -59,7 +59,13 @@ public sealed class PrintTests
         using var main = new MainViewModel(test.Services);
         main.Open([test.CreateDocument("print.pdf", 1)]);
         var tab = main.SelectedTab!;
-        _ = ((IAnnotationEditor)tab.TryGetDocument()!).AddText(0, NoteAt, "Printed note", AnnotationTextSize, AnnotationColors.Sand, AnnotationKind.TextBox);
+        _ = ((IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(IAnnotationEditor))!).AddText(
+            0,
+            NoteAt,
+            "Printed note",
+            AnnotationTextSize,
+            AnnotationColors.Sand,
+            AnnotationKind.TextBox);
         using var handler = tab.PrintPreviewInteraction.RegisterHandler(ConfirmWhenReadyAsync);
 
         _ = await tab.PrintCommand.Execute().ToTask();

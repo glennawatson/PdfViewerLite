@@ -406,7 +406,9 @@ public sealed partial class PrintPreviewViewModel : ReactiveObject, IDisposable
     private async Task RebuildAsync()
     {
         var version = ++_version;
-        if (_tab.TryGetDocument() is not IPageExporter exporter || !ChoosePages())
+        if (((_tab.TryGetDocument())?.GetFeature(typeof(IPageExporter)) as IPageExporter) is not
+            {
+            } exporter || !ChoosePages())
         {
             IsValid = false;
             Summary = PageChoice == PrintPageChoice.Custom ? "Type pages like 1-3, 7" : "Nothing to print";

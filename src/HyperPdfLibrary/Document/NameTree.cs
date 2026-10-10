@@ -42,22 +42,19 @@ internal static class NameTree
     /// <param name="root">The tree's root node.</param>
     /// <param name="output">The list receiving each key and value.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void Enumerate(PdfDictionary? root, List<NameTreeEntry> output) =>
-        EnumerateCore(root, KnownName.Names, false, output);
+    internal static void Enumerate(PdfDictionary? root, List<NameTreeEntry> output) => EnumerateCore(root, KnownName.Names, false, output);
 
     /// <summary>Visits every entry of a name tree, in order, leaving each value as stored so a reference stays a reference.</summary>
     /// <param name="root">The tree's root node.</param>
     /// <param name="output">The list receiving each key and value.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void EnumerateRaw(PdfDictionary? root, List<NameTreeEntry> output) =>
-        EnumerateCore(root, KnownName.Names, true, output);
+    internal static void EnumerateRaw(PdfDictionary? root, List<NameTreeEntry> output) => EnumerateCore(root, KnownName.Names, true, output);
 
     /// <summary>Visits every entry of a number tree, in order.</summary>
     /// <param name="root">The tree's root node.</param>
     /// <param name="output">The list receiving each key and value.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static void EnumerateNumbers(PdfDictionary? root, List<NameTreeEntry> output) =>
-        EnumerateCore(root, KnownName.Nums, false, output);
+    internal static void EnumerateNumbers(PdfDictionary? root, List<NameTreeEntry> output) => EnumerateCore(root, KnownName.Nums, false, output);
 
     /// <summary>Finds a value by integer key in a number tree.</summary>
     /// <param name="root">The tree's root node.</param>
@@ -66,7 +63,7 @@ internal static class NameTree
     internal static PdfValue FindNumber(PdfDictionary? root, long key)
     {
         var raw = FindNumberRaw(root, key);
-        return raw.IsReference && root?.Owner is { } owner ? owner.Resolve(raw) : raw;
+        return raw.IsReference && root?.Owner is { } owner ? StoreReading.Resolve(owner, raw) : raw;
     }
 
     /// <summary>Finds a value by integer key in a number tree without following a reference.</summary>

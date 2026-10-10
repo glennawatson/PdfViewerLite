@@ -157,7 +157,7 @@ public sealed class TimestampTests
         {
             using var document = new PdfiumEngine().Open(path, null);
             var results = new List<DocumentSignature>();
-            foreach (var signature in ((ISignatureSource)document).GetSignatures())
+            foreach (var signature in ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ISignatureSource))!).GetSignatures())
             {
                 results.Add(SignatureVerifier.Verify(signature, path, trust));
             }

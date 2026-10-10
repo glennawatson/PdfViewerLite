@@ -34,10 +34,7 @@ public sealed class ConcurrencyTests
     /// <summary>The times each writer replaces the shared object.</summary>
     private const int Replacements = 800;
 
-    /// <summary>
-    /// The longest any test may run. This only catches a hang. The dispose test alone takes about 15 s of 17-thread work
-    /// and several times that on a loaded machine, so a tight limit fails on slow runs rather than on bugs.
-    /// </summary>
+    /// <summary>The hang bound for parallel work, renewed after each successful disposal round.</summary>
     private static readonly TimeSpan Limit = TimeSpan.FromMinutes(5);
 
     /// <summary>Sixteen tasks reading one document all see exactly what a single thread sees.</summary>
@@ -67,7 +64,7 @@ public sealed class ConcurrencyTests
         using var timeout = new CancellationTokenSource(Limit);
         using var document = PdfDocumentReader.Open(RobustnessSeeds.Create()[0].Bytes, null);
         var store = document.Objects;
-        var shared = store.Add(PdfValue.FromInteger(0));
+        var shared = StoreEditing.Add(store, PdfValue.FromInteger(0));
         var problems = new ConcurrentQueue<string>();
         var writing = true;
         var readers = new Task[Readers];
@@ -88,19 +85,18 @@ public sealed class ConcurrencyTests
         await Task.WhenAll(writers);
         Volatile.Write(ref writing, false);
         await Task.WhenAll(readers);
-
         await Assert.That(problems).IsEmpty();
         await Assert.That(CountDistinct(added)).IsEqualTo(Writers * AddsPerWriter);
         await Assert.That(CheckAdded(store, added)).IsEmpty();
-        await Assert.That(store.GetObject(shared).AsInteger(-1)).IsGreaterThanOrEqualTo(0);
+        await Assert.That(StoreReading.GetObject(store, shared).AsInteger(-1)).IsGreaterThanOrEqualTo(0);
     }
 
     /// <summary>Disposing while reads are in flight never crashes; each read finishes whole or throws ObjectDisposedException.</summary>
+    /// <param name="token">Cancelled when the test runner stops the test.</param>
     /// <returns>A task.</returns>
     [Test]
-    public async Task DisposeWhileReadingIsSafe()
+    public async Task DisposeWhileReadingIsSafe(CancellationToken token)
     {
-        using var timeout = new CancellationTokenSource(Limit);
         var failures = new List<string>();
         var seeds = RobustnessSeeds.Create();
         foreach (var seed in seeds)
@@ -108,7 +104,7 @@ public sealed class ConcurrencyTests
             var expected = ReadOnce(seed.Bytes);
             for (var round = 0; round < DisposeRounds; round++)
             {
-                failures.AddRange(await DisposeOnceAsync(seed, expected, round, timeout.Token));
+                failures.AddRange(await DisposeOnceAsync(seed, expected, round, token));
             }
         }
 
@@ -117,13 +113,13 @@ public sealed class ConcurrencyTests
 
     /// <summary>Disposing while reads are in flight is also safe for documents read through a file stream or a file mapping, whose byte sources hold leases and locks.</summary>
     /// <param name="kind">The source kind, from <see cref="SourceOpener.Kinds"/>.</param>
+    /// <param name="token">Cancelled when the test runner stops the test.</param>
     /// <returns>A task.</returns>
     [Test]
     [Arguments("stream")]
     [Arguments("mapped")]
-    public async Task DisposeWhileReadingFileSourcesIsSafe(string kind)
+    public async Task DisposeWhileReadingFileSourcesIsSafe(string kind, CancellationToken token)
     {
-        using var timeout = new CancellationTokenSource(Limit);
         var directory = SourceOpener.CreateDirectory();
         try
         {
@@ -134,7 +130,7 @@ public sealed class ConcurrencyTests
                 for (var round = 0; round < FileSourceRounds; round++)
                 {
                     var document = SourceOpener.Open(kind, seed.Bytes, new(), directory);
-                    failures.AddRange(await DisposeOnceAsync(document, seed, expected, round, timeout.Token));
+                    failures.AddRange(await DisposeOnceAsync(document, seed, expected, round, token));
                 }
             }
 
@@ -157,11 +153,10 @@ public sealed class ConcurrencyTests
             var id = new PdfObjectId(1, 0);
             document.Dispose();
             document.Dispose();
-
             await Assert.That(document.IsDisposed).IsTrue();
-            await Assert.That(() => document.Objects.GetObject(id)).Throws<ObjectDisposedException>();
-            await Assert.That(() => document.Objects.GetObject(id)).Throws<ObjectDisposedException>();
-            await Assert.That(() => document.Objects.Resolve(PdfValue.FromReference(id))).Throws<ObjectDisposedException>();
+            await Assert.That(() => StoreReading.GetObject(document.Objects, id)).Throws<ObjectDisposedException>();
+            await Assert.That(() => StoreReading.GetObject(document.Objects, id)).Throws<ObjectDisposedException>();
+            await Assert.That(() => StoreReading.Resolve(document.Objects, PdfValue.FromReference(id))).Throws<ObjectDisposedException>();
         }
     }
 
@@ -172,8 +167,7 @@ public sealed class ConcurrencyTests
     /// </summary>
     /// <param name="body">The body.</param>
     /// <returns>A task that completes with the body.</returns>
-    private static Task RunOnOwnThread(Action body) =>
-        Task.Factory.StartNew(body, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+    private static Task RunOnOwnThread(Action body) => Task.Factory.StartNew(body, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
     /// <summary>Opens a document and reads it on the calling thread.</summary>
     /// <param name="file">The file.</param>
@@ -239,7 +233,7 @@ public sealed class ConcurrencyTests
             {
                 for (var number = 1; number < store.Size; number++)
                 {
-                    var value = store.GetObject(new(number, 0));
+                    var value = StoreReading.GetObject(store, new(number, 0));
                     if (number == shared.Number && value.AsInteger(-1) < 0)
                     {
                         problems.Enqueue("the shared object was read as something other than a counter");
@@ -262,12 +256,12 @@ public sealed class ConcurrencyTests
     {
         for (var i = 0; i < AddsPerWriter; i++)
         {
-            added.Add(store.Add(PdfValue.FromInteger((writer * AddsPerWriter) + i)));
+            added.Add(StoreEditing.Add(store, PdfValue.FromInteger((writer * AddsPerWriter) + i)));
         }
 
         for (var i = 0; i < Replacements; i++)
         {
-            store.Replace(shared, PdfValue.FromInteger(i));
+            StoreEditing.Replace(store, shared, PdfValue.FromInteger(i));
         }
     }
 
@@ -299,7 +293,7 @@ public sealed class ConcurrencyTests
         {
             foreach (var id in added[writer])
             {
-                var value = store.GetObject(id).AsInteger(-1);
+                var value = StoreReading.GetObject(store, id).AsInteger(-1);
                 if (value < writer * AddsPerWriter || value >= (writer + 1) * AddsPerWriter)
                 {
                     wrong.Add(string.Create(CultureInfo.InvariantCulture, $"object {id.Number} read {value}"));
@@ -316,8 +310,19 @@ public sealed class ConcurrencyTests
     /// <param name="round">The round, which sets how long the disposer waits.</param>
     /// <param name="token">Cancelled when the test has run too long.</param>
     /// <returns>A line for each unexpected exception or damaged read.</returns>
-    private static Task<List<string>> DisposeOnceAsync(RobustnessSeeds.Seed seed, string expected, int round, CancellationToken token) =>
-        DisposeOnceAsync(PdfDocumentReader.Open(seed.Bytes, null), seed, expected, round, token);
+    private static Task<List<string>> DisposeOnceAsync(
+        RobustnessSeeds.Seed seed,
+        string expected,
+        int round,
+        CancellationToken token) =>
+        DisposeOnceAsync(
+        PdfDocumentReader.Open(
+        seed.Bytes,
+        null),
+        seed,
+        expected,
+        round,
+        token);
 
     /// <summary>Reads an open document from many tasks and disposes it while they work.</summary>
     /// <param name="document">The document, which this method disposes.</param>
@@ -328,16 +333,20 @@ public sealed class ConcurrencyTests
     /// <returns>A line for each unexpected exception or damaged read.</returns>
     private static async Task<List<string>> DisposeOnceAsync(PdfDocument document, RobustnessSeeds.Seed seed, string expected, int round, CancellationToken token)
     {
+        // Completing a round proves progress; CPU contention across earlier rounds is not a hang in this one.
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+        timeout.CancelAfter(Limit);
+        var roundToken = timeout.Token;
         var started = 0;
         var problems = new ConcurrentQueue<string>();
         var tasks = new Task[Readers + 1];
         for (var i = 0; i < Readers; i++)
         {
-            tasks[i] = RunOnOwnThread(() => ReadUntilDisposed(document, expected, problems, ref started, token));
+            tasks[i] = RunOnOwnThread(() => ReadUntilDisposed(document, expected, problems, ref started, roundToken));
         }
 
-        tasks[Readers] = DisposeAfterStartAsync(document, () => Volatile.Read(ref started), round, token);
-        await Task.WhenAll(tasks).WaitAsync(token);
+        tasks[Readers] = DisposeAfterStartAsync(document, () => Volatile.Read(ref started), round, roundToken);
+        await Task.WhenAll(tasks).WaitAsync(roundToken);
         var failures = new List<string>();
         foreach (var problem in problems)
         {

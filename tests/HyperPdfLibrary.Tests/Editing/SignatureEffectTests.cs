@@ -38,7 +38,6 @@ public sealed class SignatureEffectTests
     {
         using var document = PdfDocumentReader.Open(CreateSigned(FormFilling), null);
         var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
-
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.None);
         await Assert.That(report.Signatures.Count).IsEqualTo(SignatureCount);
         await Assert.That(report.Signatures[0].FieldName).IsEqualTo("Cert");
@@ -55,17 +54,15 @@ public sealed class SignatureEffectTests
     public async Task FormFillIsAllowedUnlessLocked()
     {
         using var document = PdfDocumentReader.Open(CreateSigned(FormFilling), null);
-        var field = document.Objects.GetDictionary(new(TextFieldNumber, 0))!.Clone();
+        var field = StoreReading.GetDictionary(document.Objects, new(TextFieldNumber, 0))!.Clone();
         field.Set(KnownName.V, PdfValue.FromString("New"u8.ToArray()));
-        document.Objects.Replace(new(TextFieldNumber, 0), PdfValue.FromDictionary(field));
+        StoreEditing.Replace(document.Objects, new(TextFieldNumber, 0), PdfValue.FromDictionary(field));
         var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
-
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.FormFill);
         await Assert.That(report.ChangedFields).IsEquivalentTo((string[])["Name"]);
         await Assert.That(report.Signatures[0].RemainsValid).IsTrue();
         await Assert.That(report.Signatures[1].LockedFieldsChanged).IsEquivalentTo((string[])["Name"]);
         await Assert.That(report.Signatures[1].RemainsValid).IsFalse();
-
         var rewrite = PdfDocumentSignatureEffects.GetSignatureEffects(document, false);
         await Assert.That(rewrite.Signatures[0].KeepsSignedBytes).IsFalse();
         await Assert.That(rewrite.Signatures[0].RemainsValid).IsFalse();
@@ -85,14 +82,13 @@ public sealed class SignatureEffectTests
         note.Set(KnownName.Type, PdfValue.FromName(KnownName.Annot));
         note.Set(KnownName.Subtype, PdfValue.FromName(KnownName.Square));
         note.Set(KnownName.Rect, PdfValue.FromArray(new PdfRectangle(0, 0, 1, 1).ToArray(document.Objects)));
-        var noteId = document.Objects.Add(PdfValue.FromDictionary(note));
+        var noteId = StoreEditing.Add(document.Objects, PdfValue.FromDictionary(note));
         var page = PdfDocumentPages.GetPage(document, 0).Dictionary.Clone();
         var annots = page.GetArray(KnownName.Annots)!.Clone();
         annots.Add(PdfValue.FromReference(noteId));
         page.Set(KnownName.Annots, PdfValue.FromArray(annots));
-        document.Objects.Replace(new(PageNumber, 0), PdfValue.FromDictionary(page));
+        StoreEditing.Replace(document.Objects, new(PageNumber, 0), PdfValue.FromDictionary(page));
         var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
-
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.Annotations);
         await Assert.That(report.Signatures[0].RemainsValid).IsEqualTo(allowed);
         await Assert.That(report.Signatures[1].RemainsValid).IsTrue();
@@ -107,7 +103,6 @@ public sealed class SignatureEffectTests
         PdfDocumentPageOperations.SetRotation(document, 0, QuarterTurn);
         PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = "Changed" });
         var report = PdfDocumentSignatureEffects.GetSignatureEffects(document, true);
-
         await Assert.That(report.Kinds).IsEqualTo(PdfChangeKinds.PageChanges | PdfChangeKinds.Metadata);
         await Assert.That(report.Signatures[0].DisallowedKinds).IsEqualTo(PdfChangeKinds.PageChanges | PdfChangeKinds.Metadata);
         await Assert.That(report.Signatures[1].DisallowedKinds).IsEqualTo(PdfChangeKinds.None);
@@ -119,14 +114,15 @@ public sealed class SignatureEffectTests
     /// </summary>
     /// <param name="permission">The DocMDP level.</param>
     /// <returns>The file bytes.</returns>
-    private static byte[] CreateSigned(int permission) => MiniPdf.Build(
+    private static byte[] CreateSigned(int permission) =>
+        MiniPdf.Build(
         "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R 6 0 R 8 0 R] /SigFlags 3 >> /Perms << /DocMDP 5 0 R >> >>",
         "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R 6 0 R 8 0 R] >>",
         "<< /FT /Sig /T (Cert) /V 5 0 R /Type /Annot /Subtype /Widget /Rect [0 0 0 0] /P 3 0 R >>",
         string.Create(
-            CultureInfo.InvariantCulture,
-            $"<< /Type /Sig /ByteRange [0 0 0 0] /Contents <00> /Reference [<< /Type /SigRef /TransformMethod /DocMDP /TransformParams << /P {permission} >> >>] >>"),
+        CultureInfo.InvariantCulture,
+        $"<< /Type /Sig /ByteRange [0 0 0 0] /Contents <00> /Reference [<< /Type /SigRef /TransformMethod /DocMDP /TransformParams << /P {permission} >> >>] >>"),
         "<< /FT /Sig /T (Approval) /V 7 0 R /Lock << /Type /SigFieldLock /Action /Include /Fields [(Name)] >> /Type /Annot /Subtype /Widget /Rect [0 0 0 0] /P 3 0 R >>",
         "<< /Type /Sig /ByteRange [0 0 0 0] /Contents <00> >>",
         "<< /FT /Tx /T (Name) /V (Old) /Type /Annot /Subtype /Widget /Rect [10 10 100 30] /P 3 0 R >>");

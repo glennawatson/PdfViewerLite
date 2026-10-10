@@ -85,7 +85,7 @@ internal static class ImageStreams
     {
         if (image.Dictionary.GetRaw(KnownName.SMask).AsStream() is { } mask)
         {
-            image.Dictionary.Set(KnownName.SMask, PdfValue.FromReference(store.Add(PdfValue.FromStream(mask))));
+            image.Dictionary.Set(KnownName.SMask, PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromStream(mask))));
         }
     }
 

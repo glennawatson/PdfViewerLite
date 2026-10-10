@@ -86,11 +86,13 @@ public static class PdfDocumentWebCapture
             if (sets.Count < PdfDocumentWebCapture.MaxContentSets && entry.Value.AsDictionary() is { } set && seen.Add(set))
             {
                 sets.Add(new(
-set.NameText("S") ?? string.Empty,
-set.GetStringBytes(set.Key("ID")).ToArray(),
-set.Text("CT"),
-PdfDocumentWebCapture.ReadSources(document, set.Value("SI")),
-set.Array("O")?.Count ?? 0));
+        set.NameText("S") ?? string.Empty,
+        set.GetStringBytes(set.Key("ID")).ToArray(),
+        set.Text("CT"),
+        PdfDocumentWebCapture.ReadSources(
+        document,
+        set.Value("SI")),
+        set.Array("O")?.Count ?? 0));
             }
         }
     }
@@ -126,10 +128,14 @@ set.Array("O")?.Count ?? 0));
         if (source is not null)
         {
             sources.Add(new(
-PdfDocumentFileSpecs.ReadFileSpec(document, source.Value("AU")),
-PdfDate.Parse(source.Value("TS").AsStringBytes()),
-PdfDate.Parse(source.Value("E").AsStringBytes()),
-source.Int("S", 0)));
+        PdfDocumentFileSpecs.ReadFileSpec(
+        document,
+        source.Value("AU")),
+        PdfDate.Parse(source.Value("TS").AsStringBytes()),
+        PdfDate.Parse(source.Value("E").AsStringBytes()),
+        source.Int(
+        "S",
+        0)));
         }
     }
 
@@ -153,7 +159,7 @@ source.Int("S", 0)));
         var dpm = node.Dict("DPM");
         for (var i = 0; dpm is not null && i < dpm.Count; i++)
         {
-            if (document.Objects.Resolve(dpm.GetValueAt(i)).ScalarText(document.Objects) is { } text)
+            if (StoreReading.Resolve(document.Objects, dpm.GetValueAt(i)).ScalarText(document.Objects) is { } text)
             {
                 metadata[document.Objects.Names.GetString(dpm.GetKeyAt(i))] = text;
             }

@@ -32,33 +32,33 @@ internal sealed class ContentRedactor(PdfRectangle[] regions, PdfRedactionOption
             switch (item)
             {
                 case PdfTextObject text:
-                {
-                    RedactText(text);
-                    break;
-                }
+                    {
+                        RedactText(text);
+                        break;
+                    }
 
                 case PdfImageObject image:
-                {
-                    RedactImage(image, content);
-                    break;
-                }
+                    {
+                        RedactImage(image, content);
+                        break;
+                    }
 
                 case PdfPathObject or PdfShadingObject:
-                {
-                    RedactLineArt(item);
-                    break;
-                }
+                    {
+                        RedactLineArt(item);
+                        break;
+                    }
 
                 case PdfFormObject form:
-                {
-                    RedactForm(form);
-                    break;
-                }
+                    {
+                        RedactForm(form);
+                        break;
+                    }
 
                 default:
-                {
-                    break;
-                }
+                    {
+                        break;
+                    }
             }
         }
     }
@@ -150,26 +150,26 @@ internal sealed class ContentRedactor(PdfRectangle[] regions, PdfRedactionOption
         switch (options.Images)
         {
             case PdfRedactionImageMode.Remove:
-            {
-                Remove(image);
-                break;
-            }
-
-            case PdfRedactionImageMode.RemoveUnlessInvisible:
-            {
-                if (VisibleTouches(image))
                 {
                     Remove(image);
+                    break;
                 }
 
-                break;
-            }
+            case PdfRedactionImageMode.RemoveUnlessInvisible:
+                {
+                    if (VisibleTouches(image))
+                    {
+                        Remove(image);
+                    }
+
+                    break;
+                }
 
             default:
-            {
-                Blank(image, content);
-                break;
-            }
+                {
+                    Blank(image, content);
+                    break;
+                }
         }
     }
 
@@ -181,21 +181,21 @@ internal sealed class ContentRedactor(PdfRectangle[] regions, PdfRedactionOption
         switch (ImageRedactor.Blank(image, regions, content.Resources, cancellationToken))
         {
             case BlankResult.Removed:
-            {
-                Remove(image);
-                break;
-            }
+                {
+                    Remove(image);
+                    break;
+                }
 
             case BlankResult.Blanked:
-            {
-                tally.ImagesBlanked++;
-                break;
-            }
+                {
+                    tally.ImagesBlanked++;
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 
@@ -237,7 +237,7 @@ internal sealed class ContentRedactor(PdfRectangle[] regions, PdfRedactionOption
 
         var inner = form.GetContent();
         Redact(inner);
-        if (inner.IsModified)
+        if (PdfPageContentEditing.IsModified(inner))
         {
             tally.FormsRewritten++;
         }

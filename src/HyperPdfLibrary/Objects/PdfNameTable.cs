@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Collections.Concurrent;
-using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -11,7 +10,7 @@ using System.Text;
 namespace HyperPdfLibrary.Objects;
 
 /// <summary>
-/// Interns the names of one document. Known names resolve through a shared frozen table; names the library does not know
+/// Interns the names of one document. Known names resolve through a shared perfect hash; names the library does not know
 /// are added to this table on first sight. Safe to call from any thread.
 /// </summary>
 [DebuggerDisplay("PdfNameTable: {Count} names")]
@@ -23,45 +22,40 @@ public sealed class PdfNameTable
     /// <summary>The most spellings cached by text; callers pass library constants, but the cap bounds a caller that does not.</summary>
     private const int MaxTextCache = 4096;
 
-    /// <summary>The shared table of known names.</summary>
-    private static readonly FrozenDictionary<byte[], int> KnownIds = CreateKnownIds();
+    /// <summary>The initial capacity for document-specific spellings.</summary>
+    private const int InitialCapacity = 16;
 
-    /// <summary>Looks up known names by their bytes without allocating.</summary>
-    private static readonly FrozenDictionary<byte[], int>.AlternateLookup<ReadOnlySpan<byte>> KnownLookup =
-        KnownIds.GetAlternateLookup<ReadOnlySpan<byte>>();
-
-    /// <summary>The UTF-8 spelling of each known name.</summary>
-    private static readonly byte[][] KnownSpellings = CreateKnownSpellings();
+    /// <summary>The factor by which spelling storage grows.</summary>
+    private const int GrowthFactor = 2;
 
     /// <summary>The names already interned from text, so a repeated lookup skips the encoding and the lock.</summary>
     private readonly ConcurrentDictionary<string, PdfName> _byText = new(StringComparer.Ordinal);
 
-    /// <summary>Guards <see cref="_ids"/> and <see cref="_spellings"/>.</summary>
+    /// <summary>Serialises insertion of a new document-specific name.</summary>
     private readonly Lock _gate = new();
 
-    /// <summary>The ids of the names this document added.</summary>
-    private readonly Dictionary<byte[], int> _ids = [with(ByteArrayComparer.Instance)];
+    /// <summary>The ids of the names this document added; the outer gate serialises all writers.</summary>
+    private readonly ConcurrentDictionary<byte[], int> _ids = new(1, InitialCapacity, ByteArrayComparer.Instance);
 
     /// <summary>The spellings of the names this document added, indexed by id minus the known count.</summary>
-    private readonly List<byte[]> _spellings = [];
+    private byte[]?[] _spellings = [];
+
+    /// <summary>The number of published document-specific spellings.</summary>
+    private int _count;
 
     /// <summary>Gets the number of names, known and added.</summary>
-    public int Count
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return KnownNameSpellings.Count + _spellings.Count;
-            }
-        }
-    }
+    public int Count => KnownNameSpellings.Count + Volatile.Read(ref _count);
 
     /// <summary>Gets the spelling of a known name.</summary>
     /// <param name="name">The known name.</param>
     /// <returns>The UTF-8 bytes.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ReadOnlySpan<byte> GetKnownSpelling(KnownName name) => KnownSpellings[(int)name];
+    public static ReadOnlySpan<byte> GetKnownSpelling(KnownName name)
+    {
+        var offsets = KnownNameSpellings.Offsets;
+        var index = (int)name;
+        return KnownNameSpellings.Blob.Slice(offsets[index], offsets[index + 1] - offsets[index]);
+    }
 
     /// <summary>Finds a known name by its bytes.</summary>
     /// <param name="spelling">The name's bytes, without the slash and with #xx escapes decoded.</param>
@@ -69,10 +63,18 @@ public sealed class PdfNameTable
     /// <returns><see langword="true"/> when the name is known.</returns>
     public static bool TryGetKnown(ReadOnlySpan<byte> spelling, out PdfName name)
     {
-        if (KnownLookup.TryGetValue(spelling, out var id))
+        if (!spelling.IsEmpty)
         {
-            name = new(id);
-            return true;
+            var hash = KnownNameHash.Hash(spelling);
+            var size = KnownNameSpellings.Count - 1;
+            var displacement = KnownNameSpellings.Displacements[(int)(hash % (uint)size)];
+            var slot = displacement < 0 ? -displacement - 1 : (int)(KnownNameHash.Displace(hash, displacement) % (uint)size);
+            var id = KnownNameSpellings.Slots[slot];
+            if (GetKnownSpelling((KnownName)id).SequenceEqual(spelling))
+            {
+                name = new(id);
+                return true;
+            }
         }
 
         name = default;
@@ -84,24 +86,20 @@ public sealed class PdfNameTable
     /// <returns>The name.</returns>
     public PdfName Intern(ReadOnlySpan<byte> spelling)
     {
-        if (KnownLookup.TryGetValue(spelling, out var known))
+        if (TryGetKnown(spelling, out var known))
         {
-            return new(known);
+            return known;
+        }
+
+        var lookup = _ids.GetAlternateLookup<ReadOnlySpan<byte>>();
+        if (lookup.TryGetValue(spelling, out var id))
+        {
+            return new(id);
         }
 
         lock (_gate)
         {
-            var lookup = _ids.GetAlternateLookup<ReadOnlySpan<byte>>();
-            if (lookup.TryGetValue(spelling, out var id))
-            {
-                return new(id);
-            }
-
-            var bytes = spelling.ToArray();
-            id = KnownNameSpellings.Count + _spellings.Count;
-            _spellings.Add(bytes);
-            _ids.Add(bytes, id);
-            return new(id);
+            return lookup.TryGetValue(spelling, out id) ? new(id) : AddUnknown(spelling);
         }
     }
 
@@ -132,14 +130,12 @@ public sealed class PdfNameTable
     {
         if (name.IsKnown)
         {
-            return KnownSpellings[name.Id];
+            return GetKnownSpelling((KnownName)name.Id);
         }
 
-        lock (_gate)
-        {
-            var index = name.Id - KnownNameSpellings.Count;
-            return (uint)index < (uint)_spellings.Count ? _spellings[index] : [];
-        }
+        var index = name.Id - KnownNameSpellings.Count;
+        var spellings = Volatile.Read(ref _spellings);
+        return (uint)index < (uint)spellings.Length ? Volatile.Read(ref spellings[index]) ?? [] : [];
     }
 
     /// <summary>Gets the spelling of a name as text.</summary>
@@ -155,30 +151,29 @@ public sealed class PdfNameTable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool NameEquals(PdfName name, ReadOnlySpan<byte> spelling) => GetSpelling(name).SequenceEqual(spelling);
 
-    /// <summary>Builds the shared table of known names.</summary>
-    /// <returns>The table.</returns>
-    private static FrozenDictionary<byte[], int> CreateKnownIds()
+    /// <summary>Publishes a new spelling before making its id visible to lock-free readers.</summary>
+    /// <param name="spelling">The document-specific spelling.</param>
+    /// <returns>The newly assigned name.</returns>
+    private PdfName AddUnknown(ReadOnlySpan<byte> spelling)
     {
-        var ids = new Dictionary<byte[], int>(KnownNameSpellings.Count, ByteArrayComparer.Instance);
-        for (var i = 1; i < KnownNameSpellings.Count; i++)
+        var count = _count;
+        var spellings = _spellings;
+        if (count == spellings.Length)
         {
-            ids[Encoding.UTF8.GetBytes(KnownNameSpellings.All[i])] = i;
+            var grown = new byte[]?[Math.Max(InitialCapacity, spellings.Length * GrowthFactor)];
+            spellings.CopyTo(grown, 0);
+            spellings = grown;
+            Volatile.Write(ref _spellings, spellings);
         }
 
-        return ids.ToFrozenDictionary(ByteArrayComparer.Instance);
-    }
+        var bytes = spelling.ToArray();
+        var id = KnownNameSpellings.Count + count;
+        Volatile.Write(ref spellings[count], bytes);
+        Volatile.Write(ref _count, count + 1);
 
-    /// <summary>Builds the UTF-8 spellings of the known names.</summary>
-    /// <returns>The spellings, indexed by id.</returns>
-    private static byte[][] CreateKnownSpellings()
-    {
-        var spellings = new byte[KnownNameSpellings.Count][];
-        for (var i = 0; i < spellings.Length; i++)
-        {
-            spellings[i] = Encoding.UTF8.GetBytes(KnownNameSpellings.All[i]);
-        }
-
-        return spellings;
+        // Readers that obtain the id must also see its spelling and a Count that includes it.
+        _ = _ids.TryAdd(bytes, id);
+        return new(id);
     }
 
     /// <summary>Encodes a spelling as UTF-8 and interns it.</summary>

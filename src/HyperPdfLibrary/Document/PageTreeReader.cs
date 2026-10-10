@@ -52,7 +52,7 @@ internal static class PageTreeReader
     {
         firstChild = default;
         var id = node.Reference.AsReference();
-        var dictionary = objects.Resolve(node.Reference).AsDictionary();
+        var dictionary = StoreReading.Resolve(objects, node.Reference).AsDictionary();
         if (dictionary is null)
         {
             return false;
@@ -130,7 +130,7 @@ internal static class PageTreeReader
         {
             PdfOpenContext.ThrowIfCancelled(objects.Context);
             var id = new PdfObjectId(number, 0);
-            if (objects.GetObject(id).AsDictionary() is { } dictionary && dictionary.IsName(KnownName.Type, KnownName.Page))
+            if (StoreReading.GetObject(objects, id).AsDictionary() is { } dictionary && dictionary.IsName(KnownName.Type, KnownName.Page))
             {
                 pages.Add(new(pages.Count, id, dictionary, InheritFromParents(dictionary)));
             }
@@ -156,7 +156,7 @@ internal static class PageTreeReader
         }
 
         var chain = new List<PdfDictionary>();
-        var visited = new HashSet<PdfDictionary>(ReferenceEqualityComparer.Instance) { page };
+        var visited = new HashSet<PdfDictionary>(ReferenceEqualityComparer.Instance) { page, };
         while (parent is not null && chain.Count < PdfLimits.MaxPageTreeDepth && visited.Add(parent))
         {
             chain.Add(parent);

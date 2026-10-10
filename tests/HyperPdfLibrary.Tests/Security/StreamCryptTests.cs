@@ -43,7 +43,6 @@ public sealed class StreamCryptTests
         var plain = PlainText.ToArray();
         var stored = encryptMetadata ? setup.Handler.EncryptStream(Id(), plain) : plain;
         var file = FileWith(setup, "/Type /Metadata /Subtype /XML", stored);
-
         await Assert.That(Read(file)).IsEquivalentTo(plain);
     }
 
@@ -55,7 +54,6 @@ public sealed class StreamCryptTests
         using var setup = EncryptionSetup.Revision4(false, new());
         var plain = PlainText.ToArray();
         var file = FileWith(setup, string.Empty, setup.Handler.EncryptStream(Id(), plain));
-
         await Assert.That(Read(file)).IsEquivalentTo(plain);
     }
 
@@ -67,7 +65,6 @@ public sealed class StreamCryptTests
         using var setup = EncryptionSetup.Revision4(true, new());
         var plain = PlainText.ToArray();
         var file = FileWith(setup, "/Filter /Crypt /DecodeParms << /Type /CryptFilterDecodeParms /Name /Identity >>", plain);
-
         await Assert.That(Read(file)).IsEquivalentTo(plain);
     }
 
@@ -79,7 +76,6 @@ public sealed class StreamCryptTests
         using var setup = EncryptionSetup.Revision4(true, new());
         var plain = PlainText.ToArray();
         var file = FileWith(setup, "/Filter [/Crypt]", plain);
-
         await Assert.That(Read(file)).IsEquivalentTo(plain);
     }
 
@@ -91,7 +87,6 @@ public sealed class StreamCryptTests
         using var setup = EncryptionSetup.Revision4(true, new());
         var plain = PlainText.ToArray();
         var file = FileWith(setup, "/Filter [/Crypt] /DecodeParms [<< /Name /Other >>]", setup.EncryptRc4(Id(), plain));
-
         await Assert.That(Read(file)).IsEquivalentTo(plain);
     }
 
@@ -103,7 +98,6 @@ public sealed class StreamCryptTests
         using var setup = EncryptionSetup.Revision4(true, new());
         var plain = PlainText.ToArray();
         var file = FileWith(setup, "/Filter /Crypt /DecodeParms << /Name /StdCF >>", setup.Handler.EncryptStream(Id(), plain));
-
         await Assert.That(Read(file)).IsEquivalentTo(plain);
     }
 
@@ -116,21 +110,29 @@ public sealed class StreamCryptTests
     /// <param name="entries">The stream's dictionary entries.</param>
     /// <param name="stored">The bytes as stored in the file.</param>
     /// <returns>The file.</returns>
-    private static byte[] FileWith(EncryptionSetup setup, string entries, byte[] stored) =>
-        new RawPdf()
-            .Object(1, Catalog)
-            .Object(PagesNumber, Pages)
-            .Object(EncryptNumber, setup.EncryptText)
-            .Stream(StreamNumber, entries, stored)
-            .Table(FileSize, $"/Root 1 0 R /Encrypt {EncryptNumber} 0 R /ID [<{setup.FileIdHex}> <{setup.FileIdHex}>]")
-            .ToArray();
+    private static byte[] FileWith(
+        EncryptionSetup setup,
+        string entries,
+        byte[] stored) =>
+        new RawPdf().Object(
+        1,
+        Catalog).Object(
+        PagesNumber,
+        Pages).Object(
+        EncryptNumber,
+        setup.EncryptText).Stream(
+        StreamNumber,
+        entries,
+        stored).Table(
+        FileSize,
+        $"/Root 1 0 R /Encrypt {EncryptNumber} 0 R /ID [<{setup.FileIdHex}> <{setup.FileIdHex}>]").ToArray();
 
     /// <summary>Opens a file and decodes the stream under test.</summary>
     /// <param name="file">The file.</param>
     /// <returns>The decoded bytes.</returns>
     private static byte[] Read(byte[] file)
     {
-        using var store = PdfObjectStore.Open(file, null);
-        return store.GetObject(Id()).AsStream()!.DecodeToArray();
+        using var store = StoreOpening.Open(file, null);
+        return StoreReading.GetObject(store, Id()).AsStream()!.DecodeToArray();
     }
 }

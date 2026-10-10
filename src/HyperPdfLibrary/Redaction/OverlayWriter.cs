@@ -71,7 +71,7 @@ internal static class OverlayWriter
 
             if (builder.Length > 0)
             {
-                content.Append(builder.WrittenSpan);
+                PdfPageContentEditing.Append(content, builder.WrittenSpan);
             }
         }
         finally
@@ -179,8 +179,8 @@ internal static class OverlayWriter
     /// <returns>The font's resource name.</returns>
     private static PdfName AddFont(PdfPageContent content)
     {
-        var name = content.AllocateName(KnownName.Font, "RdF");
-        content.AddResource(KnownName.Font, name, PdfValue.FromDictionary(AppearanceFontMetrics.CreateFontDictionary(content.Document.Objects, AppearanceFont.Helvetica)));
+        var name = PdfPageContentEditing.AllocateName(content, KnownName.Font, "RdF");
+        PdfPageContentEditing.AddResource(content, KnownName.Font, name, PdfValue.FromDictionary(AppearanceFontMetrics.CreateFontDictionary(content.Document.Objects, AppearanceFont.Helvetica)));
         return name;
     }
 
@@ -195,9 +195,9 @@ internal static class OverlayWriter
         var box = overlay.Dictionary.TryGetRectangle(KnownName.BBox, out var found) ? found : bounds;
         var scaleX = box.Width > 0 ? bounds.Width / box.Width : 1;
         var scaleY = box.Height > 0 ? bounds.Height / box.Height : 1;
-        var name = content.AllocateName(KnownName.XObject, "RdO");
+        var name = PdfPageContentEditing.AllocateName(content, KnownName.XObject, "RdO");
         var raw = mark.Annotation.GetRaw(mark.Annotation.Owner!.Names.Intern("RO"u8));
-        content.AddResource(KnownName.XObject, name, raw.IsReference ? raw : PdfValue.FromStream(overlay));
+        PdfPageContentEditing.AddResource(content, KnownName.XObject, name, raw.IsReference ? raw : PdfValue.FromStream(overlay));
         builder.Transform(scaleX, 0, 0, scaleY, bounds.Left - (box.Left * scaleX), bounds.Bottom - (box.Bottom * scaleY));
         builder.DrawXObject(content.Document.Objects.Names.GetSpelling(name));
     }

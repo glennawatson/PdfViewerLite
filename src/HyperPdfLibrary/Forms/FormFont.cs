@@ -92,7 +92,7 @@ internal sealed class FormFont
             var raw = LookUp(FieldAttributes.Find(widget, KnownName.DR).AsDictionary(), key);
             raw = raw.IsNull ? LookUp(form?.GetDictionary(KnownName.DR), key) : raw;
             raw = raw.IsNull ? LookUp(pageResources, key) : raw;
-            if (!raw.IsNull && store.Resolve(raw).AsDictionary() is { } dictionary && FromDictionary(store, name, raw, dictionary, fonts) is { } found)
+            if (!raw.IsNull && StoreReading.Resolve(store, raw).AsDictionary() is { } dictionary && FromDictionary(store, name, raw, dictionary, fonts) is { } found)
             {
                 return found;
             }

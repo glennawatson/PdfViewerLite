@@ -68,9 +68,9 @@ public class HyperPdfOptimizeCopyBenchmarks
         _editedPath = Path.Combine(Path.GetTempPath(), $"optimise-copy-edited-{Guid.NewGuid():N}.pdf");
         File.WriteAllBytes(_editedPath, TestPdf.CreateArticle(Pages));
         _edited = (HyperPdfDocument)new HyperPdfEngine().Open(_editedPath, null);
-        _ = _edited.AddNote(0, new(NoteX, NoteY), "A note", NoteColor);
-        var removed = _edited.AddNote(0, new(NoteX, NoteY + NoteY), "A hidden note", NoteColor);
-        _ = _edited.SetRemoved(0, removed, true);
+        _ = HyperPdfDocumentAnnotationEditing.AddNote(_edited, 0, new(NoteX, NoteY), "A note", NoteColor);
+        var removed = HyperPdfDocumentAnnotationEditing.AddNote(_edited, 0, new(NoteX, NoteY + NoteY), "A hidden note", NoteColor);
+        _ = HyperPdfDocumentAnnotationEditing.SetRemoved(_edited, 0, removed, true);
     }
 
     /// <summary>Closes and deletes the documents.</summary>
@@ -93,13 +93,13 @@ public class HyperPdfOptimizeCopyBenchmarks
     /// <returns>The bytes written.</returns>
     [Benchmark]
     public async Task<long> ThroughAdapter() =>
-        (await _document.OptimizeAsync(Stream.Null, Settings, null, CancellationToken.None).ConfigureAwait(false)).BytesAfter;
+        (await HyperPdfDocumentOptimization.OptimizeAsync(_document!, Stream.Null, Settings, null, CancellationToken.None).ConfigureAwait(false)).BytesAfter;
 
     /// <summary>Optimises a document with unsaved edits and an annotation removed but kept, through the adapter.</summary>
     /// <returns>The bytes written.</returns>
     [Benchmark]
     public async Task<long> ThroughAdapterWithEdits() =>
-        (await _edited.OptimizeAsync(Stream.Null, Settings, null, CancellationToken.None).ConfigureAwait(false)).BytesAfter;
+        (await HyperPdfDocumentOptimization.OptimizeAsync(_edited, Stream.Null, Settings, null, CancellationToken.None).ConfigureAwait(false)).BytesAfter;
 
     /// <summary>
     /// Runs the optimisation up to the first write to the output: the snapshot and the plan, which run on the caller's
@@ -112,7 +112,7 @@ public class HyperPdfOptimizeCopyBenchmarks
     {
         try
         {
-            _ = await _edited.OptimizeAsync(new StopAtFirstWriteStream(), Settings, null, CancellationToken.None).ConfigureAwait(false);
+            _ = await HyperPdfDocumentOptimization.OptimizeAsync(_edited, new StopAtFirstWriteStream(), Settings, null, CancellationToken.None).ConfigureAwait(false);
             return false;
         }
         catch (StopAtFirstWriteStream.StoppedException)

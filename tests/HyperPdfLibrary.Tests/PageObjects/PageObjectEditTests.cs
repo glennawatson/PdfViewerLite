@@ -261,7 +261,7 @@ public sealed class PageObjectEditTests
         using var page = new RenderTestPage(pdf);
         var content = PdfDocumentPageContent.GetPageContent(page.Document, 0);
         content.Objects[0].Delete();
-        content.Apply();
+        PdfPageContentApplication.Apply(content);
         var deleted = page.RenderPage();
         _ = PdfDocumentEditing.Undo(page.Document);
         var restored = page.RenderPage();
@@ -279,7 +279,7 @@ public sealed class PageObjectEditTests
         using var document = PdfDocumentReader.Open(pdf, null);
         var content = PdfDocumentPageContent.GetPageContent(document, 0);
         content.Objects[0].Translate(Shift, 0);
-        content.Apply();
+        PdfPageContentApplication.Apply(content);
         var compact = PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
         var incremental = PdfIncrementalWriter.Save(document.Objects);
 

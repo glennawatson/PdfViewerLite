@@ -61,6 +61,7 @@ public sealed partial class PdfPageRenderer
     /// <returns><see langword="false"/> when the page does not exist or the target is invalid.</returns>
     /// <exception cref="ObjectDisposedException">The renderer has been disposed.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxEdge"/> is not positive.</exception>
+    /// <remarks>The target is drawn directly; a drawing exception can leave partial pixels.</remarks>
     public unsafe bool RenderThumbnail(int pageIndex, int maxEdge, PdfTileTarget target)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxEdge);
@@ -77,16 +78,29 @@ public sealed partial class PdfPageRenderer
         }
 
         var surface = RenderSurface.Current;
-        var canvas = surface.GetCanvas(target.Width, target.Height);
-        var saved = canvas.Save();
-        canvas.ResetMatrix();
-        canvas.ClipRect(new(0, 0, target.Width, target.Height));
-        canvas.Clear(SKColors.White);
-        canvas.DrawImage(embedded, new SKRect(0, 0, target.Width, target.Height), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
-        canvas.RestoreToCount(saved);
+        BorrowedPixelDrawing.CheckAvailable(surface);
         fixed (byte* pixels = target.Pixels)
         {
-            return surface.ReadPixels(new(target.Width, target.Height, SKColorType.Bgra8888, SKAlphaType.Premul), (nint)pixels, target.Stride);
+            try
+            {
+                if (!BorrowedPixelDrawing.Attach(surface, target, (nint)pixels))
+                {
+                    return false;
+                }
+
+                var canvas = surface.Canvas;
+                var saved = canvas.Save();
+                canvas.ResetMatrix();
+                canvas.ClipRect(new(0, 0, target.Width, target.Height));
+                canvas.Clear(SKColors.White);
+                canvas.DrawImage(embedded, new SKRect(0, 0, target.Width, target.Height), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
+                canvas.RestoreToCount(saved);
+                return true;
+            }
+            finally
+            {
+                BorrowedPixelDrawing.Detach(surface);
+            }
         }
     }
 

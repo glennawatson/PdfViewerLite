@@ -32,10 +32,39 @@ internal static class WritingTestDocuments
 
     /// <summary>Gets the padding mixed into passwords before revision 5.</summary>
     private static ReadOnlySpan<byte> Padding =>
-    [
-        0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08,
-        0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A,
-    ];
+        [0x28,
+        0xBF,
+        0x4E,
+        0x5E,
+        0x4E,
+        0x75,
+        0x8A,
+        0x41,
+        0x64,
+        0x00,
+        0x4E,
+        0x56,
+        0xFF,
+        0xFA,
+        0x01,
+        0x08,
+        0x2E,
+        0x2E,
+        0x00,
+        0xB6,
+        0xD0,
+        0x68,
+        0x3E,
+        0x80,
+        0x2F,
+        0x0C,
+        0xA9,
+        0xFE,
+        0x64,
+        0x53,
+        0x69,
+        0x7A,
+        ];
 
     /// <summary>Gets the decoded content stream of every page, in page order.</summary>
     /// <param name="store">The document.</param>
@@ -55,7 +84,7 @@ internal static class WritingTestDocuments
         var missing = 0;
         for (var number = 1; number < store.Size; number++)
         {
-            missing += store.GetObject(new(number, 0)).IsNull ? 1 : 0;
+            missing += StoreReading.GetObject(store, new(number, 0)).IsNull ? 1 : 0;
         }
 
         return missing;
@@ -69,7 +98,7 @@ internal static class WritingTestDocuments
     /// <returns>The encrypted document.</returns>
     internal static byte[] Encrypt(byte[] plainFile)
     {
-        using var plain = PdfObjectStore.Open(plainFile, null);
+        using var plain = StoreOpening.Open(plainFile, null);
         var firstId = new byte[IdLength];
         var owner = new byte[PaddedLength];
         for (var i = 0; i < owner.Length; i++)
@@ -143,11 +172,11 @@ internal static class WritingTestDocuments
         try
         {
             writer.WriteRaw("%PDF-1.4\n"u8);
-            var rows = new List<XrefRow> { XrefRow.FreeHead };
+            var rows = new List<XrefRow> { XrefRow.FreeHead, };
             for (var number = 1; number < plain.Size; number++)
             {
                 rows.Add(new(number, XrefEntryType.InFile, writer.Length, 0));
-                writer.WriteIndirectObject(new(number, 0), plain.GetObject(new(number, 0)));
+                writer.WriteIndirectObject(new(number, 0), StoreReading.GetObject(plain, new(number, 0)));
             }
 
             var encryptNumber = plain.Size;

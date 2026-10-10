@@ -106,7 +106,8 @@ internal static class AnnotationRedactor
     /// <summary>Widens a flat rectangle a little.</summary>
     /// <param name="rect">The rectangle.</param>
     /// <returns>The rectangle, widened where it has no area.</returns>
-    private static PdfRectangle Widen(PdfRectangle rect) => new(
+    private static PdfRectangle Widen(PdfRectangle rect) =>
+        new(
         rect.Width > 0 ? rect.Left : rect.Left - Slack,
         rect.Height > 0 ? rect.Bottom : rect.Bottom - Slack,
         rect.Width > 0 ? rect.Right : rect.Right + Slack,
@@ -159,7 +160,9 @@ internal static class AnnotationRedactor
     /// <param name="annotation">The annotation.</param>
     /// <param name="removedIds">The object numbers removed.</param>
     /// <returns><see langword="true"/> when its /Parent or /IRT is removed.</returns>
-    private static bool PointsAtRemoved(PdfDictionary annotation, HashSet<int> removedIds) =>
+    private static bool PointsAtRemoved(
+        PdfDictionary annotation,
+        HashSet<int> removedIds) =>
         removedIds.Contains(annotation.GetRaw(KnownName.Parent).AsReference().Number)
         || removedIds.Contains(annotation.GetRaw(KnownName.IRT).AsReference().Number);
 
@@ -177,7 +180,7 @@ internal static class AnnotationRedactor
         var current = id;
         for (var depth = 0; depth < MaxFieldDepth; depth++)
         {
-            var parentId = store.GetDictionary(current)?.GetRaw(KnownName.Parent).AsReference() ?? default;
+            var parentId = StoreReading.GetDictionary(store, current)?.GetRaw(KnownName.Parent).AsReference() ?? default;
             if (!parentId.IsValid)
             {
                 RemoveFromFields(store, current);
@@ -200,7 +203,7 @@ internal static class AnnotationRedactor
     /// <returns><see langword="true"/> when the parent has no children left, so it goes too.</returns>
     private static bool RemoveFromKids(PdfObjectStore store, PdfObjectId parentId, PdfObjectId childId)
     {
-        if (store.GetDictionary(parentId) is not { } parent || parent.GetArray(KnownName.Kids) is not { } kids)
+        if (StoreReading.GetDictionary(store, parentId) is not { } parent || parent.GetArray(KnownName.Kids) is not { } kids)
         {
             return false;
         }
@@ -216,7 +219,7 @@ internal static class AnnotationRedactor
 
         var copy = parent.Clone();
         copy.Set(KnownName.Kids, PdfValue.FromArray(remaining));
-        store.Replace(parentId, PdfValue.FromDictionary(copy));
+        StoreEditing.Replace(store, parentId, PdfValue.FromDictionary(copy));
         return remaining.Count == 0;
     }
 
@@ -244,12 +247,12 @@ internal static class AnnotationRedactor
         var raw = store.Catalog.GetRaw(KnownName.AcroForm);
         if (raw.AsReference() is { IsValid: true } formId)
         {
-            store.Replace(formId, PdfValue.FromDictionary(copy));
+            StoreEditing.Replace(store, formId, PdfValue.FromDictionary(copy));
             return;
         }
 
         var catalog = store.Catalog.Clone();
         catalog.Set(KnownName.AcroForm, PdfValue.FromDictionary(copy));
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
     }
 }

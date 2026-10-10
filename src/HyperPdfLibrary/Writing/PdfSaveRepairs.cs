@@ -47,7 +47,7 @@ internal sealed class PdfSaveRepairs
         var root = store.Trailer.GetRaw(KnownName.Root);
         _catalogNumber = root.IsReference ? root.AsReference().Number : 0;
         var pages = store.Catalog.GetRaw(KnownName.Pages);
-        var pagesNumber = pages.IsReference && store.Resolve(pages).AsDictionary() is not null ? pages.AsReference().Number : FindPagesRoot();
+        var pagesNumber = pages.IsReference && StoreReading.Resolve(store, pages).AsDictionary() is not null ? pages.AsReference().Number : FindPagesRoot();
         if (pagesNumber == 0)
         {
             _catalogPages = allowNewObject ? MakeRoot() : 0;
@@ -159,7 +159,7 @@ internal sealed class PdfSaveRepairs
     {
         for (var number = 1; number < _store.Size; number++)
         {
-            if (_store.GetObject(new(number, 0)).AsDictionary() is { } node && node.IsName(KnownName.Type, KnownName.Pages) && !node.ContainsKey(KnownName.Parent))
+            if (StoreReading.GetObject(_store, new(number, 0)).AsDictionary() is { } node && node.IsName(KnownName.Type, KnownName.Pages) && !node.ContainsKey(KnownName.Parent))
             {
                 return number;
             }
@@ -168,7 +168,7 @@ internal sealed class PdfSaveRepairs
         // A node whose /Type was damaged is still the root when the pages lead up to it through their /Parent.
         for (var number = 1; number < _store.Size; number++)
         {
-            if (_store.GetObject(new(number, 0)).AsDictionary() is { } page && page.IsName(KnownName.Type, KnownName.Page) && TopmostAncestor(page) is var top and > 0)
+            if (StoreReading.GetObject(_store, new(number, 0)).AsDictionary() is { } page && page.IsName(KnownName.Type, KnownName.Page) && TopmostAncestor(page) is var top and > 0)
             {
                 return top;
             }
@@ -187,7 +187,7 @@ internal sealed class PdfSaveRepairs
         for (var depth = 0; depth < PdfLimits.MaxPageTreeDepth; depth++)
         {
             var parent = current.GetRaw(KnownName.Parent);
-            if (!parent.IsReference || _store.Resolve(parent).AsDictionary() is not { } next)
+            if (!parent.IsReference || StoreReading.Resolve(_store, parent).AsDictionary() is not { } next)
             {
                 break;
             }
@@ -218,7 +218,7 @@ internal sealed class PdfSaveRepairs
     /// <param name="root">The object number of the page tree root.</param>
     private void RebuildFromScan(int root)
     {
-        if (_store.GetObject(new(root, 0)).AsDictionary() is null)
+        if (StoreReading.GetObject(_store, new(root, 0)).AsDictionary() is null)
         {
             return;
         }
@@ -269,7 +269,7 @@ internal sealed class PdfSaveRepairs
     /// <param name="root">The object number of the page tree root.</param>
     private void AddScannedPage(int number, int root)
     {
-        if (number == root || _store.GetObject(new(number, 0)).AsDictionary() is not { } page || !page.IsName(KnownName.Type, KnownName.Page))
+        if (number == root || StoreReading.GetObject(_store, new(number, 0)).AsDictionary() is not { } page || !page.IsName(KnownName.Type, KnownName.Page))
         {
             return;
         }
@@ -314,7 +314,7 @@ internal sealed class PdfSaveRepairs
     /// <returns>The pages in and below the node, counting a page as one.</returns>
     private int Walk(int number, int parent, int depth)
     {
-        if (depth > PdfLimits.MaxPageTreeDepth || _nodes.ContainsKey(number) || _store.GetObject(new(number, 0)).AsDictionary() is not { } node)
+        if (depth > PdfLimits.MaxPageTreeDepth || _nodes.ContainsKey(number) || StoreReading.GetObject(_store, new(number, 0)).AsDictionary() is not { } node)
         {
             return 0;
         }
@@ -383,7 +383,7 @@ internal sealed class PdfSaveRepairs
     {
         for (var depth = 0; node != 0 && depth < PdfLimits.MaxPageTreeDepth; depth++)
         {
-            if (_store.GetObject(new(node, 0)).AsDictionary() is { } dictionary && !dictionary.GetRaw(KnownName.Resources).IsNull)
+            if (StoreReading.GetObject(_store, new(node, 0)).AsDictionary() is { } dictionary && !dictionary.GetRaw(KnownName.Resources).IsNull)
             {
                 return true;
             }

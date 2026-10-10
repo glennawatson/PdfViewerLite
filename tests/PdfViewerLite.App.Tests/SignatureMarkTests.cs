@@ -193,7 +193,7 @@ public sealed class SignatureMarkTests
         {
             var tab = main.SelectedTab!;
             var fill = tab.FillAndSign;
-            var editor = (IAnnotationEditor)tab.TryGetDocument()!;
+            var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(IAnnotationEditor))!;
             _ = await fill.StartCommand.Execute().ToTask();
             var view = window.GetVisualDescendants().OfType<DocumentView>().Single();
             var canvas = window.GetVisualDescendants().OfType<PageCanvas>().Single();
@@ -252,7 +252,7 @@ public sealed class SignatureMarkTests
         var saved = tab.Save(path);
         using var reopened = new PdfiumEngine().Open(path, null);
         List<PageAnnotation> annotations = [];
-        ((IAnnotationEditor)reopened).GetAnnotations(0, annotations);
+        ((IAnnotationEditor)DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
 
         await Assert.That(saved).IsTrue();
         await Assert.That(annotations.Count).IsEqualTo(1);
@@ -393,22 +393,22 @@ public sealed class SignatureMarkTests
             switch (style)
             {
                 case SignatureMarkStyle.Drawn:
-                {
-                    _ = await request.AddStrokeCommand.Execute(Stroke).ToTask();
-                    break;
-                }
+                    {
+                        _ = await request.AddStrokeCommand.Execute(Stroke).ToTask();
+                        break;
+                    }
 
                 case SignatureMarkStyle.Image:
-                {
-                    request.UseImage(Scan());
-                    break;
-                }
+                    {
+                        request.UseImage(Scan());
+                        break;
+                    }
 
                 default:
-                {
-                    request.Text = Name;
-                    break;
-                }
+                    {
+                        request.Text = Name;
+                        break;
+                    }
             }
 
             request.Remember = remember;

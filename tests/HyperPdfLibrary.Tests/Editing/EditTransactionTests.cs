@@ -37,23 +37,20 @@ public sealed class EditTransactionTests
 
         // An edit made before any transaction is the state undo must give back, instance for instance.
         var edited = PdfDocumentPages.GetPage(document, 0).Dictionary.Clone();
-        document.Objects.Replace(firstId, PdfValue.FromDictionary(edited));
+        StoreEditing.Replace(document.Objects, firstId, PdfValue.FromDictionary(edited));
         PdfDocumentPageOperations.ReorderPages(document, [LastPage, 1, 0, Pages, Pages + 1, Pages + LastPage]);
         PdfDocumentPageOperations.DeletePages(document, [1]);
-
         await Assert.That(PdfDocumentEditing.GetHistory(document).UndoCount).IsEqualTo(LastPage);
         await Assert.That(PdfDocumentEditing.GetHistory(document).UndoLabel).IsEqualTo("Delete pages");
         await Assert.That(PdfDocumentEditing.Undo(document)).IsTrue();
         await Assert.That(PdfDocumentEditing.Undo(document)).IsTrue();
         await Assert.That(PdfDocumentEditing.Undo(document)).IsFalse();
-
-        await Assert.That(document.Objects.GetDictionary(firstId)).IsSameReferenceAs(edited);
-        await Assert.That(document.Objects.GetEditedNumbers()).IsEquivalentTo((int[])[firstId.Number]);
+        await Assert.That(StoreReading.GetDictionary(document.Objects, firstId)).IsSameReferenceAs(edited);
+        await Assert.That(StoreEditing.GetEditedNumbers(document.Objects)).IsEquivalentTo((int[])[firstId.Number]);
         await Assert.That(document.Catalog.GetDictionary(KnownName.Pages)!.GetArray(KnownName.Kids)!.Count).IsEqualTo(LastPage);
         await Assert.That(EditingTestDocuments.PageTexts(document)).IsEquivalentTo(EditingTestDocuments.Expected("1 2 3 4 5 6"));
         await Assert.That(PdfDocumentPages.GetPage(document, 0).Dictionary).IsSameReferenceAs(edited);
         await Assert.That(PdfDocumentNavigation.GetOutline(document).Count).IsEqualTo(LastPage);
-
         await Assert.That(PdfDocumentEditing.Redo(document)).IsTrue();
         await Assert.That(EditingTestDocuments.PageTexts(document)).IsEquivalentTo(EditingTestDocuments.Expected("3 2 1 4 5 6"));
         await Assert.That(PdfDocumentEditing.GetHistory(document).RedoCount).IsEqualTo(1);
@@ -82,7 +79,6 @@ public sealed class EditTransactionTests
         await Assert.That(PdfDocumentPages.GetPage(document, LastPage).Rotation).IsEqualTo(0);
         await Assert.That(PdfDocumentMetadata.GetInfo(document).Title).IsNull();
         await Assert.That(document.Objects.Trailer.ContainsKey(KnownName.Info)).IsFalse();
-
         PdfDocumentPageOperations.SetRotation(document, 1, QuarterTurn);
         await Assert.That(PdfDocumentEditing.GetHistory(document).RedoCount).IsEqualTo(0);
     }
@@ -97,15 +93,15 @@ public sealed class EditTransactionTests
         using (var transaction = PdfDocumentEditing.BeginEdit(document, "Abandoned"))
         {
             PdfDocumentPageOperations.DeletePages(document, [0]);
-            var added = document.Objects.Add(PdfValue.FromInteger(Pages));
-            document.Objects.Delete(catalogId);
-            await Assert.That(document.Objects.GetObject(added).AsInt32()).IsEqualTo(Pages);
+            var added = StoreEditing.Add(document.Objects, PdfValue.FromInteger(Pages));
+            StoreEditing.Delete(document.Objects, catalogId);
+            await Assert.That(StoreReading.GetObject(document.Objects, added).AsInt32()).IsEqualTo(Pages);
             await Assert.That(transaction.ChangedCount).IsGreaterThan(1);
         }
 
-        await Assert.That(document.Objects.HasEdits).IsFalse();
+        await Assert.That(StoreEditing.HasEdits(document.Objects)).IsFalse();
         await Assert.That(document.PageCount).IsEqualTo(Pages);
-        await Assert.That(document.Objects.CurrentTransaction).IsNull();
+        await Assert.That(StoreTransactions.GetCurrentTransaction(document.Objects)).IsNull();
         await Assert.That(PdfDocumentEditing.GetHistory(document).UndoCount).IsEqualTo(0);
         await Assert.That(PdfIncrementalWriter.Save(document.Objects).Length).IsGreaterThan(0);
     }
@@ -116,10 +112,9 @@ public sealed class EditTransactionTests
     public async Task FailedOperationLeavesNoTrace()
     {
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(Pages), null);
-
         await Assert.That(() => PdfDocumentPageOperations.MovePages(document, [0, 0], 0)).Throws<ArgumentException>();
-        await Assert.That(document.Objects.HasEdits).IsFalse();
-        await Assert.That(document.Objects.CurrentTransaction).IsNull();
+        await Assert.That(StoreEditing.HasEdits(document.Objects)).IsFalse();
+        await Assert.That(StoreTransactions.GetCurrentTransaction(document.Objects)).IsNull();
     }
 
     /// <summary>The undo stack keeps at most its depth, dropping the oldest, and undo is refused while a transaction is open.</summary>
@@ -139,7 +134,6 @@ public sealed class EditTransactionTests
         _ = PdfDocumentEditing.Undo(document);
         await Assert.That(PdfDocumentEditing.Undo(document)).IsFalse();
         await Assert.That(PdfDocumentPages.GetPage(document, 0).Rotation).IsEqualTo(QuarterTurn + QuarterTurn);
-
         using var transaction = PdfDocumentEditing.BeginEdit(document, "Open");
         await Assert.That(() => PdfDocumentEditing.Redo(document)).Throws<InvalidOperationException>();
         await Assert.That(() => PdfDocumentEditing.BeginEdit(document, "Second")).Throws<InvalidOperationException>();
@@ -154,17 +148,17 @@ public sealed class EditTransactionTests
         PdfDocumentPageOperations.ReorderPages(document, [LastPage, 1, 0]);
         using var cancellation = new CancellationTokenSource();
         var reader = Task.Run(
-            () =>
+        () =>
+        {
+            var bad = 0;
+            while (!cancellation.IsCancellationRequested)
             {
-                var bad = 0;
-                while (!cancellation.IsCancellationRequested)
-                {
-                    bad += document.PageCount == Pages ? 0 : 1;
-                }
+                bad += document.PageCount == Pages ? 0 : 1;
+            }
 
-                return bad;
-            },
-            CancellationToken.None);
+            return bad;
+        },
+        CancellationToken.None);
         for (var i = 0; i < Steps; i++)
         {
             _ = PdfDocumentEditing.Undo(document);

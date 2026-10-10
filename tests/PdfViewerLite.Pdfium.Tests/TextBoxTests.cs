@@ -107,8 +107,8 @@ public sealed class TextBoxTests
         try
         {
             var annotations = new List<PageAnnotation>();
-            ((IAnnotationEditor)reopened).GetAnnotations(0, annotations);
-            var content = ((ITextBoxEditor)reopened).GetTextBox(0, annotations[0].Index);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
+            var content = ((ITextBoxEditor)DocumentFeatures.CastFeature(reopened, typeof(ITextBoxEditor))!).GetTextBox(0, annotations[0].Index);
 
             await Assert.That(text).Contains("/FreeTextTypeWriter");
             await Assert.That(text).Contains(FontFile);
@@ -213,8 +213,8 @@ public sealed class TextBoxTests
         {
             ((PdfiumDocument)reopened).FontCatalog = catalog;
             var annotations = new List<PageAnnotation>();
-            ((IAnnotationEditor)reopened).GetAnnotations(0, annotations);
-            var content = ((ITextBoxEditor)reopened).GetTextBox(0, annotations[0].Index);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
+            var content = ((ITextBoxEditor)DocumentFeatures.CastFeature(reopened, typeof(ITextBoxEditor))!).GetTextBox(0, annotations[0].Index);
 
             await Assert.That(family).IsNotNull();
             await Assert.That(Encoding.Latin1.GetString(bytes)).Contains(FontFile);
@@ -240,8 +240,8 @@ public sealed class TextBoxTests
         {
             using var document = new PdfiumEngine().Open(path, null);
             var annotations = new List<PageAnnotation>();
-            ((IAnnotationEditor)document).GetAnnotations(0, annotations);
-            var content = ((ITextBoxEditor)document).GetTextBox(0, annotations[0].Index);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
+            var content = ((ITextBoxEditor)DocumentFeatures.CastFeature(document, typeof(ITextBoxEditor))!).GetTextBox(0, annotations[0].Index);
 
             await Assert.That(annotations[0].Kind).IsEqualTo(AnnotationKind.TextBox);
             await Assert.That(content!.Text).IsEqualTo(TestPdf.ForeignText);
@@ -354,7 +354,7 @@ public sealed class TextBoxTests
     private static string FlattenedText(IDocument document)
     {
         using var stream = new MemoryStream();
-        _ = ((IPageExporter)document).ExportPages([0], SheetLayout.Default with { FitToPaper = true }, stream);
+        _ = ((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([0], SheetLayout.Default with { FitToPaper = true }, stream);
         using var flattened = Reopen(stream.ToArray(), out var path);
         try
         {

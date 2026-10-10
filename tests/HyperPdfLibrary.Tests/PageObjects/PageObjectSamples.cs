@@ -78,7 +78,7 @@ internal static class PageObjectSamples
         using var document = PdfDocumentReader.Open(pdf, null);
         var content = PdfDocumentPageContent.GetPageContent(document, 0);
         edit(content);
-        content.Apply();
+        PdfPageContentApplication.Apply(content);
         return PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
     }
 

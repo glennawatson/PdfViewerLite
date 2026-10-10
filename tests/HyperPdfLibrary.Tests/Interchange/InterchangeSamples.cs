@@ -299,7 +299,7 @@ internal static class InterchangeSamples
         var file = new PdfDictionary(store);
         file.Set(KnownName.Type, PdfValue.FromName(store.Names.Intern("EmbeddedFile")));
         var embedded = new PdfDictionary(store);
-        embedded.Set(KnownName.F, PdfValue.FromReference(store.Add(PdfValue.FromStream(new(file, Bytes(AttachedText))))));
+        embedded.Set(KnownName.F, PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromStream(new(file, Bytes(AttachedText))))));
         var spec = new PdfDictionary(store);
         spec.Set(KnownName.Type, PdfValue.FromName(KnownName.Filespec));
         PdfAnnotations.SetText(spec, KnownName.F, "attached.txt");

@@ -64,14 +64,13 @@ public sealed class RepairReportTests
 
     /// <summary>A descendant font whose /W has an array where a CID belongs.</summary>
     private const string CidFont =
-        "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Test /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /DW 1000 /W [1 [500] [600] 3 3 700] >>";
+            "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Test /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /DW 1000 /W [1 [500] [600] 3 3 700] >>";
 
     /// <summary>A simple font whose /Differences holds a string.</summary>
     private const string BadEncodingFont = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding << /Type /Encoding /Differences [65 /B (oops) /C] >> >>";
 
     /// <summary>A simple font whose descriptor has a string where /Flags belongs.</summary>
-    private const string BadDescriptorFont =
-        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /FontDescriptor << /Type /FontDescriptor /FontName /Helvetica /Flags (bad) /Ascent 700 >> >>";
+    private const string BadDescriptorFont = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /FontDescriptor << /Type /FontDescriptor /FontName /Helvetica /Flags (bad) /Ascent 700 >> >>";
 
     /// <summary>The object number of the font in the font documents.</summary>
     private const int FontNumber = 5;
@@ -103,7 +102,6 @@ public sealed class RepairReportTests
     public async Task RebuiltCrossReferenceTableIsReported()
     {
         using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "startxref", "startxxxx"), null);
-
         await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsTrue();
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.XrefRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
@@ -115,7 +113,6 @@ public sealed class RepairReportTests
     public async Task WrongStreamLengthIsReported()
     {
         using var document = ReadAll(MiniPdf.Build(Catalog, Pages, ContentPage, "<< /Length 3 >>\nstream\nabcdefgh\nendstream"));
-
         await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsTrue();
         await Assert.That(Find(document, PdfDiagnosticCode.BadStreamLength).ObjectNumber).IsEqualTo(ContentNumber);
     }
@@ -126,7 +123,6 @@ public sealed class RepairReportTests
     public async Task MissingEndStreamIsReported()
     {
         using var document = ReadAll(MiniPdf.Build(Catalog, Pages, ContentPage, "<< /Length 3 >>\nstream\nabcdefgh"));
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.MissingEndStream);
     }
 
@@ -138,8 +134,7 @@ public sealed class RepairReportTests
         var packed = Compress(Repeated());
         var kept = packed.AsSpan(0, packed.Length * KeepPercent / Percent).ToArray();
         using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", Encoding.Latin1.GetString(kept))), null);
-        var decoded = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!.DecodeToArray();
-
+        var decoded = StoreReading.GetObject(document.Objects, new(ContentNumber, 0)).AsStream()!.DecodeToArray();
         await Assert.That(decoded.Length).IsGreaterThan(0);
         await Assert.That(Encoding.Latin1.GetString(Repeated())).StartsWith(Encoding.Latin1.GetString(decoded));
         await Assert.That(Find(document, PdfDiagnosticCode.TruncatedStream).ObjectNumber).IsEqualTo(ContentNumber);
@@ -153,8 +148,7 @@ public sealed class RepairReportTests
         var packed = Compress(Repeated());
         var kept = packed.AsSpan(0, packed.Length - ChecksumLength).ToArray();
         using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /FlateDecode", Encoding.Latin1.GetString(kept))), null);
-        var decoded = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!.DecodeToArray();
-
+        var decoded = StoreReading.GetObject(document.Objects, new(ContentNumber, 0)).AsStream()!.DecodeToArray();
         await Assert.That(decoded.Length).IsEqualTo(Repeated().Length);
         await Assert.That(PdfDocumentCheck.WasRepaired(document)).IsFalse();
     }
@@ -167,8 +161,7 @@ public sealed class RepairReportTests
         // Clear code, the literal "A", then code 400, which the table cannot hold yet.
         byte[] lzw = [0x80, 0x10, 0x72, 0x00];
         using var document = PdfDocumentReader.Open(MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /LZWDecode", Encoding.Latin1.GetString(lzw))), null);
-        var decoded = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!.DecodeToArray();
-
+        var decoded = StoreReading.GetObject(document.Objects, new(ContentNumber, 0)).AsStream()!.DecodeToArray();
         await Assert.That(Encoding.Latin1.GetString(decoded)).IsEqualTo("A");
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.TruncatedStream);
     }
@@ -179,7 +172,6 @@ public sealed class RepairReportTests
     public async Task MissingCatalogIsFoundByScanning()
     {
         using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/Root 1 0 R", "/Root 99 0 R"), null);
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.CatalogRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
     }
@@ -191,7 +183,6 @@ public sealed class RepairReportTests
     {
         var file = Replace(Replace(RobustnessSeeds.CreateMini(), "/Root 1 0 R", "/Root 99 0 R"), "/Type /Catalog", "/Type /Nothing");
         using var document = PdfDocumentReader.Open(file, null);
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.CatalogRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
     }
@@ -202,7 +193,6 @@ public sealed class RepairReportTests
     public async Task MissingTrailerIsMadeByScanning()
     {
         using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "trailer", "trailxx"), null);
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.TrailerRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
     }
@@ -213,7 +203,6 @@ public sealed class RepairReportTests
     public async Task BrokenPageTreeIsRebuilt()
     {
         using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/Kids [3 0 R 4 0 R]", "/Kids [9 0 R]"), null);
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.PageTreeRebuilt);
         await Assert.That(document.PageCount).IsEqualTo(MiniPages);
     }
@@ -224,7 +213,6 @@ public sealed class RepairReportTests
     public async Task SwappedPageBoxIsReported()
     {
         using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/MediaBox [0 0 200 100]", "/MediaBox [200 100 0 0]"), null);
-
         await Assert.That(PdfDocumentPages.GetPage(document, 0).Width).IsEqualTo(MiniWidth);
         await Assert.That(Find(document, PdfDiagnosticCode.BadPageBox).ObjectNumber).IsEqualTo(PageNumber);
     }
@@ -235,7 +223,6 @@ public sealed class RepairReportTests
     public async Task EmptyPageBoxIsReported()
     {
         using var document = PdfDocumentReader.Open(Replace(RobustnessSeeds.CreateMini(), "/MediaBox [0 0 200 100]", "/MediaBox [0 0 0 0]"), null);
-
         await Assert.That(PdfDocumentPages.GetPage(document, 0).Width).IsEqualTo(LetterWidth);
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadPageBox);
     }
@@ -247,7 +234,6 @@ public sealed class RepairReportTests
     {
         using var document = PdfDocumentReader.Open(FontDocument(CompositeFont, CidFont), null);
         _ = PdfFontLoader.Load(FontOf(document));
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadFontWidths);
     }
 
@@ -258,7 +244,6 @@ public sealed class RepairReportTests
     {
         using var document = PdfDocumentReader.Open(FontDocument(BadEncodingFont, "null"), null);
         _ = PdfFontLoader.Load(FontOf(document));
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadFontEncoding);
     }
 
@@ -269,7 +254,6 @@ public sealed class RepairReportTests
     {
         using var document = PdfDocumentReader.Open(FontDocument(BadDescriptorFont, "null"), null);
         _ = PdfFontLoader.Load(FontOf(document));
-
         await Assert.That(Codes(document)).Contains(PdfDiagnosticCode.BadFontDescriptor);
     }
 
@@ -292,7 +276,6 @@ public sealed class RepairReportTests
     public async Task NumberedGlyphNamesAreRecognised(string name, bool expectedCid, int expectedNumber)
     {
         var found = HyperPdfLibrary.Fonts.Programs.NumberedGlyphName.TryParse(Encoding.ASCII.GetBytes(name), out var isCid, out var number);
-
         await Assert.That(found).IsEqualTo(expectedNumber >= 0);
         await Assert.That(isCid).IsEqualTo(expectedCid);
         await Assert.That(number).IsEqualTo(Math.Max(expectedNumber, 0));
@@ -386,8 +369,7 @@ public sealed class RepairReportTests
     /// <param name="from">The text to find.</param>
     /// <param name="to">The replacement.</param>
     /// <returns>The new file.</returns>
-    private static byte[] Replace(byte[] file, string from, string to) =>
-        Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(file).Replace(from, to, StringComparison.Ordinal));
+    private static byte[] Replace(byte[] file, string from, string to) => Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(file).Replace(from, to, StringComparison.Ordinal));
 
     /// <summary>Gets the page content repeated so its compressed form has some length.</summary>
     /// <returns>The content bytes.</returns>
@@ -411,7 +393,10 @@ public sealed class RepairReportTests
     /// <param name="font">The font dictionary.</param>
     /// <param name="descendant">The descendant font, object 6.</param>
     /// <returns>The file.</returns>
-    private static byte[] FontDocument(string font, string descendant) => MiniPdf.Build(
+    private static byte[] FontDocument(
+        string font,
+        string descendant) =>
+        MiniPdf.Build(
         Catalog,
         Pages,
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> >>",
@@ -422,5 +407,5 @@ public sealed class RepairReportTests
     /// <summary>Gets the font dictionary of a document made by <see cref="FontDocument"/>.</summary>
     /// <param name="document">The document.</param>
     /// <returns>The font dictionary.</returns>
-    private static PdfDictionary FontOf(PdfDocument document) => document.Objects.GetObject(new(FontNumber, 0)).AsDictionary()!;
+    private static PdfDictionary FontOf(PdfDocument document) => StoreReading.GetObject(document.Objects, new(FontNumber, 0)).AsDictionary()!;
 }

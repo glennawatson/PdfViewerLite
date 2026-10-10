@@ -60,9 +60,7 @@ public sealed class RenderLifetimeTests
         var imagesBefore = cache.Images.Count;
         var bytesBefore = cache.Images.Bytes;
         var picturesBefore = page.Renderer.PictureBytes;
-
         page.Document.Dispose();
-
         await Assert.That(imagesBefore).IsEqualTo(1);
         await Assert.That(bytesBefore).IsEqualTo((long)ScanSide * ScanSide);
         await Assert.That(picturesBefore).IsGreaterThan(bytesBefore);
@@ -70,7 +68,7 @@ public sealed class RenderLifetimeTests
         await Assert.That(cache.Images.Bytes).IsEqualTo(0);
         await Assert.That(page.Renderer.PictureCount).IsEqualTo(0);
         await Assert.That(() => PdfDocumentText.GetTextPage(page.Document, 0)).Throws<ObjectDisposedException>();
-        await Assert.That(() => page.Document.Objects.GetObject(Catalog)).Throws<ObjectDisposedException>();
+        await Assert.That(() => StoreReading.GetObject(page.Document.Objects, Catalog)).Throws<ObjectDisposedException>();
         await Assert.That(() => Render(page.Renderer, 0)).Throws<ObjectDisposedException>();
     }
 
@@ -80,9 +78,7 @@ public sealed class RenderLifetimeTests
     public async Task PicturesCountTheirImages()
     {
         using var page = CreateScanPage();
-
         _ = page.RenderPage();
-
         await Assert.That(PdfDocumentRendering.GetRenderCache(page.Document).Images.Bytes).IsEqualTo((long)ScanSide * ScanSide);
         await Assert.That(page.Renderer.PictureBytes).IsGreaterThanOrEqualTo((long)ScanSide * ScanSide);
     }
@@ -95,7 +91,6 @@ public sealed class RenderLifetimeTests
         using var document = PdfDocumentReader.Open(TestPdf.Create(PageCount), null);
         using var tiny = new PdfPageRenderer(document, PdfRenderOptions.Default with { PictureCacheBytes = 1 });
         using var roomy = new PdfPageRenderer(document);
-
         for (var i = 0; i < PageCount; i++)
         {
             Render(tiny, i);
@@ -114,7 +109,6 @@ public sealed class RenderLifetimeTests
     public async Task NegativePictureLimitIsRejected()
     {
         using var document = PdfDocumentReader.Open(TestPdf.Create(1), null);
-
         await Assert.That(() => new PdfPageRenderer(document, PdfRenderOptions.Default with { PictureCacheBytes = -1 })).Throws<ArgumentOutOfRangeException>();
     }
 
@@ -179,7 +173,7 @@ public sealed class RenderLifetimeTests
     /// <returns>The page.</returns>
     private static RenderTestPage CreateScanPage()
     {
-        var pdf = new RenderTestPdf(Size, Size) { Content = "q 200 0 0 200 0 0 cm /Im Do Q" };
+        var pdf = new RenderTestPdf(Size, Size) { Content = "q 200 0 0 200 0 0 cm /Im Do Q", };
         var samples = new byte[ScanSide * ScanSide];
         for (var i = 0; i < samples.Length; i++)
         {

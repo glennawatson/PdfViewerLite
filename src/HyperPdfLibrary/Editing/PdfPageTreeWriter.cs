@@ -30,7 +30,7 @@ internal static class PdfPageTreeWriter
     {
         var rootValue = store.Catalog.GetRaw(KnownName.Pages);
         var rootId = rootValue.AsReference();
-        var oldRoot = store.Resolve(rootValue).AsDictionary();
+        var oldRoot = StoreReading.Resolve(store, rootValue).AsDictionary();
         var oldNodes = new List<PdfObjectId>();
         CollectNodes(store, oldRoot, rootId, oldNodes);
         if (!rootId.IsValid)
@@ -136,7 +136,7 @@ internal static class PdfPageTreeWriter
 
         lock (store.Gate)
         {
-            store.RefreshCatalogLocked();
+            StoreTransactions.RefreshCatalogLocked(store);
         }
     }
 
@@ -165,7 +165,7 @@ internal static class PdfPageTreeWriter
     /// <returns>The page's new /Kids entry.</returns>
     private static PdfValue WritePage(PdfEditTransaction transaction, PdfObjectStore store, PdfValue kid, PdfObjectId rootId, bool pushFromRoot)
     {
-        var page = store.Resolve(kid).AsDictionary();
+        var page = StoreReading.Resolve(store, kid).AsDictionary();
         if (page is null)
         {
             return kid;
@@ -203,7 +203,7 @@ internal static class PdfPageTreeWriter
     /// <returns>The raw value, or null when no ancestor has it.</returns>
     private static PdfValue FindInherited(PdfDictionary page, KnownName key)
     {
-        var visited = new HashSet<PdfDictionary>(ReferenceEqualityComparer.Instance) { page };
+        var visited = new HashSet<PdfDictionary>(ReferenceEqualityComparer.Instance) { page, };
         var node = page.GetDictionary(KnownName.Parent);
         for (var depth = 0; node is not null && depth < PdfLimits.MaxPageTreeDepth && visited.Add(node); depth++)
         {
@@ -231,7 +231,7 @@ internal static class PdfPageTreeWriter
             return;
         }
 
-        var visited = new HashSet<int> { rootId.Number };
+        var visited = new HashSet<int> { rootId.Number, };
         var pending = new Stack<NodeVisit>();
         pending.Push(new(root, 0));
         while (pending.TryPop(out var visit))
@@ -258,7 +258,7 @@ internal static class PdfPageTreeWriter
     /// <returns>The node, or <see langword="null"/> for a page, a non-node or a node already reached.</returns>
     private static PdfDictionary? ReadNode(PdfObjectStore store, PdfValue raw, HashSet<int> visited)
     {
-        if (store.Resolve(raw).AsDictionary() is not { } node || node.IsName(KnownName.Type, KnownName.Page) || node.GetArray(KnownName.Kids) is null)
+        if (StoreReading.Resolve(store, raw).AsDictionary() is not { } node || node.IsName(KnownName.Type, KnownName.Page) || node.GetArray(KnownName.Kids) is null)
         {
             return null;
         }

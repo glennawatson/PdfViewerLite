@@ -7,14 +7,14 @@ using System.Text;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Ocr;
+using PdfViewerLite.HyperPdf;
 using PdfViewerLite.Ocr;
-using PdfViewerLite.Pdfium;
 
 namespace PdfViewerLite.App.Services;
 
 /// <summary>
 /// Checks text recognition works from the app's own files, without a window: renders a built-in English sentence with
-/// PDFium, recognises it with the shipped Tesseract and English data, and prints where each came from and what was read.
+/// HyperPDF, recognises it with the shipped Tesseract and English data, and prints where each came from and what was read.
 /// Installers and CI run <c>pdfviewerlite --check-text-recognition</c> to prove a fresh install recognises text.
 /// </summary>
 internal static class TextRecognitionCheck
@@ -71,7 +71,7 @@ internal static class TextRecognitionCheck
     /// <returns>The words read.</returns>
     private static List<OcrWord> Recognize(string path, TesseractEngine engine)
     {
-        using var document = new PdfiumEngine().Open(path, null);
+        using var document = new HyperPdfEngine().Open(path, null);
         var size = document.GetPageSizes()[0];
         var width = (int)MathF.Ceiling(size.Width * ScanScale);
         var height = (int)MathF.Ceiling(size.Height * ScanScale);
@@ -84,7 +84,7 @@ internal static class TextRecognitionCheck
         return words;
     }
 
-    /// <summary>Writes a one page PDF showing the sentence in Helvetica, which PDFium draws with its built-in font.</summary>
+    /// <summary>Writes a one page PDF showing the sentence in Helvetica, which HyperPDF draws with its built-in font.</summary>
     /// <returns>The PDF bytes.</returns>
     private static byte[] CreateSamplePdf()
     {

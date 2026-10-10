@@ -48,7 +48,7 @@ public sealed class AnnotationTests
     public async Task AddsAndReadsEachKind()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var points = Stroke;
         int[] strokes = [points.Length];
 
@@ -88,7 +88,7 @@ public sealed class AnnotationTests
     public async Task ChangesAndRemoves()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var index = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, string.Empty);
         var text = editor.AddText(0, TextAt, "Text", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
 
@@ -117,7 +117,7 @@ public sealed class AnnotationTests
     public async Task SavesAndReopens()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         _ = editor.AddMarkup(1, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, "Saved note");
         var path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-annotations-{Guid.NewGuid():N}.pdf");
         try
@@ -130,7 +130,7 @@ public sealed class AnnotationTests
 
             using var reopened = new PdfiumEngine().Open(path, null);
             var annotations = new List<PageAnnotation>();
-            ((IAnnotationEditor)reopened).GetAnnotations(1, annotations);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!).GetAnnotations(1, annotations);
 
             await Assert.That(saved).IsTrue();
             await Assert.That(editor.HasUnsavedChanges).IsFalse();

@@ -20,7 +20,7 @@ public static class PdfDocumentExtensionDeclarations
         for (var i = 0; extensions is not null && i < extensions.Count; i++)
         {
             var prefix = document.Objects.Names.GetString(extensions.GetKeyAt(i));
-            var value = document.Objects.Resolve(extensions.GetValueAt(i));
+            var value = StoreReading.Resolve(document.Objects, extensions.GetValueAt(i));
             if (value.AsArray() is { } array)
             {
                 for (var j = 0; j < array.Count; j++)

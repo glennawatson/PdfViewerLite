@@ -45,7 +45,7 @@ public sealed class PageObjectPdfiumTests
             deleted = texts[0].Text;
             texts[0].Delete();
             texts[1].Translate(0, Lift);
-            content.Apply();
+            PdfPageContentApplication.Apply(content);
             saved = incremental ? PdfIncrementalWriter.Save(document.Objects) : PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default);
         }
 

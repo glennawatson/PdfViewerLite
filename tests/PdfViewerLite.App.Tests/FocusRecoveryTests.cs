@@ -152,7 +152,7 @@ public sealed class FocusRecoveryTests
             var tab = main.SelectedTab!;
             _ = await FocusCanvasAsync(window);
             var fields = new List<FormField>();
-            ((IFormFiller)tab.TryGetDocument()!).GetFields(0, fields);
+            ((IFormFiller)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(IFormFiller))!).GetFields(0, fields);
             var nameField = fields.Single(static f => f.Kind == FormFieldKind.Text);
             var centre = new PagePoint(nameField.Bounds.Left + (nameField.Bounds.Width * Half), nameField.Bounds.Top + (nameField.Bounds.Height * Half));
             var before = check.Checks;

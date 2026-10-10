@@ -55,7 +55,6 @@ public sealed class PageOperationTests
     {
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
         PdfDocumentPageOperations.ReorderPages(document, Reversed);
-
         await Assert.That(EditingTestDocuments.PageTexts(document)).IsEquivalentTo(EditingTestDocuments.Expected("6 5 4 3 2 1"));
         await Assert.That(PdfDocumentPages.GetPage(document, LastPage).Rotation).IsEqualTo(EditingTestDocuments.InheritedRotation);
         await Assert.That(PdfDocumentPages.GetPage(document, 0).Rotation).IsEqualTo(0);
@@ -78,7 +77,6 @@ public sealed class PageOperationTests
         PdfDocumentPageOperations.ReorderPages(document, Reversed);
         using var incremental = PdfDocumentReader.Open(PdfIncrementalWriter.Save(document.Objects), null);
         using var compact = PdfDocumentReader.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default), null);
-
         foreach (var saved in (PdfDocument[])[incremental, compact])
         {
             await Assert.That(EditingTestDocuments.PageTexts(saved)).IsEquivalentTo(EditingTestDocuments.Expected("6 5 4 3 2 1"));
@@ -87,7 +85,7 @@ public sealed class PageOperationTests
             await AssertFlatTree(saved);
         }
 
-        await Assert.That(incremental.Objects.GetObject(new(EditingTestDocuments.FirstNodeNumber, 0)).IsNull).IsTrue();
+        await Assert.That(StoreReading.GetObject(incremental.Objects, new(EditingTestDocuments.FirstNodeNumber, 0)).IsNull).IsTrue();
     }
 
     /// <summary>Moving follows FPDF_MovePages: the moved pages, in the order given, start at the destination.</summary>
@@ -97,7 +95,6 @@ public sealed class PageOperationTests
     {
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
         PdfDocumentPageOperations.MovePages(document, [LastPage, 0], 1);
-
         await Assert.That(EditingTestDocuments.PageTexts(document)).IsEquivalentTo(EditingTestDocuments.Expected("2 6 1 3 4 5"));
     }
 
@@ -108,7 +105,6 @@ public sealed class PageOperationTests
     {
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
         PdfDocumentPageOperations.DeletePages(document, [0]);
-
         await Assert.That(EditingTestDocuments.PageTexts(document)).IsEquivalentTo(EditingTestDocuments.Expected("2 3 4 5 6"));
         var outline = PdfDocumentNavigation.GetOutline(document);
         await Assert.That(outline.Count).IsEqualTo(1);
@@ -119,7 +115,7 @@ public sealed class PageOperationTests
         await Assert.That(PdfDocumentLabels.GetPageLabel(document, 0)).IsEqualTo("ii");
 
         // The second element names a page that is still in the document, and its parent tree entry still resolves.
-        var element = document.Objects.GetDictionary(new(EditingTestDocuments.SecondElementNumber, 0))!;
+        var element = StoreReading.GetDictionary(document.Objects, new(EditingTestDocuments.SecondElementNumber, 0))!;
         await Assert.That(PdfDocumentPages.GetPageIndex(document, element.GetRaw(KnownName.Pg).AsReference())).IsEqualTo(0);
         var parentTree = document.Catalog.GetDictionary(KnownName.StructTreeRoot)!.GetDictionary(KnownName.ParentTree)!.GetArray(KnownName.Nums)!;
         await Assert.That(parentTree.GetArray(SecondParentTreeValue)!.GetDictionary(0)).IsSameReferenceAs(element);
@@ -132,10 +128,9 @@ public sealed class PageOperationTests
     public async Task DeletingEveryPageIsRefused()
     {
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(FlatPages), null);
-
         await Assert.That(() => PdfDocumentPageOperations.DeletePages(document, [0, 1, ThirdPage])).Throws<ArgumentException>();
         await Assert.That(document.PageCount).IsEqualTo(FlatPages);
-        await Assert.That(document.Objects.HasEdits).IsFalse();
+        await Assert.That(StoreEditing.HasEdits(document.Objects)).IsFalse();
     }
 
     /// <summary>Rotation is set absolutely or turned relatively, normalised to quarter turns.</summary>
@@ -146,7 +141,6 @@ public sealed class PageOperationTests
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
         PdfDocumentPageOperations.SetRotation(document, FourthPage, UnnormalisedTurn);
         PdfDocumentPageOperations.RotatePages(document, [0, FourthPage], -QuarterTurn);
-
         await Assert.That(PdfDocumentPages.GetPage(document, FourthPage).Rotation).IsEqualTo(0);
         await Assert.That(PdfDocumentPages.GetPage(document, 0).Rotation).IsEqualTo(0);
         PdfDocumentPageOperations.RotatePages(document, [1], QuarterTurn);
@@ -163,13 +157,11 @@ public sealed class PageOperationTests
         using var source = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
         using var target = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(FlatPages), null);
         PdfDocumentPageOperations.InsertPages(target, 1, source, [0, LastPage]);
-
         await Assert.That(EditingTestDocuments.PageTexts(target)).IsEquivalentTo(EditingTestDocuments.Expected("1 1 6 2 3"));
         await Assert.That(PdfDocumentPages.GetPage(target, 1).Rotation).IsEqualTo(EditingTestDocuments.InheritedRotation);
         await Assert.That(PdfDocumentPages.GetPage(target, ThirdPage).MediaBox.Width).IsEqualTo(EditingTestDocuments.WideWidth);
         await Assert.That(PdfDocumentPages.GetPage(target, 1).Dictionary.ContainsKey(KnownName.StructParents)).IsFalse();
         await Assert.That(PdfDocumentPages.GetPage(target, 1).Resources!.GetDictionary(KnownName.Font)).IsNotNull();
-
         using var saved = PdfDocumentReader.Open(PdfIncrementalWriter.Save(target.Objects), null);
         await Assert.That(EditingTestDocuments.PageTexts(saved)).IsEquivalentTo(EditingTestDocuments.Expected("1 1 6 2 3"));
         await Assert.That(WritingTestDocuments.CountMissing(saved.Objects)).IsEqualTo(0);
@@ -182,7 +174,6 @@ public sealed class PageOperationTests
     {
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateFlat(FlatPages), null);
         PdfDocumentPageOperations.InsertPages(document, FlatPages, document, [0]);
-
         await Assert.That(EditingTestDocuments.PageTexts(document)).IsEquivalentTo(EditingTestDocuments.Expected("1 2 3 1"));
         await Assert.That(PdfDocumentPages.GetPage(document, FlatPages).Id).IsNotEqualTo(PdfDocumentPages.GetPage(document, 0).Id);
     }
@@ -194,7 +185,6 @@ public sealed class PageOperationTests
     {
         using var document = PdfDocumentReader.Open(EditingTestDocuments.CreateStructured(), null);
         using var extracted = PdfDocumentReader.Open(PdfDocumentPageOperations.ExtractPages(document, [FourthPage, 0]), null);
-
         await Assert.That(EditingTestDocuments.PageTexts(extracted)).IsEquivalentTo(EditingTestDocuments.Expected("4 1"));
         await Assert.That(PdfDocumentPages.GetPage(extracted, 1).Rotation).IsEqualTo(EditingTestDocuments.InheritedRotation);
     }
@@ -209,7 +199,6 @@ public sealed class PageOperationTests
         PdfDocumentPageOperations.SetRotation(document, 0, QuarterTurn);
         using var incremental = PdfDocumentReader.Open(PdfIncrementalWriter.Save(document.Objects), null);
         using var compact = PdfDocumentReader.Open(PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Classic), null);
-
         foreach (var saved in (PdfDocument[])[incremental, compact])
         {
             await Assert.That(saved.IsEncrypted).IsTrue();

@@ -73,7 +73,7 @@ internal sealed class StructureTreeBuilder
     {
         var kids = root.GetRaw(KnownName.K);
         var parent = new Inherited(null, -1, language, 0);
-        if (_document.Objects.Resolve(kids).AsArray() is { } array)
+        if (StoreReading.Resolve(_document.Objects, kids).AsArray() is { } array)
         {
             var count = Math.Min(array.Count, MaxKids);
             for (var i = 0; i < count; i++)
@@ -117,7 +117,7 @@ internal sealed class StructureTreeBuilder
         }
 
         var id = raw.AsReference();
-        if (_document.Objects.Resolve(raw).AsDictionary() is not { } dictionary || !MarkVisited(id, dictionary))
+        if (StoreReading.Resolve(_document.Objects, raw).AsDictionary() is not { } dictionary || !MarkVisited(id, dictionary))
         {
             return null;
         }
@@ -134,8 +134,7 @@ internal sealed class StructureTreeBuilder
     /// <param name="id">The object id; not valid for a direct dictionary.</param>
     /// <param name="dictionary">The dictionary.</param>
     /// <returns><see langword="true"/> on the first visit.</returns>
-    private bool MarkVisited(PdfObjectId id, PdfDictionary dictionary) =>
-        id.IsValid ? _visitedObjects.Add(id.Number) : _visitedDirect.Add(dictionary);
+    private bool MarkVisited(PdfObjectId id, PdfDictionary dictionary) => id.IsValid ? _visitedObjects.Add(id.Number) : _visitedDirect.Add(dictionary);
 
     /// <summary>Reads an element's own entries and what it inherits.</summary>
     /// <param name="element">The element.</param>
@@ -197,7 +196,7 @@ internal sealed class StructureTreeBuilder
     {
         var kids = element.Dictionary.GetRaw(KnownName.K);
         var passed = new Inherited(element, element.PageIndex, element.Language, element.Depth + 1);
-        if (_document.Objects.Resolve(kids).AsArray() is { } array)
+        if (StoreReading.Resolve(_document.Objects, kids).AsArray() is { } array)
         {
             var count = Math.Min(array.Count, MaxKids);
             for (var i = 0; i < count; i++)
@@ -217,7 +216,7 @@ internal sealed class StructureTreeBuilder
     /// <param name="passed">What the element passes down.</param>
     private void ReadKid(PdfStructureElement element, PdfValue raw, in Inherited passed)
     {
-        var kid = _document.Objects.Resolve(raw);
+        var kid = StoreReading.Resolve(_document.Objects, raw);
         if (kid.IsNumber)
         {
             element.AddKid(new(PdfStructureKidKind.MarkedContent, null, element.PageIndex, kid.AsInt32(), default, default));

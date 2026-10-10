@@ -26,7 +26,7 @@ public sealed class ReadingOrderPdfTests
         try
         {
             using var document = new PdfiumEngine().Open(path, null);
-            var reading = new ReadingDocument((ITextLayoutSource)document, document.GetPageSizes());
+            var reading = new ReadingDocument((ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ITextLayoutSource))!, document.GetPageSizes());
             var first = reading.GetPage(0);
             var second = reading.GetPage(1);
 
@@ -58,7 +58,7 @@ public sealed class ReadingOrderPdfTests
         try
         {
             using var document = new PdfiumEngine().Open(path, null);
-            var reading = new ReadingDocument((ITextLayoutSource)document, document.GetPageSizes());
+            var reading = new ReadingDocument((ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ITextLayoutSource))!, document.GetPageSizes());
             var block = reading.GetPage(0).Blocks.Single(static b => b.Text.StartsWith(RightStart, StringComparison.Ordinal));
             var first = block.CharIndices[0];
 
