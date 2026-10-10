@@ -32,7 +32,7 @@ jobs:
     permissions:
       contents: write
       packages: read
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-release.yml@b824c637960b1886a6a30a2526856bbf017661cf # main
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-release.yml@7f2014219353aee799dfeef2a9b97acaeabca0b8 # main
     with:
       srcFolder: '.'
       solutionFile: src/HyperPdfLibrary/HyperPdfLibrary.csproj
@@ -59,7 +59,7 @@ jobs:
       id-token: write
     steps:
     - name: Setup .NET Environment
-      uses: glennawatson/actions-common/.github/actions/dotnet-environment@b824c637960b1886a6a30a2526856bbf017661cf # main
+      uses: glennawatson/actions-common/.github/actions/dotnet-environment@7f2014219353aee799dfeef2a9b97acaeabca0b8 # main
       with:
         stamp-version: 'false'
         dotnet-versions: |
@@ -83,7 +83,7 @@ jobs:
     needs: [release, publish-nuget]
     permissions:
       contents: write
-    uses: glennawatson/actions-common/.github/workflows/workflow-common-create-release.yml@b824c637960b1886a6a30a2526856bbf017661cf # main
+    uses: glennawatson/actions-common/.github/workflows/workflow-common-create-release.yml@7f2014219353aee799dfeef2a9b97acaeabca0b8 # main
     with:
       version: ${{ needs.release.outputs.semver2 }}
       tag: ${{ needs.release.outputs.tag }}
