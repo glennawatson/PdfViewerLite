@@ -37,10 +37,10 @@ public sealed class ImageCacheSharingTests
         var tasks = new List<Task<ImageEntry?>>();
         for (var i = 0; i < Callers; i++)
         {
-            tasks.Add(Task.Run(() => cache.Acquire(stream, probe, Probe.Decode)));
+            tasks.Add(StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None));
         }
 
-        await Assert.That(probe.Started.Wait(Limit)).IsTrue();
+        await probe.Started.Task.WaitAsync(Limit);
         await Task.Delay(Settle);
         probe.Release.Set();
         var entries = await Task.WhenAll(tasks);
@@ -63,9 +63,9 @@ public sealed class ImageCacheSharingTests
         var stream = Stream();
         using var probe = new Probe();
         using var cancel = new CancellationTokenSource();
-        var leader = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode));
-        await Assert.That(probe.Started.Wait(Limit)).IsTrue();
-        var waiter = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode, cancel.Token));
+        var leader = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None);
+        await probe.Started.Task.WaitAsync(Limit);
+        var waiter = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode, cancel.Token), CancellationToken.None);
         await Task.Delay(Settle);
 
         await cancel.CancelAsync();
@@ -90,9 +90,9 @@ public sealed class ImageCacheSharingTests
         var cache = new ImageCache();
         var stream = Stream();
         using var probe = new Probe { ThrowFirst = true };
-        var leader = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode));
-        await Assert.That(probe.Started.Wait(Limit)).IsTrue();
-        var waiter = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode));
+        var leader = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None);
+        await probe.Started.Task.WaitAsync(Limit);
+        var waiter = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None);
         await Task.Delay(Settle);
 
         probe.Release.Set();
@@ -113,9 +113,9 @@ public sealed class ImageCacheSharingTests
         var cache = new ImageCache();
         var stream = Stream();
         using var probe = new Probe { ReturnNull = true };
-        var leader = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode));
-        await Assert.That(probe.Started.Wait(Limit)).IsTrue();
-        var waiter = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode));
+        var leader = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None);
+        await probe.Started.Task.WaitAsync(Limit);
+        var waiter = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None);
         await Task.Delay(Settle);
 
         probe.Release.Set();
@@ -167,8 +167,8 @@ public sealed class ImageCacheSharingTests
         var stream = Stream();
         using var probe = new Probe();
         using var cancel = new CancellationTokenSource();
-        var leader = Task.Run(() => cache.AcquireAsync(stream, probe, Probe.Decode, CancellationToken.None).AsTask());
-        await Assert.That(probe.Started.Wait(Limit)).IsTrue();
+        var leader = StartDecode(() => cache.AcquireAsync(stream, probe, Probe.Decode, CancellationToken.None).AsTask(), CancellationToken.None);
+        await probe.Started.Task.WaitAsync(Limit);
         var patient = cache.AcquireAsync(stream, probe, Probe.Decode, CancellationToken.None);
         var impatient = cache.AcquireAsync(stream, probe, Probe.Decode, cancel.Token);
         await Task.Delay(Settle);
@@ -195,9 +195,9 @@ public sealed class ImageCacheSharingTests
         var cache = new ImageCache();
         var stream = Stream();
         using var probe = new Probe();
-        var leader = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode));
-        await Assert.That(probe.Started.Wait(Limit)).IsTrue();
-        var waiter = Task.Run(() => cache.Acquire(stream, probe, Probe.Decode));
+        var leader = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None);
+        await probe.Started.Task.WaitAsync(Limit);
+        var waiter = StartDecode(() => cache.Acquire(stream, probe, Probe.Decode), CancellationToken.None);
         await Task.Delay(Settle);
 
         cache.Close();
@@ -230,6 +230,13 @@ public sealed class ImageCacheSharingTests
     /// <returns>The decoder's completion task.</returns>
     private static Task<ImageEntry?> StartDecode(Func<ImageEntry?> decode, CancellationToken cancellationToken) =>
         Task.Factory.StartNew(static state => ((Func<ImageEntry?>)state!)(), decode, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+    /// <summary>Starts an async decoder on a dedicated worker, where a leader's synchronous decode may block.</summary>
+    /// <param name="decode">The bounded decode callback.</param>
+    /// <param name="cancellationToken">Cancels queued execution.</param>
+    /// <returns>The decoder's completion task.</returns>
+    private static Task<ImageEntry?> StartDecode(Func<Task<ImageEntry?>> decode, CancellationToken cancellationToken) =>
+        Task.Factory.StartNew(static state => ((Func<Task<ImageEntry?>>)state!)(), decode, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default).Unwrap();
 
     /// <summary>Decodes an image whose decode asks the cache for the same image, as a self-referencing mask does.</summary>
     /// <param name="stream">The stream.</param>
@@ -311,8 +318,8 @@ public sealed class ImageCacheSharingTests
         /// <summary>Gets the decodes started.</summary>
         internal int Decodes => Volatile.Read(ref _decodes);
 
-        /// <summary>Gets the event set when the first decode starts.</summary>
-        internal ManualResetEventSlim Started { get; } = new();
+        /// <summary>Gets the signal completed when the first decode starts, so the test awaits it without holding a thread.</summary>
+        internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <summary>Gets the event the decoder waits for before it finishes.</summary>
         internal ManualResetEventSlim Release { get; } = new();
@@ -327,11 +334,7 @@ public sealed class ImageCacheSharingTests
         internal ImageEntry? Created { get; private set; }
 
         /// <inheritdoc/>
-        public void Dispose()
-        {
-            Started.Dispose();
-            Release.Dispose();
-        }
+        public void Dispose() => Release.Dispose();
 
         /// <summary>Decodes with the probe.</summary>
         /// <param name="stream">The stream.</param>
@@ -342,7 +345,7 @@ public sealed class ImageCacheSharingTests
         {
             ArgumentNullException.ThrowIfNull(stream);
             var number = Interlocked.Increment(ref probe._decodes);
-            probe.Started.Set();
+            _ = probe.Started.TrySetResult();
             _ = probe.Release.Wait(Limit);
             if (probe.ThrowFirst && number == 1)
             {
