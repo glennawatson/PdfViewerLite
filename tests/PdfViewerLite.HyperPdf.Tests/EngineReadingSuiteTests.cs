@@ -186,8 +186,8 @@ public sealed class EngineReadingSuiteTests
     {
         using var test = new EngineDocument(engine, TestPdf.CreateTagged());
         using var pdfium = new EngineDocument(EngineDocument.Pdfium, TestPdf.CreateTagged());
-        var page = new ReadingDocument((ITextLayoutSource)DocumentFeatures.CastFeature(test.Document, typeof(ITextLayoutSource))!, test.Document.GetPageSizes()).GetPage(0);
-        var expected = new ReadingDocument((ITextLayoutSource)DocumentFeatures.CastFeature(pdfium.Document, typeof(ITextLayoutSource))!, pdfium.Document.GetPageSizes()).GetPage(0);
+        var page = ReadPage(test.Document);
+        var expected = ReadPage(pdfium.Document);
         var blocks = new List<TaggedBlock>();
         var expectedBlocks = new List<TaggedBlock>();
         var tagged = ((ITaggedStructureSource)DocumentFeatures.CastFeature(test.Document, typeof(ITaggedStructureSource))!).GetTaggedBlocks(0, blocks);
@@ -260,6 +260,18 @@ public sealed class EngineReadingSuiteTests
         await Assert.That(before.Left && !before.Right).IsTrue();
         await Assert.That(shown && hidden).IsTrue();
         await Assert.That(!after.Left && after.Right).IsTrue();
+    }
+
+    /// <summary>Reads page 1 using its text and tagged structure features.</summary>
+    /// <param name="document">The document.</param>
+    /// <returns>The reading page.</returns>
+    private static ReadingPage ReadPage(IDocument document)
+    {
+        var characters = (ITextLayoutSource)DocumentFeatures.CastFeature(document, typeof(ITextLayoutSource))!;
+        var structure = DocumentFeatures.CastFeature(document, typeof(ITaggedStructureSource)) as ITaggedStructureSource;
+
+        // The source callback has no state parameter, so it captures both features.
+        return ReadingDocument.Create(() => new ReadingSources(characters, structure), document.GetPageSizes()).GetPage(0);
     }
 
     /// <summary>Reads every character of page 1.</summary>
