@@ -91,7 +91,7 @@ internal sealed class FirefoxBiDi : IAsyncDisposable
             return;
         }
 
-        _socket.Dispose();
+        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(CleanupSeconds));
         try
         {
             if (!_process.HasExited)
@@ -99,16 +99,19 @@ internal sealed class FirefoxBiDi : IAsyncDisposable
                 _process.Kill(true);
             }
 
-            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(CleanupSeconds));
+            _socket.Dispose();
             await _process.WaitForExitAsync(cleanup.Token);
             await Task.WhenAll(_stdout, _stderr).WaitAsync(cleanup.Token);
         }
         finally
         {
+            _socket.Dispose();
             await _lifetime.CancelAsync();
             _lifetime.Dispose();
             _process.Dispose();
-            Directory.Delete(_profile, true);
+
+            // Let profile deletion use its own deadline after the process wait has ended.
+            await FirefoxProfileCleanup.DeleteAsync(_profile, CancellationToken.None);
         }
     }
 
