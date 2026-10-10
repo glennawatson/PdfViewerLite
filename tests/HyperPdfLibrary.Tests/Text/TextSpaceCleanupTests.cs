@@ -3,10 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.Text;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Tests.Text;
 
@@ -143,7 +143,7 @@ public sealed class TextSpaceCleanupTests
         public override float GetWidth(int code) => _inner.GetWidth(code);
 
         /// <inheritdoc/>
-        public override SKPath? GetOutline(int code) => _inner.GetOutline(code);
+        public override PdfPath? GetOutline(int code) => _inner.GetOutline(code);
 
         /// <inheritdoc/>
         public override int GetUnicode(int code, Span<char> destination)

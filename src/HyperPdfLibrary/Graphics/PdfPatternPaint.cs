@@ -14,12 +14,12 @@ namespace HyperPdfLibrary.Graphics;
 /// matrix maps pattern space to the default space of the content stream that selected it.
 /// </summary>
 [DebuggerDisplay("PdfPatternPaint: {Shading} {Tile}")]
-internal sealed class PdfPatternPaint
+public sealed class PdfPatternPaint
 {
     /// <summary>Initializes a new instance of the <see cref="PdfPatternPaint"/> class for a shading pattern.</summary>
     /// <param name="shading">The shading.</param>
     /// <param name="matrix">The matrix from pattern space to the stream's default space.</param>
-    internal PdfPatternPaint(PdfShading shading, Matrix3x2 matrix)
+    public PdfPatternPaint(PdfShading shading, Matrix3x2 matrix)
     {
         Shading = shading;
         Matrix = matrix;
@@ -28,18 +28,18 @@ internal sealed class PdfPatternPaint
     /// <summary>Initializes a new instance of the <see cref="PdfPatternPaint"/> class for a tiling pattern.</summary>
     /// <param name="tile">One period of the pattern.</param>
     /// <param name="matrix">The matrix from pattern space to the stream's default space.</param>
-    internal PdfPatternPaint(PatternCell tile, Matrix3x2 matrix)
+    public PdfPatternPaint(PatternCell tile, Matrix3x2 matrix)
     {
         Tile = tile;
         Matrix = matrix;
     }
 
     /// <summary>Gets the matrix from pattern space to the default space of the selecting content stream.</summary>
-    internal Matrix3x2 Matrix { get; }
+    public Matrix3x2 Matrix { get; }
 
     /// <summary>Gets the shading, for a shading pattern.</summary>
-    internal PdfShading? Shading { get; }
+    public PdfShading? Shading { get; }
 
     /// <summary>Gets one period of the pattern, for a tiling pattern.</summary>
-    internal PatternCell? Tile { get; }
+    public PatternCell? Tile { get; }
 }

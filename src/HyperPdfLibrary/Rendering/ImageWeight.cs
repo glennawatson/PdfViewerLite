@@ -7,7 +7,7 @@ using System.Diagnostics;
 namespace HyperPdfLibrary.Rendering;
 
 /// <summary>One image a recorded picture drew: which image, and the pixel memory it holds.</summary>
-/// <param name="Id">The Skia unique id of the image, which every picture that draws the same image shares.</param>
+/// <param name="Id">The backend image identity shared by every picture that draws the same image.</param>
 /// <param name="Bytes">The pixel bytes of the image.</param>
 [DebuggerDisplay("ImageWeight: image {Id}, {Bytes} bytes")]
-internal readonly record struct ImageWeight(uint Id, long Bytes);
+public readonly record struct ImageWeight(uint Id, long Bytes);

@@ -3,9 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace PdfViewerLite.Benchmarks;
 
@@ -31,7 +31,7 @@ internal sealed class StructureBenchmarkFont(PdfDictionary dictionary) : PdfFont
     public override float GetWidth(int code) => Advance;
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code) => null;
+    public override PdfPath? GetOutline(int code) => null;
 
     /// <inheritdoc/>
     public override int GetUnicode(int code, Span<char> destination)

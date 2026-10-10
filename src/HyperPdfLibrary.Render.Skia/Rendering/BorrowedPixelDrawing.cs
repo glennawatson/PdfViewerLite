@@ -30,8 +30,7 @@ internal static class BorrowedPixelDrawing
     /// <returns>Whether the target was attached.</returns>
     internal static bool Attach(RenderSurface surface, PdfTileTarget target, nint pixels)
     {
-        surface.Pixmap.Reset(new(target.Width, target.Height, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, target.Stride);
-        if (!surface.Bitmap.InstallPixels(surface.Pixmap))
+        if (!ResetAndInstallPixels(surface, target, pixels))
         {
             return false;
         }
@@ -42,6 +41,7 @@ internal static class BorrowedPixelDrawing
 
     /// <summary>Releases every borrowed pixel reference before the caller unpins its target.</summary>
     /// <param name="surface">The thread's holder.</param>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.AggressiveOptimization)]
     internal static void Detach(RenderSurface surface)
     {
         try
@@ -84,6 +84,18 @@ internal static class BorrowedPixelDrawing
         surface.Bitmap.Dispose();
         surface.Pixmap.Dispose();
         surface.GrayPaint.Dispose();
+    }
+
+    /// <summary>Updates the reusable pixmap and bitmap with the pinned target.</summary>
+    /// <param name="surface">The thread's holder.</param>
+    /// <param name="target">The target dimensions and stride.</param>
+    /// <param name="pixels">The pinned target pointer.</param>
+    /// <returns>Whether the bitmap accepted the pixmap.</returns>
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool ResetAndInstallPixels(RenderSurface surface, PdfTileTarget target, nint pixels)
+    {
+        surface.Pixmap.Reset(new(target.Width, target.Height, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, target.Stride);
+        return surface.Bitmap.InstallPixels(surface.Pixmap);
     }
 
     /// <summary>Creates a native canvas through SkiaSharp's existing internal binding.</summary>

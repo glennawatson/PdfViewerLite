@@ -3,17 +3,17 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Runtime.CompilerServices;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Filters;
 using HyperPdfLibrary.Graphics.Colors;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Graphics.Shadings;
 
 /// <summary>Decodes the data of shading types 4 to 7 into triangles.</summary>
 internal sealed partial class MeshBuilder
 {
-    /// <summary>The most vertices in one Skia vertex list; a multiple of three below the 16-bit limit.</summary>
+    /// <summary>The most vertices in one triangle chunk; a multiple of three below the 16-bit index limit.</summary>
     private const int ChunkVertices = 60_000;
 
     /// <summary>The width of the colour ramp, in pixels.</summary>
@@ -56,13 +56,13 @@ internal sealed partial class MeshBuilder
     private readonly PdfShading _shading;
 
     /// <summary>The positions of the triangle vertices.</summary>
-    private readonly List<SKPoint> _positions = [];
+    private readonly List<PdfPoint> _positions = [];
 
     /// <summary>The vertex colours, when the shading has no function.</summary>
-    private readonly List<SKColor> _colors = [];
+    private readonly List<PdfColor> _colors = [];
 
     /// <summary>The ramp texture coordinates, when the shading has a function.</summary>
-    private readonly List<SKPoint> _texels = [];
+    private readonly List<PdfPoint> _texels = [];
 
     /// <summary>The /Decode array.</summary>
     private readonly float[] _decode;
@@ -286,7 +286,7 @@ internal sealed partial class MeshBuilder
     /// <summary>Reads a point.</summary>
     /// <param name="reader">The reader.</param>
     /// <returns>The point.</returns>
-    private SKPoint ReadPoint(ref MeshBitReader reader)
+    private PdfPoint ReadPoint(ref MeshBitReader reader)
     {
         var x = ReadCoordinate(ref reader, 0);
         var y = ReadCoordinate(ref reader, 1);
@@ -297,7 +297,7 @@ internal sealed partial class MeshBuilder
     /// <param name="reader">The reader.</param>
     /// <param name="point">The position.</param>
     /// <returns>The vertex.</returns>
-    private MeshVertex ReadColor(ref MeshBitReader reader, SKPoint point)
+    private MeshVertex ReadColor(ref MeshBitReader reader, PdfPoint point)
     {
         Span<float> components = stackalloc float[PdfColorSpace.MaxComponents];
         var count = Math.Min(_componentCount, components.Length);
@@ -312,7 +312,7 @@ internal sealed partial class MeshBuilder
             }
         }
 
-        return UsesRamp ? new(point, default, components[0]) : new(point, PdfShading.ToSkColor(_shading.ColorSpace, components), 0);
+        return UsesRamp ? new(point, default, components[0]) : new(point, PdfShading.ToColor(_shading.ColorSpace, components), 0);
     }
 
     /// <summary>Appends a vertex to the lists.</summary>
@@ -332,7 +332,7 @@ internal sealed partial class MeshBuilder
         _texels.Add(new((Math.Clamp(share, 0, 1) * (RampWidth - 1)) + TexelCentre, TexelCentre));
     }
 
-    /// <summary>Packs the lists into Skia vertex lists.</summary>
+    /// <summary>Packs the lists into backend triangle resources.</summary>
     /// <returns>The mesh, or null when it is empty.</returns>
     private ShadingMesh? ToMesh()
     {
@@ -342,24 +342,24 @@ internal sealed partial class MeshBuilder
             return null;
         }
 
-        var chunks = new List<SKVertices>();
+        var chunks = new List<IPdfRenderVertices>();
         for (var start = 0; start < total; start += ChunkVertices)
         {
             var count = Math.Min(ChunkVertices, total - start);
             var positions = _positions.GetRange(start, count).ToArray();
             chunks.Add(UsesRamp
-                ? SKVertices.CreateCopy(SKVertexMode.Triangles, positions, _texels.GetRange(start, count).ToArray(), null!)
-                : SKVertices.CreateCopy(SKVertexMode.Triangles, positions, _colors.GetRange(start, count).ToArray()));
+                ? PdfDrawingServices.Backend.CreateVertices(positions, _texels.GetRange(start, count).ToArray(), null!)
+                : PdfDrawingServices.Backend.CreateVertices(positions, _colors.GetRange(start, count).ToArray()));
         }
 
-        return new([.. chunks], UsesRamp ? CreateRamp() : null);
+        return new([..chunks], UsesRamp ? CreateRamp() : null);
     }
 
     /// <summary>Builds the shader that turns texture coordinates into colours.</summary>
     /// <returns>The shader.</returns>
-    private SKShader CreateRamp()
+    private IPdfRenderShader CreateRamp()
     {
-        var colors = new SKColor[RampWidth];
+        var colors = new PdfColor[RampWidth];
         ShadingShaders.SampleColors(_shading, _decode[CoordinateDecode], _decode[CoordinateDecode + 1], colors);
         var pixels = new byte[RampWidth * BytesPerPixel];
         for (var i = 0; i < colors.Length; i++)
@@ -370,7 +370,7 @@ internal sealed partial class MeshBuilder
             pixels[(i * BytesPerPixel) + AlphaOffset] = byte.MaxValue;
         }
 
-        using var image = SKImage.FromPixelCopy(new(RampWidth, 1, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, RampWidth * BytesPerPixel);
-        return SKShader.CreateImage(image, SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, new SKSamplingOptions(SKFilterMode.Linear));
+        using var image = PdfDrawingServices.Backend.CreateImage(new(RampWidth, 1, PdfImagePixelFormat.Bgra8888), pixels, RampWidth * BytesPerPixel);
+        return PdfDrawingServices.Backend.CreateImageShader(image, PdfShaderTileMode.Clamp, PdfShaderTileMode.Clamp, true, System.Numerics.Matrix3x2.Identity);
     }
 }

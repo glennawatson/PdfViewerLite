@@ -207,6 +207,8 @@ public sealed class ImageCacheSharingTests
         await Assert.That(await Fault(waiter)).IsTypeOf<ObjectDisposedException>();
         await Assert.That(cache.Count).IsEqualTo(0);
         await Assert.That(probe.Created!.IsDisposed).IsTrue();
+        var skiaImage = (SkiaRenderImage)probe.Created!.Image;
+        await Assert.That(() => skiaImage.Native).Throws<ObjectDisposedException>();
     }
 
     /// <summary>A decode that needs its own image (a mask that refers back to the image) gets nothing instead of waiting on itself.</summary>
@@ -296,8 +298,8 @@ public sealed class ImageCacheSharingTests
     private static ImageEntry Create()
     {
         var pixels = new byte[Side * Side * RenderedImage.BytesPerPixel];
-        var image = SKImage.FromPixelCopy(new(Side, Side, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, Side * RenderedImage.BytesPerPixel);
-        return new(image, false, false);
+        var native = SKImage.FromPixelCopy(new(Side, Side, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, Side * RenderedImage.BytesPerPixel);
+        return new(new SkiaRenderImage(native), false, false);
     }
 
     /// <summary>A decoder the test controls: it counts calls, says when it started, and waits to be released.</summary>

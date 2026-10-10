@@ -3,10 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Numerics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -14,7 +14,7 @@ namespace HyperPdfLibrary.Content;
 /// What the content interpreter draws on. Paths and matrices are in user space; each call that paints receives the
 /// graphics state in force, with the current transformation matrix, colours, alpha, blend mode and soft mask.
 /// </summary>
-internal interface IContentDevice
+public interface IContentDevice
 {
     /// <summary>Saves the clip, as <c>q</c> does.</summary>
     void Save();
@@ -23,28 +23,28 @@ internal interface IContentDevice
     void Restore();
 
     /// <summary>Fills a path with the state's fill colour or pattern.</summary>
-    /// <param name="path">The path in user space; the device may set its fill type.</param>
+    /// <param name="path">The immutable path in user space.</param>
     /// <param name="evenOdd">Whether the even-odd rule applies.</param>
     /// <param name="state">The graphics state.</param>
-    void Fill(SKPath path, bool evenOdd, ref GraphicsState state);
+    void Fill(PdfPath path, bool evenOdd, ref GraphicsState state);
 
     /// <summary>Strokes a path with the state's stroke colour or pattern and line style.</summary>
     /// <param name="path">The path in user space.</param>
     /// <param name="state">The graphics state.</param>
-    void Stroke(SKPath path, ref GraphicsState state);
+    void Stroke(PdfPath path, ref GraphicsState state);
 
     /// <summary>Intersects the clip with a path.</summary>
     /// <param name="path">The path in user space.</param>
     /// <param name="evenOdd">Whether the even-odd rule applies.</param>
     /// <param name="ctm">The matrix from user space to the page.</param>
-    void Clip(SKPath path, bool evenOdd, Matrix3x2 ctm);
+    void Clip(PdfPath path, bool evenOdd, Matrix3x2 ctm);
 
     /// <summary>Draws an image into the unit square of user space; stencil masks use the fill colour.</summary>
-    /// <param name="image">The image, as premultiplied BGRA or 8-bit coverage for a stencil mask.</param>
+    /// <param name="image">The borrowed image, as premultiplied BGRA, opaque gray or stencil coverage.</param>
     /// <param name="isMask">Whether the image is a stencil mask painted with the fill colour.</param>
     /// <param name="smooth">Whether the image asks for smoothing when scaled up.</param>
     /// <param name="state">The graphics state.</param>
-    void DrawImage(SKImage image, bool isMask, bool smooth, ref GraphicsState state);
+    void DrawImage(IPdfRenderImage image, bool isMask, bool smooth, ref GraphicsState state);
 
     /// <summary>Reports one shown glyph; devices that draw fill, stroke or clip it according to the state's text render mode.</summary>
     /// <param name="glyph">The glyph.</param>
@@ -75,5 +75,5 @@ internal interface IContentDevice
     /// <summary>Starts recording a separate picture, for a pattern cell or soft mask group.</summary>
     /// <param name="cull">The area the picture covers.</param>
     /// <returns>A device that records into the picture.</returns>
-    IPictureDevice CreatePictureDevice(SKRect cull);
+    IPictureDevice CreatePictureDevice(PdfRect cull);
 }

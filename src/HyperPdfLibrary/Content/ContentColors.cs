@@ -4,12 +4,12 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Content;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Colors;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.Rendering;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -255,9 +255,14 @@ internal static class ContentColors
     /// <param name = "self">The owned interpreter state.</param>
     /// <param name = "name">The pattern's resource name.</param>
     /// <param name = "rgb">The colour for an uncoloured pattern.</param>
-    /// <returns>The paint, or null when the pattern is missing or damaged.</returns>
+    /// <returns>The paint, or null when the pattern is missing or damaged or no drawing backend is registered.</returns>
     internal static PdfPatternPaint? CreatePatternPaint(ContentInterpreter self, PdfName name, uint rgb)
     {
+        if (PdfDrawingServices.ConfiguredBackend is null)
+        {
+            return null;
+        }
+
         var value = ContentExecution.FindResource(self, KnownName.Pattern, name);
         if (value.AsDictionary() is not { } dictionary)
         {
@@ -331,9 +336,9 @@ internal static class ContentColors
         }
 
         using var recorder = self.Device.CreatePictureDevice(new(box.Left, box.Bottom, box.Right, box.Top));
-        using var child = new ContentInterpreter(self.Cache, recorder, self.Depth + 1) { Printing = self.Printing, };
+        using var child = new ContentInterpreter(self.Cache, recorder, self.Depth + 1) { Printing = self.Printing };
         ContentExecution.RunPattern(child, pattern, uncolored, rgb);
         using var cell = recorder.Finish();
-        return TileComposer.Compose(cell, box, stepX, stepY, scale);
+        return PdfDrawingServices.Backend.ComposeTile(cell, box, stepX, stepY, scale);
     }
 }

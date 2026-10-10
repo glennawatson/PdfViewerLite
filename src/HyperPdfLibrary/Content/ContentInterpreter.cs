@@ -5,11 +5,11 @@ using System.Diagnostics;
 using System.Numerics;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Layers;
 using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.Rendering;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -29,17 +29,11 @@ internal sealed class ContentInterpreter : IDisposable
     /// <summary>The document's layers.</summary>
     private readonly PdfOptionalContent _layers;
 
-    /// <summary>The current path, reused for every path.</summary>
-    private readonly SKPathBuilder _path = new();
-
-    /// <summary>The glyph outlines collected for a text clip.</summary>
-    private readonly SKPathBuilder _textClip = new();
-
     /// <summary>The current graphics state.</summary>
     private GraphicsState _state = new();
 
     /// <summary>The current point of the path.</summary>
-    private SKPoint _current;
+    private PdfPoint _current;
 
     /// <summary>The segments added to the current path; zero means the path is empty.</summary>
     private int _pathPoints;
@@ -112,16 +106,16 @@ internal sealed class ContentInterpreter : IDisposable
     internal List<bool> Marked { get; } = [];
 
     /// <summary>Gets the interpreter's Path state.</summary>
-    internal SKPathBuilder Path => _path;
+    internal PdfPathBuilder Path { get; } = new();
 
     /// <summary>Gets the interpreter's TextClip state.</summary>
-    internal SKPathBuilder TextClip => _textClip;
+    internal PdfPathBuilder TextClip { get; } = new();
 
     /// <summary>Gets the current graphics state by reference.</summary>
     internal ref GraphicsState State => ref _state;
 
     /// <summary>Gets or sets the interpreter's Current state.</summary>
-    internal ref SKPoint Current => ref _current;
+    internal ref PdfPoint Current => ref _current;
 
     /// <summary>Gets or sets the interpreter's PathPoints state.</summary>
     internal ref int PathPoints => ref _pathPoints;
@@ -165,7 +159,5 @@ internal sealed class ContentInterpreter : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        _path.Dispose();
-        _textClip.Dispose();
     }
 }

@@ -5,8 +5,8 @@ using System.Buffers;
 using System.Diagnostics;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Filters;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Rendering;
 
@@ -22,7 +22,7 @@ internal sealed class ProgressiveRecording : IDisposable
     internal const int SliceOperators = 256;
 
     /// <summary>The recording device.</summary>
-    private readonly SkiaContentDevice _device;
+    private readonly IPictureDevice _device;
 
     /// <summary>The interpreter, part way through the page.</summary>
     private readonly ContentInterpreter _interpreter;
@@ -88,7 +88,7 @@ internal sealed class ProgressiveRecording : IDisposable
     /// <param name = "cancellationToken">Cancels the recording between slices.</param>
     /// <param name = "picture">Receives the finished picture, which the caller owns, when the status is <see cref = "PdfRenderStatus.Done"/>.</param>
     /// <returns>The status.</returns>
-    internal PdfRenderStatus Continue(Func<bool>? shouldPause, CancellationToken cancellationToken, out SKPicture? picture)
+    internal PdfRenderStatus Continue(Func<bool>? shouldPause, CancellationToken cancellationToken, out IPdfRenderPicture? picture)
     {
         picture = null;
         while (true)

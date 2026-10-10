@@ -3,8 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
@@ -34,5 +34,5 @@ public abstract class PdfType3Font : PdfFont
     public abstract PdfStream? GetCharProc(int code);
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code) => null;
+    public override PdfPath? GetOutline(int code) => null;
 }

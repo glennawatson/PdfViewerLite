@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics.Images;
 using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.Rendering;
@@ -155,12 +156,15 @@ public sealed class CompactImageTests
     {
         var gray = PdfImageDecoder.DecodeCompact(GrayImage(ByteBits, AlignedWidth, false))!;
 
-        using var image = PdfRenderCache.ToSkImage(gray)!;
+        using var wrapper = PdfDrawingServices.Backend.CreateImage(gray);
+        await Assert.That(wrapper).IsNotNull();
+        var image = SkiaResources.Image(wrapper!);
 
         await Assert.That(gray.IsPinned).IsTrue();
         await Assert.That(image.ColorType).IsEqualTo(SKColorType.Gray8);
         await Assert.That(image.Info.BytesPerPixel).IsEqualTo(1);
         using var pixmap = image.PeekPixels();
+        await Assert.That(SharesPixelMemory(pixmap, gray.Pixels)).IsTrue();
         await Assert.That(pixmap.GetPixelSpan<byte>()[..AlignedWidth].SequenceEqual(gray.Pixels.AsSpan(0, AlignedWidth))).IsTrue();
     }
 
@@ -193,6 +197,18 @@ public sealed class CompactImageTests
         }
 
         await Assert.That(worst).IsLessThanOrEqualTo(Tolerance);
+    }
+
+    /// <summary>Checks that the native pixmap uses the decoder's pixel array without copying.</summary>
+    /// <param name="pixmap">The borrowed native pixels.</param>
+    /// <param name="pixels">The decoder's managed pixels.</param>
+    /// <returns>True when both buffers have the same address.</returns>
+    private static unsafe bool SharesPixelMemory(SKPixmap pixmap, byte[] pixels)
+    {
+        fixed (byte* pointer = pixels)
+        {
+            return pixmap.GetPixels() == (nint)pointer;
+        }
     }
 
     /// <summary>Draws an image scaled down with mipmapped linear sampling, as the renderer draws scans.</summary>

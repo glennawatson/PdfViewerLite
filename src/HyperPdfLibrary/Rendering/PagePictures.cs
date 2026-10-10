@@ -4,7 +4,7 @@
 
 using System.Diagnostics;
 using HyperPdfLibrary.Document;
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Rendering;
 
@@ -20,16 +20,16 @@ internal sealed class PagePictures
     private readonly Lock _gate = new();
 
     /// <summary>The page content.</summary>
-    private SKPicture? _content;
+    private IPdfRenderPicture? _content;
 
     /// <summary>The page content for printing.</summary>
-    private SKPicture? _printContent;
+    private IPdfRenderPicture? _printContent;
 
     /// <summary>The annotation appearances for viewing.</summary>
-    private SKPicture? _annotations;
+    private IPdfRenderPicture? _annotations;
 
     /// <summary>The annotation appearances for printing.</summary>
-    private SKPicture? _printAnnotations;
+    private IPdfRenderPicture? _printAnnotations;
 
     /// <summary>A content recording paused part way, or null.</summary>
     private ProgressiveRecording? _recording;
@@ -123,7 +123,7 @@ internal sealed class PagePictures
     /// <param name="page">The page.</param>
     /// <param name="printing">Whether optional content follows print usage.</param>
     /// <returns>The picture.</returns>
-    internal SKPicture GetContent(PdfRenderCache cache, PdfPage page, bool printing)
+    internal IPdfRenderPicture GetContent(PdfRenderCache cache, PdfPage page, bool printing)
     {
         lock (_gate)
         {
@@ -175,7 +175,7 @@ internal sealed class PagePictures
     /// <param name="page">The page.</param>
     /// <param name="printing">Whether the annotations are for printing.</param>
     /// <returns>The picture.</returns>
-    internal SKPicture GetAnnotations(PdfRenderCache cache, PdfPage page, bool printing)
+    internal IPdfRenderPicture GetAnnotations(PdfRenderCache cache, PdfPage page, bool printing)
     {
         lock (_gate)
         {
@@ -231,7 +231,7 @@ internal sealed class PagePictures
 
         _recording ??= new(cache, page, printing);
         PdfRenderStatus status;
-        SKPicture? picture;
+        IPdfRenderPicture? picture;
         try
         {
             status = _recording.Continue(shouldPause, cancellationToken, out picture);

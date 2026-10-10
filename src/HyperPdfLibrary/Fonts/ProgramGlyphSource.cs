@@ -3,8 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts.Programs;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
@@ -48,14 +48,14 @@ internal sealed class ProgramGlyphSource : GlyphSource
     internal override bool IsSubstitute => false;
 
     /// <inheritdoc/>
-    internal override SKPath? BuildOutline(int glyph)
+    internal override PdfPath? BuildOutline(int glyph)
     {
         if ((uint)glyph >= (uint)Program.GlyphCount)
         {
             return null;
         }
 
-        using var builder = new SKPathBuilder();
+        var builder = new PdfPathBuilder();
         var sink = new PathOutlineSink(builder, _toGlyphSpace);
         Program.DecodeGlyph(glyph, ref sink);
         return builder.Detach();

@@ -3,15 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Buffers;
-
 using System.Numerics;
 using System.Runtime.CompilerServices;
-
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Fonts;
-
 using HyperPdfLibrary.Objects;
-
 using HyperPdfLibrary.PageObjects;
 using HyperPdfLibrary.Syntax;
 using HyperPdfLibrary.Text;

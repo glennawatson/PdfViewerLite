@@ -3,9 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Content;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
-using HyperPdfLibrary.Rendering;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -240,7 +239,7 @@ internal static class ContentPaths
             self.Path.Close();
         }
 
-        using var path = self.Path.Detach();
+        var path = self.Path.Detach();
         self.PathPoints = 0;
         if (self.Hidden == 0)
         {
@@ -261,7 +260,7 @@ internal static class ContentPaths
     /// <param name = "fill">Whether to fill.</param>
     /// <param name = "stroke">Whether to stroke.</param>
     /// <param name = "evenOdd">Whether the fill uses the even-odd rule.</param>
-    internal static void FillAndStroke(ContentInterpreter self, SKPath path, bool fill, bool stroke, bool evenOdd)
+    internal static void FillAndStroke(ContentInterpreter self, PdfPath path, bool fill, bool stroke, bool evenOdd)
     {
         if (fill && stroke && ContentPaths.NeedsStrokeKnockout(self))
         {
@@ -292,12 +291,12 @@ internal static class ContentPaths
     /// <param name = "self">The owned interpreter state.</param>
     /// <param name = "path">The path.</param>
     /// <param name = "evenOdd">Whether the fill uses the even-odd rule.</param>
-    internal static void FillAndStrokeKnockout(ContentInterpreter self, SKPath path, bool evenOdd)
+    internal static void FillAndStrokeKnockout(ContentInterpreter self, PdfPath path, bool evenOdd)
     {
         var reach = (self.State.LineWidth * Math.Max(1, self.State.MiterLimit)) + 1;
         var local = path.Bounds;
-        local.Inflate(reach, reach);
-        var bounds = SkiaConversions.ToSkMatrix(self.State.Ctm).MapRect(local);
+        local = local.Inflate(reach, reach);
+        var bounds = self.State.Ctm.MapRect(local);
         var group = new GroupInfo(true, true, 1, self.State.BlendMode, self.State.SoftMask, bounds);
         var inner = self.State;
         inner.BlendMode = PdfBlendMode.Normal;

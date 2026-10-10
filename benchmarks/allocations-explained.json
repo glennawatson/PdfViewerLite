@@ -1435,5 +1435,300 @@
     "type": "",
     "frame": "PdfViewerLite.HyperPdf.HyperPdfPageManager.ApplyAsync(",
     "reason": "Runtime async reports the page action directly on .NET 11. The action freezes selected indexes, starts an undoable edit transaction and its guard, records original objects and trailer entries, and validates or rebuilds page selections using integer arrays and visited sets. These allocations belong to an explicit page edit and never run during warmed reading or rendering."
+  },
+  {
+    "type": "Entry[HyperPdfLibrary.Objects.PdfDictionary,HyperPdfLibrary.Graphics.Shadings.PdfShading][]",
+    "frame": "HyperPdfLibrary.Content.ContentColors.GetShading(class HyperPdfLibrary.Content.ContentInterpreter,value class HyperPdfLibrary.Objects.PdfValue)",
+    "reason": "The first shading cache insertion allocates the dictionary\u0027s entry storage, keyed by the PDF shading dictionary. This storage belongs to the document\u0027s render cache."
+  },
+  {
+    "type": "HyperPdfLibrary.Graphics.Shadings.PdfShading",
+    "frame": "HyperPdfLibrary.Content.ContentColors.GetShading(class HyperPdfLibrary.Content.ContentInterpreter,value class HyperPdfLibrary.Objects.PdfValue)",
+    "reason": "The first shading lookup parses its dictionary and creates the PdfShading retained by the document\u0027s shading cache. Later recorded-page replay uses the completed recording."
+  },
+  {
+    "type": "System.Int32[]",
+    "frame": "HyperPdfLibrary.Content.ContentColors.GetShading(class HyperPdfLibrary.Content.ContentInterpreter,value class HyperPdfLibrary.Objects.PdfValue)",
+    "reason": "The first shading lookup resolves its resource dictionaries and inserts the parsed shading into a dictionary cache. These paths use integer key or bucket storage; the sampled enclosing frame does not identify which nested array constructor ran."
+  },
+  {
+    "type": "System.Collections.Concurrent.ConcurrentDictionary\u00602[System.IntPtr,SkiaSharp.SKObject]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Native wrappers created during soft-mask recording own SkiaSharp handle-lookup dictionaries. The observed generic dictionary type identifies that wrapper bookkeeping, not PDF object storage."
+  },
+  {
+    "type": "Entry[HyperPdfLibrary.Rendering.SoftMaskKey,HyperPdfLibrary.Graphics.PdfSoftMask][]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "The first soft-mask insertion allocates dictionary entry storage keyed by the mask dictionary and current transform. The document\u0027s render cache retains the recorded mask."
+  },
+  {
+    "type": "HyperPdfLibrary.Rendering.SkiaRenderPicture",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Finishing the native soft-mask recording creates a managed backend owner for the SKPicture. The mask retains this disposable owner so native picture lifetime stays behind the drawing abstraction."
+  },
+  {
+    "type": "HyperPdfLibrary.Content.ContentInterpreter",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "A cache miss records the soft-mask form with an owned child content interpreter. This isolates its parsing and graphics state from the outer page interpreter, and the completed mask recording is retained."
+  },
+  {
+    "type": "Node[System.IntPtr,SkiaSharp.SKObject]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "SkiaSharp registers the native wrappers made while recording the soft-mask form in its handle dictionary. The sampled node type identifies that handle-table entry; warm replay reuses the recorded mask."
+  },
+  {
+    "type": "HyperPdfLibrary.Graphics.PdfSoftMask",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Recording an uncached soft-mask form creates the PdfSoftMask result containing the completed picture, luminosity mode, backdrop and optional transfer table. The render cache retains this result."
+  },
+  {
+    "type": "System.WeakReference",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "SkiaSharp\u0027s handle dictionary uses weak references for native wrappers created while the soft-mask form is recorded. The mask itself retains the completed picture strongly."
+  },
+  {
+    "type": "SkiaSharp.SKPicture",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Recording the uncached soft-mask form creates native picture wrappers. The completed recording is retained by the soft mask and released with the renderer\u0027s cached picture resources."
+  },
+  {
+    "type": "SkiaSharp.SKCanvas",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Starting the soft-mask picture recorder creates its native recording canvas wrapper. The recorder owns the canvas during recording and the cached mask owns the completed picture."
+  },
+  {
+    "type": "SkiaSharp.SKPaint",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Recording the uncached soft-mask form creates the native drawing device\u0027s fill and stroke paints. The device owns and disposes these wrappers after recording."
+  },
+  {
+    "type": "System.Object[]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "The trace reports an object array while the uncached soft-mask form is resolved and recorded. This encloses lazy PDF object loading and native-wrapper setup; the stack does not identify the nested array constructor."
+  },
+  {
+    "type": "System.Int32[]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Resolving a new soft-mask form reads its resource dictionaries and inserts its recording into a dictionary cache. These paths use integer key or bucket arrays; the sampled enclosing frame does not resolve the nested array constructor."
+  },
+  {
+    "type": "System.Object",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "The trace reports System.Object allocations while the uncached soft-mask form is resolved and recorded. This encloses lazy resource parsing and native-wrapper creation; the resolved stack does not identify the nested constructor of each System.Object."
+  },
+  {
+    "type": "HyperPdfLibrary.Drawing.PdfPath",
+    "frame": "HyperPdfLibrary.Content.ContentPaths.OpFill(class HyperPdfLibrary.Content.ContentInterpreter,value class HyperPdfLibrary.Content.ContentReader\u0026)",
+    "reason": "Interpreting a fill detaches an immutable managed path containing an independent command snapshot. This owned contour replaces sharing native path state across the engine and backend; it is created during recording, not warm replay."
+  },
+  {
+    "type": "SkiaSharp.SKPath",
+    "frame": "HyperPdfLibrary.Content.ContentPaths.OpFill(class HyperPdfLibrary.Content.ContentInterpreter,value class HyperPdfLibrary.Content.ContentReader\u0026)",
+    "reason": "Interpreting a fill detaches the path builder into an owned Skia path wrapper before painting it into the page recording. The wrapper is disposed after the fill; warm picture replay does not detach paths."
+  },
+  {
+    "type": "System.Object",
+    "frame": "HyperPdfLibrary.Content.ContentPaths.OpFill(class HyperPdfLibrary.Content.ContentInterpreter,value class HyperPdfLibrary.Content.ContentReader\u0026)",
+    "reason": "The trace reports System.Object allocations under the fill operation that detaches, paints and disposes a native path. The resolved stack does not identify the nested System.Object constructor, so no particular native-wrapper bookkeeping object is claimed. This belongs to interpreting the uncached page."
+  },
+  {
+    "type": "HyperPdfLibrary.Drawing.PdfPathCommand[]",
+    "frame": "HyperPdfLibrary.Content.ContentXObjects.ClipToBox(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Recording a form\u0027s bounding-box clip grows the managed command list and detaches an exact-sized command snapshot. The immutable clip owns its commands independently of the interpreter\u0027s reusable builder."
+  },
+  {
+    "type": "SkiaSharp.SKPath",
+    "frame": "HyperPdfLibrary.Content.ContentXObjects.ClipToBox(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "The backend converts the form\u0027s managed bounding-box contour to a temporary native path for clipping, then disposes the wrapper. The completed page recording retains the clip operation."
+  },
+  {
+    "type": "System.Object",
+    "frame": "HyperPdfLibrary.Content.ContentXObjects.ClipToBox(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "The trace reports System.Object allocations while recording a form\u0027s bounding-box clip and converting it to a native path. The resolved enclosing frame does not identify the nested object constructor."
+  },
+  {
+    "type": "HyperPdfLibrary.Drawing.PdfPathCommand[]",
+    "frame": "HyperPdfLibrary.Drawing.PdfPathBuilder.AddRect(value class HyperPdfLibrary.Drawing.PdfRect)",
+    "reason": "Adding a rectangle appends its move, line and close commands to the managed builder. Its command list grows backing arrays while recording the uncached page; recorded-picture replay does not build rectangles."
+  },
+  {
+    "type": "HyperPdfLibrary.Drawing.PdfPath",
+    "frame": "HyperPdfLibrary.Drawing.PdfPathBuilder.Detach()",
+    "reason": "Detaching creates the immutable managed path that owns an exact-sized command snapshot, then clears the reusable builder. This is first-recording path ownership, not warm picture replay."
+  },
+  {
+    "type": "HyperPdfLibrary.Objects.PdfObjectStore",
+    "frame": "HyperPdfLibrary.Objects.StoreOpening.Open(class HyperPdfLibrary.IO.PdfByteSource,bool,value class HyperPdfLibrary.Objects.OpenCredentials)",
+    "reason": "Opening creates the owned object store for the new document. ColdOpenAndRender opens and disposes a fresh store on every operation; recorded-page replay does not open a store."
+  },
+  {
+    "type": "HyperPdfLibrary.Structure.XrefTable",
+    "frame": "HyperPdfLibrary.Objects.StoreOpening.Open(class HyperPdfLibrary.IO.PdfByteSource,bool,value class HyperPdfLibrary.Objects.OpenCredentials)",
+    "reason": "Opening creates an initial cross-reference table and the table populated while reading the file. The source creates both during each fresh document open; recorded-page replay does not construct cross-reference tables."
+  },
+  {
+    "type": "System.String",
+    "frame": "HyperPdfLibrary.Objects.StoreOpening.ReadHeader(class HyperPdfLibrary.Objects.PdfObjectStore)",
+    "reason": "Opening reads the PDF version digits and Encoding.UTF8.GetString creates the stored version string. The version is read once for each new document."
+  },
+  {
+    "type": "System.Object[]",
+    "frame": "HyperPdfLibrary.Objects.StoreOpening.ReadStructure(class HyperPdfLibrary.Objects.PdfObjectStore)",
+    "reason": "Reading the cross-reference structure creates the document\u0027s object-slot array, sized to the final table. It replaces the temporary catalog-validation slots and retains parsed objects for this open document."
+  },
+  {
+    "type": "System.Int32[]",
+    "frame": "HyperPdfLibrary.Objects.StoreOpening.ReadStructure(class HyperPdfLibrary.Objects.PdfObjectStore)",
+    "reason": "Cross-reference reading creates visited-section sets and parses trailer dictionaries, which use integer bucket and key arrays. The trace attributes these integer arrays to ReadStructure; it does not distinguish the nested collection or parser constructors."
+  },
+  {
+    "type": "System.Object[]",
+    "frame": "HyperPdfLibrary.Objects.StoreOpening.RootResolves(class HyperPdfLibrary.Objects.PdfObjectStore,class HyperPdfLibrary.Structure.XrefTable)",
+    "reason": "Checking the trailer\u0027s Root reference creates an object-slot array sized to the cross-reference table before loading the catalog. This temporary opening cache is replaced by ReadStructure\u0027s final cache."
+  },
+  {
+    "type": "HyperPdfLibrary.Objects.PdfStream",
+    "frame": "HyperPdfLibrary.Objects.StoreParsing.ReadStream(class HyperPdfLibrary.Objects.PdfObjectStore,class HyperPdfLibrary.Objects.PdfDictionary,int64,value class HyperPdfLibrary.Objects.PdfObjectId)",
+    "reason": "Parsing a stream object creates its PdfStream wrapper with the dictionary, source range and object identity. The object store retains the wrapper after first loading the stream; the fixture\u0027s bytes are not copied here."
+  },
+  {
+    "type": "System.Collections.Generic.List\u00601[HyperPdfLibrary.Drawing.PdfPathCommand]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "Content-interpreter path builders own command-list wrappers created during the first page recording. The recorded page is replayed without rebuilding these lists."
+  },
+  {
+    "type": "System.Collections.Generic.List\u00601[HyperPdfLibrary.Graphics.GraphicsState]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "A new content interpreter owns the graphics-state stack list used for save and restore during recording. Its list allocation is inlined into the cold render frame."
+  },
+  {
+    "type": "System.Collections.Generic.List\u00601[HyperPdfLibrary.Objects.PdfDictionary]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "A new content interpreter owns the resource-stack list used while entering page and form content during recording. Warm replay does not instantiate this parsing state."
+  },
+  {
+    "type": "VolatileNode[System.IntPtr,SkiaSharp.SKObject][]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "Cold page recording creates native drawing wrappers and their SkiaSharp handle dictionaries. The observed volatile-node array is backing storage for those handle tables; the enclosing Render frame includes inlined wrapper construction."
+  },
+  {
+    "type": "Enumerator[System.IntPtr,SkiaSharp.SKObject]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "Cold recording traverses native-wrapper handle dictionaries during their setup and cleanup. The trace identifies the dictionary enumerator under Render; it does not resolve the inlined nested caller."
+  },
+  {
+    "type": "HyperPdfLibrary.Graphics.GraphicsState[]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "The first render of this newly opened document records its uncached page and creates the interpreters\u0027 graphics-state stack storage. Warm recorded-picture replay does not create interpreters or their stacks."
+  },
+  {
+    "type": "Tables[System.IntPtr,SkiaSharp.SKObject]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "Cold recording creates native wrappers with SkiaSharp handle dictionaries. The observed table object belongs to that native-wrapper lookup storage and is attributed to the enclosing Render frame."
+  },
+  {
+    "type": "HyperPdfLibrary.Objects.PdfDictionary[]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "Recording the uncached page grows the interpreter\u0027s resource-stack backing array when page and form resources are entered. Replay uses the recorded result."
+  },
+  {
+    "type": "HyperPdfLibrary.Drawing.PdfPathBuilder",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "The first render creates content-interpreter path builders while recording the uncached page. These builders own the managed command construction state; cached picture replay does not create them."
+  },
+  {
+    "type": "System.WeakReference",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "Creating native wrappers for the uncached page records weak-reference bookkeeping in SkiaSharp\u0027s handle tables. The wrapper setup is inlined into the cold Render frame."
+  },
+  {
+    "type": "System.Int32[]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "First recording resolves PDF resources and populates recording caches that use integer key or bucket storage. The trace attributes these arrays to Render without resolving the nested constructor."
+  },
+  {
+    "type": "System.Object",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "The trace reports System.Object allocations under the first render\u0027s page recording and native-wrapper setup. The enclosing frame does not resolve the nested object constructor; warm replay separately measured zero library allocations."
+  },
+  {
+    "type": "System.Collections.Generic.List\u00601[HyperPdfLibrary.Rendering.ImageWeight]",
+    "frame": "HyperPdfLibrary.Rendering.PictureWeight..ctor()",
+    "reason": "A new picture recording owns an image-weight list used to account for its retained images. The list wrapper is created even when this transparency fixture records no images; replay reuses the completed picture."
+  },
+  {
+    "type": "SkiaSharp.SKColor[]",
+    "frame": "HyperPdfLibrary.Rendering.SkiaConversions.ToSkColors(value class HyperPdfLibrary.Drawing.PdfColor[])",
+    "reason": "Constructing the shading\u0027s native shader converts its managed color stops into a temporary Skia color array. The completed shader is cached; warm replay does not repeat this conversion."
+  },
+  {
+    "type": "SkiaSharp.SKPath",
+    "frame": "HyperPdfLibrary.Rendering.SkiaPathConversion.Create(class SkiaSharp.SKPathBuilder,class HyperPdfLibrary.Drawing.PdfPath,bool)",
+    "reason": "The recording backend copies immutable managed commands into its reusable native path builder and detaches a temporary SKPath. The recording operation disposes that native wrapper after drawing or clipping."
+  },
+  {
+    "type": "System.Threading.Lock",
+    "frame": "HyperPdfLibrary.Content.ContentColors.GetShading(class HyperPdfLibrary.Content.ContentInterpreter,value class HyperPdfLibrary.Objects.PdfValue)",
+    "reason": "The parsed shading owns a synchronization gate for first-use shader and mesh construction. The lock is created when the shading cache first parses this resource."
+  },
+  {
+    "type": "System.Collections.Generic.List\u00601[System.Boolean]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "The child interpreter recording the uncached soft-mask form owns its marked-content visibility stack. The list wrapper belongs to that first recording, not cached mask replay."
+  },
+  {
+    "type": "VolatileNode[System.IntPtr,SkiaSharp.SKObject][]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Native wrappers created while recording the soft-mask form initialize SkiaSharp handle dictionaries. The observed volatile-node array is their handle-table backing storage."
+  },
+  {
+    "type": "Tables[System.IntPtr,SkiaSharp.SKObject]",
+    "frame": "HyperPdfLibrary.Content.ContentExtendedGraphics.GetSoftMask(class HyperPdfLibrary.Content.ContentInterpreter,class HyperPdfLibrary.Objects.PdfDictionary)",
+    "reason": "Native wrappers created for the uncached soft-mask recording initialize SkiaSharp handle dictionaries. This sampled table object belongs to their native-handle lookup storage."
+  },
+  {
+    "type": "System.Int64[]",
+    "frame": "HyperPdfLibrary.Objects.StoreOpening.ReadStructure(class HyperPdfLibrary.Objects.PdfObjectStore)",
+    "reason": "Cross-reference reading creates table location arrays and a stack of linked-section offsets, both using long arrays. The trace attributes the array to ReadStructure without resolving which nested table or traversal constructor ran."
+  },
+  {
+    "type": "HyperPdfLibrary.Rendering.SkiaRenderShader",
+    "frame": "HyperPdfLibrary.Render.Skia.SkiaRenderBackend.CreateLinearGradient(value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfColor[],float32[],value class HyperPdfLibrary.Drawing.PdfShaderTileMode)",
+    "reason": "The backend creates a disposable managed owner for the native gradient shader. This keeps native ownership behind the drawing interface and the parsed shading retains the result."
+  },
+  {
+    "type": "System.WeakReference",
+    "frame": "HyperPdfLibrary.Render.Skia.SkiaRenderBackend.CreateLinearGradient(value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfColor[],float32[],value class HyperPdfLibrary.Drawing.PdfShaderTileMode)",
+    "reason": "SkiaSharp registers the newly created gradient shader wrapper with weak-reference bookkeeping in its native handle table."
+  },
+  {
+    "type": "SkiaSharp.SKColor[]",
+    "frame": "HyperPdfLibrary.Render.Skia.SkiaRenderBackend.CreateLinearGradient(value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfColor[],float32[],value class HyperPdfLibrary.Drawing.PdfShaderTileMode)",
+    "reason": "Constructing the native linear-gradient shader converts managed color stops into a temporary Skia color array. The completed shading shader is cached; warm replay does not repeat this conversion."
+  },
+  {
+    "type": "SkiaSharp.SKShader",
+    "frame": "HyperPdfLibrary.Render.Skia.SkiaRenderBackend.CreateLinearGradient(value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfColor[],float32[],value class HyperPdfLibrary.Drawing.PdfShaderTileMode)",
+    "reason": "The first shading use creates the native linear-gradient shader from its color stops and geometry. The parsed shading retains the owned backend shader for later recordings and replay."
+  },
+  {
+    "type": "System.Object",
+    "frame": "HyperPdfLibrary.Render.Skia.SkiaRenderBackend.CreateLinearGradient(value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfPoint,value class HyperPdfLibrary.Drawing.PdfColor[],float32[],value class HyperPdfLibrary.Drawing.PdfShaderTileMode)",
+    "reason": "The trace reports System.Object allocations while the backend creates and registers the linear-gradient shader. The resolved enclosing frame does not identify each nested object constructor."
+  },
+  {
+    "type": "System.Collections.Generic.List\u00601[System.Boolean]",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "A new content interpreter owns the marked-content visibility stack. Its list wrapper is created while recording the uncached page; warm replay does not reconstruct it."
+  },
+  {
+    "type": "HyperPdfLibrary.Content.ContentInterpreter",
+    "frame": "HyperPdfLibrary.Rendering.PdfPageRenderer.Render(value class HyperPdfLibrary.Rendering.PdfTileRequest\u0026,value class HyperPdfLibrary.Rendering.PdfTileTarget)",
+    "reason": "A newly opened document\u0027s first render creates the content interpreter used to record its uncached page and form content. Cached picture replay does not create this parsing state."
+  },
+  {
+    "type": "System.Object",
+    "frame": "HyperPdfLibrary.Rendering.SkiaPathConversion.Create(class SkiaSharp.SKPathBuilder,class HyperPdfLibrary.Drawing.PdfPath,bool)",
+    "reason": "The trace reports System.Object allocation during native path detachment and registration for recording. The enclosing conversion frame does not resolve the nested object constructor; warm replay uses the completed picture."
   }
 ]

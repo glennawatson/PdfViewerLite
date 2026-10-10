@@ -5,6 +5,7 @@
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+
 using HyperPdfLibrary.Objects;
 
 namespace HyperPdfLibrary.Graphics.Colors;

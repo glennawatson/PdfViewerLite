@@ -3,7 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using SkiaSharp;
+using System.Numerics;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Rendering;
 
@@ -13,4 +14,4 @@ namespace HyperPdfLibrary.Rendering;
 /// <param name="Tile">The period's rectangle in pattern space.</param>
 /// <param name="ImageToPattern">The matrix from the image's pixels to pattern space.</param>
 [DebuggerDisplay("PatternCell: {Tile}")]
-internal sealed record PatternCell(SKPicture? Picture, SKImage? Image, SKRect Tile, SKMatrix ImageToPattern);
+public sealed record PatternCell(IPdfRenderPicture? Picture, IPdfRenderImage? Image, PdfRect Tile, Matrix3x2 ImageToPattern);

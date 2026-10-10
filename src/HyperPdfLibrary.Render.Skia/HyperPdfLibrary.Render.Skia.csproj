@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>HyperPdfLibrary.Render.Skia</RootNamespace>
+    <Description>Skia drawing services for HyperPdfLibrary.</Description>
+    <IsPackable>true</IsPackable>
+    <PackageId>HyperPdfLibrary.Render.Skia</PackageId>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../HyperPdfLibrary/HyperPdfLibrary.csproj" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="HyperPdfLibrary.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.HyperPdf.Tests" />
+    <InternalsVisibleTo Include="PdfViewerLite.Benchmarks" />
+  </ItemGroup>
+  <PropertyGroup>
+    <NoticesResourceName>HyperPdfLibrary.Render.Skia.ThirdPartyNotices.md</NoticesResourceName>
+  </PropertyGroup>
+  <Import Project="../../licenses/ThirdPartyNotices.targets" />
+  <ItemGroup>
+    <None Include="$(NoticesFile)" Pack="true" PackagePath="THIRD-PARTY-NOTICES.md" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)../../docs/hyperpdf/PACKAGE-README.md" Pack="true" PackagePath="README.md" Visible="false" />
+  </ItemGroup>
+</Project>

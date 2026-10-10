@@ -6,38 +6,50 @@ using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Render.Skia;
 
 namespace PdfViewerLite.HyperPdf.Tests;
 
-/// <summary>
-/// Checks the built HyperPDF assemblies, read with System.Reflection.Metadata, for any tie to PDFium: no assembly
-/// reference to the PDFium engine and no native module import of the PDFium library.
-/// </summary>
+/// <summary>Checks built engine assemblies for backend and engine references.</summary>
 public sealed class EngineIndependenceTests
 {
     /// <summary>The name part that marks a PDFium assembly or native library.</summary>
     private const string PdfiumName = "pdfium";
 
+    /// <summary>The name that marks the SkiaSharp assembly or native library.</summary>
+    private const string SkiaSharpName = "SkiaSharp";
+
     /// <summary>The adapter assembly references no PDFium assembly and imports no PDFium library.</summary>
     /// <returns>A task.</returns>
     [Test]
-    public async Task AdapterHasNoPdfiumReference() => await Assert.That(PdfiumReferences(typeof(HyperPdfDocument).Assembly.Location)).IsEmpty();
+    public async Task AdapterHasNoPdfiumReference() => await Assert.That(ReferencesContaining(typeof(HyperPdfDocument).Assembly.Location, PdfiumName)).IsEmpty();
 
     /// <summary>The managed engine assembly references no PDFium assembly and imports no PDFium library.</summary>
     /// <returns>A task.</returns>
     [Test]
-    public async Task LibraryHasNoPdfiumReference() => await Assert.That(PdfiumReferences(typeof(PdfDocument).Assembly.Location)).IsEmpty();
+    public async Task LibraryHasNoPdfiumReference() => await Assert.That(ReferencesContaining(typeof(PdfDocument).Assembly.Location, PdfiumName)).IsEmpty();
+
+    /// <summary>The managed engine assembly has no SkiaSharp assembly or native-module reference.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task LibraryHasNoSkiaSharpReference() => await Assert.That(ReferencesContaining(typeof(PdfDocument).Assembly.Location, SkiaSharpName)).IsEmpty();
+
+    /// <summary>The Skia drawing backend has no PDFium assembly or native-module reference.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task SkiaBackendHasNoPdfiumReference() => await Assert.That(ReferencesContaining(typeof(SkiaRenderBackend).Assembly.Location, PdfiumName)).IsEmpty();
 
     /// <summary>The check sees a reference when there is one: this test assembly references the PDFium engine for parity.</summary>
     /// <returns>A task.</returns>
     [Test]
     public async Task CheckFindsTheTestAssemblysPdfiumReference() =>
-        await Assert.That(PdfiumReferences(typeof(EngineIndependenceTests).Assembly.Location)).Contains("PdfViewerLite.Pdfium");
+        await Assert.That(ReferencesContaining(typeof(EngineIndependenceTests).Assembly.Location, PdfiumName)).Contains("PdfViewerLite.Pdfium");
 
-    /// <summary>Lists the assembly references and module imports of an assembly that name PDFium.</summary>
+    /// <summary>Lists assembly references and module imports that contain a name fragment.</summary>
     /// <param name="path">The assembly file.</param>
+    /// <param name="fragment">The name fragment.</param>
     /// <returns>The names found.</returns>
-    private static List<string> PdfiumReferences(string path)
+    private static List<string> ReferencesContaining(string path, string fragment)
     {
         using var stream = File.OpenRead(path);
         using var reader = new PEReader(stream);
@@ -45,23 +57,24 @@ public sealed class EngineIndependenceTests
         var found = new List<string>();
         foreach (var handle in metadata.AssemblyReferences)
         {
-            AddIfPdfium(found, metadata.GetString(metadata.GetAssemblyReference(handle).Name));
+            AddIfContained(found, metadata.GetString(metadata.GetAssemblyReference(handle).Name), fragment);
         }
 
         for (var row = 1; row <= metadata.GetTableRowCount(TableIndex.ModuleRef); row++)
         {
-            AddIfPdfium(found, metadata.GetString(metadata.GetModuleReference(MetadataTokens.ModuleReferenceHandle(row)).Name));
+            AddIfContained(found, metadata.GetString(metadata.GetModuleReference(MetadataTokens.ModuleReferenceHandle(row)).Name), fragment);
         }
 
         return found;
     }
 
-    /// <summary>Adds a name when it names PDFium.</summary>
+    /// <summary>Adds a name when it contains the fragment.</summary>
     /// <param name="found">The names found.</param>
     /// <param name="name">The name.</param>
-    private static void AddIfPdfium(List<string> found, string name)
+    /// <param name="fragment">The name fragment.</param>
+    private static void AddIfContained(List<string> found, string name, string fragment)
     {
-        if (name.Contains(PdfiumName, StringComparison.OrdinalIgnoreCase))
+        if (name.Contains(fragment, StringComparison.OrdinalIgnoreCase))
         {
             found.Add(name);
         }

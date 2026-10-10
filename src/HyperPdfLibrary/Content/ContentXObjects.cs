@@ -3,13 +3,13 @@
 // See the LICENSE file in the project root for full license information.
 using System.Numerics;
 using HyperPdfLibrary.Content;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Filters;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Images;
 using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.Rendering;
 using HyperPdfLibrary.Syntax;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -153,7 +153,7 @@ internal static class ContentXObjects
     /// <param name = "isMask">Whether it is a stencil mask.</param>
     /// <param name = "smooth">Whether it asks for smoothing.</param>
     /// <param name = "dictionary">The image dictionary.</param>
-    internal static void DrawDecodedImage(ContentInterpreter self, SKImage image, bool isMask, bool smooth, PdfDictionary dictionary)
+    internal static void DrawDecodedImage(ContentInterpreter self, IPdfRenderImage image, bool isMask, bool smooth, PdfDictionary dictionary)
     {
         if (self.ColorLocked)
         {
@@ -259,7 +259,7 @@ internal static class ContentXObjects
             return;
         }
 
-        using var image = PdfRenderCache.ToSkImage(data);
+        using var image = PdfRenderCache.ToRenderImage(data);
         if (image is not null && !(data.IsStencilMask && self.State.Fill.PaintsNothing))
         {
             ContentXObjects.DrawDecodedImage(self, image, data.IsStencilMask, data.Interpolate, dictionary);
@@ -274,7 +274,7 @@ internal static class ContentXObjects
     /// <param name = "image">The image.</param>
     /// <param name = "isMask">Whether it is a stencil mask.</param>
     /// <param name = "smooth">Whether it asks for smoothing.</param>
-    internal static void DrawImageAsShape(ContentInterpreter self, SKImage image, bool isMask, bool smooth)
+    internal static void DrawImageAsShape(ContentInterpreter self, IPdfRenderImage image, bool isMask, bool smooth)
     {
         if (isMask)
         {
@@ -287,7 +287,7 @@ internal static class ContentXObjects
         ContentPaths.PathLine(self, 1, 1);
         ContentPaths.PathLine(self, 0, 1);
         self.Path.Close();
-        using var square = self.Path.Detach();
+        var square = self.Path.Detach();
         self.PathPoints = 0;
         self.Device.Fill(square, false, ref self.State);
     }
@@ -340,11 +340,11 @@ internal static class ContentXObjects
     /// <param name = "self">The owned interpreter state.</param>
     /// <param name = "dictionary">The form dictionary.</param>
     /// <returns>The box in page space, or an empty rectangle when the form has none.</returns>
-    internal static SKRect ClipToBox(ContentInterpreter self, PdfDictionary dictionary)
+    internal static PdfRect ClipToBox(ContentInterpreter self, PdfDictionary dictionary)
     {
         if (!dictionary.TryGetRectangle(KnownName.BBox, out var box))
         {
-            return SKRect.Empty;
+            return PdfRect.Empty;
         }
 
         ContentPaths.PathMove(self, box.Left, box.Bottom);
@@ -352,13 +352,11 @@ internal static class ContentXObjects
         ContentPaths.PathLine(self, box.Right, box.Top);
         ContentPaths.PathLine(self, box.Left, box.Top);
         self.Path.Close();
-        using (var clip = self.Path.Detach())
-        {
-            self.Device.Clip(clip, false, self.State.Ctm);
-        }
+        var clip = self.Path.Detach();
+        self.Device.Clip(clip, false, self.State.Ctm);
 
         self.PathPoints = 0;
-        return SkiaConversions.ToSkMatrix(self.State.Ctm).MapRect(new(box.Left, box.Bottom, box.Right, box.Top));
+        return self.State.Ctm.MapRect(new(box.Left, box.Bottom, box.Right, box.Top));
     }
 
     /// <summary>Determines whether the state composites objects with constant alpha, a blend mode or a soft mask.</summary>
@@ -371,7 +369,7 @@ internal static class ContentXObjects
     /// <param name = "dictionary">The form dictionary.</param>
     /// <param name = "bounds">The form's box in page space.</param>
     /// <returns>The group, or null when the form is drawn directly.</returns>
-    internal static GroupInfo? BeginFormGroup(ContentInterpreter self, PdfDictionary dictionary, SKRect bounds)
+    internal static GroupInfo? BeginFormGroup(ContentInterpreter self, PdfDictionary dictionary, PdfRect bounds)
     {
         var group = dictionary.GetDictionary(KnownName.Group);
         if (group is null || !group.IsName(KnownName.S, KnownName.Transparency))

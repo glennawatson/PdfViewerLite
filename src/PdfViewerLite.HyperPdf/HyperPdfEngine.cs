@@ -5,6 +5,8 @@
 using System.Diagnostics;
 using HyperPdfLibrary;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
+using HyperPdfLibrary.Render.Skia;
 using PdfViewerLite.Core.Documents;
 
 namespace PdfViewerLite.HyperPdf;
@@ -15,6 +17,9 @@ public sealed class HyperPdfEngine : IDocumentEngine
 {
     /// <summary>How far into the file the signature may appear; some writers prefix junk.</summary>
     private const int SignatureSearchLength = 1024;
+
+    /// <summary>Registers the Skia drawing services used by this adapter.</summary>
+    static HyperPdfEngine() => PdfDrawingServices.Register(new PdfRenderBackendRegistration().UseSkia());
 
     /// <inheritdoc/>
     public string Name => "HyperPDF";

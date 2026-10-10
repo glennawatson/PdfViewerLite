@@ -10,7 +10,7 @@ namespace HyperPdfLibrary.Graphics.Images;
 
 /// <summary>
 /// Decodes one-component images whose colours are all opaque grays to one byte per pixel. Greyscale scans and bilevel
-/// pages then cost a quarter of the memory of BGRA, and Skia draws a gray image the same way as the equal BGRA pixels.
+/// pages then cost a quarter of the memory of BGRA while retaining the same opaque pixel values.
 /// </summary>
 internal static class GrayImages
 {

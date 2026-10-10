@@ -5,8 +5,8 @@
 namespace HyperPdfLibrary.Graphics.Images;
 
 /// <summary>
-/// Allocates the pixel arrays of decoded images. Large arrays go on the pinned object heap, so Skia can use them as its
-/// own pixel memory and the decoder's output is never copied. The array is zeroed, because a truncated image keeps the
+/// Allocates the pixel arrays of decoded images. Large arrays go on the pinned object heap, so a backend can retain them
+/// without a pixel copy. The array is zeroed, because a truncated image keeps the
 /// rows it did not receive as transparent black.
 /// </summary>
 internal static class PixelMemory

@@ -5,12 +5,12 @@ using System.Buffers;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Content;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Objects;
-using HyperPdfLibrary.Rendering;
+
 using HyperPdfLibrary.Syntax;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -57,7 +57,7 @@ internal static class ContentText
             return;
         }
 
-        using var clip = self.TextClip.Detach();
+        var clip = self.TextClip.Detach();
         self.TextClipGlyphs = 0;
         self.Device.Clip(clip, false, self.State.Ctm);
     }
@@ -252,7 +252,7 @@ internal static class ContentText
             return null;
         }
 
-        var group = new GroupInfo(true, true, self.State.FillAlpha, self.State.BlendMode, self.State.SoftMask, SKRect.Empty);
+        var group = new GroupInfo(true, true, self.State.FillAlpha, self.State.BlendMode, self.State.SoftMask, PdfRect.Empty);
         self.Device.BeginGroup(group);
         self.State.FillAlpha = 1;
         self.State.BlendMode = PdfBlendMode.Normal;
@@ -430,13 +430,12 @@ internal static class ContentText
     /// <param name = "glyphMatrix">The matrix from glyph space to user space.</param>
     internal static void AddTextClip(ContentInterpreter self, PdfFont font, int code, Matrix3x2 glyphMatrix)
     {
-        if (self.State.RenderMode < ContentText.FirstClipMode || font is PdfType3Font || font.GetOutline(code) is not { } outline)
+        if (self.State.RenderMode < ContentText.FirstClipMode || font is PdfType3Font || font.GetOutline(code)is not { } outline)
         {
             return;
         }
 
-        var transform = SkiaConversions.ToSkMatrix(glyphMatrix);
-        self.TextClip.AddPath(outline, in transform);
+        self.TextClip.AddPath(outline, glyphMatrix);
         self.TextClipGlyphs++;
     }
 

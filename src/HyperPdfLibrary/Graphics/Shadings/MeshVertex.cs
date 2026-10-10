@@ -4,7 +4,7 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Graphics.Shadings;
 
@@ -13,7 +13,7 @@ namespace HyperPdfLibrary.Graphics.Shadings;
 /// <param name="Color">The colour, when the shading has no function.</param>
 /// <param name="T">The function input, when the shading has a function.</param>
 [DebuggerDisplay("MeshVertex: {Point}")]
-internal readonly record struct MeshVertex(SKPoint Point, SKColor Color, float T)
+internal readonly record struct MeshVertex(PdfPoint Point, PdfColor Color, float T)
 {
     /// <summary>Blends two vertices.</summary>
     /// <param name="a">The first vertex.</param>

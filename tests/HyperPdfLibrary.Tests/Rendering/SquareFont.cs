@@ -3,9 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Tests.Rendering;
 
@@ -20,14 +20,14 @@ internal sealed class SquareFont : PdfFont
     private const float Advance = 0.5F;
 
     /// <summary>The glyph outline.</summary>
-    private readonly SKPath _square;
+    private readonly PdfPath _square;
 
     /// <summary>Initializes a new instance of the <see cref="SquareFont"/> class.</summary>
     /// <param name="dictionary">The font dictionary.</param>
     internal SquareFont(PdfDictionary dictionary)
         : base(dictionary)
     {
-        using var builder = new SKPathBuilder();
+        var builder = new PdfPathBuilder();
         builder.AddRect(new(0, 0, Em, Em));
         _square = builder.Detach();
     }
@@ -43,7 +43,7 @@ internal sealed class SquareFont : PdfFont
     public override float GetWidth(int code) => Advance;
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code) => code == ' ' ? null : _square;
+    public override PdfPath? GetOutline(int code) => code == ' ' ? null : _square;
 
     /// <inheritdoc/>
     public override int GetUnicode(int code, Span<char> destination)

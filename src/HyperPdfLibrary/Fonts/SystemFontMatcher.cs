@@ -3,15 +3,15 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Text;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts.Data;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
 /// <summary>
 /// Chooses a system font for a font the PDF does not embed, in the spirit of PDFium's font mapper: the named family in
 /// the asked weight and slant, then a standard stand-in chosen by the standard 14 name or the serif, fixed-pitch and
-/// symbolic flags. Matching goes through <see cref="SKFontManager"/>, so it works the same way on every platform.
+/// symbolic flags. The registered font provider resolves platform-specific faces.
 /// Faces are cached for the process by family, weight and slant.
 /// </summary>
 internal static class SystemFontMatcher
@@ -104,23 +104,23 @@ internal static class SystemFontMatcher
     /// <returns>The face, or <see langword="null"/> when no system font has the character.</returns>
     internal static SubstituteFace? MatchCharacter(int codePoint)
     {
-        var typeface = SKFontManager.Default.MatchCharacter(codePoint);
-        if (typeface is null || string.IsNullOrEmpty(typeface.FamilyName))
+        var font = PdfDrawingServices.Fonts?.MatchCharacter(codePoint);
+        if (font is null || string.IsNullOrEmpty(font.FamilyName))
         {
-            typeface?.Dispose();
+            font?.Dispose();
             return null;
         }
 
-        var key = new FaceKey(typeface.FamilyName, typeface.FontWeight, typeface.FontSlant != SKFontStyleSlant.Upright, false);
+        var key = new FaceKey(font.FamilyName, font.Weight, font.Italic, false);
         lock (Gate)
         {
             if (Faces.TryGetValue(key, out var cached) && cached is not null)
             {
-                typeface.Dispose();
+                font.Dispose();
                 return cached;
             }
 
-            var face = new SubstituteFace(typeface, false, default);
+            var face = new SubstituteFace(font, false);
             Faces[key] = face;
             return face;
         }
@@ -369,18 +369,15 @@ internal static class SystemFontMatcher
     /// <returns>The face, or <see langword="null"/>.</returns>
     private static SubstituteFace? Create(FaceKey key)
     {
-        var slant = key.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
-        using var style = new SKFontStyle(key.Weight, (int)SKFontStyleWidth.Normal, slant);
-        var typeface = SKFontManager.Default.MatchFamily(key.Family, style);
-        if (typeface is null || string.IsNullOrEmpty(typeface.FamilyName) || typeface.GlyphCount == 0)
+        var font = PdfDrawingServices.Fonts?.Match(key.Family, key.Weight, key.Italic);
+        if (font is null || string.IsNullOrEmpty(font.FamilyName) || font.GlyphCount == 0)
         {
-            typeface?.Dispose();
+            font?.Dispose();
             return null;
         }
 
-        var synthetic = new SyntheticStyle(key.Weight >= BoldThreshold && typeface.FontWeight < BoldThreshold, key.Italic && typeface.FontSlant == SKFontStyleSlant.Upright);
-        var requested = key.Requested && NamesMatch(typeface.FamilyName, key.Family);
-        return new(typeface, requested, synthetic);
+        var requested = key.Requested && NamesMatch(font.FamilyName, key.Family);
+        return new(font, requested);
     }
 
     /// <summary>Compares family names, ignoring case and spaces.</summary>
@@ -420,9 +417,17 @@ internal static class SystemFontMatcher
 
     /// <summary>Makes the face used when no family matches: the platform default.</summary>
     /// <returns>The face.</returns>
+    /// <exception cref="InvalidOperationException">No bundled default face or registered font provider is available.</exception>
     private static SubstituteFace CreateFallback()
     {
-        var face = new SubstituteFace(SKTypeface.Default, false, default);
+        var font = PdfDrawingServices.Fonts?.DefaultFace;
+        if (font is null)
+        {
+            return BundledFaces.Get(BundledFamily.Sans, false, false)
+                ?? throw new InvalidOperationException("No bundled default font or registered font provider is available.");
+        }
+
+        var face = new SubstituteFace(font, false);
         return Interlocked.CompareExchange(ref _fallback, face, null) ?? face;
     }
 }

@@ -4,8 +4,9 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Filters;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Graphics;
@@ -13,7 +14,6 @@ using HyperPdfLibrary.Graphics.Colors;
 using HyperPdfLibrary.Graphics.Images;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Rendering;
 
@@ -100,28 +100,11 @@ internal sealed class PdfRenderCache
         set => Volatile.Write(ref field, value);
     }
 
-    /// <summary>Converts a decoded image to a Skia image.</summary>
+    /// <summary>Creates a backend image from decoded PDF pixels.</summary>
     /// <param name="data">The decoded image.</param>
-    /// <returns>The Skia image, which the caller owns.</returns>
-    internal static SKImage? ToSkImage(PdfImageData data)
-    {
-        if (data.Width <= 0 || data.Height <= 0 || data.Pixels.Length == 0)
-        {
-            return null;
-        }
-
-        var info = GetInfo(data);
-        var rowBytes = data.Width * info.BytesPerPixel;
-        if (!data.IsPinned)
-        {
-            return SKImage.FromPixelCopy(info, data.Pixels, rowBytes);
-        }
-
-        // The array sits on the pinned object heap and the release context keeps it alive, so Skia owns the decoder's
-        // output without copying it. The array is freed once Skia drops its last reference to the image.
-        using var pixmap = new SKPixmap(info, Marshal.UnsafeAddrOfPinnedArrayElement(data.Pixels, 0), rowBytes);
-        return SKImage.FromPixels(pixmap, ReleasePixels, data.Pixels);
-    }
+    /// <returns>The backend image, which the caller owns.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static IPdfRenderImage? ToRenderImage(PdfImageData data) => PdfDrawingServices.Backend.CreateImage(data);
 
     /// <summary>
     /// Empties every cache when the document is disposed. Images are released as their last user finishes, and later
@@ -166,24 +149,6 @@ internal sealed class PdfRenderCache
                 ?? PdfColorSpace.DeviceGray;
     }
 
-    /// <summary>Describes the pixels of a decoded image: coverage, gray or BGRA.</summary>
-    /// <param name="data">The decoded image.</param>
-    /// <returns>The Skia description.</returns>
-    private static SKImageInfo GetInfo(PdfImageData data) => data switch
-    {
-        { IsStencilMask: true } => new(data.Width, data.Height, SKColorType.Alpha8, SKAlphaType.Premul),
-        { IsGray: true } => new(data.Width, data.Height, SKColorType.Gray8, SKAlphaType.Opaque),
-        _ => new(data.Width, data.Height, SKColorType.Bgra8888, SKAlphaType.Premul),
-    };
-
-    /// <summary>Called when Skia lets go of pixels it was given.</summary>
-    /// <param name="address">The pixel address.</param>
-    /// <param name="context">The pixel array.</param>
-    private static void ReleasePixels(nint address, object context)
-    {
-        // Nothing to free: Skia held the only reference to the context, which is the pinned array, and drops it now.
-    }
-
     /// <summary>Decodes an image stream.</summary>
     /// <param name="stream">The stream.</param>
     /// <param name="colors">The output intent substitutes for device colour spaces, or <see langword="null"/>.</param>
@@ -203,7 +168,7 @@ internal sealed class PdfRenderCache
             return image is null ? null : new ImageEntry(image, false, true);
         }
 
-        var converted = ToSkImage(data);
+        var converted = ToRenderImage(data);
         return converted is null ? null : new ImageEntry(converted, data.IsStencilMask, data.Interpolate);
     }
 }

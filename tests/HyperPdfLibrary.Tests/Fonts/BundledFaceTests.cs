@@ -151,7 +151,7 @@ public sealed class BundledFaceTests
                     await BundledFaces.EnsureAsync(family, bold, italic, CancellationToken.None);
                     var face = BundledFaces.Get(family, bold, italic);
                     await Assert.That(face).IsNotNull();
-                    using var path = face!.BuildOutline(face.GetGlyph(CodeA));
+                    var path = face!.BuildOutline(face.GetGlyph(CodeA));
                     await Assert.That(path).IsNotNull();
                     await Assert.That(path!.Bounds.IsEmpty).IsFalse();
                 }

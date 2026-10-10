@@ -3,10 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Fonts.Data;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace PdfViewerLite.HyperPdf.Tests;
 
@@ -31,7 +31,7 @@ internal sealed class StandInFont : PdfFont
     private readonly StandardFontMetrics _metrics;
 
     /// <summary>The box outline of each code, made on first use.</summary>
-    private readonly SKPath?[] _boxes = new SKPath?[LastPrintable + 1];
+    private readonly PdfPath?[] _boxes = new PdfPath?[LastPrintable + 1];
 
     /// <summary>Guards making outlines.</summary>
     private readonly Lock _gate = new();
@@ -62,7 +62,7 @@ internal sealed class StandInFont : PdfFont
     public override float GetWidth(int code) => _metrics.TryGetWidth(code, out var width) ? width / Em : 0;
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code)
+    public override PdfPath? GetOutline(int code)
     {
         if (code is <= FirstPrintable or > LastPrintable)
         {
@@ -76,7 +76,7 @@ internal sealed class StandInFont : PdfFont
                 return existing;
             }
 
-            using var builder = new SKPathBuilder();
+            var builder = new PdfPathBuilder();
             builder.AddRect(new(0, 0, GetWidth(code) * Em, _metrics.CapHeight));
             var box = builder.Detach();
             _boxes[code] = box;

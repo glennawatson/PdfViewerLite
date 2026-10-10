@@ -5,8 +5,11 @@
 namespace HyperPdfLibrary.Graphics.Shadings;
 
 /// <summary>The shading types of PDF 32000 §8.7.4.5.</summary>
-internal enum PdfShadingKind
+public enum PdfShadingKind
 {
+    /// <summary>No shading has been selected.</summary>
+    None = 0,
+
     /// <summary>Type 1: a colour function of x and y.</summary>
     FunctionBased = 1,
 

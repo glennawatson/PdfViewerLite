@@ -2,16 +2,16 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Runtime.CompilerServices;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Filters;
-using SkiaSharp;
+using HyperPdfLibrary.Graphics.Images;
 
 namespace HyperPdfLibrary.Optimizing;
 
 /// <summary>
-/// Pixel work for image re-encoding through SkiaSharp: unpacking samples into 8-bit grey or RGBX pixels, downsampling
-/// with a box filter followed by a Mitchell cubic resample, encoding JPEG and decoding JPEG. Pixels are grey (one byte)
-/// or RGBX (four bytes, the fourth ignored), the layouts SkiaSharp reads as <see cref="SKColorType.Gray8"/> and
-/// <see cref="SKColorType.Rgb888x"/>.
+/// Unpacks gray or RGBX samples and reduces image blocks in managed code. The configured image codec provides JPEG
+/// decoding, JPEG encoding and the final Mitchell cubic resample.
 /// </summary>
 internal static class ImagePixels
 {
@@ -27,14 +27,13 @@ internal static class ImagePixels
     /// <summary>The value of an opaque channel.</summary>
     private const byte Opaque = 0xFF;
 
-    /// <summary>The JPEG quality from which chroma is kept at full resolution.</summary>
-    private const int FullChromaQuality = 90;
-
-    /// <summary>The highest JPEG quality.</summary>
-    private const int MaxQuality = 100;
-
     /// <summary>The smallest shrink factor worth averaging whole blocks for before the cubic resample.</summary>
     private const int MinBoxFactor = 2;
+
+    /// <summary>Gets the codec required for JPEG encoding and image resampling.</summary>
+    /// <exception cref="NotSupportedException">No image codec has been registered.</exception>
+    private static IPdfImageCodec Codec => PdfDrawingServices.Images
+        ?? throw new NotSupportedException("Register an image codec before optimizing JPEG images or resampling pixels.");
 
     /// <summary>Gets the bytes per pixel of a pixel layout.</summary>
     /// <param name="components">One for grey, three for RGB.</param>
@@ -95,63 +94,54 @@ internal static class ImagePixels
         }
     }
 
-    /// <summary>Encodes pixels as JPEG.</summary>
-    /// <param name="pixels">The pixels.</param>
-    /// <param name="size">Their size and layout.</param>
-    /// <param name="quality">The quality, 1 to 100.</param>
-    /// <returns>The JPEG bytes, or <see langword="null"/> when encoding failed.</returns>
-    internal static unsafe byte[]? EncodeJpeg(ReadOnlySpan<byte> pixels, PixelSize size, int quality)
-    {
-        var downsample = quality >= FullChromaQuality ? SKJpegEncoderDownsample.Downsample444 : SKJpegEncoderDownsample.Downsample420;
-        fixed (byte* pointer = pixels)
-        {
-            using var pixmap = new SKPixmap(Info(size.Width, size.Height, size.Components), (nint)pointer, size.Width * PixelBytes(size.Components));
-            using var data = pixmap.Encode(new SKJpegEncoderOptions(Math.Clamp(quality, 1, MaxQuality), downsample, SKJpegEncoderAlphaOption.Ignore));
-            return data?.ToArray();
-        }
-    }
+    /// <summary>Encodes pixels through the configured image codec.</summary>
+    /// <param name="pixels">The gray or RGBX pixels.</param>
+    /// <param name="size">The source dimensions and layout.</param>
+    /// <param name="quality">The JPEG quality.</param>
+    /// <returns>The encoded bytes, or null when encoding fails.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static byte[]? EncodeJpeg(ReadOnlySpan<byte> pixels, PixelSize size, int quality) =>
+        Codec.EncodeJpeg(pixels, Layout(size), quality);
 
-    /// <summary>Decodes a JPEG into grey or RGBX pixels.</summary>
+    /// <summary>Decodes JPEG pixels through the configured image codec.</summary>
     /// <param name="jpeg">The JPEG bytes.</param>
-    /// <param name="components">One for grey, three for RGB.</param>
-    /// <param name="pixels">Receives the pixels.</param>
-    /// <param name="size">The decoded size.</param>
-    /// <returns><see langword="true"/> when the JPEG decoded.</returns>
-    internal static unsafe bool TryDecodeJpeg(ReadOnlySpan<byte> jpeg, int components, ref PooledBuffer pixels, out PixelSize size)
+    /// <param name="components">One for gray, three for RGBX.</param>
+    /// <param name="pixels">Receives the decoded pixels.</param>
+    /// <param name="size">Receives the JPEG dimensions.</param>
+    /// <returns>True when usable pixels were decoded.</returns>
+    internal static bool TryDecodeJpeg(ReadOnlySpan<byte> jpeg, int components, ref PooledBuffer pixels, out PixelSize size)
     {
         size = default;
-        using var data = SKData.CreateCopy(jpeg);
-        using var codec = SKCodec.Create(new SKMemoryStream(data), out var opened);
-        if (opened != SKCodecResult.Success || codec.Info is not { Width: > 0, Height: > 0 })
+        if (!JpegMarkers.TryReadInfo(jpeg, out var info) || !info.IsSupported)
         {
             return false;
         }
 
-        var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, components == 1 ? SKColorType.Gray8 : SKColorType.Rgba8888, SKAlphaType.Opaque);
-        var length = info.Width * info.Height * PixelBytes(components);
-        var target = pixels.GetSpan(length);
-        fixed (byte* pointer = target)
+        var length = (long)info.Width * info.Height * PixelBytes(components);
+        if ((long)info.Width * info.Height > ImageHeader.MaxPixels || length > int.MaxValue)
         {
-            var result = codec.GetPixels(info, (nint)pointer);
-            if (result is not (SKCodecResult.Success or SKCodecResult.IncompleteInput))
-            {
-                return false;
-            }
+            return false;
         }
 
-        pixels.Advance(length);
-        size = new(info.Width, info.Height, components);
+        var decoded = new PixelSize(info.Width, info.Height, components);
+        if (!Codec.TryDecodeJpeg(jpeg, Layout(decoded), pixels.GetSpan((int)length)))
+        {
+            return false;
+        }
+
+        pixels.Advance((int)length);
+        size = decoded;
         return true;
     }
 
-    /// <summary>Resamples pixels to an exact size with a Mitchell cubic filter.</summary>
-    /// <param name="source">The pixels.</param>
-    /// <param name="size">Their size and layout.</param>
+    /// <summary>Resamples pixels through the configured image codec.</summary>
+    /// <param name="source">The source pixels.</param>
+    /// <param name="size">Their dimensions and layout.</param>
     /// <param name="targetWidth">The target width.</param>
     /// <param name="targetHeight">The target height.</param>
     /// <param name="output">Receives the target pixels.</param>
-    /// <returns><see langword="true"/> when the resample ran.</returns>
-    private static unsafe bool Resample(ReadOnlySpan<byte> source, PixelSize size, int targetWidth, int targetHeight, ref PooledBuffer output)
+    /// <returns>True when resampling succeeds.</returns>
+    private static bool Resample(ReadOnlySpan<byte> source, PixelSize size, int targetWidth, int targetHeight, ref PooledBuffer output)
     {
         var bytes = PixelBytes(size.Components);
         if (size.Width == targetWidth && size.Height == targetHeight)
@@ -160,21 +150,14 @@ internal static class ImagePixels
             return true;
         }
 
-        var length = targetWidth * targetHeight * bytes;
-        var target = output.GetSpan(length);
-        bool scaled;
-        fixed (byte* from = source)
+        var length = checked(targetWidth * targetHeight * bytes);
+        if (!Codec.Resample(source, Layout(size), targetWidth, targetHeight, output.GetSpan(length)))
         {
-            fixed (byte* to = target)
-            {
-                using var sourceMap = new SKPixmap(Info(size.Width, size.Height, size.Components), (nint)from, size.Width * bytes);
-                using var targetMap = new SKPixmap(Info(targetWidth, targetHeight, size.Components), (nint)to, targetWidth * bytes);
-                scaled = sourceMap.ScalePixels(targetMap, new(SKCubicResampler.Mitchell));
-            }
+            return false;
         }
 
         output.Advance(length);
-        return scaled;
+        return true;
     }
 
     /// <summary>Averages square blocks of pixels; blocks cut off by the edge average the pixels they have.</summary>
@@ -219,7 +202,7 @@ internal static class ImagePixels
     /// <param name="bytes">The bytes per pixel.</param>
     /// <param name="block">The block.</param>
     /// <param name="sums">Receives each channel's sum.</param>
-    private static void SumBlock(ReadOnlySpan<byte> source, int stride, int bytes, SKRectI block, Span<int> sums)
+    private static void SumBlock(ReadOnlySpan<byte> source, int stride, int bytes, PixelBlock block, Span<int> sums)
     {
         for (var row = block.Top; row < block.Bottom; row++)
         {
@@ -234,11 +217,9 @@ internal static class ImagePixels
         }
     }
 
-    /// <summary>Describes pixels to SkiaSharp.</summary>
-    /// <param name="width">The width.</param>
-    /// <param name="height">The height.</param>
-    /// <param name="components">One for grey, three for RGB.</param>
-    /// <returns>The image info.</returns>
-    private static SKImageInfo Info(int width, int height, int components) =>
-        new(width, height, components == 1 ? SKColorType.Gray8 : SKColorType.Rgb888x, SKAlphaType.Opaque);
+    /// <summary>Describes the optimizer's gray or RGBX pixels.</summary>
+    /// <param name="size">The dimensions and component count.</param>
+    /// <returns>The equivalent image codec layout.</returns>
+    private static PdfImagePixelLayout Layout(PixelSize size) =>
+        new(size.Width, size.Height, size.Components == 1 ? PdfImagePixelFormat.Gray8 : PdfImagePixelFormat.Rgb888x);
 }

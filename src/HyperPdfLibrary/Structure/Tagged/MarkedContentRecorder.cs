@@ -8,10 +8,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Structure.Tagged;
 
@@ -79,19 +79,19 @@ internal sealed class MarkedContentRecorder : IContentDevice
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Fill(SKPath path, bool evenOdd, ref GraphicsState state) => AddGraphic(path.Bounds, state.Ctm);
+    public void Fill(PdfPath path, bool evenOdd, ref GraphicsState state) => AddGraphic(path.Bounds, state.Ctm);
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Stroke(SKPath path, ref GraphicsState state) => AddGraphic(path.Bounds, state.Ctm);
+    public void Stroke(PdfPath path, ref GraphicsState state) => AddGraphic(path.Bounds, state.Ctm);
 
     /// <inheritdoc/>
-    public void Clip(SKPath path, bool evenOdd, Matrix3x2 ctm)
+    public void Clip(PdfPath path, bool evenOdd, Matrix3x2 ctm)
     {
     }
 
     /// <inheritdoc/>
-    public void DrawImage(SKImage image, bool isMask, bool smooth, ref GraphicsState state)
+    public void DrawImage(IPdfRenderImage image, bool isMask, bool smooth, ref GraphicsState state)
     {
         _hasImages = true;
         AddGraphic(new(0, 0, 1, 1), state.Ctm);
@@ -148,7 +148,7 @@ internal sealed class MarkedContentRecorder : IContentDevice
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IPictureDevice CreatePictureDevice(SKRect cull) => new NullPictureDevice(cull);
+    public IPictureDevice CreatePictureDevice(PdfRect cull) => new NullPictureDevice(cull);
 
     /// <summary>Records a page.</summary>
     /// <param name = "document">The document.</param>
@@ -212,7 +212,7 @@ internal sealed class MarkedContentRecorder : IContentDevice
     /// <summary>Adds what a path or image covers to the marked content id in force.</summary>
     /// <param name = "bounds">The bounds in user space.</param>
     /// <param name = "ctm">The matrix from user space to viewer space.</param>
-    private void AddGraphic(SKRect bounds, Matrix3x2 ctm)
+    private void AddGraphic(PdfRect bounds, Matrix3x2 ctm)
     {
         if (_mcid < 0 || _artifact)
         {

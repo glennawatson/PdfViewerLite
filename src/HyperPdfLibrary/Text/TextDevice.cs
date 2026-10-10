@@ -7,18 +7,16 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
-using HyperPdfLibrary.Rendering;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Text;
 
 /// <summary>
 /// A content device that collects shown glyphs into text runs, the counterparts of PDFium's text objects. Paths, images
-/// and shadings are ignored; pattern cells and soft masks are still recorded with the Skia device, because the
-/// document's render cache keeps them for later renders. One device serves one thread and is reused between pages.
+/// and shadings are ignored. One device serves one thread and is reused between pages.
 /// </summary>
 [DebuggerDisplay("TextDevice: {Runs.Count} runs, {Glyphs.Count} glyphs")]
 internal sealed partial class TextDevice : ITextObjectDevice
@@ -64,22 +62,22 @@ internal sealed partial class TextDevice : ITextObjectDevice
     }
 
     /// <inheritdoc/>
-    public void Fill(SKPath path, bool evenOdd, ref GraphicsState state)
+    public void Fill(PdfPath path, bool evenOdd, ref GraphicsState state)
     {
     }
 
     /// <inheritdoc/>
-    public void Stroke(SKPath path, ref GraphicsState state)
+    public void Stroke(PdfPath path, ref GraphicsState state)
     {
     }
 
     /// <inheritdoc/>
-    public void Clip(SKPath path, bool evenOdd, Matrix3x2 ctm)
+    public void Clip(PdfPath path, bool evenOdd, Matrix3x2 ctm)
     {
     }
 
     /// <inheritdoc/>
-    public void DrawImage(SKImage image, bool isMask, bool smooth, ref GraphicsState state)
+    public void DrawImage(IPdfRenderImage image, bool isMask, bool smooth, ref GraphicsState state)
     {
     }
 
@@ -126,7 +124,7 @@ internal sealed partial class TextDevice : ITextObjectDevice
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IPictureDevice CreatePictureDevice(SKRect cull) => new SkiaContentDevice(cull);
+    public IPictureDevice CreatePictureDevice(PdfRect cull) => PdfDrawingServices.Backend.CreatePictureDevice(cull);
 
     /// <inheritdoc/>
     public void DrawGlyph(in GlyphEvent glyph, ref GraphicsState state)

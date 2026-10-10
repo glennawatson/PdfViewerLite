@@ -4,21 +4,18 @@
 
 using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Filters;
 using HyperPdfLibrary.Graphics.Colors;
 using HyperPdfLibrary.Graphics.Images.Jpeg;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Graphics.Images;
 
 /// <summary>
-/// Decodes DCTDecode (JPEG) images the way PDF defines them: the decoder returns the component samples and the image's
-/// colour space and /Decode array interpret them, as for any 8-bit image. Gray and ordinary YCbCr JPEGs go through
-/// SkiaSharp (libjpeg-turbo) for speed. JPEGs with four components, and three-component JPEGs that must not be converted
-/// from YCbCr (an Adobe transform of 0, or <c>/ColorTransform 0</c> without an Adobe marker), go through the managed
-/// <see cref="JpegDecoder"/>, which applies no Adobe inversion. It also reads files SkiaSharp rejects. A JPEG neither can
-/// read gives an image with <see cref="PdfImageData.UnsupportedCodec"/> set to <see cref="PdfImageCodec.Jpeg"/>.
+/// Interprets JPEG component samples through the PDF color space and decode array. Ordinary gray and YCbCr images
+/// use the configured image codec when available. CMYK and untransformed RGB use the managed decoder, which also
+/// handles JPEGs the image codec cannot read.
 /// </summary>
 internal static class JpegImageDecoder
 {
@@ -79,7 +76,7 @@ internal static class JpegImageDecoder
         var needsRawSamples = info.Components == CmykComponents || (info.Components == RgbComponents && !convert);
         var image = needsRawSamples
             ? DecodeManaged(header, data, info, convert)
-            : DecodeSkia(header, data, info) ?? DecodeManaged(header, data, info, convert);
+            : DecodeProvider(header, data, info) ?? DecodeManaged(header, data, info, convert);
         return image ?? Unsupported(header);
     }
 
@@ -101,11 +98,6 @@ internal static class JpegImageDecoder
     /// <returns>An image with no pixels that names the JPEG codec.</returns>
     private static PdfImageData Unsupported(in ImageHeader header) =>
         new(header.Width, header.Height, [], header.IsStencil, header.Interpolate, PdfImageCodec.Jpeg);
-
-    /// <summary>Determines whether a decode produced usable pixels; truncated data still gives the rows it had.</summary>
-    /// <param name="result">The codec result.</param>
-    /// <returns><see langword="true"/> when the pixels can be used.</returns>
-    private static bool Succeeded(SKCodecResult result) => result is SKCodecResult.Success or SKCodecResult.IncompleteInput;
 
     /// <summary>Gets the header an 8-bit JPEG decodes with: the JPEG's size, and a colour space that has its component count.</summary>
     /// <param name="header">The image header.</param>
@@ -147,64 +139,48 @@ internal static class JpegImageDecoder
         }
     }
 
-    /// <summary>Decodes with SkiaSharp, reading the span in place.</summary>
-    /// <param name="header">The image header.</param>
-    /// <param name="data">The JPEG data.</param>
-    /// <param name="info">The JPEG's headers.</param>
-    /// <returns>The image, or <see langword="null"/> when SkiaSharp cannot decode it.</returns>
-    private static unsafe PdfImageData? DecodeSkia(in ImageHeader header, ReadOnlySpan<byte> data, in JpegInfo info)
+    /// <summary>Decodes ordinary gray or RGB JPEG pixels using the configured image codec.</summary>
+    /// <param name="header">The PDF image header.</param>
+    /// <param name="data">The JPEG bytes.</param>
+    /// <param name="info">The JPEG dimensions and component layout.</param>
+    /// <returns>The decoded image, or null when the provider cannot decode it.</returns>
+    private static PdfImageData? DecodeProvider(in ImageHeader header, ReadOnlySpan<byte> data, in JpegInfo info)
     {
-        // The pointer stays valid while the codec reads: everything that uses it is disposed inside the fixed block.
-        fixed (byte* pointer = data)
-        {
-            using var encoded = SKData.Create((IntPtr)pointer, data.Length, null);
-            using var stream = new SKMemoryStream(encoded);
-            using var codec = SKCodec.Create(stream, out var created);
-            return created == SKCodecResult.Success ? DecodeCodec(codec, header, info) : null;
-        }
-    }
-
-    /// <summary>Decodes an open SkiaSharp codec to pixels.</summary>
-    /// <param name="codec">The codec.</param>
-    /// <param name="header">The image header.</param>
-    /// <param name="info">The JPEG's headers.</param>
-    /// <returns>The image, or <see langword="null"/>.</returns>
-    private static PdfImageData? DecodeCodec(SKCodec codec, in ImageHeader header, in JpegInfo info)
-    {
-        var size = codec.Info;
-        if (size.Width != info.Width || size.Height != info.Height)
+        if (PdfDrawingServices.Images is not { } codec)
         {
             return null;
         }
 
-        var jpeg = ForSamples(header, info);
         if (info.Components == 1)
         {
-            return DecodeGray(codec, jpeg);
+            return DecodeGray(codec, data, ForSamples(header, info));
         }
 
-        var pixels = PixelMemory.Allocate((long)size.Width * size.Height * PixelConverter.BytesPerPixel, out var pinned);
-        if (!Succeeded(codec.GetPixels(new(size.Width, size.Height, SKColorType.Bgra8888, SKAlphaType.Opaque), pixels)))
+        var pixels = PixelMemory.Allocate((long)info.Width * info.Height * PixelConverter.BytesPerPixel, out var pinned);
+        if (!codec.TryDecodeJpeg(data, new(info.Width, info.Height, PdfImagePixelFormat.Bgra8888), pixels))
         {
             return null;
         }
 
         Recolor(header with { Width = info.Width, Height = info.Height }, pixels);
-        return new(size.Width, size.Height, pixels, false, header.Interpolate, PdfImageCodec.None) { IsPinned = pinned };
+        return new(info.Width, info.Height, pixels, false, header.Interpolate, PdfImageCodec.None) { IsPinned = pinned };
     }
 
-    /// <summary>Decodes a gray JPEG and converts it like an 8-bit one-component image.</summary>
-    /// <param name="codec">The codec.</param>
-    /// <param name="header">The image header with the JPEG's size and a one-component colour space.</param>
-    /// <returns>The image, or <see langword="null"/>.</returns>
-    private static PdfImageData? DecodeGray(SKCodec codec, in ImageHeader header)
+    /// <summary>Runs decoded gray samples through the PDF color space and decode array.</summary>
+    /// <param name="codec">The configured image decoder.</param>
+    /// <param name="data">The JPEG bytes.</param>
+    /// <param name="header">The image header with JPEG dimensions.</param>
+    /// <returns>The interpreted image, or null when decoding fails.</returns>
+    private static PdfImageData? DecodeGray(IPdfImageCodec codec, ReadOnlySpan<byte> data, in ImageHeader header)
     {
         var length = header.Width * header.Height;
         var gray = ScratchPool<byte>.Shared.Rent(length);
         try
         {
-            var result = codec.GetPixels(new(header.Width, header.Height, SKColorType.Gray8, SKAlphaType.Opaque), gray);
-            return Succeeded(result) ? PdfImageDecoder.DecodeSamples(header, gray.AsSpan(0, length)) : null;
+            var samples = gray.AsSpan(0, length);
+            return codec.TryDecodeJpeg(data, new(header.Width, header.Height, PdfImagePixelFormat.Gray8), samples)
+                ? PdfImageDecoder.DecodeSamples(header, samples)
+                : null;
         }
         finally
         {
@@ -212,7 +188,7 @@ internal static class JpegImageDecoder
         }
     }
 
-    /// <summary>Applies a /Decode array or a non-RGB three-component colour space to SkiaSharp's RGB output.</summary>
+    /// <summary>Applies a /Decode array or a non-RGB three-component colour space to decoded RGB pixels.</summary>
     /// <param name="header">The image header.</param>
     /// <param name="pixels">The BGRA pixels, converted in place.</param>
     private static void Recolor(in ImageHeader header, byte[] pixels)

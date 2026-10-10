@@ -4,8 +4,8 @@
 
 using System.Diagnostics;
 using System.Numerics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
@@ -85,7 +85,7 @@ public abstract class PdfFont
     /// <summary>Gets a code's outline in glyph space (y up), cached; <see langword="null"/> for blank glyphs and Type 3 fonts.</summary>
     /// <param name="code">The character code.</param>
     /// <returns>The outline, owned by the font.</returns>
-    public abstract SKPath? GetOutline(int code);
+    public abstract PdfPath? GetOutline(int code);
 
     /// <summary>Writes a code's Unicode text.</summary>
     /// <param name="code">The character code.</param>

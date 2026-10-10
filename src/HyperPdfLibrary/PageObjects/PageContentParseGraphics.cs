@@ -4,7 +4,6 @@
 
 using System.Numerics;
 using System.Runtime.CompilerServices;
-
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.PageObjects;
 

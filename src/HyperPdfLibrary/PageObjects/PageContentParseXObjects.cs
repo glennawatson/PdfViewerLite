@@ -3,12 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Numerics;
-
 using HyperPdfLibrary.Content;
-
 using HyperPdfLibrary.Graphics.Images;
 using HyperPdfLibrary.Objects;
-
 using HyperPdfLibrary.PageObjects;
 using HyperPdfLibrary.Syntax;
 using HyperPdfLibrary.Text;

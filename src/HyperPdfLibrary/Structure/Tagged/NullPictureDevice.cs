@@ -6,10 +6,10 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Content;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Structure.Tagged;
 
@@ -19,8 +19,11 @@ namespace HyperPdfLibrary.Structure.Tagged;
 /// </summary>
 /// <param name="cull">The area the picture covers.</param>
 [DebuggerDisplay("NullPictureDevice")]
-internal sealed class NullPictureDevice(SKRect cull) : IPictureDevice
+internal sealed class NullPictureDevice(PdfRect cull) : IPictureDevice
 {
+    /// <inheritdoc/>
+    public HyperPdfLibrary.Rendering.PictureWeight Weight { get; } = new();
+
     /// <inheritdoc/>
     public void Save()
     {
@@ -32,22 +35,22 @@ internal sealed class NullPictureDevice(SKRect cull) : IPictureDevice
     }
 
     /// <inheritdoc/>
-    public void Fill(SKPath path, bool evenOdd, ref GraphicsState state)
+    public void Fill(PdfPath path, bool evenOdd, ref GraphicsState state)
     {
     }
 
     /// <inheritdoc/>
-    public void Stroke(SKPath path, ref GraphicsState state)
+    public void Stroke(PdfPath path, ref GraphicsState state)
     {
     }
 
     /// <inheritdoc/>
-    public void Clip(SKPath path, bool evenOdd, Matrix3x2 ctm)
+    public void Clip(PdfPath path, bool evenOdd, Matrix3x2 ctm)
     {
     }
 
     /// <inheritdoc/>
-    public void DrawImage(SKImage image, bool isMask, bool smooth, ref GraphicsState state)
+    public void DrawImage(IPdfRenderImage image, bool isMask, bool smooth, ref GraphicsState state)
     {
     }
 
@@ -83,14 +86,13 @@ internal sealed class NullPictureDevice(SKRect cull) : IPictureDevice
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IPictureDevice CreatePictureDevice(SKRect cull) => new NullPictureDevice(cull);
+    public IPictureDevice CreatePictureDevice(PdfRect cull) => new NullPictureDevice(cull);
 
     /// <inheritdoc/>
-    public SKPicture Finish()
+    public IPdfRenderPicture Finish()
     {
-        using var recorder = new SKPictureRecorder();
-        _ = recorder.BeginRecording(cull);
-        return recorder.EndRecording();
+        _ = cull;
+        return new PdfEmptyPicture();
     }
 
     /// <inheritdoc/>

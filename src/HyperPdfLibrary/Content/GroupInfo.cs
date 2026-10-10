@@ -3,8 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -16,4 +16,4 @@ namespace HyperPdfLibrary.Content;
 /// <param name="SoftMask">The soft mask applied to the group, or null.</param>
 /// <param name="Bounds">The area the group can paint, in page space.</param>
 [DebuggerDisplay("GroupInfo: alpha {Alpha} {Blend}")]
-internal readonly record struct GroupInfo(bool Isolated, bool Knockout, float Alpha, PdfBlendMode Blend, PdfSoftMask? SoftMask, SKRect Bounds);
+public readonly record struct GroupInfo(bool Isolated, bool Knockout, float Alpha, PdfBlendMode Blend, PdfSoftMask? SoftMask, PdfRect Bounds);

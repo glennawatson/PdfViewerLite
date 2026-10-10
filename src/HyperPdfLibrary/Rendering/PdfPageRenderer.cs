@@ -5,12 +5,12 @@
 using System.Diagnostics;
 using System.Numerics;
 using HyperPdfLibrary.Document;
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Rendering;
 
 /// <summary>
-/// Renders tiles of a document's pages with Skia. Each page is recorded to a picture once, in viewer space, and every
+/// Renders tiles of a document's pages through the registered backend. Each page is recorded once, in viewer space, and every
 /// tile replays it, so after the first render of a page a tile costs one replay and no managed allocation. The pictures
 /// are kept least recently used first, bounded by the memory they hold (<see cref="PdfRenderOptions.PictureCacheBytes"/>).
 /// Safe to call from many threads at once.
@@ -131,7 +131,7 @@ public sealed partial class PdfPageRenderer : IDisposable
     /// <returns><see langword="false"/> when the page does not exist or the target is invalid.</returns>
     /// <exception cref="ObjectDisposedException">The renderer or its document has been disposed, including while the tile was being drawn.</exception>
     /// <remarks>The target is drawn directly; a drawing exception can leave partial pixels.</remarks>
-    public unsafe bool Render(in PdfTileRequest request, PdfTileTarget target)
+    public bool Render(in PdfTileRequest request, PdfTileTarget target)
     {
         ObjectDisposedException.ThrowIf(_disposed || _document.IsDisposed, this);
         if ((uint)request.PageIndex >= (uint)_document.PageCount || !target.IsValid)
@@ -145,26 +145,13 @@ public sealed partial class PdfPageRenderer : IDisposable
         try
         {
             var recorded = entry.Recordings;
-            var surface = RenderSurface.Current;
-            BorrowedPixelDrawing.CheckAvailable(surface);
-            fixed (byte* pixels = target.Pixels)
+            var drawn = Draw(PdfDrawingServices.Backend.GetDrawingSession(), entry, cache, page, request, target);
+            if (drawn)
             {
-                try
-                {
-                    if (!BorrowedPixelDrawing.Attach(surface, target, (nint)pixels))
-                    {
-                        return false;
-                    }
-
-                    Draw(surface.Canvas, entry, cache, page, request, target);
-                    TrimIfRecorded(entry, recorded);
-                    return true;
-                }
-                finally
-                {
-                    BorrowedPixelDrawing.Detach(surface);
-                }
+                TrimIfRecorded(entry, recorded);
             }
+
+            return drawn;
         }
         finally
         {
@@ -185,7 +172,7 @@ public sealed partial class PdfPageRenderer : IDisposable
     /// <returns>The status.</returns>
     /// <exception cref="ObjectDisposedException">The renderer has been disposed.</exception>
     /// <remarks>The target is drawn directly when ready; a drawing exception can leave partial pixels.</remarks>
-    public unsafe PdfRenderStatus RenderProgressive(in PdfTileRequest request, PdfTileTarget target, Func<bool>? shouldPause, CancellationToken cancellationToken)
+    public PdfRenderStatus RenderProgressive(in PdfTileRequest request, PdfTileTarget target, Func<bool>? shouldPause, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed || _document.IsDisposed, this);
         if ((uint)request.PageIndex >= (uint)_document.PageCount || !target.IsValid)
@@ -199,33 +186,19 @@ public sealed partial class PdfPageRenderer : IDisposable
         try
         {
             var recorded = entry.Recordings;
-            var printing = (request.Flags & PdfRenderFlags.Printing) != 0;
-            var status = entry.ContinueContent(cache, page, printing, shouldPause, cancellationToken);
+            var status = entry.ContinueContent(cache, page, (request.Flags & PdfRenderFlags.Printing) != 0, shouldPause, cancellationToken);
             if (status != PdfRenderStatus.Done)
             {
                 return status;
             }
 
-            var surface = RenderSurface.Current;
-            BorrowedPixelDrawing.CheckAvailable(surface);
-            fixed (byte* pixels = target.Pixels)
+            var drawn = Draw(PdfDrawingServices.Backend.GetDrawingSession(), entry, cache, page, request, target);
+            if (drawn)
             {
-                try
-                {
-                    if (!BorrowedPixelDrawing.Attach(surface, target, (nint)pixels))
-                    {
-                        return PdfRenderStatus.Failed;
-                    }
-
-                    Draw(surface.Canvas, entry, cache, page, request, target);
-                    TrimIfRecorded(entry, recorded);
-                    return PdfRenderStatus.Done;
-                }
-                finally
-                {
-                    BorrowedPixelDrawing.Detach(surface);
-                }
+                TrimIfRecorded(entry, recorded);
             }
+
+            return drawn ? PdfRenderStatus.Done : PdfRenderStatus.Failed;
         }
         finally
         {
@@ -272,34 +245,19 @@ public sealed partial class PdfPageRenderer : IDisposable
     }
 
     /// <summary>Clears the canvas and replays the page onto it.</summary>
-    /// <param name="canvas">The canvas.</param>
+    /// <param name="session">The drawing session.</param>
     /// <param name="entry">The page's pictures.</param>
     /// <param name="cache">The caches the pictures are recorded with.</param>
     /// <param name="page">The page.</param>
     /// <param name="request">The tile request.</param>
     /// <param name="target">The target.</param>
-    private static void Draw(SKCanvas canvas, PagePictures entry, PdfRenderCache cache, PdfPage page, in PdfTileRequest request, PdfTileTarget target)
+    /// <returns>Whether the target was drawn.</returns>
+    private static bool Draw(IPdfDrawingSession session, PagePictures entry, PdfRenderCache cache, PdfPage page, in PdfTileRequest request, PdfTileTarget target)
     {
-        var flags = request.Flags;
-        var printing = (flags & PdfRenderFlags.Printing) != 0;
+        var printing = (request.Flags & PdfRenderFlags.Printing) != 0;
         var content = entry.GetContent(cache, page, printing);
-        var annotations = (flags & PdfRenderFlags.Annotations) != 0 ? entry.GetAnnotations(cache, page, printing) : null;
-        var matrix = SkiaConversions.ToSkMatrix(GetMatrix(page, request));
-        var saved = canvas.Save();
-        canvas.ClipRect(new(0, 0, target.Width, target.Height));
-        canvas.Clear(SKColors.White);
-        if (((flags & PdfRenderFlags.Grayscale) != 0))
-        {
-            _ = canvas.SaveLayer(RenderSurface.Current.GrayPaint);
-        }
-
-        canvas.DrawPicture(content, in matrix);
-        if (annotations is not null)
-        {
-            canvas.DrawPicture(annotations, in matrix);
-        }
-
-        canvas.RestoreToCount(saved);
+        var annotations = (request.Flags & PdfRenderFlags.Annotations) != 0 ? entry.GetAnnotations(cache, page, printing) : null;
+        return session.DrawPage(content, annotations, GetMatrix(page, request), target, (request.Flags & PdfRenderFlags.Grayscale) != 0);
     }
 
     /// <summary>

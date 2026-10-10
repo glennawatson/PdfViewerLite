@@ -4,16 +4,16 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts.Programs;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
-/// <summary>Writes a decoded glyph outline into a Skia path builder, transforming font units to glyph space.</summary>
+/// <summary>Writes a decoded glyph outline into managed path commands, transforming font units to glyph space.</summary>
 /// <param name="Builder">The path builder.</param>
 /// <param name="Transform">The transform from font units to glyph space.</param>
 [DebuggerDisplay("PathOutlineSink")]
-internal readonly record struct PathOutlineSink(SKPathBuilder Builder, FontMatrix Transform) : IGlyphOutlineSink
+internal readonly record struct PathOutlineSink(PdfPathBuilder Builder, FontMatrix Transform) : IGlyphOutlineSink
 {
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

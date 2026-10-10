@@ -5,8 +5,8 @@ using System.Numerics;
 using HyperPdfLibrary.Annotations;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Rendering;
 
@@ -23,7 +23,7 @@ internal static class PageRecorder
     /// <param name = "bytes">Receives the memory the picture holds for itself: its operations, without the images it drew.</param>
     /// <param name = "images">Receives the distinct images the picture drew.</param>
     /// <returns>The picture, which the caller owns.</returns>
-    internal static SKPicture RecordContent(PdfRenderCache cache, PdfPage page, bool printing, out long bytes, out ImageWeight[] images)
+    internal static IPdfRenderPicture RecordContent(PdfRenderCache cache, PdfPage page, bool printing, out long bytes, out ImageWeight[] images)
     {
         using var device = Begin(page);
         using var interpreter = new ContentInterpreter(cache, device, 0) { Printing = printing, };
@@ -36,7 +36,7 @@ internal static class PageRecorder
     /// <param name = "bytes">Receives the picture's own bytes, without the images it drew.</param>
     /// <param name = "images">Receives the distinct images the picture drew, which the picture keeps alive.</param>
     /// <returns>The picture, which the caller owns.</returns>
-    internal static SKPicture Finish(SkiaContentDevice device, out long bytes, out ImageWeight[] images)
+    internal static IPdfRenderPicture Finish(IPictureDevice device, out long bytes, out ImageWeight[] images)
     {
         var picture = device.Finish();
         bytes = picture.ApproximateBytesUsed;
@@ -55,7 +55,7 @@ internal static class PageRecorder
     /// <param name = "bytes">Receives the memory the picture holds for itself: its operations, without the images it drew.</param>
     /// <param name = "images">Receives the distinct images the picture drew.</param>
     /// <returns>The picture, which the caller owns.</returns>
-    internal static SKPicture RecordAnnotations(PdfRenderCache cache, PdfPage page, bool printing, out long bytes, out ImageWeight[] images)
+    internal static IPdfRenderPicture RecordAnnotations(PdfRenderCache cache, PdfPage page, bool printing, out long bytes, out ImageWeight[] images)
     {
         using var device = Begin(page);
         using var interpreter = new ContentInterpreter(cache, device, 0) { Printing = printing, };
@@ -98,13 +98,13 @@ internal static class PageRecorder
     /// <summary>Starts a device that records the page area and clips to it.</summary>
     /// <param name = "page">The page.</param>
     /// <returns>The device.</returns>
-    internal static SkiaContentDevice Begin(PdfPage page)
+    internal static IPictureDevice Begin(PdfPage page)
     {
-        var bounds = new SKRect(0, 0, page.Width, page.Height);
-        var device = new SkiaContentDevice(bounds);
-        using var builder = new SKPathBuilder();
+        var bounds = new PdfRect(0, 0, page.Width, page.Height);
+        var device = PdfDrawingServices.Backend.CreatePictureDevice(bounds);
+        var builder = new PdfPathBuilder();
         builder.AddRect(bounds);
-        using var clip = builder.Detach();
+        var clip = builder.Detach();
         device.Clip(clip, false, Matrix3x2.Identity);
         return device;
     }

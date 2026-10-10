@@ -59,15 +59,18 @@ public sealed class ImageCacheTests
     {
         var cache = new ImageCache { Capacity = TwoImages };
         var held = cache.Acquire(Stream(), 0, static (stream, state) => Create())!;
+        var skiaImage = (SkiaRenderImage)held.Image;
         Use(cache, Stream());
         Use(cache, Stream());
 
+        _ = skiaImage.Native.Handle;
         await Assert.That(held.IsDisposed).IsFalse();
         await Assert.That(held.Image.Width).IsEqualTo(Side);
 
         held.Release();
 
         await Assert.That(held.IsDisposed).IsTrue();
+        await Assert.That(() => skiaImage.Native).Throws<ObjectDisposedException>();
     }
 
     /// <summary>Lowering the limit evicts at once, and a stream that fails to decode is not decoded again.</summary>
@@ -104,8 +107,8 @@ public sealed class ImageCacheTests
     private static ImageEntry Create()
     {
         var pixels = new byte[ImageBytes];
-        var image = SKImage.FromPixelCopy(new(Side, Side, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, Side * RenderedImage.BytesPerPixel);
-        return new(image, false, false);
+        var native = SKImage.FromPixelCopy(new(Side, Side, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, Side * RenderedImage.BytesPerPixel);
+        return new(new SkiaRenderImage(native), false, false);
     }
 
     /// <summary>Acquires and releases an image.</summary>

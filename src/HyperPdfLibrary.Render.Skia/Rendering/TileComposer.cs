@@ -2,6 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Numerics;
 using HyperPdfLibrary.Objects;
 using SkiaSharp;
 
@@ -42,7 +43,7 @@ internal static class TileComposer
         var height = tile.Height * pixelScale;
         if (!float.IsFinite(width) || !float.IsFinite(height) || width > MaxPixels || height > MaxPixels)
         {
-            return new(Record(cell, box, tile), null, tile, SKMatrix.Identity);
+            return new(new SkiaRenderPicture(Record(cell, box, tile)), null, SkiaConversions.ToPdfRect(tile), Matrix3x2.Identity);
         }
 
         var pixelWidth = Math.Max(MinPixels, (int)MathF.Ceiling(width));
@@ -54,8 +55,8 @@ internal static class TileComposer
         canvas.Translate(-tile.Left, -tile.Top);
         DrawCopies(canvas, cell, box, tile);
         var image = surface.Snapshot();
-        var toPattern = SKMatrix.CreateScale(tile.Width / pixelWidth, tile.Height / pixelHeight).PostConcat(SKMatrix.CreateTranslation(tile.Left, tile.Top));
-        return new(null, image, tile, toPattern);
+        var toPattern = Matrix3x2.CreateScale(tile.Width / pixelWidth, tile.Height / pixelHeight) * Matrix3x2.CreateTranslation(tile.Left, tile.Top);
+        return new(null, new SkiaRenderImage(image), SkiaConversions.ToPdfRect(tile), toPattern);
     }
 
     /// <summary>Records one period as a picture.</summary>

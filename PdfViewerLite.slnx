@@ -3,6 +3,7 @@
     <Project Path="benchmarks/PdfViewerLite.Benchmarks/PdfViewerLite.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/HyperPdfLibrary.Render.Skia/HyperPdfLibrary.Render.Skia.csproj" />
     <Project Path="src/HyperPdfLibrary/HyperPdfLibrary.csproj" />
     <Project Path="src/PdfViewerLite.App/PdfViewerLite.App.csproj" />
     <Project Path="src/PdfViewerLite.Core/PdfViewerLite.Core.csproj" />

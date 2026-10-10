@@ -3,9 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Tests.Text;
 
@@ -63,7 +63,7 @@ internal sealed class TextTestFont : PdfFont
     private const char FiLigature = (char)0xFB01;
 
     /// <summary>The glyph outline.</summary>
-    private readonly SKPath _box;
+    private readonly PdfPath _box;
 
     /// <summary>Initializes a new instance of the <see cref="TextTestFont"/> class.</summary>
     /// <param name="dictionary">The font dictionary.</param>
@@ -74,7 +74,7 @@ internal sealed class TextTestFont : PdfFont
     {
         IsVertical = vertical;
         IsBold = bold;
-        using var builder = new SKPathBuilder();
+        var builder = new PdfPathBuilder();
         builder.AddRect(new(Bearing, 0, (Advance * Em) - Bearing, GlyphTop));
         _box = builder.Detach();
     }
@@ -96,7 +96,7 @@ internal sealed class TextTestFont : PdfFont
     public override float GetWidth(int code) => code == ' ' ? SpaceAdvance : Advance;
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code) => code == ' ' ? null : _box;
+    public override PdfPath? GetOutline(int code) => code == ' ' ? null : _box;
 
     /// <inheritdoc/>
     public override int GetUnicode(int code, Span<char> destination)
