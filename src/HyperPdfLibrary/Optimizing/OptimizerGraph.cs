@@ -54,7 +54,7 @@ internal sealed class OptimizerGraph
     {
         var graph = new OptimizerGraph(store, aliases);
         var trailer = store.Trailer;
-        if (store.Resolve(trailer.GetRaw(KnownName.Root)).AsDictionary() is null)
+        if (StoreReading.Resolve(store, trailer.GetRaw(KnownName.Root)).AsDictionary() is null)
         {
             throw new PdfException(PdfError.Format, "The document's /Root does not resolve to a catalog.");
         }
@@ -106,31 +106,31 @@ internal sealed class OptimizerGraph
         switch (value.Kind)
         {
             case PdfKind.Reference:
-            {
-                Visit(value.AsReference().Number);
-                break;
-            }
-
-            case PdfKind.Array:
-            {
-                foreach (var item in value.AsArray()!.Items)
                 {
-                    Scan(item, depth + 1);
+                    Visit(value.AsReference().Number);
+                    break;
                 }
 
-                break;
-            }
+            case PdfKind.Array:
+                {
+                    foreach (var item in value.AsArray()!.Items)
+                    {
+                        Scan(item, depth + 1);
+                    }
+
+                    break;
+                }
 
             case PdfKind.Dictionary or PdfKind.Stream:
-            {
-                ScanEntries(value.AsDictionary()!, value.Kind == PdfKind.Stream, depth + 1);
-                break;
-            }
+                {
+                    ScanEntries(value.AsDictionary()!, value.Kind == PdfKind.Stream, depth + 1);
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 
@@ -166,7 +166,7 @@ internal sealed class OptimizerGraph
             return;
         }
 
-        var value = _store.GetObject(new(number, 0));
+        var value = StoreReading.GetObject(_store, new(number, 0));
         if (value.IsNull)
         {
             Map[number] = -1;

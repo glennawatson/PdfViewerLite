@@ -1,5 +1,16 @@
 [
   {
+    "id": "pdfium-cmyk-table",
+    "name": "PDFium CMYK conversion table",
+    "version": "PDFium 2019 source, commit 547d3f4ba2a309f059e4d0ccc12490690c1c23c7",
+    "origin": "CMYK conversion table copied into HyperPdfLibrary",
+    "licence": "BSD-3-Clause",
+    "copyright": "Copyright 2014 Foxit Software Inc.; Copyright 2019 The PDFium Authors.",
+    "link": "https://pdfium.googlesource.com/pdfium/+/547d3f4ba2a309f059e4d0ccc12490690c1c23c7/core/fxge/dib/cfx_cmyk_to_srgb.cpp",
+    "textFile": "upstream/pdfium-cmyk-bsd.txt",
+    "licenceSource": "https://pdfium.googlesource.com/pdfium/+/547d3f4ba2a309f059e4d0ccc12490690c1c23c7/LICENSE"
+  },
+  {
     "id": "open-font-pack",
     "name": "Open font pack (Arimo, Tinos, Cousine and Noto symbols)",
     "version": "Google Fonts pinned font programs",
@@ -26,67 +37,285 @@
     "origin": "English is bundled; other languages are downloaded when you turn this on",
     "licence": "Apache-2.0",
     "copyright": "Copyright the Tesseract OCR authors.",
-    "link": "https://github.com/tesseract-ocr/tessdata_fast",
-    "textFile": "spdx/Apache-2.0.txt"
+    "link": "https://github.com/tesseract-ocr/tessdata_fast/blob/4.1.0/LICENSE",
+    "textFile": "upstream/tessdata-fast.txt",
+    "licenceSource": "https://github.com/tesseract-ocr/tessdata_fast/blob/4.1.0/LICENSE",
+    "versionEvidence": "https://github.com/tesseract-ocr/tessdata_fast/tree/4.1.0"
   },
   {
     "id": "kokoro",
     "name": "Kokoro-82M speech model and voices",
-    "version": "ONNX build from onnx-community",
+    "version": "Kokoro-82M v1.0; ONNX 1939ad2a8e416c0acfeecc08a694d14ef25f2231; voices-2",
     "origin": "Downloaded when you turn this on",
     "licence": "Apache-2.0",
     "copyright": "Copyright hexgrad.",
-    "link": "https://huggingface.co/hexgrad/Kokoro-82M",
-    "textFile": "spdx/Apache-2.0.txt"
+    "link": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/blob/1939ad2a8e416c0acfeecc08a694d14ef25f2231/README.md",
+    "textFile": "upstream/kokoro.txt",
+    "licenceSource": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/blob/1939ad2a8e416c0acfeecc08a694d14ef25f2231/README.md",
+    "sourceNote": "The pinned upstream model card declares Apache-2.0; the repository has no standalone LICENSE file. The licence text is Apache-2.0.",
+    "versionEvidence": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/.github/workflows/voice-models.yml",
+    "exportSource": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/tools/voice-models/export_melo.py",
+    "release": "https://github.com/glennawatson/PdfViewerLite/releases/tag/voices-2",
+    "artifactSha256": {
+      "kokoro-af_bella.bin": "f69d836209b78eb8c66e75e3cda491e26ea838a3674257e9d4e5703cbaf55c8b",
+      "kokoro-af_heart.bin": "d583ccff3cdca2f7fae535cb998ac07e9fcb90f09737b9a41fa2734ec44a8f0b",
+      "kokoro-am_michael.bin": "1d1f21dd8da39c30705cd4c75d039d265e9bc4a2a93ed09bc9e1b1225eb95ba1",
+      "kokoro-bf_emma.bin": "669fe0647f9dd04fcab92f1439a40eeb4c8b4ab1f82e4996fe3d918ce4a63b73",
+      "kokoro-bm_george.bin": "c4b235a4c1f2cd3b939fed08b899ce9385638b763f7b73a59616c4fc9bd6c9bc",
+      "kokoro-model_uint8.onnx": "6607a397d77b8514065420b7c1e7320117f7aabfdb45ce15f0050c5b0fe75aea"
+    }
   },
   {
     "id": "misaki",
     "name": "Misaki pronunciation dictionaries (used with Kokoro)",
-    "version": "",
+    "version": "fba1236595f2d2bf21d414ba6e57d25256afada3; voices-2",
     "origin": "Downloaded when you turn this on",
     "licence": "Apache-2.0",
     "copyright": "Copyright hexgrad.",
-    "link": "https://github.com/hexgrad/misaki",
-    "textFile": "spdx/Apache-2.0.txt"
+    "link": "https://github.com/hexgrad/misaki/blob/fba1236595f2d2bf21d414ba6e57d25256afada3/LICENSE",
+    "textFile": "upstream/misaki.txt",
+    "licenceSource": "https://github.com/hexgrad/misaki/blob/fba1236595f2d2bf21d414ba6e57d25256afada3/LICENSE",
+    "versionEvidence": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/.github/workflows/voice-models.yml",
+    "exportSource": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/tools/voice-models/export_melo.py",
+    "release": "https://github.com/glennawatson/PdfViewerLite/releases/tag/voices-2",
+    "artifactSha256": {
+      "misaki-gb_gold.json": "29e62f4b60261c88f7f3c2c7811ca3825978948090b72d2b27d565b729282f71",
+      "misaki-gb_silver.json": "48131e2d92ccc41655f4543e87e0f938e71463eb5a54be7f0693bb712ebb6bce",
+      "misaki-us_gold.json": "dc414872a49a28ae6c141463d502fd945f3b2fde040484fdc47d00cc4612686f",
+      "misaki-us_silver.json": "de8f67be911bb6c659187b4a65fd966b6a30e56350e0f790d763210b053ac475"
+    }
   },
   {
     "id": "melotts",
     "name": "MeloTTS-English speech model",
-    "version": "",
+    "version": "English export voices-2; code 209145371cff8fc3bd60d7be902ea69cbdb7965a",
     "origin": "Downloaded when you turn this on",
     "licence": "MIT",
     "copyright": "Copyright (c) 2024 MyShell.ai",
-    "link": "https://github.com/myshell-ai/MeloTTS",
-    "textFile": "spdx/MIT.txt"
+    "link": "https://github.com/myshell-ai/MeloTTS/blob/209145371cff8fc3bd60d7be902ea69cbdb7965a/LICENSE",
+    "textFile": "upstream/melotts.txt",
+    "licenceSource": "https://github.com/myshell-ai/MeloTTS/blob/209145371cff8fc3bd60d7be902ea69cbdb7965a/LICENSE",
+    "modelLicenceSource": "https://huggingface.co/myshell-ai/MeloTTS-English/blob/bb4fb7346d566d277ba8c8c7dbfdf6786139b8ef/README.md",
+    "sourceNote": "The model card declares MIT. The exporter fetched the checkpoint without a revision; its original upstream revision was not recorded. The voices-2 export and hashes identify the shipped files.",
+    "versionEvidence": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/.github/workflows/voice-models.yml",
+    "exportSource": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/tools/voice-models/export_melo.py",
+    "release": "https://github.com/glennawatson/PdfViewerLite/releases/tag/voices-2",
+    "artifactSha256": {
+      "melo-en.json": "d93a30aceedcd4854c456baf1c57457c05c9e530161d54e591ef62a5fe9bd126",
+      "melo-en.onnx": "8e0246aa38588fd143af6562ebf2d2d9d92bbfc989b25770f61081ee182f66f5"
+    }
   },
   {
     "id": "bert-base-uncased",
     "name": "BERT base uncased, first ten layers (used with MeloTTS)",
-    "version": "",
+    "version": "First ten layers, uint8 ONNX export voices-2",
     "origin": "Downloaded when you turn this on",
     "licence": "Apache-2.0",
     "copyright": "Copyright Google LLC.",
-    "link": "https://huggingface.co/google-bert/bert-base-uncased",
-    "textFile": "spdx/Apache-2.0.txt"
+    "link": "https://huggingface.co/google-bert/bert-base-uncased/blob/86b5e0934494bd15c9632b12f734a8a67f723594/LICENSE",
+    "textFile": "upstream/bert-base-uncased.txt",
+    "licenceSource": "https://huggingface.co/google-bert/bert-base-uncased/blob/86b5e0934494bd15c9632b12f734a8a67f723594/LICENSE",
+    "sourceNote": "Licence verified at upstream revision 86b5e0934494bd15c9632b12f734a8a67f723594. The exporter fetched the model without a revision; its original upstream revision was not recorded. The voices-2 export and hashes identify the shipped files.",
+    "versionEvidence": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/.github/workflows/voice-models.yml",
+    "exportSource": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/tools/voice-models/export_melo.py",
+    "release": "https://github.com/glennawatson/PdfViewerLite/releases/tag/voices-2",
+    "artifactSha256": {
+      "bert-en-vocab.txt": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3",
+      "bert-en.onnx": "eb44339cd9f71471955e906aff4145a976fa22e51b0e23668113d48cb2087184"
+    }
   },
   {
     "id": "g2p-en",
     "name": "g2p_en spelling-to-sound network (used with MeloTTS)",
-    "version": "",
+    "version": "g2p_en 2.1.0, checkpoint20.npz export voices-2",
     "origin": "Downloaded when you turn this on",
     "licence": "Apache-2.0",
     "copyright": "Copyright Kyubyong Park and Jongseok Kim.",
-    "link": "https://github.com/Kyubyong/g2p",
-    "textFile": "spdx/Apache-2.0.txt"
+    "link": "https://github.com/Kyubyong/g2p/blob/c6439c274c42b9724a7fee1dc07ca6a4c68a0538/LICENSE.txt",
+    "textFile": "upstream/g2p-en.txt",
+    "licenceSource": "https://github.com/Kyubyong/g2p/blob/c6439c274c42b9724a7fee1dc07ca6a4c68a0538/LICENSE.txt",
+    "versionEvidence": "https://pypi.org/project/g2p-en/2.1.0/",
+    "sourceNote": "The checked-in text is LICENSE.txt from the 2.1.0 wheel, verified against upstream LICENSE.txt.",
+    "exportSource": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/tools/voice-models/export_melo.py",
+    "release": "https://github.com/glennawatson/PdfViewerLite/releases/tag/voices-2",
+    "artifactSha256": {
+      "g2p-en.bin": "9c0eff98ae7f6c69fde21dc4bf4849c0f28240527524ef2e87400e2a229c965d"
+    }
   },
   {
     "id": "cmudict",
     "name": "CMU Pronouncing Dictionary (used with MeloTTS)",
-    "version": "",
+    "version": "CMU 0.6 (MeloTTS 209145371cff8fc3bd60d7be902ea69cbdb7965a) plus NLTK CMU 0.7a; voices-2",
     "origin": "Downloaded when you turn this on",
+    "licence": "LicenseRef-CMU-0.6 AND BSD-2-Clause",
+    "copyright": "Copyright 1998 Carnegie Mellon University; Copyright (C) 1993-2008 Carnegie Mellon University.",
+    "link": "https://github.com/myshell-ai/MeloTTS/blob/209145371cff8fc3bd60d7be902ea69cbdb7965a/melo/text/cmudict.rep",
+    "textFile": "upstream/cmudict.txt",
+    "licenceSource": "https://github.com/myshell-ai/MeloTTS/blob/209145371cff8fc3bd60d7be902ea69cbdb7965a/melo/text/cmudict.rep",
+    "additionalLicenceSource": "https://github.com/nltk/nltk_data/blob/5f09e470fe339e1a119dd174ca284129a3c7a5bb/packages/corpora/cmudict.zip (cmudict/README)",
+    "sourceNote": "The exporter merges MeloTTS CMU 0.6 with NLTK CMU 0.7a. The last NLTK corpus commit before release is 5f09e470fe339e1a119dd174ca284129a3c7a5bb; the export did not record that fetch revision. The voices-2 hash identifies the shipped merged lexicon.",
+    "versionEvidence": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/.github/workflows/voice-models.yml",
+    "exportSource": "https://github.com/glennawatson/PdfViewerLite/blob/c562ea6a10cf90fcc9c92fa99754586fbd3fe82f/tools/voice-models/export_melo.py",
+    "release": "https://github.com/glennawatson/PdfViewerLite/releases/tag/voices-2",
+    "artifactSha256": {
+      "melo-en-lexicon.txt": "e0f56092fca1721f9556ac7e9cab66cff2d4ec7b5afe5618036747c99513a823"
+    }
+  },
+  {
+    "id": "pdfium-pdfium",
+    "bundle": "pdfium-bundled",
+    "name": "PDFium (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/pdfium.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "BSD-3-Clause AND Apache-2.0",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/pdfium.txt",
+    "textFile": "pdfium/pdfium.txt",
+    "additionalLicenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-mac-x64.tgz#licenses/pdfium.txt"
+  },
+  {
+    "id": "pdfium-abseil",
+    "bundle": "pdfium-bundled",
+    "name": "Abseil (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/abseil.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "Apache-2.0",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/abseil.txt",
+    "textFile": "pdfium/abseil.txt"
+  },
+  {
+    "id": "pdfium-agg23",
+    "bundle": "pdfium-bundled",
+    "name": "Anti-Grain Geometry 2.3 (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/agg23.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "LicenseRef-AGG-2.3",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/agg23.txt",
+    "textFile": "pdfium/agg23.txt"
+  },
+  {
+    "id": "pdfium-fast_float",
+    "bundle": "pdfium-bundled",
+    "name": "fast_float (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/fast_float.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "MIT",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/fast_float.txt",
+    "textFile": "pdfium/fast_float.txt"
+  },
+  {
+    "id": "pdfium-freetype",
+    "bundle": "pdfium-bundled",
+    "name": "FreeType (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/freetype.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "FTL",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/freetype.txt",
+    "textFile": "pdfium/freetype.txt"
+  },
+  {
+    "id": "pdfium-icu",
+    "bundle": "pdfium-bundled",
+    "name": "ICU (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/icu.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "Unicode-3.0",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/icu.txt",
+    "textFile": "pdfium/icu.txt"
+  },
+  {
+    "id": "pdfium-lcms",
+    "bundle": "pdfium-bundled",
+    "name": "Little CMS (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/lcms.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "MIT",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/lcms.txt",
+    "textFile": "pdfium/lcms.txt"
+  },
+  {
+    "id": "pdfium-libjpeg_turbo",
+    "bundle": "pdfium-bundled",
+    "name": "libjpeg-turbo / Independent JPEG Group (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/libjpeg_turbo.md",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "BSD-3-Clause AND IJG AND Zlib",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/libjpeg_turbo.md",
+    "textFile": "pdfium/libjpeg_turbo.txt"
+  },
+  {
+    "id": "pdfium-libopenjpeg",
+    "bundle": "pdfium-bundled",
+    "name": "OpenJPEG (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/libopenjpeg.txt",
+    "origin": "Bundled inside the PDFium native binary",
     "licence": "BSD-2-Clause",
-    "copyright": "Copyright (C) 1993-2015 Carnegie Mellon University.",
-    "link": "http://www.speech.cs.cmu.edu/cgi-bin/cmudict",
-    "textFile": "spdx/BSD-2-Clause.txt"
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/libopenjpeg.txt",
+    "textFile": "pdfium/libopenjpeg.txt"
+  },
+  {
+    "id": "pdfium-libpng",
+    "bundle": "pdfium-bundled",
+    "name": "libpng (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/libpng.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "libpng-2.0",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/libpng.txt",
+    "textFile": "pdfium/libpng.txt"
+  },
+  {
+    "id": "pdfium-llvm-libc",
+    "bundle": "pdfium-bundled",
+    "name": "LLVM libc (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/llvm-libc.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "Apache-2.0 WITH LLVM-exception",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/llvm-libc.txt",
+    "textFile": "pdfium/llvm-libc.txt"
+  },
+  {
+    "id": "pdfium-simdutf",
+    "bundle": "pdfium-bundled",
+    "name": "simdutf (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/simdutf.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "MIT",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/simdutf.txt",
+    "textFile": "pdfium/simdutf.txt"
+  },
+  {
+    "id": "pdfium-zlib",
+    "bundle": "pdfium-bundled",
+    "name": "zlib (inside PDFium)",
+    "version": "PDFium 156.0.8076 (chromium/8076); archive licences/zlib.txt",
+    "origin": "Bundled inside the PDFium native binary",
+    "licence": "Zlib",
+    "copyright": "See the complete upstream notice below.",
+    "link": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8076",
+    "licenceSource": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8076/pdfium-linux-x64.tgz#licenses/zlib.txt",
+    "textFile": "pdfium/zlib.txt"
   }
 ]

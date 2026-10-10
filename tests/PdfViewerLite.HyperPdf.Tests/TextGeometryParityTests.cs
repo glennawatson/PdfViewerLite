@@ -220,8 +220,8 @@ public sealed class TextGeometryParityTests
         var count = pair.Pdfium.GetCharacterCount(0);
 
         await Assert.That(count).IsGreaterThan(0);
-        await Assert.That(document.GetCharacterCountNative(0)).IsEqualTo(count);
-        await Assert.That(document.GetTextNative(0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterCountNative(document, 0)).IsEqualTo(count);
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetTextNative(document, 0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
         await AssertCharactersMatch(pair, document, tolerance);
         await AssertRectsMatch(Bounds(pair.Pdfium, 0, count), BoundsNative(document, 0, count), tolerance);
         await AssertHitsMatch(pair, document, count);
@@ -236,9 +236,9 @@ public sealed class TextGeometryParityTests
     private static async Task AssertCharactersMatch(EnginePair pair, HyperPdfDocument document, float tolerance)
     {
         var expected = new List<PageCharacter>();
-        ((ITextLayoutSource)pair.Pdfium).GetCharacters(0, expected);
+        ((ITextLayoutSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(ITextLayoutSource))!).GetCharacters(0, expected);
         var actual = new List<PageCharacter>();
-        document.GetCharactersNative(0, actual);
+        PdfViewerLite.HyperPdf.HyperPdfText.GetCharactersNative(document, 0, actual);
 
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)
@@ -269,7 +269,7 @@ public sealed class TextGeometryParityTests
                 }
 
                 var centre = new PagePoint(rect.Left + (rect.Width * Half), rect.Top + (rect.Height * Half));
-                await Assert.That(document.GetCharacterIndexAtNative(0, centre, 0)).IsEqualTo(pair.Pdfium.GetCharacterIndexAt(0, centre, 0));
+                await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterIndexAtNative(document, 0, centre, 0)).IsEqualTo(pair.Pdfium.GetCharacterIndexAt(0, centre, 0));
             }
         }
     }
@@ -286,7 +286,7 @@ public sealed class TextGeometryParityTests
             var expected = new List<TextMatch>();
             pair.Pdfium.Find(0, query, SearchOptions.None, expected);
             var actual = new List<TextMatch>();
-            document.FindNative(0, query, SearchOptions.None, actual);
+            PdfViewerLite.HyperPdf.HyperPdfText.FindNative(document, 0, query, SearchOptions.None, actual);
 
             await Assert.That(actual).IsEquivalentTo(expected);
             foreach (var match in expected)
@@ -343,7 +343,7 @@ public sealed class TextGeometryParityTests
     private static List<PageRect> BoundsNative(HyperPdfDocument document, int start, int count)
     {
         var rects = new List<PageRect>();
-        document.GetTextBoundsNative(0, start, count, rects);
+        PdfViewerLite.HyperPdf.HyperPdfText.GetTextBoundsNative(document, 0, start, count, rects);
         return rects;
     }
 }

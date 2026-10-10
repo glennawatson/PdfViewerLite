@@ -24,7 +24,7 @@ public static class PdfPageAnnotations
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(page);
-        return page.Id.IsValid && store.GetDictionary(page.Id) is { } current ? current : page.Dictionary;
+        return page.Id.IsValid && StoreReading.GetDictionary(store, page.Id) is { } current ? current : page.Dictionary;
     }
 
     /// <summary>Gets the page's annotation array.</summary>
@@ -68,7 +68,7 @@ public static class PdfPageAnnotations
             return -1;
         }
 
-        array.Add(PdfValue.FromReference(store.Add(PdfValue.FromDictionary(annotation))));
+        array.Add(PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromDictionary(annotation))));
         return Publish(store, page, array) ? array.Count - 1 : -1;
     }
 
@@ -90,7 +90,7 @@ public static class PdfPageAnnotations
         var raw = current.GetRaw(index);
         if (raw.IsReference && raw.AsReference().IsValid)
         {
-            store.Replace(raw.AsReference(), PdfValue.FromDictionary(annotation));
+            StoreEditing.Replace(store, raw.AsReference(), PdfValue.FromDictionary(annotation));
             return true;
         }
 
@@ -141,7 +141,7 @@ public static class PdfPageAnnotations
             return default;
         }
 
-        var id = store.Add(PdfValue.FromDictionary(annotation));
+        var id = StoreEditing.Add(store, PdfValue.FromDictionary(annotation));
         var array = current.Clone();
         array.SetAt(index, PdfValue.FromReference(id));
         return Publish(store, page, array) ? id : default;
@@ -171,8 +171,7 @@ public static class PdfPageAnnotations
     /// <param name="store">The document.</param>
     /// <param name="page">The page.</param>
     /// <returns><see langword="true"/> when it can.</returns>
-    private static bool CanPublish(PdfObjectStore store, PdfPage page) =>
-        page.Id.IsValid || GetPageDictionary(store, page).GetRaw(KnownName.Annots).AsReference().IsValid;
+    private static bool CanPublish(PdfObjectStore store, PdfPage page) => page.Id.IsValid || GetPageDictionary(store, page).GetRaw(KnownName.Annots).AsReference().IsValid;
 
     /// <summary>Puts an annotation array in place: into its own object when it has one, otherwise into a copy of the page.</summary>
     /// <param name="store">The document.</param>
@@ -185,7 +184,7 @@ public static class PdfPageAnnotations
         var raw = dictionary.GetRaw(KnownName.Annots);
         if (raw.IsReference && raw.AsReference().IsValid)
         {
-            store.Replace(raw.AsReference(), PdfValue.FromArray(array));
+            StoreEditing.Replace(store, raw.AsReference(), PdfValue.FromArray(array));
             return true;
         }
 
@@ -196,7 +195,7 @@ public static class PdfPageAnnotations
 
         var copy = dictionary.Clone();
         copy.Set(KnownName.Annots, PdfValue.FromArray(array));
-        store.Replace(page.Id, PdfValue.FromDictionary(copy));
+        StoreEditing.Replace(store, page.Id, PdfValue.FromDictionary(copy));
         return true;
     }
 }

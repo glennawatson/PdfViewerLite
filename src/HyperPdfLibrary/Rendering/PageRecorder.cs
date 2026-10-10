@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Numerics;
 using HyperPdfLibrary.Annotations;
 using HyperPdfLibrary.Content;
@@ -18,24 +17,24 @@ internal static class PageRecorder
     private const float HalfTurnDegrees = 180;
 
     /// <summary>Records the page content.</summary>
-    /// <param name="cache">The document's caches.</param>
-    /// <param name="page">The page.</param>
-    /// <param name="printing">Whether optional content follows print usage.</param>
-    /// <param name="bytes">Receives the memory the picture holds for itself: its operations, without the images it drew.</param>
-    /// <param name="images">Receives the distinct images the picture drew.</param>
+    /// <param name = "cache">The document's caches.</param>
+    /// <param name = "page">The page.</param>
+    /// <param name = "printing">Whether optional content follows print usage.</param>
+    /// <param name = "bytes">Receives the memory the picture holds for itself: its operations, without the images it drew.</param>
+    /// <param name = "images">Receives the distinct images the picture drew.</param>
     /// <returns>The picture, which the caller owns.</returns>
     internal static SKPicture RecordContent(PdfRenderCache cache, PdfPage page, bool printing, out long bytes, out ImageWeight[] images)
     {
         using var device = Begin(page);
-        using var interpreter = new ContentInterpreter(cache, device, 0) { Printing = printing };
-        interpreter.RunPage(page);
+        using var interpreter = new ContentInterpreter(cache, device, 0) { Printing = printing, };
+        ContentExecution.RunPage(interpreter, page);
         return Finish(device, out bytes, out images);
     }
 
     /// <summary>Ends a recording and measures what the picture keeps alive.</summary>
-    /// <param name="device">The recording device.</param>
-    /// <param name="bytes">Receives the picture's own bytes, without the images it drew.</param>
-    /// <param name="images">Receives the distinct images the picture drew, which the picture keeps alive.</param>
+    /// <param name = "device">The recording device.</param>
+    /// <param name = "bytes">Receives the picture's own bytes, without the images it drew.</param>
+    /// <param name = "images">Receives the distinct images the picture drew, which the picture keeps alive.</param>
     /// <returns>The picture, which the caller owns.</returns>
     internal static SKPicture Finish(SkiaContentDevice device, out long bytes, out ImageWeight[] images)
     {
@@ -50,16 +49,16 @@ internal static class PageRecorder
     /// without a normal appearance get one generated; Hidden annotations, and NoView ones on screen or ones without
     /// the Print flag when printing, are left out, as are annotations in hidden optional content and popups.
     /// </summary>
-    /// <param name="cache">The document's caches.</param>
-    /// <param name="page">The page.</param>
-    /// <param name="printing">Whether the page is rendered for printing.</param>
-    /// <param name="bytes">Receives the memory the picture holds for itself: its operations, without the images it drew.</param>
-    /// <param name="images">Receives the distinct images the picture drew.</param>
+    /// <param name = "cache">The document's caches.</param>
+    /// <param name = "page">The page.</param>
+    /// <param name = "printing">Whether the page is rendered for printing.</param>
+    /// <param name = "bytes">Receives the memory the picture holds for itself: its operations, without the images it drew.</param>
+    /// <param name = "images">Receives the distinct images the picture drew.</param>
     /// <returns>The picture, which the caller owns.</returns>
     internal static SKPicture RecordAnnotations(PdfRenderCache cache, PdfPage page, bool printing, out long bytes, out ImageWeight[] images)
     {
         using var device = Begin(page);
-        using var interpreter = new ContentInterpreter(cache, device, 0) { Printing = printing };
+        using var interpreter = new ContentInterpreter(cache, device, 0) { Printing = printing, };
         var annotations = page.Dictionary.GetArray(KnownName.Annots);
         DrawPass(new(cache, interpreter, page, printing), annotations, false);
         DrawPass(new(cache, interpreter, page, printing), annotations, true);
@@ -70,8 +69,8 @@ internal static class PageRecorder
     /// Gets an annotation's normal appearance stream. With several states it follows /AS; without /AS it uses the state
     /// named by the field value (/V, or the parent's /V) when there is one, else /Off, as PDFium does.
     /// </summary>
-    /// <param name="annotation">The annotation dictionary.</param>
-    /// <param name="names">The document's name table.</param>
+    /// <param name = "annotation">The annotation dictionary.</param>
+    /// <param name = "names">The document's name table.</param>
     /// <returns>The stream, or null.</returns>
     internal static PdfStream? GetAppearance(PdfDictionary annotation, PdfNameTable names)
     {
@@ -97,7 +96,7 @@ internal static class PageRecorder
     }
 
     /// <summary>Starts a device that records the page area and clips to it.</summary>
-    /// <param name="page">The page.</param>
+    /// <param name = "page">The page.</param>
     /// <returns>The device.</returns>
     internal static SkiaContentDevice Begin(PdfPage page)
     {
@@ -111,9 +110,9 @@ internal static class PageRecorder
     }
 
     /// <summary>Draws either the widgets or the other annotations of a page.</summary>
-    /// <param name="pass">The page being drawn.</param>
-    /// <param name="annotations">The /Annots array, or null.</param>
-    /// <param name="widgets">Whether this pass draws widgets.</param>
+    /// <param name = "pass">The page being drawn.</param>
+    /// <param name = "annotations">The /Annots array, or null.</param>
+    /// <param name = "widgets">Whether this pass draws widgets.</param>
     private static void DrawPass(AnnotationPass pass, PdfArray? annotations, bool widgets)
     {
         for (var i = 0; i < (annotations?.Count ?? 0); i++)
@@ -129,13 +128,21 @@ internal static class PageRecorder
     }
 
     /// <summary>Draws the tint over a fillable widget on top of its appearance, as PDFium's form fill draws it.</summary>
-    /// <param name="pass">The page being drawn.</param>
-    /// <param name="annotation">The annotation dictionary.</param>
-    /// <param name="isWidget">Whether the annotation is a widget; other annotations are not tinted.</param>
+    /// <param name = "pass">The page being drawn.</param>
+    /// <param name = "annotation">The annotation dictionary.</param>
+    /// <param name = "isWidget">Whether the annotation is a widget; other annotations are not tinted.</param>
     private static void DrawTint(AnnotationPass pass, PdfDictionary annotation, bool isWidget)
     {
         var tint = pass.Cache.FormHighlight;
-        if (!isWidget || !tint.IsVisible || !annotation.TryGetRectangle(KnownName.Rect, out var rect) || !IsShown(annotation, pass.Printing) || !pass.Interpreter.IsVisible(annotation))
+        if (!isWidget
+        || !tint.IsVisible
+        || !annotation.TryGetRectangle(
+            KnownName.Rect,
+            out var rect) || !IsShown(
+            annotation,
+            pass.Printing) || !ContentXObjects.IsVisible(
+            pass.Interpreter,
+            annotation))
         {
             return;
         }
@@ -151,11 +158,11 @@ internal static class PageRecorder
     }
 
     /// <summary>Draws one annotation's normal appearance, generating one when it has none.</summary>
-    /// <param name="pass">The page being drawn.</param>
-    /// <param name="annotation">The annotation dictionary.</param>
+    /// <param name = "pass">The page being drawn.</param>
+    /// <param name = "annotation">The annotation dictionary.</param>
     private static void DrawAnnotation(AnnotationPass pass, PdfDictionary annotation)
     {
-        if (!IsShown(annotation, pass.Printing) || !pass.Interpreter.IsVisible(annotation))
+        if (!IsShown(annotation, pass.Printing) || !ContentXObjects.IsVisible(pass.Interpreter, annotation))
         {
             return;
         }
@@ -183,10 +190,10 @@ internal static class PageRecorder
     }
 
     /// <summary>Draws an appearance fitted to a rectangle, turned back upright for NoRotate annotations on rotated pages.</summary>
-    /// <param name="pass">The page being drawn.</param>
-    /// <param name="annotation">The annotation dictionary.</param>
-    /// <param name="appearance">The appearance stream.</param>
-    /// <param name="rect">The rectangle it is fitted to.</param>
+    /// <param name = "pass">The page being drawn.</param>
+    /// <param name = "annotation">The annotation dictionary.</param>
+    /// <param name = "appearance">The appearance stream.</param>
+    /// <param name = "rect">The rectangle it is fitted to.</param>
     private static void DrawForm(AnnotationPass pass, PdfDictionary annotation, PdfStream appearance, PdfRectangle rect)
     {
         if (!TryMapAppearance(appearance.Dictionary, rect, out var mapping))
@@ -202,12 +209,12 @@ internal static class PageRecorder
             mapping = mapping * Matrix3x2.CreateTranslation(-corner) * Matrix3x2.CreateRotation(page.Rotation * MathF.PI / HalfTurnDegrees) * Matrix3x2.CreateTranslation(corner);
         }
 
-        pass.Interpreter.RunForm(appearance, mapping * page.ViewerTransform, null);
+        ContentExecution.RunForm(pass.Interpreter, appearance, mapping * page.ViewerTransform, null);
     }
 
     /// <summary>Determines whether an annotation's flags allow it to be drawn, as PDFium's annotation list decides.</summary>
-    /// <param name="annotation">The annotation dictionary.</param>
-    /// <param name="printing">Whether the page is rendered for printing.</param>
+    /// <param name = "annotation">The annotation dictionary.</param>
+    /// <param name = "printing">Whether the page is rendered for printing.</param>
     /// <returns><see langword="true"/> when it is drawn.</returns>
     private static bool IsShown(PdfDictionary annotation, bool printing)
     {
@@ -227,14 +234,13 @@ internal static class PageRecorder
     }
 
     /// <summary>Determines whether an annotation has a normal appearance entry, even one that does not resolve to a stream.</summary>
-    /// <param name="annotation">The annotation dictionary.</param>
+    /// <param name = "annotation">The annotation dictionary.</param>
     /// <returns><see langword="true"/> when /AP /N is a dictionary of states, which PDFium never regenerates.</returns>
-    private static bool HasNormalAppearance(PdfDictionary annotation) =>
-        annotation.GetDictionary(KnownName.AP)?.Get(KnownName.N).AsDictionary() is not null;
+    private static bool HasNormalAppearance(PdfDictionary annotation) => annotation.GetDictionary(KnownName.AP)?.Get(KnownName.N).AsDictionary() is not null;
 
     /// <summary>Reads the field value PDFium falls back to when a widget has no /AS: its own /V, else its parent's.</summary>
-    /// <param name="annotation">The annotation dictionary.</param>
-    /// <param name="names">The document's name table.</param>
+    /// <param name = "annotation">The annotation dictionary.</param>
+    /// <param name = "names">The document's name table.</param>
     /// <returns>The value as a name, or none.</returns>
     private static PdfName FieldState(PdfDictionary annotation, PdfNameTable names)
     {
@@ -249,9 +255,9 @@ internal static class PageRecorder
     }
 
     /// <summary>Computes the matrix that fits an appearance's transformed box to the annotation rectangle (PDF 32000 §12.5.5).</summary>
-    /// <param name="appearance">The appearance stream's dictionary.</param>
-    /// <param name="rect">The annotation rectangle.</param>
-    /// <param name="mapping">Receives the matrix from the appearance's user space to page user space.</param>
+    /// <param name = "appearance">The appearance stream's dictionary.</param>
+    /// <param name = "rect">The annotation rectangle.</param>
+    /// <param name = "mapping">Receives the matrix from the appearance's user space to page user space.</param>
     /// <returns><see langword="false"/> when the appearance has no usable box.</returns>
     private static bool TryMapAppearance(PdfDictionary appearance, PdfRectangle rect, out Matrix3x2 mapping)
     {
@@ -277,14 +283,19 @@ internal static class PageRecorder
     }
 
     /// <summary>Reads an appearance's /Matrix.</summary>
-    /// <param name="appearance">The appearance stream's dictionary.</param>
+    /// <param name = "appearance">The appearance stream's dictionary.</param>
     /// <returns>The matrix; identity when missing.</returns>
     private static Matrix3x2 ReadMatrix(PdfDictionary appearance)
     {
         const int numbers = 6;
         Span<float> values = stackalloc float[numbers];
-        return appearance.GetArray(KnownName.Matrix) is { Count: >= numbers } array && array.ReadNumbers(values) >= numbers
-            ? new(values[0], values[1], values[2], values[3], values[4], values[5])
-            : Matrix3x2.Identity;
+        return appearance.GetArray(KnownName.Matrix) is { Count: >= numbers } array
+        && array.ReadNumbers(values) >= numbers ? new(
+            values[0],
+            values[1],
+            values[2],
+            values[3],
+            values[4],
+            values[5]) : Matrix3x2.Identity;
     }
 }

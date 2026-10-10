@@ -7,7 +7,7 @@
   <summary>Fast, tabbed PDF viewer</summary>
   <description>
     <p>
-      Hyper PDF Viewer is a fast PDF viewer that opens every document as a tab in one window. It renders with PDFium,
+      Hyper PDF Viewer is a fast PDF viewer that opens every document as a tab in one window. It renders with HyperPDF,
       follows your KDE colour scheme and integrates with Dolphin: opening files from the file manager adds tabs to
       the running window and opened documents appear in Recent Files.
     </p>

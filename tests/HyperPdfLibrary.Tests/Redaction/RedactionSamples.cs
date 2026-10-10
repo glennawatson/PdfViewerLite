@@ -72,7 +72,11 @@ internal static class RedactionSamples
     /// <summary>Compresses a page's content stream, so its text cannot be found by searching the file.</summary>
     /// <param name="pdf">The PDF bytes.</param>
     /// <returns>The same page with Flate-compressed content.</returns>
-    internal static byte[] Compress(byte[] pdf) => PageObjectSamples.Edit(pdf, static _ => { });
+    internal static byte[] Compress(byte[] pdf) => PageObjectSamples.Edit(
+        pdf,
+        static _ =>
+    {
+    });
 
     /// <summary>Determines whether a file holds some text, in its bytes or in any stream once decoded.</summary>
     /// <param name="pdf">The file.</param>
@@ -89,7 +93,7 @@ internal static class RedactionSamples
         using var document = PdfDocumentReader.Open(pdf, null);
         for (var number = 1; number < document.Objects.Size; number++)
         {
-            if (document.Objects.GetObject(new(number, 0)).AsStream() is { } stream && stream.DecodeToArray().AsSpan().IndexOf(bytes) >= 0)
+            if (StoreReading.GetObject(document.Objects, new(number, 0)).AsStream() is { } stream && stream.DecodeToArray().AsSpan().IndexOf(bytes) >= 0)
             {
                 return true;
             }

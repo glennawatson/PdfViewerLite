@@ -49,10 +49,7 @@ public sealed class AppSettings
     /// <summary>Gets or sets the Tesseract languages used to recognise text, for example <c>eng</c> or <c>eng+deu</c>.</summary>
     public string OcrLanguage { get; set; } = "eng";
 
-    /// <summary>Gets or sets which engine opens PDF documents; documents already open keep their engine.</summary>
-    public PdfEngineChoice PdfEngine { get; set; }
-
-    /// <summary>Gets or sets the colour of the tint over fillable form fields, as 0xRRGGBB. Both engines draw it.</summary>
+    /// <summary>Gets or sets the colour of the tint over fillable form fields, as 0xRRGGBB.</summary>
     public uint FormHighlightColor { get; set; } = 0xB4CCDCU;
 
     /// <summary>Gets or sets the opacity of the tint over fillable form fields, 0 (off) to 255.</summary>

@@ -95,10 +95,8 @@ public sealed partial class FormAppearanceTests
     public async Task TextFieldAppearanceHoldsText()
     {
         using var document = PdfDocumentReader.Open(TestPdf.CreateForm(), null);
-
-        var changed = PdfDocumentForms.GetForm(document).SetText(0, NameIndex, TypedName);
+        var changed = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, NameIndex, TypedName);
         var content = ReadAppearance(document, NameIndex);
-
         await Assert.That(changed).IsTrue();
         await Assert.That(content).Contains("/Tx BMC");
         await Assert.That(content).Contains($"({TypedName}) Tj");
@@ -117,10 +115,8 @@ public sealed partial class FormAppearanceTests
     public async Task InheritedSizeIsUsed()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, FormSamples.StreetIndex, "Elm");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FormSamples.StreetIndex, "Elm");
         var content = ReadAppearance(document, FormSamples.StreetIndex);
-
         await Assert.That(content).Contains("/Helv 10 Tf");
         await Assert.That(content).Contains("(Elm) Tj");
         await Assert.That(GetAnnotation(document, FormSamples.SecretIndex).GetDictionary(KnownName.AP)).IsNull();
@@ -132,10 +128,8 @@ public sealed partial class FormAppearanceTests
     public async Task AutoSizeShrinksToFit()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, FormSamples.NotesIndex, string.Join(' ', Enumerable.Repeat(LongText, LongRepeats)));
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FormSamples.NotesIndex, string.Join(' ', Enumerable.Repeat(LongText, LongRepeats)));
         var content = ReadAppearance(document, FormSamples.NotesIndex);
-
         await Assert.That(content).Contains(" Tf");
         await Assert.That(content).DoesNotContain(TwelvePoint);
     }
@@ -146,10 +140,8 @@ public sealed partial class FormAppearanceTests
     public async Task MultilineFieldWraps()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, FormSamples.NotesIndex, LongText);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FormSamples.NotesIndex, LongText);
         var content = ReadAppearance(document, FormSamples.NotesIndex);
-
         await Assert.That(CountOccurrences(content, " Tj")).IsGreaterThan(1);
         await Assert.That(content).Contains("(One two three");
         await Assert.That(content).Contains("1 1 0.8 rg").Because("the background colour is painted first");
@@ -163,10 +155,8 @@ public sealed partial class FormAppearanceTests
     public async Task PasswordFieldHidesText()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, FormSamples.SecretIndex, "pw");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FormSamples.SecretIndex, "pw");
         var content = ReadAppearance(document, FormSamples.SecretIndex);
-
         await Assert.That(content).Contains("(**) Tj");
         await Assert.That(content).Contains("0 0 1 rg");
         await Assert.That(content).DoesNotContain("pw");
@@ -178,10 +168,8 @@ public sealed partial class FormAppearanceTests
     public async Task CombFieldDrawsCells()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, FormSamples.ZipIndex, "9876");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FormSamples.ZipIndex, "9876");
         var content = ReadAppearance(document, FormSamples.ZipIndex);
-
         await Assert.That(content).Contains("(9) Tj");
         await Assert.That(content).Contains("(8) Tj");
         await Assert.That(content).Contains("(7) Tj");
@@ -196,11 +184,9 @@ public sealed partial class FormAppearanceTests
     public async Task LimitCutsText()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, FormSamples.LimitedIndex, "123456789");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FormSamples.LimitedIndex, "123456789");
         var content = ReadAppearance(document, FormSamples.LimitedIndex);
         var widgets = ReadWidgets(document);
-
         await Assert.That(content).Contains("(12345) Tj");
         await Assert.That(widgets[FormSamples.LimitedIndex].Value).IsEqualTo("12345");
     }
@@ -211,12 +197,9 @@ public sealed partial class FormAppearanceTests
     public async Task CombCharactersAreOneBoxApart()
     {
         using var document = PdfDocumentReader.Open(TestPdf.CreateCombForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, CodeIndex, "AA");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, CodeIndex, "AA");
         var matches = CellPositions().Matches(ReadAppearance(document, CodeIndex));
-
         var gap = double.Parse(matches[1].Groups["x"].Value, CultureInfo.InvariantCulture) - double.Parse(matches[0].Groups["x"].Value, CultureInfo.InvariantCulture);
-
         await Assert.That(matches.Count).IsEqualTo(CodeCharacters);
         await Assert.That(gap).IsEqualTo(CodeWidth / CombBoxes).Within(Tolerance);
     }
@@ -227,11 +210,9 @@ public sealed partial class FormAppearanceTests
     public async Task ComboBoxShowsLabel()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SelectOption(0, FormSamples.ColourIndex, 0);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SelectOption(PdfDocumentForms.GetForm(document), 0, FormSamples.ColourIndex, 0);
         var content = ReadAppearance(document, FormSamples.ColourIndex);
         var widget = ReadWidgets(document)[FormSamples.ColourIndex];
-
         await Assert.That(content).Contains("(Red) Tj");
         await Assert.That(widget.Value).IsEqualTo("r");
         await Assert.That(widget.SelectedOption).IsEqualTo(0);
@@ -244,11 +225,9 @@ public sealed partial class FormAppearanceTests
     public async Task ListBoxHighlightsSelection()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SelectOption(0, FormSamples.PickIndex, ChosenOption);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SelectOption(PdfDocumentForms.GetForm(document), 0, FormSamples.PickIndex, ChosenOption);
         var content = ReadAppearance(document, FormSamples.PickIndex);
         var widget = ReadWidgets(document)[FormSamples.PickIndex];
-
         await Assert.That(CountOccurrences(content, " Tj")).IsEqualTo(OptionCount);
         await Assert.That(CountOccurrences(content, "0.600006 0.756866 0.854904 rg")).IsEqualTo(Highlights);
         await Assert.That(content).Contains("(Four) Tj");
@@ -262,11 +241,9 @@ public sealed partial class FormAppearanceTests
     public async Task CheckBoxGetsAppearances()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        var changed = PdfDocumentForms.GetForm(document).SetChecked(0, FormSamples.AgreeIndex, true);
+        var changed = HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(document), 0, FormSamples.AgreeIndex, true);
         var widget = GetAnnotation(document, FormSamples.AgreeIndex);
         var states = widget.GetDictionary(KnownName.AP)!.GetDictionary(KnownName.N)!;
-
         await Assert.That(changed).IsTrue();
         await Assert.That(states.ContainsKey(document.Objects.Names.Intern("Yes"))).IsTrue();
         await Assert.That(states.ContainsKey(document.Objects.Names.Intern("Off"))).IsTrue();
@@ -281,12 +258,10 @@ public sealed partial class FormAppearanceTests
     public async Task RadioButtonsSwitchTogether()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetChecked(0, FormSamples.PlanFirstIndex, true);
-        _ = PdfDocumentForms.GetForm(document).SetChecked(0, FormSamples.PlanSecondIndex, true);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(document), 0, FormSamples.PlanFirstIndex, true);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(document), 0, FormSamples.PlanSecondIndex, true);
         var widgets = ReadWidgets(document);
-        var switchedOff = PdfDocumentForms.GetForm(document).SetChecked(0, FormSamples.PlanSecondIndex, false);
-
+        var switchedOff = HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(document), 0, FormSamples.PlanSecondIndex, false);
         await Assert.That(widgets[FormSamples.PlanFirstIndex].IsChecked).IsFalse();
         await Assert.That(widgets[FormSamples.PlanSecondIndex].IsChecked).IsTrue();
         await Assert.That(switchedOff).IsFalse();
@@ -298,12 +273,10 @@ public sealed partial class FormAppearanceTests
     public async Task RotatedFieldGetsAMatrix()
     {
         using var document = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, FormSamples.SidewaysIndex, "Hello");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FormSamples.SidewaysIndex, "Hello");
         var stream = ReadStream(document, FormSamples.SidewaysIndex);
         var matrix = stream.Dictionary.GetArray(KnownName.Matrix)!;
         var box = stream.Dictionary.GetArray(KnownName.BBox)!;
-
         await Assert.That(box.GetSingle(RightSlot)).IsEqualTo(SidewaysLength);
         await Assert.That(box.GetSingle(TopSlot)).IsEqualTo(SidewaysThickness);
         await Assert.That(matrix.GetSingle(1)).IsEqualTo(1);
@@ -318,14 +291,12 @@ public sealed partial class FormAppearanceTests
     {
         using var document = PdfDocumentReader.Open(TestPdf.CreateForm(), null);
         var before = GetAnnotation(document, NameIndex);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, NameIndex, TypedName);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, NameIndex, TypedName);
         var saved = HyperPdfLibrary.Writing.PdfIncrementalWriter.Save(document.Objects);
         using var reopened = PdfDocumentReader.Open(saved, null);
-
         await Assert.That(before.ContainsKey(KnownName.V)).IsFalse();
         await Assert.That(GetAnnotation(document, NameIndex)).IsNotSameReferenceAs(before);
-        await Assert.That(document.Objects.HasEdits).IsTrue();
+        await Assert.That(StoreEditing.HasEdits(document.Objects)).IsTrue();
         await Assert.That(ReadWidgets(reopened)[NameIndex].Value).IsEqualTo(TypedName);
         await Assert.That(ReadAppearance(reopened, NameIndex)).Contains($"({TypedName}) Tj");
     }
@@ -336,12 +307,10 @@ public sealed partial class FormAppearanceTests
     public async Task RepeatedEditsReuseTheAppearance()
     {
         using var document = PdfDocumentReader.Open(TestPdf.CreateForm(), null);
-
-        _ = PdfDocumentForms.GetForm(document).SetText(0, NameIndex, "one");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, NameIndex, "one");
         var first = document.Objects.Size;
-        _ = PdfDocumentForms.GetForm(document).SetText(0, NameIndex, "two");
-        _ = PdfDocumentForms.GetForm(document).SetText(0, NameIndex, "three");
-
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, NameIndex, "two");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, NameIndex, "three");
         await Assert.That(document.Objects.Size).IsEqualTo(first);
         await Assert.That(ReadAppearance(document, NameIndex)).Contains("(three) Tj");
     }
@@ -354,17 +323,16 @@ public sealed partial class FormAppearanceTests
         using var plain = PdfDocumentReader.Open(TestPdf.Create(1), null);
         using var rich = PdfDocumentReader.Open(FormSamples.CreateRichForm(), null);
         using var simple = PdfDocumentReader.Open(TestPdf.CreateForm(), null);
-
-        await Assert.That(PdfDocumentForms.GetForm(plain).HasForm).IsFalse();
-        await Assert.That(PdfDocumentForms.GetForm(plain).SetText(0, 0, "x")).IsFalse();
-        await Assert.That(PdfDocumentForms.GetForm(rich).HasForm).IsTrue();
-        await Assert.That(PdfDocumentForms.GetForm(rich).NeedAppearances).IsFalse();
-        await Assert.That(PdfDocumentForms.GetForm(rich).SetText(0, FormSamples.LockedIndex, "x")).IsFalse();
-        await Assert.That(PdfDocumentForms.GetForm(rich).SetChecked(0, FormSamples.NotesIndex, true)).IsFalse();
-        await Assert.That(PdfDocumentForms.GetForm(rich).SelectOption(0, FormSamples.PickIndex, OptionCount)).IsFalse();
-        await Assert.That(PdfDocumentForms.GetForm(rich).SelectOption(0, FormSamples.PickIndex, -1)).IsFalse();
-        await Assert.That(rich.Objects.HasEdits).IsFalse();
-        await Assert.That(PdfDocumentForms.GetForm(simple).NeedAppearances).IsTrue();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormReading.HasForm(PdfDocumentForms.GetForm(plain))).IsFalse();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(plain), 0, 0, "x")).IsFalse();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormReading.HasForm(PdfDocumentForms.GetForm(rich))).IsTrue();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormReading.NeedAppearances(PdfDocumentForms.GetForm(rich))).IsFalse();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(rich), 0, FormSamples.LockedIndex, "x")).IsFalse();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(PdfDocumentForms.GetForm(rich), 0, FormSamples.NotesIndex, true)).IsFalse();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SelectOption(PdfDocumentForms.GetForm(rich), 0, FormSamples.PickIndex, OptionCount)).IsFalse();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SelectOption(PdfDocumentForms.GetForm(rich), 0, FormSamples.PickIndex, -1)).IsFalse();
+        await Assert.That(StoreEditing.HasEdits(rich.Objects)).IsFalse();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormReading.NeedAppearances(PdfDocumentForms.GetForm(simple))).IsTrue();
     }
 
     /// <summary>Fields inherit their type, value, limit and flags from their parents.</summary>
@@ -376,7 +344,6 @@ public sealed partial class FormAppearanceTests
         var widgets = ReadWidgets(document);
         var street = widgets[FormSamples.StreetIndex];
         var zip = widgets[FormSamples.ZipIndex];
-
         await Assert.That(widgets.Count).IsEqualTo(FormSamples.WidgetCount);
         await Assert.That(street.Name).IsEqualTo("Address.Street");
         await Assert.That(street.Type).IsEqualTo(HyperPdfLibrary.Forms.PdfFieldType.Text);
@@ -395,9 +362,7 @@ public sealed partial class FormAppearanceTests
     {
         using var document = PdfDocumentReader.Open(TestPdf.CreateCalculatedForm(), null);
         var scripts = new List<HyperPdfLibrary.Forms.PdfWidgetScripts>();
-
-        PdfDocumentForms.GetForm(document).GetScripts(0, scripts);
-
+        HyperPdfLibrary.Forms.PdfFormReading.GetScripts(PdfDocumentForms.GetForm(document), 0, scripts);
         await Assert.That(scripts.Count).IsEqualTo(ScriptedFields);
         await Assert.That(scripts.Single(static s => s.Name == "Total").Calculate).Contains("AFSimple_Calculate");
         await Assert.That(scripts.Single(static s => s.Name == "Price").Keystroke).Contains("AFNumber_Keystroke");
@@ -429,15 +394,13 @@ public sealed partial class FormAppearanceTests
     /// <param name="document">The document.</param>
     /// <param name="index">The widget index.</param>
     /// <returns>The dictionary.</returns>
-    private static PdfDictionary GetAnnotation(PdfDocument document, int index) =>
-        PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(KnownName.Annots)!.GetDictionary(index)!;
+    private static PdfDictionary GetAnnotation(PdfDocument document, int index) => PdfDocumentPages.GetPage(document, 0).Dictionary.GetArray(KnownName.Annots)!.GetDictionary(index)!;
 
     /// <summary>Gets a widget's normal appearance stream.</summary>
     /// <param name="document">The document.</param>
     /// <param name="index">The widget index.</param>
     /// <returns>The stream.</returns>
-    private static PdfStream ReadStream(PdfDocument document, int index) =>
-        GetAnnotation(document, index).GetDictionary(KnownName.AP)?.GetStream(KnownName.N) ?? new(new(document.Objects), []);
+    private static PdfStream ReadStream(PdfDocument document, int index) => GetAnnotation(document, index).GetDictionary(KnownName.AP)?.GetStream(KnownName.N) ?? new(new(document.Objects), []);
 
     /// <summary>Decodes a widget's normal appearance stream.</summary>
     /// <param name="document">The document.</param>
@@ -451,7 +414,7 @@ public sealed partial class FormAppearanceTests
     private static List<HyperPdfLibrary.Forms.PdfFormWidget> ReadWidgets(PdfDocument document)
     {
         var widgets = new List<HyperPdfLibrary.Forms.PdfFormWidget>();
-        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
+        HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(PdfDocumentForms.GetForm(document), 0, widgets);
         return widgets;
     }
 }

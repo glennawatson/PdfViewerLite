@@ -23,6 +23,9 @@ public sealed class ProgressiveRenderTests
     /// <summary>The colours cycled through.</summary>
     private const int Colours = 3;
 
+    /// <summary>The untouched target marker.</summary>
+    private const byte Sentinel = 0xA5;
+
     /// <summary>A long page pauses between slices and, resumed, draws exactly what a normal render draws.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -32,12 +35,17 @@ public sealed class ProgressiveRenderTests
         using var progressive = new RenderTestPage(pdf);
         using var normal = new RenderTestPage(pdf);
         var pixels = new byte[Size * Size * RenderedImage.BytesPerPixel];
+        pixels.AsSpan().Fill(Sentinel);
         var request = new PdfTileRequest(0, 1, 0, 0, 0, PdfRenderFlags.None);
+
+        var paused = progressive.Renderer.RenderProgressive(request, new(pixels, Size, Size, Size * RenderedImage.BytesPerPixel), static () => true, CancellationToken.None);
+        var untouched = pixels.AsSpan().IndexOfAnyExcept(Sentinel) < 0;
 
         var calls = RenderUntilDone(progressive.Renderer, request, pixels);
         var expected = normal.RenderPage();
 
         await Assert.That(calls).IsGreaterThan(1);
+        await Assert.That(paused == PdfRenderStatus.Paused && untouched).IsTrue();
         await Assert.That(pixels.AsSpan().SequenceEqual(expected.Pixels)).IsTrue();
     }
 
@@ -48,14 +56,17 @@ public sealed class ProgressiveRenderTests
     {
         using var page = new RenderTestPage(CreateBusyPage());
         var pixels = new byte[Size * Size * RenderedImage.BytesPerPixel];
+        pixels.AsSpan().Fill(Sentinel);
         var request = new PdfTileRequest(0, 1, 0, 0, 0, PdfRenderFlags.None);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
         var cancelled = page.Renderer.RenderProgressive(request, new(pixels, Size, Size, Size * RenderedImage.BytesPerPixel), null, cancellation.Token);
+        var untouched = pixels.AsSpan().IndexOfAnyExcept(Sentinel) < 0;
         var finished = page.Renderer.RenderProgressive(request, new(pixels, Size, Size, Size * RenderedImage.BytesPerPixel), null, CancellationToken.None);
 
         await Assert.That(cancelled).IsEqualTo(PdfRenderStatus.Cancelled);
+        await Assert.That(untouched).IsTrue();
         await Assert.That(finished).IsEqualTo(PdfRenderStatus.Done);
     }
 

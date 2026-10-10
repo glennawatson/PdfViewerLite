@@ -92,7 +92,7 @@ public static class PdfDocumentPruning
     /// <returns><see langword="true"/> when it does.</returns>
     private static bool LeadsToDeleted(PdfDocument document, PdfValue destination, HashSet<int> deleted, bool followNames)
     {
-        var value = document.Objects.Resolve(destination);
+        var value = StoreReading.Resolve(document.Objects, destination);
         if (followNames && value.Kind is PdfKind.Name or PdfKind.String)
         {
             value = PdfDocumentNavigation.FindNamedDestination(document, value);
@@ -160,7 +160,7 @@ public static class PdfDocumentPruning
     private static PdfDictionary? ReadOutlineEntry(PdfDocument document, in OutlineVisit visit, HashSet<int> visited)
     {
         var id = visit.Entry.AsReference();
-        return id.IsValid && visit.Depth < PdfDocumentNavigation.MaxOutlineDepth && visited.Add(id.Number) ? document.Objects.GetDictionary(id) : null;
+        return id.IsValid && visit.Depth < PdfDocumentNavigation.MaxOutlineDepth && visited.Add(id.Number) ? StoreReading.GetDictionary(document.Objects, id) : null;
     }
 
     /// <summary>Finds and fixes outline entries that lead to deleted pages.</summary>
@@ -192,7 +192,7 @@ public static class PdfDocumentPruning
     /// <param name="id">The entry.</param>
     private static void UnlinkOutlineEntry(PdfDocument document, PdfEditTransaction transaction, PdfObjectId id)
     {
-        if (document.Objects.GetDictionary(id) is not { } entry)
+        if (StoreReading.GetDictionary(document.Objects, id) is not { } entry)
         {
             return;
         }
@@ -228,7 +228,7 @@ public static class PdfDocumentPruning
     private static void PruneDestsDictionary(PdfDocument document, PdfEditTransaction transaction, HashSet<int> deleted)
     {
         var raw = document.Catalog.GetRaw(KnownName.Dests);
-        if (document.Objects.Resolve(raw).AsDictionary() is not { } dests)
+        if (StoreReading.Resolve(document.Objects, raw).AsDictionary() is not { } dests)
         {
             return;
         }
@@ -265,7 +265,7 @@ public static class PdfDocumentPruning
     private static void PruneDestsTree(PdfDocument document, PdfEditTransaction transaction, HashSet<int> deleted)
     {
         var namesRaw = document.Catalog.GetRaw(KnownName.Names);
-        var rootRaw = document.Objects.Resolve(namesRaw).AsDictionary()?.GetRaw(KnownName.Dests) ?? default;
+        var rootRaw = StoreReading.Resolve(document.Objects, namesRaw).AsDictionary()?.GetRaw(KnownName.Dests) ?? default;
         var visited = new HashSet<int>();
         var pending = new Stack<OutlineVisit>();
         pending.Push(new(rootRaw, 0));
@@ -294,10 +294,15 @@ public static class PdfDocumentPruning
     /// <param name="visit">The node as reached.</param>
     /// <param name="visited">The indirect nodes already read.</param>
     /// <returns>The node, or <see langword="null"/>.</returns>
-    private static PdfDictionary? ReadTreeNode(PdfDocument document, in OutlineVisit visit, HashSet<int> visited) =>
-        visit.Depth >= PdfLimits.MaxPageTreeDepth || (visit.Entry.IsReference && !visited.Add(visit.Entry.AsReference().Number))
-            ? null
-            : document.Objects.Resolve(visit.Entry).AsDictionary();
+    private static PdfDictionary? ReadTreeNode(
+        PdfDocument document,
+        in OutlineVisit visit,
+        HashSet<int> visited) =>
+        visit.Depth >= PdfLimits.MaxPageTreeDepth
+        || (visit.Entry.IsReference
+        && !visited.Add(visit.Entry.AsReference().Number)) ? null : StoreReading.Resolve(
+        document.Objects,
+        visit.Entry).AsDictionary();
 
     /// <summary>Copies a name tree node without the pairs that lead to deleted pages.</summary>
     /// <param name="document">The document.</param>
@@ -348,7 +353,7 @@ public static class PdfDocumentPruning
         }
 
         // Only the root can be direct and reachable here without its holder; deeper direct kids are left as they are.
-        if (visit.Depth != 0 || document.Objects.Resolve(namesRaw).AsDictionary() is not { } names)
+        if (visit.Depth != 0 || StoreReading.Resolve(document.Objects, namesRaw).AsDictionary() is not { } names)
         {
             return;
         }

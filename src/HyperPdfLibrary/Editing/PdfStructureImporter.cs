@@ -75,9 +75,19 @@ internal sealed class PdfStructureImporter
     {
         var sourceRoot = source.Catalog.GetDictionary(KnownName.StructTreeRoot);
         var targetRootId = target.Catalog.GetRaw(KnownName.StructTreeRoot).AsReference();
-        return sourceRoot is null || !targetRootId.IsValid || target.GetObject(targetRootId).AsDictionary() is null
-            ? null
-            : new(transaction, target, source, importer, pages, new(sourceRoot, targetRootId));
+        return sourceRoot is null
+        || !targetRootId.IsValid
+        || StoreReading.GetObject(
+        target,
+        targetRootId).AsDictionary() is null ? null : new(
+        transaction,
+        target,
+        source,
+        importer,
+        pages,
+        new(
+        sourceRoot,
+        targetRootId));
     }
 
     /// <summary>Copies the structure of some pages.</summary>
@@ -100,7 +110,7 @@ internal sealed class PdfStructureImporter
             return keys;
         }
 
-        var root = _target.GetObject(_targetRootId).AsDictionary()!.Clone();
+        var root = StoreReading.GetObject(_target, _targetRootId).AsDictionary()!.Clone();
         var next = NextKey(root);
         var entries = new List<ParentEntry>(owners.Count + annotations.Count);
         MarkRelevant(owners, annotations);
@@ -169,8 +179,7 @@ internal sealed class PdfStructureImporter
     /// <summary>Determines whether an element entry is written by the importer itself or not copied.</summary>
     /// <param name="key">The key.</param>
     /// <returns><see langword="true"/> for /P, /K, /Pg, /ID and /Ref.</returns>
-    private static bool IsStructural(PdfName key) =>
-        key.Is(KnownName.P) || key.Is(KnownName.K) || key.Is(KnownName.Pg) || key.Is(KnownName.ID) || key.Is(KnownName.Ref);
+    private static bool IsStructural(PdfName key) => key.Is(KnownName.P) || key.Is(KnownName.K) || key.Is(KnownName.Pg) || key.Is(KnownName.ID) || key.Is(KnownName.Ref);
 
     /// <summary>Determines whether a kid dictionary is a marked content or object reference.</summary>
     /// <param name="kid">The kid.</param>
@@ -223,7 +232,7 @@ internal sealed class PdfStructureImporter
         var id = start;
         for (var depth = 0; depth < PdfLimits.MaxNesting && id.IsValid && !_elements.ContainsKey(id.Number); depth++)
         {
-            if (_source.GetObject(id).AsDictionary() is not { } element || ReferenceEquals(element, _sourceRoot))
+            if (StoreReading.GetObject(_source, id).AsDictionary() is not { } element || ReferenceEquals(element, _sourceRoot))
             {
                 return;
             }
@@ -272,7 +281,7 @@ internal sealed class PdfStructureImporter
 
         foreach (var (number, id) in _elements)
         {
-            var element = _source.GetObject(new(number, 0)).AsDictionary()!;
+            var element = StoreReading.GetObject(_source, new(number, 0)).AsDictionary()!;
             var elementParent = element.GetRaw(KnownName.P).AsReference();
             var parentId = _elements.TryGetValue(elementParent.Number, out var mapped) ? mapped : parent;
             _transaction.Replace(id, PdfValue.FromDictionary(CopyElement(element, parentId)));
@@ -348,7 +357,7 @@ internal sealed class PdfStructureImporter
     /// <returns><see langword="true"/> when its parent was copied or it is a root kid.</returns>
     private bool IsReachable(int number)
     {
-        var element = _source.GetObject(new(number, 0)).AsDictionary()!;
+        var element = StoreReading.GetObject(_source, new(number, 0)).AsDictionary()!;
         var parent = element.GetRaw(KnownName.P).AsReference();
         return _elements.ContainsKey(parent.Number) || ReferenceEquals(element.GetDictionary(KnownName.P), _sourceRoot);
     }
@@ -436,7 +445,7 @@ internal sealed class PdfStructureImporter
             return;
         }
 
-        if (_source.Resolve(kid).AsDictionary() is { } reference)
+        if (StoreReading.Resolve(_source, kid).AsDictionary() is { } reference)
         {
             AddReferenceKid(kids, reference, pageNumber);
         }
@@ -528,7 +537,7 @@ internal sealed class PdfStructureImporter
     /// <returns>The tree value for the root.</returns>
     private PdfValue AppendParentEntries(PdfValue tree, List<ParentEntry> entries)
     {
-        var node = _target.Resolve(tree).AsDictionary()?.Clone() ?? new PdfDictionary(_target);
+        var node = StoreReading.Resolve(_target, tree).AsDictionary()?.Clone() ?? new PdfDictionary(_target);
         if (node.GetArray(KnownName.Kids) is { } kids)
         {
             PdfArray limits = new(_target, [PdfValue.FromInteger(entries[0].Key), PdfValue.FromInteger(entries[^1].Key)]);

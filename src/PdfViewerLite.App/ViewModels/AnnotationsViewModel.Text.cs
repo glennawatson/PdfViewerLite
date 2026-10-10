@@ -61,15 +61,15 @@ public sealed partial class AnnotationsViewModel
     public static IReadOnlyList<float> TextSizes { get; } = [6, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72];
 
     /// <summary>Gets the text colours offered, by name.</summary>
-    public static IReadOnlyList<(string Name, uint Color)> TextColors { get; } =
-        [("Black", Black), ("Dark blue", AnnotationColors.Ink), ("Blue", TextBlue), ("Red", TextRed), ("Green", TextGreen)];
+    public static IReadOnlyList<TextColorOption> TextColors { get; } =
+        [new(nameof(Black), Black), new("Dark blue", AnnotationColors.Ink), new("Blue", TextBlue), new("Red", TextRed), new("Green", TextGreen)];
 
     /// <summary>Gets the line spacings offered, by name.</summary>
-    public static IReadOnlyList<(string Name, float Spacing)> LineSpacings { get; } =
-        [("Single", 1F), ("Normal", TextFormat.DefaultLineSpacing), ("One and a half", OneAndAHalf), ("Double", DoubleSpacing)];
+    public static IReadOnlyList<LineSpacingOption> LineSpacings { get; } =
+        [new(nameof(Single), 1F), new("Normal", TextFormat.DefaultLineSpacing), new("One and a half", OneAndAHalf), new(nameof(Double), DoubleSpacing)];
 
     /// <summary>Gets the character spacings offered, by name, in points.</summary>
-    public static IReadOnlyList<(string Name, float Spacing)> CharacterSpacings { get; } = [("Tight", TightSpacing), ("Normal", 0F), ("Wide", 1F), ("Wider", WiderSpacing)];
+    public static IReadOnlyList<LineSpacingOption> CharacterSpacings { get; } = [new("Tight", TightSpacing), new("Normal", 0F), new("Wide", 1F), new("Wider", WiderSpacing)];
 
     /// <summary>Gets the interaction showing the text properties dialog; the output says whether to apply it.</summary>
     public Interaction<TextPropertiesViewModel, bool> TextPropertiesInteraction { get; } = new();
@@ -165,7 +165,7 @@ public sealed partial class AnnotationsViewModel
     }.Clamped();
 
     /// <summary>Gets the text box editor, or <see langword="null"/> when the document cannot hold text boxes.</summary>
-    private ITextBoxEditor? TextBoxes => _owner.TryGetDocument() as ITextBoxEditor;
+    private ITextBoxEditor? TextBoxes => ((_owner.TryGetDocument())?.GetFeature(typeof(ITextBoxEditor)) as ITextBoxEditor);
 
     /// <summary>Gets how far below the top of the text being typed its first baseline will be written, in points.</summary>
     /// <returns>The baseline's depth, or <see cref="float.NaN"/> when it is not known.</returns>
@@ -193,7 +193,9 @@ public sealed partial class AnnotationsViewModel
     public bool BeginText(int page, PagePoint point, float wrapWidth)
     {
         _ = CommitText();
-        if (EditorForChange() is not ITextBoxEditor)
+        if (((DocumentForChange()?.GetFeature(typeof(ITextBoxEditor))) as ITextBoxEditor) is not
+            {
+            })
         {
             return false;
         }
@@ -216,7 +218,9 @@ public sealed partial class AnnotationsViewModel
     public bool BeginTextAt(int page, PagePoint location, float wrapWidth)
     {
         _ = CommitText();
-        if (EditorForChange() is not ITextBoxEditor)
+        if (((DocumentForChange()?.GetFeature(typeof(ITextBoxEditor))) as ITextBoxEditor) is not
+            {
+            })
         {
             return false;
         }
@@ -237,7 +241,9 @@ public sealed partial class AnnotationsViewModel
         }
 
         _ = CommitText();
-        if (EditorForChange() is not ITextBoxEditor boxes || Find(annotation.PageIndex, annotation.Index) is not { } current
+        if (((DocumentForChange()?.GetFeature(typeof(ITextBoxEditor))) as ITextBoxEditor) is not
+            {
+            } boxes || Find(annotation.PageIndex, annotation.Index) is not { } current
             || boxes.GetTextBox(current.PageIndex, current.Index) is not { } content)
         {
             return false;
@@ -262,7 +268,9 @@ public sealed partial class AnnotationsViewModel
         var text = EditingText;
         TextEdit = null;
         EditingText = string.Empty;
-        if (EditorForChange() is not ITextBoxEditor boxes)
+        if (((DocumentForChange()?.GetFeature(typeof(ITextBoxEditor))) as ITextBoxEditor) is not
+            {
+            } boxes)
         {
             return false;
         }
@@ -270,7 +278,7 @@ public sealed partial class AnnotationsViewModel
         var format = CurrentTextFormat;
         if (edit.Replacing is { } old)
         {
-            return !IsUnchanged(boxes, old, (edit, text, format)) && Replace(old, (edit.Location, edit.WrapWidth), text, format);
+            return !IsUnchanged(boxes, old, new(edit, text, format)) && Replace(old, new(edit.Location, edit.WrapWidth), text, format);
         }
 
         var index = string.IsNullOrWhiteSpace(text) ? -1 : boxes.AddTextBox(edit.Page, edit.Location, edit.WrapWidth, text, format);
@@ -301,7 +309,7 @@ public sealed partial class AnnotationsViewModel
         }
 
         var format = CurrentTextFormat;
-        return content.Format != format && Replace(selected, (new(content.Bounds.Left, content.Bounds.Top), content.WrapWidth), content.Text, format);
+        return content.Format != format && Replace(selected, new(new(content.Bounds.Left, content.Bounds.Top), content.WrapWidth), content.Text, format);
     }
 
     /// <summary>Gets the value of a named choice, or a fallback.</summary>
@@ -309,7 +317,7 @@ public sealed partial class AnnotationsViewModel
     /// <param name="name">The name.</param>
     /// <param name="fallback">The fallback.</param>
     /// <returns>The value.</returns>
-    private static float ValueOf(IReadOnlyList<(string Name, float Value)> choices, string name, float fallback)
+    private static float ValueOf(IReadOnlyList<LineSpacingOption> choices, string name, float fallback)
     {
         foreach (var (choiceName, value) in choices)
         {
@@ -326,7 +334,7 @@ public sealed partial class AnnotationsViewModel
     /// <param name="choices">The choices.</param>
     /// <param name="color">The colour.</param>
     /// <returns>The name, or the colour in hexadecimal.</returns>
-    private static string NameOf(IReadOnlyList<(string Name, uint Color)> choices, uint color)
+    private static string NameOf(IReadOnlyList<TextColorOption> choices, uint color)
     {
         foreach (var (name, choice) in choices)
         {
@@ -339,12 +347,29 @@ public sealed partial class AnnotationsViewModel
         return string.Create(CultureInfo.InvariantCulture, $"#{color:X6}");
     }
 
+    /// <summary>Finds the name of a line-spacing value among its choices.</summary>
+    /// <param name="choices">The available choices.</param>
+    /// <param name="value">The spacing value.</param>
+    /// <returns>The matching name, or the value in points.</returns>
+    private static string NameOf(IReadOnlyList<LineSpacingOption> choices, float value)
+    {
+        foreach (var choice in choices)
+        {
+            if (System.Math.Abs(choice.Value - value) < float.Epsilon)
+            {
+                return choice.Name;
+            }
+        }
+
+        return $"{value:0.#} pt";
+    }
+
     /// <summary>Determines whether an edit leaves a text box as it was.</summary>
     /// <param name="boxes">The text box editor.</param>
     /// <param name="old">The text box.</param>
     /// <param name="change">The edit, its text and format.</param>
     /// <returns><see langword="true"/> when nothing changed.</returns>
-    private static bool IsUnchanged(ITextBoxEditor boxes, PageAnnotation old, (TextEditSession Edit, string Text, TextFormat Format) change) =>
+    private static bool IsUnchanged(ITextBoxEditor boxes, PageAnnotation old, TextEditChange change) =>
         boxes.GetTextBox(old.PageIndex, old.Index) is { } before
         && string.Equals(before.Text, change.Text, StringComparison.Ordinal)
         && before.Format == change.Format
@@ -362,7 +387,7 @@ public sealed partial class AnnotationsViewModel
             return false;
         }
 
-        return Replace(annotation, (new(bounds.Left, bounds.Top), bounds.Width), content.Text, content.Format);
+        return Replace(annotation, new(new(bounds.Left, bounds.Top), bounds.Width), content.Text, content.Format);
     }
 
     /// <summary>Makes text bigger by one point.</summary>
@@ -438,7 +463,7 @@ public sealed partial class AnnotationsViewModel
             return;
         }
 
-        _ = Replace(target!, (new(content!.Bounds.Left, content.Bounds.Top), wrap), properties.Text, format);
+        _ = Replace(target!, new(new(content!.Bounds.Left, content.Bounds.Top), wrap), properties.Text, format);
     }
 
     /// <summary>Fills the text properties dialog from the text being typed, or else from a picked text box.</summary>
@@ -528,9 +553,12 @@ public sealed partial class AnnotationsViewModel
     /// <param name="text">The new text; blank text removes the box.</param>
     /// <param name="format">The new format.</param>
     /// <returns><see langword="true"/> when the document changed.</returns>
-    private bool Replace(PageAnnotation old, (PagePoint Location, float WrapWidth) place, string text, TextFormat format)
+    private bool Replace(PageAnnotation old, TextBoxPlacement place, string text, TextFormat format)
     {
-        if (EditorForChange() is not { } editor || editor is not ITextBoxEditor boxes)
+        var document = DocumentForChange();
+        if (document is null
+            || ((document.GetFeature(typeof(IAnnotationEditor))) as IAnnotationEditor) is not { } editor
+            || ((document.GetFeature(typeof(ITextBoxEditor))) as ITextBoxEditor) is not { } boxes)
         {
             return false;
         }

@@ -2,13 +2,16 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Text;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
+using HyperPdfLibrary.Document;
 using PdfViewerLite.App.Services;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
 using PdfViewerLite.Core.Licences;
+using PdfViewerLite.Speech;
 using ReactiveUI.Primitives;
 
 namespace PdfViewerLite.App.Tests;
@@ -25,6 +28,15 @@ public sealed class LicencesTests
     /// <summary>The restore output of the app project, relative to the repository root.</summary>
     private const string AssetsPath = "src/PdfViewerLite.App/obj/project.assets.json";
 
+    /// <summary>The diagnostic when restore output is missing.</summary>
+    private const string MissingAssets = "The app's project.assets.json was not found.";
+
+    /// <summary>The names of downloaded components whose upstream licences are verified.</summary>
+    private static readonly string[] DownloadedPrefixes = ["Tesseract language", "Kokoro", "Misaki", "MeloTTS", "BERT", "g2p_en", "CMU"];
+
+    /// <summary>The manifest identifiers of downloaded components.</summary>
+    private static readonly string[] DownloadedIds = ["tessdata-fast", "kokoro", "misaki", "melotts", "bert-base-uncased", "g2p-en", "cmudict"];
+
     /// <summary>Every shipped package has an entry with a licence text and a licence on the allow list.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -39,7 +51,7 @@ public sealed class LicencesTests
                 problems.Add($"{entry.Name} has no licence text.");
             }
 
-            if (!LicenceAllowList.IsAllowed(entry.Licence))
+            if (!LicenceAllowList.IsAllowed(entry.Licence) && !HasVerifiedBundledPermission(entry))
             {
                 problems.Add($"{entry.Name} uses {entry.Licence}, which is not on the allow list.");
             }
@@ -57,7 +69,7 @@ public sealed class LicencesTests
         var assets = FindAssets();
         if (assets is null)
         {
-            Skip.Test("The app's project.assets.json was not found.");
+            Skip.Test(MissingAssets);
         }
 
         var listed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -83,7 +95,7 @@ public sealed class LicencesTests
         var assets = FindAssets();
         if (assets is null)
         {
-            Skip.Test("The app's project.assets.json was not found.");
+            Skip.Test(MissingAssets);
         }
 
         var entries = LicenceNotices.Load().AllEntries().ToDictionary(static e => $"{e.Name}/{e.Version}", StringComparer.OrdinalIgnoreCase);
@@ -138,6 +150,99 @@ public sealed class LicencesTests
         await Assert.That(voice.Origin).Contains("Downloaded when you turn this on");
     }
 
+    /// <summary>Every downloaded voice and OCR component identifies its version and upstream licence file.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task DownloadedComponentsCiteVersionsAndUpstreamLicences()
+    {
+        var entries = LicenceNotices.Load().AllEntries();
+        foreach (var prefix in DownloadedPrefixes)
+        {
+            var entry = entries.Single(e => e.Name.StartsWith(prefix, StringComparison.Ordinal));
+            await Assert.That(entry.Version.Length).IsGreaterThan(0);
+            await Assert.That(entry.Link).Contains("/blob/");
+        }
+    }
+
+    /// <summary>The downloaded component manifest agrees with the displayed notices and pinned voice asset hashes.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task DownloadedManifestMatchesNoticesAndVoiceRelease()
+    {
+        var entries = LicenceNotices.Load().AllEntries();
+        using var components = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(LicencesFolder(), "components.json")));
+        foreach (var id in DownloadedIds)
+        {
+            var component = components.RootElement.EnumerateArray().Single(c => c.GetProperty("id").GetString() == id);
+            var entry = entries.Single(e => e.Name == component.GetProperty("name").GetString());
+            await Assert.That(entry.Version).IsEqualTo(component.GetProperty("version").GetString());
+            await Assert.That(entry.Link).IsEqualTo(component.GetProperty("licenceSource").GetString());
+            await Assert.That(component.GetProperty("versionEvidence").GetString()!.Length).IsGreaterThan(0);
+            if (!component.TryGetProperty("artifactSha256", out var artifacts))
+            {
+                await Assert.That(id).IsEqualTo("tessdata-fast");
+                continue;
+            }
+
+            await Assert.That(artifacts.EnumerateObject().Count()).IsGreaterThan(0);
+            foreach (var artifact in artifacts.EnumerateObject())
+            {
+                await Assert.That(artifact.Value.GetString()).IsEqualTo(VoiceRelease.File(artifact.Name, artifact.Name).Sha256);
+            }
+        }
+    }
+
+    /// <summary>The checked-in SPDX texts cover every licence accepted for managed packages.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task EveryAllowedLicenceHasItsText()
+    {
+        var folder = LicencesFolder();
+        foreach (var id in LicenceAllowList.Ids)
+        {
+            var file = Path.Combine(folder, "spdx", $"{id}.txt");
+            await Assert.That(File.Exists(file)).IsTrue();
+            await Assert.That((await File.ReadAllTextAsync(file)).Length).IsGreaterThan(0);
+        }
+    }
+
+    /// <summary>The managed library notices identify the library as their first component.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task LibraryLicenceComesFirst()
+    {
+        await using var stream = typeof(PdfDocument).Assembly.GetManifestResourceStream("HyperPdfLibrary.ThirdPartyNotices.md")!;
+        using var reader = new StreamReader(stream);
+        var document = NoticeDocument.Parse(await reader.ReadToEndAsync());
+        await Assert.That(document.Groups[0].Entries[0].Name).IsEqualTo("HyperPdfLibrary");
+    }
+
+    /// <summary>The app lists the copied PDFium CMYK table licence but not the test-only PDFium binary licences.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task AppListsCopiedCmykTableButNotPdfiumBinary()
+    {
+        var entries = LicenceNotices.Load().AllEntries();
+        using var components = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(LicencesFolder(), "components.json")));
+        foreach (var component in components.RootElement.EnumerateArray())
+        {
+            if (!component.TryGetProperty("bundle", out var bundle) || bundle.GetString() != "pdfium-bundled")
+            {
+                continue;
+            }
+
+            var name = component.GetProperty("name").GetString()!;
+            await Assert.That(entries.Exists(entry => entry.Name == name)).IsFalse();
+        }
+
+        var table = components.RootElement.EnumerateArray().Single(static component => component.GetProperty("id").GetString() == "pdfium-cmyk-table");
+        var tableName = table.GetProperty("name").GetString()!;
+        var tableEntry = entries.Single(entry => entry.Name == tableName);
+        var upstreamText = (await File.ReadAllTextAsync(Path.Combine(LicencesFolder(), table.GetProperty("textFile").GetString()!))).Trim();
+        await Assert.That(tableEntry.Text).IsEqualTo(DisplayText(upstreamText));
+        await Assert.That(tableEntry.Licence).IsEqualTo("BSD-3-Clause");
+    }
+
     /// <summary>The window opens, lists the components, shows the chosen text, narrows by search and copies the text.</summary>
     /// <returns>A task.</returns>
     [Test]
@@ -186,6 +291,43 @@ public sealed class LicencesTests
 
         await Assert.That(shown).IsNotNull();
         await Assert.That(shown!.Nodes.Count).IsGreaterThan(1);
+    }
+
+    /// <summary>Normalises line endings and line-end whitespace used by display Markdown.</summary>
+    /// <param name="source">The preserved upstream text.</param>
+    /// <returns>The displayed text.</returns>
+    private static string DisplayText(string source)
+    {
+        var text = new StringBuilder();
+        foreach (var line in source.ReplaceLineEndings("\n").Trim().AsSpan().EnumerateLines())
+        {
+            _ = text.Append(line.TrimEnd()).Append('\n');
+        }
+
+        return text.ToString().TrimEnd();
+    }
+
+    /// <summary>Checks the separately verified permissive licences in bundled native code and dictionary data.</summary>
+    /// <param name="entry">The component to check.</param>
+    /// <returns>Whether the component has its verified licence expression.</returns>
+    private static bool HasVerifiedBundledPermission(NoticeEntry entry) => entry.Name switch
+    {
+        "CMU Pronouncing Dictionary (used with MeloTTS)" => entry.Licence == "LicenseRef-CMU-0.6 AND BSD-2-Clause",
+        "Anti-Grain Geometry 2.3 (inside PDFium)" => entry.Licence == "LicenseRef-AGG-2.3",
+        "FreeType (inside PDFium)" => entry.Licence == "FTL",
+        "libjpeg-turbo / Independent JPEG Group (inside PDFium)" => entry.Licence == "BSD-3-Clause AND IJG AND Zlib",
+        "libpng (inside PDFium)" => entry.Licence == "libpng-2.0",
+        "LLVM libc (inside PDFium)" => entry.Licence == "Apache-2.0 WITH LLVM-exception",
+        _ => false,
+    };
+
+    /// <summary>Finds the checked-in licence directory beside the app's restore output.</summary>
+    /// <returns>The licence directory.</returns>
+    /// <exception cref="FileNotFoundException">The app's restore output is missing.</exception>
+    private static string LicencesFolder()
+    {
+        var assets = FindAssets() ?? throw new FileNotFoundException(MissingAssets);
+        return Path.GetFullPath(Path.Combine(Path.GetDirectoryName(assets)!, "..", "..", "..", "licenses"));
     }
 
     /// <summary>Finds the app's project.assets.json by walking up from the test folder to the repository root.</summary>

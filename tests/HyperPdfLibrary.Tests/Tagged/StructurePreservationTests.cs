@@ -69,7 +69,7 @@ public sealed class StructurePreservationTests
     public async Task FormEditsKeepStructure()
     {
         using var fonts = new TaggedFontScope();
-        var saved = Edit(static (document, page) => _ = PdfDocumentForms.GetForm(document).SetText(page.Index, TaggedSamples.FieldIndex, TypedValue));
+        var saved = Edit(static (document, page) => _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), page.Index, TaggedSamples.FieldIndex, TypedValue));
 
         using var reopened = PdfDocumentReader.Open(saved, null);
         var field = ReadNodes(reopened)[FieldNode];

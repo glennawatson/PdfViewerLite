@@ -57,7 +57,7 @@ internal sealed class PdfObjectGraph
         var graph = new PdfObjectGraph(store);
         var trailer = store.Trailer;
         graph.Scan(trailer.GetRaw(KnownName.Root), 0);
-        if (store.Resolve(trailer.GetRaw(KnownName.Root)).AsDictionary() is null)
+        if (StoreReading.Resolve(store, trailer.GetRaw(KnownName.Root)).AsDictionary() is null)
         {
             throw new PdfException(PdfError.Format, "The document's /Root does not resolve to a catalog.");
         }
@@ -103,32 +103,32 @@ internal sealed class PdfObjectGraph
         switch (value.Kind)
         {
             case PdfKind.Reference:
-            {
-                Visit(value.AsReference().Number);
-                break;
-            }
-
-            case PdfKind.Array:
-            {
-                foreach (var item in value.AsArray()!.Items)
                 {
-                    Scan(item, depth + 1);
+                    Visit(value.AsReference().Number);
+                    break;
                 }
 
-                break;
-            }
+            case PdfKind.Array:
+                {
+                    foreach (var item in value.AsArray()!.Items)
+                    {
+                        Scan(item, depth + 1);
+                    }
+
+                    break;
+                }
 
             case PdfKind.Dictionary or PdfKind.Stream:
-            {
-                ScanEntries(value.AsDictionary()!, value.Kind == PdfKind.Stream, depth + 1);
-                break;
-            }
+                {
+                    ScanEntries(value.AsDictionary()!, value.Kind == PdfKind.Stream, depth + 1);
+                    break;
+                }
 
             default:
-            {
-                // Numbers, names, strings and null hold no references.
-                break;
-            }
+                {
+                    // Numbers, names, strings and null hold no references.
+                    break;
+                }
         }
     }
 
@@ -156,7 +156,7 @@ internal sealed class PdfObjectGraph
             return;
         }
 
-        var value = _repairs.TryGetNewObject(number, out var made) ? made : _store.GetObject(new(number, 0));
+        var value = _repairs.TryGetNewObject(number, out var made) ? made : StoreReading.GetObject(_store, new(number, 0));
         if (value.IsNull)
         {
             Map[number] = -1;

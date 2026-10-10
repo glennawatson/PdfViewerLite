@@ -30,6 +30,7 @@ public sealed class PdfDictionary
     /// <summary>Initializes a new instance of the <see cref="PdfDictionary"/> class.</summary>
     /// <param name="owner">The objects references resolve against.</param>
     public PdfDictionary(PdfObjectStore? owner)
+
         : this(owner, DefaultCapacity)
     {
     }
@@ -94,7 +95,7 @@ public sealed class PdfDictionary
     public PdfValue Get(PdfName key)
     {
         var value = GetRaw(key);
-        return value.IsReference && Owner is not null ? Owner.Resolve(value) : value;
+        return value.IsReference && Owner is not null ? StoreReading.Resolve(Owner, value) : value;
     }
 
     /// <summary>Gets a dictionary, or a stream's dictionary.</summary>

@@ -83,7 +83,9 @@ public sealed class FormParityTests
         using var pair = new EnginePair(Create(sample));
 
         await Assert.That(Describe(pair.HyperPdf)).IsEqualTo(Describe(pair.Pdfium));
-        await Assert.That(((IFormFiller)pair.HyperPdf).HasForm).IsEqualTo(((IFormFiller)pair.Pdfium).HasForm);
+        await Assert.That(((IFormFiller)DocumentFeatures.CastFeature(
+            pair.HyperPdf,
+            typeof(IFormFiller))!).HasForm).IsEqualTo(((IFormFiller)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IFormFiller))!).HasForm);
     }
 
     /// <summary>The scripts recognised on each field match.</summary>
@@ -98,8 +100,8 @@ public sealed class FormParityTests
         using var pair = new EnginePair(Create(sample));
         var expected = new List<FieldScripts>();
         var actual = new List<FieldScripts>();
-        ((IFormScriptSource)pair.Pdfium).GetScripts(0, expected);
-        ((IFormScriptSource)pair.HyperPdf).GetScripts(0, actual);
+        ((IFormScriptSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IFormScriptSource))!).GetScripts(0, expected);
+        ((IFormScriptSource)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IFormScriptSource))!).GetScripts(0, actual);
 
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)
@@ -127,8 +129,8 @@ public sealed class FormParityTests
         var differences = new List<string>();
         foreach (var edit in GetEdits(sample))
         {
-            var expected = Apply((IFormFiller)pair.Pdfium, edit);
-            var actual = Apply((IFormFiller)pair.HyperPdf, edit);
+            var expected = Apply((IFormFiller)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IFormFiller))!, edit);
+            var actual = Apply((IFormFiller)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IFormFiller))!, edit);
             if (expected != actual)
             {
                 differences.Add(string.Create(CultureInfo.InvariantCulture, $"{edit}: pdfium={expected} hyperpdf={actual}"));
@@ -224,7 +226,7 @@ public sealed class FormParityTests
     private static string Describe(IDocument document)
     {
         var fields = new List<FormField>();
-        ((IFormFiller)document).GetFields(0, fields);
+        ((IFormFiller)DocumentFeatures.CastFeature(document, typeof(IFormFiller))!).GetFields(0, fields);
         var text = new StringBuilder();
         foreach (var field in fields)
         {
@@ -250,7 +252,7 @@ public sealed class FormParityTests
     {
         var path = Path.Combine(Path.GetTempPath(), $"hyperpdf-formparity-pdfium-{Guid.NewGuid():N}.pdf");
         using var stream = File.Create(path);
-        _ = ((IAnnotationEditor)document).Save(stream);
+        _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).Save(stream);
         return path;
     }
 

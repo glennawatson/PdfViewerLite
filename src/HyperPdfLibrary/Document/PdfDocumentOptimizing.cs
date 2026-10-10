@@ -2,8 +2,8 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.Optimizing;
-
 namespace HyperPdfLibrary.Document;
 
 /// <summary>Optimizes document objects and content.</summary>
@@ -19,15 +19,15 @@ public static class PdfDocumentOptimizing
     /// <exception cref="PdfException">The file cannot be read again.</exception>
     internal static PdfDocument OpenWorkingCopy(PdfDocument document)
     {
-        var store = document.Objects.OpenRevision(document.Objects.Source.Length);
+        var store = StoreRevisions.OpenRevision(document.Objects, document.Objects.Source.Length);
         new StoreValueTranslator(document.Objects, store).ReplayEdits();
         lock (store.Gate)
         {
-            store.RefreshCatalogLocked();
+            StoreTransactions.RefreshCatalogLocked(store);
         }
 
         var copy = new PdfDocument(store);
-        store.SetChangeCallback(copy.OnObjectsChanged);
+        StoreTransactions.SetChangeCallback(store, copy.OnObjectsChanged);
         return copy;
     }
 
@@ -40,7 +40,7 @@ public static class PdfDocumentOptimizing
         Volatile.Write(ref document.State.StructureTree, null);
         lock (document.Objects.Gate)
         {
-            document.Objects.RefreshCatalogLocked();
+            StoreTransactions.RefreshCatalogLocked(document.Objects);
         }
     }
 }

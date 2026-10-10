@@ -58,7 +58,6 @@ public sealed class LargeFileTests
             LargePdf.Write(path, Pages, ContentLength, 0);
             var length = new FileInfo(path).Length;
             var bound = length / HeapShare;
-
             await Assert.That(MeasureGrowth(path, PdfSourceKind.Stream)).IsLessThan(bound);
             await Assert.That(MeasureGrowth(path, PdfSourceKind.Mapped)).IsLessThan(bound);
             await Assert.That(MeasureGrowth(path, PdfSourceKind.Automatic)).IsLessThan(bound);
@@ -159,7 +158,7 @@ public sealed class LargeFileTests
     /// <returns>The decoded length.</returns>
     private static int DecodePage(PdfDocument document, int index)
     {
-        var contents = document.Objects.Resolve(PdfDocumentPages.GetPage(document, index).Dictionary.GetRaw(KnownName.Contents)).AsStream();
+        var contents = StoreReading.Resolve(document.Objects, PdfDocumentPages.GetPage(document, index).Dictionary.GetRaw(KnownName.Contents)).AsStream();
         if (contents is null)
         {
             return -1;

@@ -64,10 +64,10 @@ public static class PdfImages
             if (!opaque)
             {
                 var mask = CreateImage(store, width, height, KnownName.DeviceGray, alpha.AsSpan(0, count));
-                image.Dictionary.Set(KnownName.SMask, PdfValue.FromReference(store.Add(PdfValue.FromStream(mask))));
+                image.Dictionary.Set(KnownName.SMask, PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromStream(mask))));
             }
 
-            return store.Add(PdfValue.FromStream(image));
+            return StoreEditing.Add(store, PdfValue.FromStream(image));
         }
         finally
         {

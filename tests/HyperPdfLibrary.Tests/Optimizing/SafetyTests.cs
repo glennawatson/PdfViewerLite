@@ -51,7 +51,6 @@ public sealed class SafetyTests
     {
         var source = SignatureSamples.Signed(SignatureFixtures.Signer, 0, string.Empty);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller);
-
         await Assert.That(result.Report.Mode).IsEqualTo(PdfOptimizeMode.Copied);
         await Assert.That(result.Report.WasSigned).IsTrue();
         await Assert.That(result.Bytes).IsEquivalentTo(source);
@@ -64,7 +63,6 @@ public sealed class SafetyTests
     {
         var source = SignedScan();
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller with { OcrWords = static _ => Words() });
-
         await Assert.That(result.Report.Mode).IsEqualTo(PdfOptimizeMode.Incremental);
         await Assert.That(result.Bytes.AsSpan(0, source.Length).SequenceEqual(source)).IsTrue();
         await Assert.That(OptimizerTestKit.Text(result.Bytes)[0]).Contains(Word);
@@ -78,7 +76,6 @@ public sealed class SafetyTests
     {
         var source = TestPdf.CreateScan(OptimizerSamples.Strokes(ScanWidth, ScanHeight), ScanWidth, ScanHeight);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality with { OcrWords = static _ => Words() });
-
         await Assert.That(OptimizerTestKit.Text(result.Bytes)[0]).Contains(Word);
         await Assert.That(OptimizerTestKit.MaxDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsEqualTo(0);
     }
@@ -91,7 +88,6 @@ public sealed class SafetyTests
         var source = WritingTestDocuments.Encrypt(TestPdf.Create(PageCount));
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced);
         using var document = PdfDocumentReader.Open(result.Bytes, null);
-
         await Assert.That(document.IsEncrypted).IsTrue();
         await Assert.That(result.Report.IsEncrypted).IsTrue();
         await Assert.That(OptimizerTestKit.Text(result.Bytes)).IsEquivalentTo(OptimizerTestKit.Text(source));
@@ -105,7 +101,6 @@ public sealed class SafetyTests
         var source = WritingTestDocuments.Encrypt(TestPdf.Create(PageCount));
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced with { RemoveEncryption = true });
         using var document = PdfDocumentReader.Open(result.Bytes, null);
-
         await Assert.That(document.IsEncrypted).IsFalse();
         await Assert.That(OptimizerTestKit.Text(result.Bytes)).IsEquivalentTo(OptimizerTestKit.Text(source));
     }
@@ -118,7 +113,6 @@ public sealed class SafetyTests
         var source = PdfAOne();
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced with { OcrWords = static _ => Words() });
         var text = Encoding.Latin1.GetString(result.Bytes);
-
         await Assert.That(result.Report.PdfAPart).IsEqualTo(1);
         await Assert.That(text).DoesNotContain("/ObjStm");
         await Assert.That(text).StartsWith("%PDF-1.4");
@@ -143,7 +137,6 @@ public sealed class SafetyTests
         }
 
         var sync = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Balanced);
-
         await Assert.That(phases[0]).IsEqualTo(PdfOptimizePhase.Checking);
         await Assert.That(phases[^1]).IsEqualTo(PdfOptimizePhase.Done);
         await Assert.That(phases).Contains(PdfOptimizePhase.Writing);
@@ -160,7 +153,6 @@ public sealed class SafetyTests
         await cancellation.CancelAsync();
         using var document = PdfDocumentReader.Open(TestPdf.Create(PageCount), null);
         await using var output = new MemoryStream();
-
         await Assert.That(() => PdfOptimizer.Optimize(document, output, PdfOptimizeOptions.Balanced, null, cancellation.Token)).Throws<OperationCanceledException>();
     }
 
@@ -172,8 +164,7 @@ public sealed class SafetyTests
         using var document = PdfDocumentReader.Open(OptimizerSamples.UntaggedText(null), null);
         await using var output = new MemoryStream();
         _ = PdfOptimizer.Optimize(document, output, PdfOptimizeOptions.Smaller with { AddInferredTags = true, Cleanup = PdfCleanupItems.All, Language = "en" });
-
-        await Assert.That(document.Objects.HasEdits).IsFalse();
+        await Assert.That(StoreEditing.HasEdits(document.Objects)).IsFalse();
         await Assert.That(document.Catalog.ContainsKey(KnownName.StructTreeRoot)).IsFalse();
     }
 
@@ -200,15 +191,14 @@ public sealed class SafetyTests
     /// <returns>The file.</returns>
     private static byte[] PdfAOne()
     {
-        const string Xmp = "<?xpacket begin=\"\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?><x:xmpmeta xmlns:x=\"adobe:ns:meta/\">"
+        const string Xmp =
+            "<?xpacket begin=\"\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?><x:xmpmeta xmlns:x=\"adobe:ns:meta/\">"
             + "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description rdf:about=\"\" xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">"
             + "<pdfaid:part>1</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end=\"w\"?>";
         var scan = Encoding.Latin1.GetString(TestPdf.CreateScan(OptimizerSamples.Strokes(ScanWidth, ScanHeight), ScanWidth, ScanHeight)).Replace("%PDF-1.7", "%PDF-1.4", StringComparison.Ordinal);
-        return IncrementalPdf.Append(Encoding.Latin1.GetBytes(scan), new Dictionary<int, string>
-        {
-            [1] = "<< /Type /Catalog /Pages 2 0 R /Metadata 7 0 R >>",
-            [7] = MiniPdf.Stream("/Type /Metadata /Subtype /XML", Xmp),
-        });
+        return IncrementalPdf.Append(
+            Encoding.Latin1.GetBytes(scan),
+            new Dictionary<int, string> { [1] = "<< /Type /Catalog /Pages 2 0 R /Metadata 7 0 R >>", [7] = MiniPdf.Stream("/Type /Metadata /Subtype /XML", Xmp), });
     }
 
     /// <summary>Records progress phases on the reporting thread, unlike <see cref="Progress{T}"/>, which posts them later.</summary>

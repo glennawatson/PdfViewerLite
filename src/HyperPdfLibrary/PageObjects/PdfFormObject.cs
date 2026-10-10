@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using HyperPdfLibrary.Objects;
+using HyperPdfLibrary.PageObjects;
 
 namespace HyperPdfLibrary.PageObjects;
 
@@ -39,7 +40,7 @@ public sealed class PdfFormObject : PdfPageObject
     public PdfRectangle? BoundingBox { get; internal init; }
 
     /// <inheritdoc/>
-    public override bool IsModified => base.IsModified || _content?.IsModified == true;
+    public override bool IsModified => base.IsModified || (_content is { } __pageContentState1677 ? (bool?)PdfPageContentEditing.IsModified(__pageContentState1677) : null) == true;
 
     /// <summary>Gets the form's content if it has been read.</summary>
     internal PdfPageContent? ReadContent => _content;
@@ -48,5 +49,5 @@ public sealed class PdfFormObject : PdfPageObject
     /// <returns>The content; its objects carry matrices that include this form's matrix and the painting content's matrix.</returns>
     /// <exception cref="InvalidOperationException">The object is not part of a content that was read from a document.</exception>
     public PdfPageContent GetContent() =>
-        _content ??= PdfPageContent.ReadForm(Owner ?? throw new InvalidOperationException("The form object has no owner."), this);
+        _content ??= PdfPageContentReader.ReadForm(Owner ?? throw new InvalidOperationException("The form object has no owner."), this);
 }

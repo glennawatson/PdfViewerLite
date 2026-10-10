@@ -59,7 +59,7 @@ public sealed class CarriedStructuresPdfiumTests
         await Assert.That(LinkPages(pair.Pdfium, ThirdPage)).IsEquivalentTo([FourthPage, FourthPage]);
         await Assert.That(LinkPages(pair.Pdfium, FourthPage)).IsEquivalentTo([ThirdPage]);
         await Assert.That(pair.Pdfium.GetPageLabel(ThirdPage)).IsEqualTo(ThirdPageLabel);
-        await Assert.That(((ILayerSource)pair.Pdfium).GetLayers().Count).IsEqualTo(MergedLayers);
+        await Assert.That(((ILayerSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(ILayerSource))!).GetLayers().Count).IsEqualTo(MergedLayers);
         await AssertFields(pair.Pdfium);
         await AssertFields(pair.HyperPdf);
     }
@@ -75,8 +75,8 @@ public sealed class CarriedStructuresPdfiumTests
         await Assert.That(OutlinePages(pair.Pdfium)).IsEquivalentTo([FirstPage, SecondPage]);
         await Assert.That(LinkPages(pair.Pdfium, FirstPage)).IsEquivalentTo([SecondPage, SecondPage]);
         await Assert.That(LinkPages(pair.Pdfium, SecondPage)).IsEquivalentTo([FirstPage]);
-        await Assert.That(((ILayerSource)pair.Pdfium).GetLayers().Count).IsEqualTo(1);
-        await Assert.That(((IFormFiller)pair.Pdfium).HasForm).IsTrue();
+        await Assert.That(((ILayerSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(ILayerSource))!).GetLayers().Count).IsEqualTo(1);
+        await Assert.That(((IFormFiller)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IFormFiller))!).HasForm).IsTrue();
     }
 
     /// <summary>Gets the pages the top-level outline entries lead to.</summary>
@@ -113,7 +113,7 @@ public sealed class CarriedStructuresPdfiumTests
     /// <returns>A task.</returns>
     private static async Task AssertFields(IDocument document)
     {
-        var filler = (IFormFiller)document;
+        var filler = (IFormFiller)DocumentFeatures.CastFeature(document, typeof(IFormFiller))!;
         for (var page = 0; page < MergedPages; page++)
         {
             var fields = new List<FormField>();

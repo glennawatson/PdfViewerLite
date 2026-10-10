@@ -33,7 +33,7 @@ internal sealed class JpxDecoder : IDisposable
     private readonly JpxTileWork _work;
 
     /// <summary>The code-block decoder used on the calling thread.</summary>
-    private readonly JpxBlockDecoder _blocks = new();
+    private readonly JpxBlockState _blocks = new();
 
     /// <summary>The current tile's packet data.</summary>
     private byte[] _tileData = [];

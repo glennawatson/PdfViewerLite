@@ -37,7 +37,7 @@ public sealed partial class DocumentTabViewModel
     /// <param name="document">The open document.</param>
     internal void RefreshOptimize(IDocument document)
     {
-        var can = document is IDocumentOptimizer;
+        var can = ((document)?.GetFeature(typeof(IDocumentOptimizer)) as IDocumentOptimizer) is not null;
         CanOptimize = can;
         OptimizeMenuText = can ? OptimizeAvailableText : OptimizeUnavailableText;
     }
@@ -47,7 +47,9 @@ public sealed partial class DocumentTabViewModel
     [ReactiveCommand(CanExecute = nameof(_canOptimize))]
     private async Task OptimizeCopyAsync()
     {
-        if (TryGetDocument() is not IDocumentOptimizer optimizer)
+        if (((TryGetDocument())?.GetFeature(typeof(IDocumentOptimizer)) as IDocumentOptimizer) is not
+            {
+            } optimizer)
         {
             return;
         }

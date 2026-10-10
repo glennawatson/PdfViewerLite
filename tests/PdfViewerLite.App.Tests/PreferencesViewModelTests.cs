@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using PdfViewerLite.App.Services;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Settings;
 using PdfViewerLite.Core.Theming;
@@ -13,29 +14,38 @@ namespace PdfViewerLite.App.Tests;
 /// <summary>Tests applying and saving PDF page colour choices.</summary>
 public sealed class PreferencesViewModelTests
 {
-    /// <summary>HyperPDF's place in the PDF engine list.</summary>
-    private const int HyperPdfIndex = 1;
+    /// <summary>A recognizable persisted fillable-field tint.</summary>
+    private const uint LegacyTintColor = 0x123456U;
 
-    /// <summary>The PDF engines offered.</summary>
-    private const int PdfEngineCount = 2;
-
-    /// <summary>Preferences offers PDFium and HyperPDF in that order and saves the choice for the next document opened.</summary>
+    /// <summary>Legacy engine settings are ignored and omitted when settings are saved again.</summary>
+    /// <param name="legacyChoice">The value saved by an earlier version.</param>
     /// <returns>A task.</returns>
     [Test]
-    public async Task PreferencesOffersEachPdfEngine()
+    [Arguments(0)]
+    [Arguments(1)]
+    public async Task LegacyPdfEngineSettingIsIgnored(int legacyChoice)
     {
         using var test = new TestServices();
-        var preferences = new PreferencesViewModel(test.Services);
+        var path = Path.Combine(test.Directory, "settings.json");
+        var contents = string.Concat("{\"pdfEngine\":", legacyChoice, ",\"formHighlightColor\":", LegacyTintColor, "}");
+        await File.WriteAllTextAsync(path, contents);
+        var store = new SettingsStore(path);
+        var settings = store.Load();
+        store.Save(settings);
+        var saved = await File.ReadAllTextAsync(path);
 
-        var first = preferences.PdfEngine;
-        preferences.PdfEngine = HyperPdfIndex;
-        var chosen = test.Services.Settings.PdfEngine;
+        await Assert.That(settings.FormHighlightColor).IsEqualTo(LegacyTintColor);
+        await Assert.That(saved).DoesNotContain("pdfEngine");
+    }
 
-        await Assert.That(PreferencesViewModel.PdfEngineOptions.Count).IsEqualTo(PdfEngineCount);
-        await Assert.That(PreferencesViewModel.PdfEngineOptions[0]).IsEqualTo("PDFium (native)");
-        await Assert.That(PreferencesViewModel.PdfEngineOptions[HyperPdfIndex]).IsEqualTo("HyperPDF (managed)");
-        await Assert.That(first).IsEqualTo(0);
-        await Assert.That(chosen).IsEqualTo(PdfEngineChoice.HyperPdf);
+    /// <summary>The default app composition opens documents with HyperPDF.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task DefaultAppServicesUseHyperPdf()
+    {
+        using var services = AppServices.CreateDefault(new FallbackPlatform());
+
+        await Assert.That(services.Engine.Name).IsEqualTo("HyperPDF");
     }
 
     /// <summary>Verifies that choosing a page colour applies even after comfort page colour was turned off.</summary>

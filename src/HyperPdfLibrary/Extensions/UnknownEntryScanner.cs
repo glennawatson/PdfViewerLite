@@ -111,7 +111,7 @@ internal sealed class UnknownEntryScanner
     {
         try
         {
-            return _store.Resolve(raw).Kind;
+            return StoreReading.Resolve(_store, raw).Kind;
         }
         catch (PdfException)
         {
@@ -143,7 +143,7 @@ internal sealed class UnknownEntryScanner
     private bool Check(PdfValue raw, int depth, ref int budget)
     {
         budget--;
-        var value = _store.Resolve(raw);
+        var value = StoreReading.Resolve(_store, raw);
         if (raw.IsReference && value.IsNull)
         {
             return false;

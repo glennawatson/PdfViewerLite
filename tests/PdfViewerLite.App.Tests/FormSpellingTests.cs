@@ -126,7 +126,7 @@ public sealed class FormSpellingTests
     private static FormField NameField(DocumentTabViewModel tab)
     {
         List<FormField> fields = [];
-        ((IFormFiller)tab.TryGetDocument()!).GetFields(0, fields);
+        ((IFormFiller)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(IFormFiller))!).GetFields(0, fields);
         return fields.Single(static field => field.Kind == FormFieldKind.Text);
     }
 }

@@ -21,7 +21,7 @@ public sealed class AttachmentTests
         try
         {
             using var document = new PdfiumEngine().Open(path, null);
-            var source = (IAttachmentSource)document;
+            var source = (IAttachmentSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAttachmentSource))!;
             var attachments = source.GetAttachments();
             await using var saved = new MemoryStream();
             var ok = source.SaveAttachment(attachments[0].Index, saved);
@@ -47,7 +47,7 @@ public sealed class AttachmentTests
         try
         {
             using var document = new PdfiumEngine().Open(path, null);
-            var source = (IAttachmentSource)document;
+            var source = (IAttachmentSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAttachmentSource))!;
             await using var saved = new MemoryStream();
 
             await Assert.That(source.GetAttachments().Count).IsEqualTo(0);

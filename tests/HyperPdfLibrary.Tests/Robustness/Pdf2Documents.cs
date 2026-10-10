@@ -95,16 +95,20 @@ internal static class Pdf2Documents
     internal static byte[] CreateText()
     {
         var file = MiniPdf.Build(
-            "<< /Type /Catalog /Pages 2 0 R /Version /2.0 /Outlines 6 0 R /OutputIntents [8 0 R] >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            TextPage,
-            "<< /Type /Page /Parent 2 0 R >>",
-            MiniPdf.Stream(string.Empty, TextContent),
-            "<< /Type /Outlines /First 10 0 R /Last 10 0 R /Count 1 >>",
-            $"<< /Title {Utf8Hello} /Author {Utf8Author} >>",
-            "<< /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (CGATS TR 001) /DestOutputProfile 9 0 R >>",
-            MiniPdf.Stream("/N 3", "this is not an ICC profile"),
-            $"<< /Title {Utf8Hello} /Parent 6 0 R /Dest [3 0 R /Fit] >>");
+        "<< /Type /Catalog /Pages 2 0 R /Version /2.0 /Outlines 6 0 R /OutputIntents [8 0 R] >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        TextPage,
+        "<< /Type /Page /Parent 2 0 R >>",
+        MiniPdf.Stream(
+        string.Empty,
+        TextContent),
+        "<< /Type /Outlines /First 10 0 R /Last 10 0 R /Count 1 >>",
+        $"<< /Title {Utf8Hello} /Author {Utf8Author} >>",
+        "<< /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (CGATS TR 001) /DestOutputProfile 9 0 R >>",
+        MiniPdf.Stream(
+        "/N 3",
+        "this is not an ICC profile"),
+        $"<< /Title {Utf8Hello} /Parent 6 0 R /Dest [3 0 R /Fit] >>");
         return Replace(Replace(file, "%PDF-1.7", "%PDF-2.0"), "/Root 1 0 R", "/Root 1 0 R /Info 7 0 R");
     }
 
@@ -113,8 +117,7 @@ internal static class Pdf2Documents
     /// <param name="from">The text to find.</param>
     /// <param name="to">The replacement.</param>
     /// <returns>The new file.</returns>
-    internal static byte[] Replace(byte[] file, string from, string to) =>
-        Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(file).Replace(from, to, StringComparison.Ordinal));
+    internal static byte[] Replace(byte[] file, string from, string to) => Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(file).Replace(from, to, StringComparison.Ordinal));
 
     /// <summary>
     /// Re-encrypts a plain document with AES-256 (revision 6) using the given passwords, writing a PDF 2.0 header. The
@@ -126,7 +129,7 @@ internal static class Pdf2Documents
     /// <returns>The encrypted document.</returns>
     internal static byte[] EncryptAes256(byte[] plainFile, string userPassword, string ownerPassword)
     {
-        using var plain = PdfObjectStore.Open(plainFile, null);
+        using var plain = StoreOpening.Open(plainFile, null);
         var firstId = Bytes(IdLength, 1);
         var encrypt = CreateEncryptDictionary(plain.Names, userPassword, ownerPassword);
         _ = PdfSecurityHandler.TryCreate(encrypt, firstId, userPassword, out var handler);
@@ -311,11 +314,11 @@ internal static class Pdf2Documents
         try
         {
             writer.WriteRaw("%PDF-2.0\n"u8);
-            var rows = new List<XrefRow> { XrefRow.FreeHead };
+            var rows = new List<XrefRow> { XrefRow.FreeHead, };
             for (var number = 1; number < plain.Size; number++)
             {
                 rows.Add(new(number, XrefEntryType.InFile, writer.Length, 0));
-                writer.WriteIndirectObject(new(number, 0), plain.GetObject(new(number, 0)));
+                writer.WriteIndirectObject(new(number, 0), StoreReading.GetObject(plain, new(number, 0)));
             }
 
             var encryptNumber = plain.Size;

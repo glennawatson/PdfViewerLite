@@ -79,13 +79,13 @@ public sealed class PageExportTests
             await File.WriteAllBytesAsync(source, TestPdf.CreateForm());
             using (var document = new PdfiumEngine().Open(source, null))
             {
-                var filler = (IFormFiller)document;
+                var filler = (IFormFiller)DocumentFeatures.CastFeature(document, typeof(IFormFiller))!;
                 List<FormField> fields = [];
                 filler.GetFields(0, fields);
                 await Assert.That(filler.SetText(0, fields[0].Index, PrintedField)).IsTrue();
                 await using var stream = File.Create(exported);
                 var layout = new SheetLayout(pagesPerSheet, PaperSize.A4, false) { Imposition = imposition, PosterTiles = 1 };
-                await Assert.That(((IPageExporter)document).ExportPages([0], layout, stream)).IsTrue();
+                await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([0], layout, stream)).IsTrue();
                 fields.Clear();
                 filler.GetFields(0, fields);
                 await Assert.That(fields[0].Value).IsEqualTo(PrintedField);
@@ -116,7 +116,7 @@ public sealed class PageExportTests
     public async Task PrintLayoutsRespectSignatureChoice(PrintImposition imposition, bool includeAnnotations)
     {
         using var source = new TestDocument(1);
-        var editor = (IAnnotationEditor)source.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(source.Document, typeof(IAnnotationEditor))!;
         await Assert.That(editor.AddText(0, NoteAt, PrintedSignature, SignatureSize, AnnotationColors.Ink, AnnotationKind.Signature)).IsGreaterThanOrEqualTo(0);
         var exported = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-signature-layout-{Guid.NewGuid():N}.pdf");
         try
@@ -124,7 +124,7 @@ public sealed class PageExportTests
             await using (var stream = File.Create(exported))
             {
                 var layout = new SheetLayout(GridPages, PaperSize.A4, includeAnnotations) { Imposition = imposition, PosterTiles = 1 };
-                await Assert.That(((IPageExporter)source.Document).ExportPages([0], layout, stream)).IsTrue();
+                await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(source.Document, typeof(IPageExporter))!).ExportPages([0], layout, stream)).IsTrue();
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);
@@ -154,7 +154,7 @@ public sealed class PageExportTests
     {
         using var signed = new TestDocument(1);
         using var blank = new TestDocument(1);
-        var editor = (IAnnotationEditor)signed.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(signed.Document, typeof(IAnnotationEditor))!;
         var index = editor.AddInk(0, DrawnSignature, [DrawnSignature.Length], AnnotationColors.Ink, InkWidth, AnnotationKind.Signature);
         var recoloured = !recolour || editor.SetColor(0, index, AnnotationColors.Clay);
 
@@ -181,12 +181,12 @@ public sealed class PageExportTests
             await File.WriteAllBytesAsync(source, TestPdf.CreateForm());
             using (var document = new PdfiumEngine().Open(source, null))
             {
-                var filler = (IFormFiller)document;
+                var filler = (IFormFiller)DocumentFeatures.CastFeature(document, typeof(IFormFiller))!;
                 List<FormField> fields = [];
                 filler.GetFields(0, fields);
                 _ = filler.SetText(0, fields[0].Index, PrintedField);
                 await using var stream = File.Create(exported);
-                await Assert.That(((IPageExporter)document).ExportPages([0], new(1, paper, true) { FitToPaper = true }, stream)).IsTrue();
+                await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([0], new(1, paper, true) { FitToPaper = true }, stream)).IsTrue();
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);
@@ -217,7 +217,8 @@ public sealed class PageExportTests
             using (var document = new PdfiumEngine().Open(source, null))
             {
                 await using var stream = File.Create(exported);
-                await Assert.That(((IPageExporter)document).ExportPages([0, WidePage], new(1, paper, true) { FitToPaper = true }, stream)).IsTrue();
+                var exporter = (IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!;
+                await Assert.That(exporter.ExportPages([0, WidePage], new(1, paper, true) { FitToPaper = true }, stream)).IsTrue();
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);
@@ -246,15 +247,15 @@ public sealed class PageExportTests
         {
             using (var document = new PdfiumEngine().Open(source, null))
             {
-                _ = ((IAnnotationEditor)document).AddNote(0, NoteAt, "On the first page", AnnotationColors.Sand);
+                _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).AddNote(0, NoteAt, "On the first page", AnnotationColors.Sand);
                 await using var stream = File.Create(exported);
-                var written = ((IPageExporter)document).ExportPages([ThirdPage, 0], SheetLayout.Default, stream);
+                var written = ((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([ThirdPage, 0], SheetLayout.Default, stream);
                 await Assert.That(written).IsTrue();
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);
             List<PageAnnotation> annotations = [];
-            ((IAnnotationEditor)copy).GetAnnotations(1, annotations);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(copy, typeof(IAnnotationEditor))!).GetAnnotations(1, annotations);
 
             await Assert.That(copy.PageCount).IsEqualTo(ExportedPages);
             await Assert.That(copy.GetText(0, 0, copy.GetCharacterCount(0))).Contains("Page 3");
@@ -284,16 +285,16 @@ public sealed class PageExportTests
         {
             using (var document = new PdfiumEngine().Open(source, null))
             {
-                _ = ((IAnnotationEditor)document).AddNote(0, NoteAt, "Left out", AnnotationColors.Sand);
+                _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).AddNote(0, NoteAt, "Left out", AnnotationColors.Sand);
                 await using var stream = File.Create(exported);
-                var written = ((IPageExporter)document).ExportPages([0, 1, ThirdPage, Pages - 1], new(perSheet, PaperSize.A4, false), stream);
+                var written = ((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([0, 1, ThirdPage, Pages - 1], new(perSheet, PaperSize.A4, false), stream);
                 await Assert.That(written).IsTrue();
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);
             var size = copy.GetPageSizes()[0];
             List<PageAnnotation> annotations = [];
-            ((IAnnotationEditor)copy).GetAnnotations(0, annotations);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(copy, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
 
             await Assert.That(copy.PageCount).IsEqualTo(sheets);
             await Assert.That(size.Width > size.Height).IsEqualTo(landscape);
@@ -348,7 +349,7 @@ public sealed class PageExportTests
             using var document = new PdfiumEngine().Open(source, null);
             await using var stream = new MemoryStream();
 
-            await Assert.That(((IPageExporter)document).ExportPages([Pages], SheetLayout.Default, stream)).IsFalse();
+            await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([Pages], SheetLayout.Default, stream)).IsFalse();
         }
         finally
         {
@@ -402,7 +403,7 @@ public sealed class PageExportTests
             using (var document = new PdfiumEngine().Open(source, null))
             {
                 await using var stream = File.Create(exported);
-                _ = ((IPageExporter)document).ExportPages(pages, layout, stream);
+                _ = ((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages(pages, layout, stream);
             }
 
             return new PdfiumEngine().Open(exported, null);
@@ -425,7 +426,7 @@ public sealed class PageExportTests
         {
             await using (var stream = File.Create(exported))
             {
-                _ = ((IPageExporter)document).ExportPages([0], new(GridPages, PaperSize.A4, true), stream);
+                _ = ((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([0], new(GridPages, PaperSize.A4, true), stream);
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);

@@ -99,6 +99,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>The annotation state, created on first use.</summary>
     private AnnotationsViewModel? _annotations;
 
+    /// <summary>The page management state, created on first use.</summary>
+    private PageManagementViewModel? _pages;
+
     /// <summary>The document's pages in reading order, once asked for.</summary>
     private ReadingDocument? _reading;
 
@@ -106,7 +109,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     private long _readingFor = -1;
 
     /// <summary>The open document the reading order reads from, captured on the UI thread.</summary>
-    private ITextLayoutSource? _readingSource;
+    private IDocument? _readingSource;
 
     /// <summary>How the tab looked before presenting.</summary>
     private PresentationState _beforePresenting;
@@ -163,13 +166,13 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     public partial bool IsTextFormatShown { get; }
 
     /// <summary>Gets the requests for the canvas to scroll.</summary>
-    public AsObservableSignal<NavigationRequest> NavigationRequests{ get; }
+    public AsObservableSignal<NavigationRequest> NavigationRequests { get; }
 
     /// <summary>Gets the external links the user activated.</summary>
-    public AsObservableSignal<Uri> UriRequests{ get; }
+    public AsObservableSignal<Uri> UriRequests { get; }
 
     /// <summary>Gets notifications that the document must be laid out again (loaded or reloaded).</summary>
-    public AsObservableSignal<RxVoid> DocumentChanges{ get; }
+    public AsObservableSignal<RxVoid> DocumentChanges { get; }
 
     /// <summary>Gets the document source.</summary>
     public DocumentSource Source { get; }
@@ -366,6 +369,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <summary>Gets the annotation state.</summary>
     public AnnotationsViewModel Annotations => _annotations ??= new(this);
 
+    /// <summary>Gets the selection and undoable actions for the document's pages.</summary>
+    public PageManagementViewModel Pages => _pages ??= new(this);
+
     /// <summary>Gets the name recorded as the author of new comments: the one chosen in Preferences, or empty for the user name.</summary>
     public string CommentAuthor => _services.Settings.CommentAuthor;
 
@@ -398,10 +404,10 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     public partial bool HasUnsavedChanges { get; private set; }
 
     /// <summary>Gets the pages whose content changed, for example after annotating, so views redraw them.</summary>
-    public AsObservableSignal<int> PageEdits{ get; }
+    public AsObservableSignal<int> PageEdits { get; }
 
     /// <summary>Gets the text the view is asked to put on the clipboard.</summary>
-    public AsObservableSignal<string> CopyRequests{ get; }
+    public AsObservableSignal<string> CopyRequests { get; }
 
     /// <summary>Gets the outline.</summary>
     [Reactive(nameof(HasOutline))]
@@ -481,17 +487,18 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <returns>The reading order, or <see langword="null"/> when the document cannot describe its layout.</returns>
     public ReadingDocument? GetReadingDocument()
     {
-        if (TryGetDocument() is not ITextLayoutSource layout)
+        var document = TryGetDocument();
+        var layout = ((document?.GetFeature(typeof(ITextLayoutSource))) as ITextLayoutSource);
+        if (document is null || layout is null)
         {
             return null;
         }
 
-        // Pages are read on worker threads, and the document pool belongs to the UI thread, so workers only ever see
-        // the document opened here; one closed since then reads as unavailable.
-        Volatile.Write(ref _readingSource, layout);
+        // Worker threads use this captured document, never the UI-owned document pool.
+        Volatile.Write(ref _readingSource, document);
         if (_reading is null || _readingFor != Source.Id)
         {
-            _reading = new(ReadingSource, Source.PageSizes);
+            _reading = ReadingDocument.Create(ReadingSource, Source.PageSizes);
             _readingFor = Source.Id;
         }
 
@@ -521,28 +528,28 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         switch (target.Kind)
         {
             case LinkTargetKind.Page:
-            {
-                var area = target.Location is { } point ? new PageRect(point.X, point.Y, 0, 0) : (PageRect?)null;
-                NavigateTo(new(target.PageIndex, area, 0));
-                break;
-            }
+                {
+                    var area = target.Location is { } point ? new PageRect(point.X, point.Y, 0, 0) : (PageRect?)null;
+                    NavigateTo(new(target.PageIndex, area, 0));
+                    break;
+                }
 
             case LinkTargetKind.Uri when Uri.TryCreate(target.Uri, UriKind.Absolute, out var uri):
-            {
-                _uriRequests.OnNext(uri);
-                break;
-            }
+                {
+                    _uriRequests.OnNext(uri);
+                    break;
+                }
 
             case LinkTargetKind.OtherDocument or LinkTargetKind.LaunchFile or LinkTargetKind.EmbeddedDocument:
-            {
-                NavigateToFile(target);
-                break;
-            }
+                {
+                    NavigateToFile(target);
+                    break;
+                }
 
             default:
-            {
-                break;
-            }
+                {
+                    break;
+                }
         }
     }
 
@@ -672,6 +679,28 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _pageEdits.OnNext(pageIndex);
     }
 
+    /// <summary>Refreshes layout, thumbnails and navigation after changing page order or geometry.</summary>
+    public void OnPageStructureChanged()
+    {
+        RenderHub.Scheduler.Invalidate(Source.Id);
+        RenderHub.Cache.RemoveDocument(Source.Id);
+        Source.RefreshStructure();
+        _reading = null;
+        _readingFor = -1;
+        History.Clear();
+        ReadPageStructure(Source.Acquire());
+        CurrentPageIndex = Math.Clamp(CurrentPageIndex, 0, Math.Max(0, PageCount - 1));
+        SelectedThumbnail = PageCount > 0 ? Thumbnails[CurrentPageIndex] : null;
+        HasUnsavedChanges = Source.HasUnsavedChanges;
+        _annotations?.RefreshItems();
+        Signatures.Refresh();
+        Attachments.Refresh();
+        Layers.Refresh();
+        Search.Refresh();
+        _pageEdits.OnNext(-1);
+        _documentChanges.OnNext(RxVoid.Default);
+    }
+
     /// <summary>
     /// Saves the document. The new file is written next to the old one and then moved over it, so a failure never
     /// leaves a half written file behind.
@@ -680,7 +709,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     /// <returns><see langword="true"/> when saved.</returns>
     public bool Save(string path)
     {
-        if (TryGetDocument() is not IAnnotationEditor editor)
+        if (((TryGetDocument())?.GetFeature(typeof(IAnnotationEditor)) as IAnnotationEditor) is not
+            {
+            } editor)
         {
             return false;
         }
@@ -785,6 +816,7 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         _layers?.Dispose();
         _measure?.Dispose();
         _annotations?.Dispose();
+        _pages?.Dispose();
         _fileWatch?.Dispose();
         Search.Dispose();
         _navigationRequests.Dispose();
@@ -825,16 +857,46 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         }
     }
 
-    /// <summary>Gets the captured document for the reading order, from any thread.</summary>
-    /// <returns>The document, or <see langword="null"/> once it has been closed.</returns>
-    private ITextLayoutSource? ReadingSource() =>
-        Volatile.Read(ref _readingSource) is { } source && source is not IDocument { IsDisposed: true } ? source : null;
+    /// <summary>Gets layout and optional tagged structure from the captured document, from any thread.</summary>
+    /// <returns>Both reading capabilities, or <see langword="null"/> when the document is closed or has no layout.</returns>
+    private ReadingSources? ReadingSource()
+    {
+        var document = Volatile.Read(ref _readingSource);
+        return document is null || document.IsDisposed
+            || ((document.GetFeature(typeof(ITextLayoutSource))) as ITextLayoutSource) is not { } characters
+            ? null
+            : new ReadingSources(
+            characters,
+            ((document.GetFeature(typeof(ITaggedStructureSource))) as ITaggedStructureSource));
+    }
 
     /// <summary>Reads document structure after the first successful open.</summary>
     private void OnFirstLoad()
     {
-        var sizes = Source.PageSizes;
         var document = Source.Acquire();
+        ReadPageStructure(document);
+        Signatures.Refresh();
+        Attachments.Refresh();
+        Layers.Refresh();
+        RefreshOptimize(document);
+        RefreshRedaction(document);
+        _pages?.Refresh();
+        if (!IsSecondaryView)
+        {
+            _services.RecentDocuments.Add(FilePath);
+            _ = CheckContentAsync(document);
+            CheckRepairs(document);
+            WatchFile();
+        }
+
+        _documentChanges.OnNext(RxVoid.Default);
+    }
+
+    /// <summary>Reads page geometry and navigation without reopening the document or replacing its edits.</summary>
+    /// <param name="document">The open document.</param>
+    private void ReadPageStructure(IDocument document)
+    {
+        var sizes = Source.PageSizes;
         var title = Source.Metadata?.Title;
         Title = string.IsNullOrWhiteSpace(title) ? FileName : title;
         Outline = OutlineItemViewModel.Create(Source.Outline);
@@ -852,20 +914,6 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
         PageCount = sizes.Length;
         IsLoaded = true;
         PageEntry = GetPageDisplay(CurrentPageIndex);
-        Signatures.Refresh();
-        Attachments.Refresh();
-        Layers.Refresh();
-        RefreshOptimize(document);
-        RefreshRedaction(document);
-        if (!IsSecondaryView)
-        {
-            _services.RecentDocuments.Add(FilePath);
-            _ = CheckContentAsync(document);
-            CheckRepairs(document);
-            WatchFile();
-        }
-
-        _documentChanges.OnNext(RxVoid.Default);
     }
 
     /// <summary>
@@ -927,7 +975,9 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
             return;
         }
 
-        if (TryGetDocument() is not IPageExporter exporter || Source.PageCount == 0)
+        if (((TryGetDocument())?.GetFeature(typeof(IPageExporter)) as IPageExporter) is not
+            {
+            } exporter || Source.PageCount == 0)
         {
             return;
         }
@@ -1112,6 +1162,11 @@ public sealed partial class DocumentTabViewModel : ReactiveObject, IDisposable
     {
         PageEntry = GetPageDisplay(pageIndex);
         SelectedThumbnail = pageIndex >= 0 && pageIndex < Thumbnails.Count ? Thumbnails[pageIndex] : null;
+        if (_pages is { SelectedPages.Count: <= 1 } pages && SelectedThumbnail is not null)
+        {
+            pages.SelectPages([pageIndex]);
+        }
+
         Forms.OnPageShown(pageIndex);
         CheckRepairsOfOpenDocument();
     }

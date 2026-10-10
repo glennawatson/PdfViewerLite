@@ -85,7 +85,7 @@ internal sealed class PdfStoreImporter : IPdfCarrySink
             _current = item.Source;
             var replaced = _overrides.TryGetValue(item.Source, out var replacement);
             _keepParent = replaced && replacement.KeepParent;
-            var original = replaced ? PdfValue.FromDictionary(replacement.Dictionary) : _source.GetObject(new(item.Source, 0));
+            var original = replaced ? PdfValue.FromDictionary(replacement.Dictionary) : StoreReading.GetObject(_source, new(item.Source, 0));
             _transaction.Replace(new(item.Target, 0), Copy(original, 0));
             _keepParent = false;
         }
@@ -108,7 +108,10 @@ internal sealed class PdfStoreImporter : IPdfCarrySink
     /// <param name="value">The value.</param>
     /// <returns><see langword="true"/> for a dictionary typed /Page or /Pages.</returns>
     private static bool IsPageTreeNode(PdfValue value) =>
-        value.Kind == PdfKind.Dictionary && value.AsDictionary()!.GetName(KnownName.Type) is var type && (type.Is(KnownName.Page) || type.Is(KnownName.Pages));
+        value.Kind == PdfKind.Dictionary
+        && value.AsDictionary()!.GetName(KnownName.Type) is var type
+        && (type.Is(KnownName.Page)
+        || type.Is(KnownName.Pages));
 
     /// <summary>Determines whether a key is left out of every copied dictionary.</summary>
     /// <param name="key">The key.</param>
@@ -117,8 +120,7 @@ internal sealed class PdfStoreImporter : IPdfCarrySink
     /// <see langword="true"/> for /Parent, /StructParent and /StructParents. A form widget keeps its /Parent: its field is a
     /// target object mapped before the copy, so the reference stays valid.
     /// </returns>
-    private bool IsDropped(PdfName key, int depth) =>
-        key.Is(KnownName.Parent) ? depth != 0 || !_keepParent : key.Is(KnownName.StructParent) || key.Is(KnownName.StructParents);
+    private bool IsDropped(PdfName key, int depth) => key.Is(KnownName.Parent) ? depth != 0 || !_keepParent : key.Is(KnownName.StructParent) || key.Is(KnownName.StructParents);
 
     /// <summary>Copies a value.</summary>
     /// <param name="value">The source value.</param>
@@ -149,7 +151,7 @@ internal sealed class PdfStoreImporter : IPdfCarrySink
             return PdfValue.FromReference(new(_map[number], 0));
         }
 
-        var value = _source.GetObject(new(number, 0));
+        var value = StoreReading.GetObject(_source, new(number, 0));
         if (value.IsNull || IsPageTreeNode(value))
         {
             _map[number] = -1;
@@ -254,8 +256,7 @@ internal sealed class PdfStoreImporter : IPdfCarrySink
     void IPdfCarrySink.MapObject(PdfObjectId source, PdfObjectId target) => MapObject(source, target);
 
     /// <inheritdoc/>
-    void IPdfCarrySink.Override(int sourceNumber, PdfDictionary replacement, bool keepParent) =>
-        _overrides[sourceNumber] = new(replacement, keepParent);
+    void IPdfCarrySink.Override(int sourceNumber, PdfDictionary replacement, bool keepParent) => _overrides[sourceNumber] = new(replacement, keepParent);
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

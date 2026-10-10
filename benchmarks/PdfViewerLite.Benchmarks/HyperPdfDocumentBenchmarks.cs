@@ -126,7 +126,7 @@ public class HyperPdfDocumentBenchmarks
         var height = (int)size.Height;
         var drawn = document.Render(new(0, 1, PageRotation.None, 0, 0, RenderFlags.Annotations), new(_pixels, width, height, width * BytesPerPixel));
         var text = document.GetText(0, 0, document.GetCharacterCount(0));
-        var editor = (IAnnotationEditor)document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
         var index = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, string.Empty);
         _saved.SetLength(0);
         var saved = editor.Save(_saved);

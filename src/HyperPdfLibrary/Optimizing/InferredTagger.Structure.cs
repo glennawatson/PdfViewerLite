@@ -22,13 +22,13 @@ internal sealed partial class InferredTagger
     {
         var store = _document.Objects;
         var pageRef = PdfValue.FromReference(page.Id);
-        var section = store.Add(PdfValue.Null);
+        var section = StoreEditing.Add(store, PdfValue.Null);
         var kids = new PdfArray(store, blocks.Count);
         var byMcid = new PdfValue[labels.Length];
         var used = 0;
         foreach (var block in blocks)
         {
-            var element = store.Add(PdfValue.Null);
+            var element = StoreEditing.Add(store, PdfValue.Null);
             var ids = new PdfArray(store, block.Units.Count);
             foreach (var unit in block.Units)
             {
@@ -37,23 +37,23 @@ internal sealed partial class InferredTagger
                 used = Math.Max(used, labels[unit].Mcid + 1);
             }
 
-            store.Replace(element, PdfValue.FromDictionary(Element(block.Tag, PdfValue.FromReference(section), pageRef, PdfValue.FromArray(ids))));
+            StoreEditing.Replace(store, element, PdfValue.FromDictionary(Element(block.Tag, PdfValue.FromReference(section), pageRef, PdfValue.FromArray(ids))));
             kids.Add(PdfValue.FromReference(element));
             _figures += block.IsFigure ? 1 : 0;
         }
 
-        store.Replace(section, PdfValue.FromDictionary(Element(_names.Sect, PdfValue.FromReference(_documentElement), pageRef, PdfValue.FromArray(kids))));
+        StoreEditing.Replace(store, section, PdfValue.FromDictionary(Element(_names.Sect, PdfValue.FromReference(_documentElement), pageRef, PdfValue.FromArray(kids))));
         _sections.Add(PdfValue.FromReference(section));
         _nextKey++;
         _parentTree.Add(PdfValue.FromInteger(key));
-        _parentTree.Add(PdfValue.FromReference(store.Add(PdfValue.FromArray(new(store, byMcid.AsSpan(0, used))))));
+        _parentTree.Add(PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromArray(new(store, byMcid.AsSpan(0, used))))));
     }
 
     /// <summary>Creates the document element and the structure tree root, and points the catalog at them.</summary>
     private void FinishTree()
     {
         var store = _document.Objects;
-        var root = store.Add(PdfValue.Null);
+        var root = StoreEditing.Add(store, PdfValue.Null);
         var sections = new PdfArray(store, _sections.Count);
         foreach (var section in _sections)
         {
@@ -61,8 +61,7 @@ internal sealed partial class InferredTagger
         }
 
         var document = Element(_names.Document, PdfValue.FromReference(root), PdfValue.Null, PdfValue.FromArray(sections));
-        store.Replace(_documentElement, PdfValue.FromDictionary(document));
-
+        StoreEditing.Replace(store, _documentElement, PdfValue.FromDictionary(document));
         var parentTree = new PdfDictionary(store, 1);
         parentTree.Set(KnownName.Nums, PdfValue.FromArray(new(store, System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_parentTree))));
         var tree = new PdfDictionary(store, ElementEntries);
@@ -70,15 +69,14 @@ internal sealed partial class InferredTagger
         tree.Set(KnownName.K, PdfValue.FromReference(_documentElement));
         tree.Set(KnownName.ParentTree, PdfValue.FromDictionary(parentTree));
         tree.Set(_names.ParentTreeNextKey, PdfValue.FromInteger(_nextKey));
-        store.Replace(root, PdfValue.FromDictionary(tree));
-
+        StoreEditing.Replace(store, root, PdfValue.FromDictionary(tree));
         var catalogRef = store.Trailer.GetRaw(KnownName.Root);
-        var catalog = store.Resolve(catalogRef).AsDictionary()!.Clone();
+        var catalog = StoreReading.Resolve(store, catalogRef).AsDictionary()!.Clone();
         catalog.Set(KnownName.StructTreeRoot, PdfValue.FromReference(root));
         var markInfo = catalog.GetDictionary(KnownName.MarkInfo)?.Clone() ?? new PdfDictionary(store, 1);
         markInfo.Set(_names.Marked, PdfValue.FromBoolean(true));
         catalog.Set(KnownName.MarkInfo, PdfValue.FromDictionary(markInfo));
-        store.Replace(catalogRef.AsReference(), PdfValue.FromDictionary(catalog));
+        StoreEditing.Replace(store, catalogRef.AsReference(), PdfValue.FromDictionary(catalog));
         PdfDocumentOptimizing.RefreshAfterOptimizerEdit(_document);
     }
 

@@ -51,7 +51,7 @@ public sealed class DocumentSource
     public bool IsOpen => _document is { IsDisposed: false };
 
     /// <summary>Gets a value indicating whether the open document has edits that are not saved; such documents are never closed to save memory.</summary>
-    public bool HasUnsavedChanges => _document is IAnnotationEditor { HasUnsavedChanges: true } && IsOpen;
+    public bool HasUnsavedChanges => ((_document)?.GetFeature(typeof(IAnnotationEditor)) as IAnnotationEditor) is { HasUnsavedChanges: true } && IsOpen;
 
     /// <summary>Gets the page sizes, or an empty array before the first open.</summary>
     public PageSize[] PageSizes { get; private set; } = [];
@@ -81,6 +81,16 @@ public sealed class DocumentSource
         PageSizes = [];
         Outline = null;
         Metadata = null;
+        Id = Interlocked.Increment(ref _lastId);
+    }
+
+    /// <summary>Refreshes page sizes and navigation after editing the open document, preserving its unsaved changes.</summary>
+    public void RefreshStructure()
+    {
+        var document = Acquire();
+        PageSizes = document.GetPageSizes();
+        Outline = document.GetOutline();
+        Metadata = document.GetMetadata();
         Id = Interlocked.Increment(ref _lastId);
     }
 

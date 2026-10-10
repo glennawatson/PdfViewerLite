@@ -186,12 +186,12 @@ public sealed class EngineReadingSuiteTests
     {
         using var test = new EngineDocument(engine, TestPdf.CreateTagged());
         using var pdfium = new EngineDocument(EngineDocument.Pdfium, TestPdf.CreateTagged());
-        var page = new ReadingDocument((ITextLayoutSource)test.Document, test.Document.GetPageSizes()).GetPage(0);
-        var expected = new ReadingDocument((ITextLayoutSource)pdfium.Document, pdfium.Document.GetPageSizes()).GetPage(0);
+        var page = new ReadingDocument((ITextLayoutSource)DocumentFeatures.CastFeature(test.Document, typeof(ITextLayoutSource))!, test.Document.GetPageSizes()).GetPage(0);
+        var expected = new ReadingDocument((ITextLayoutSource)DocumentFeatures.CastFeature(pdfium.Document, typeof(ITextLayoutSource))!, pdfium.Document.GetPageSizes()).GetPage(0);
         var blocks = new List<TaggedBlock>();
         var expectedBlocks = new List<TaggedBlock>();
-        var tagged = ((ITaggedStructureSource)test.Document).GetTaggedBlocks(0, blocks);
-        _ = ((ITaggedStructureSource)pdfium.Document).GetTaggedBlocks(0, expectedBlocks);
+        var tagged = ((ITaggedStructureSource)DocumentFeatures.CastFeature(test.Document, typeof(ITaggedStructureSource))!).GetTaggedBlocks(0, blocks);
+        _ = ((ITaggedStructureSource)DocumentFeatures.CastFeature(pdfium.Document, typeof(ITaggedStructureSource))!).GetTaggedBlocks(0, expectedBlocks);
         var first = page.Blocks[1];
         var start = Array.Find(first.CharIndices, static i => i >= 0);
 
@@ -214,16 +214,16 @@ public sealed class EngineReadingSuiteTests
     public async Task FillsDrawsAndSavesForms(string engine)
     {
         using var test = new EngineDocument(engine, TestPdf.CreateForm());
-        var filler = (IFormFiller)test.Document;
+        var filler = (IFormFiller)DocumentFeatures.CastFeature(test.Document, typeof(IFormFiller))!;
         var fields = Fields(filler);
         var blank = new PagePixels(test.Document, 0, RenderFlags.Annotations).CountDark();
         var typed = filler.SetText(0, fields[0].Index, TypedName);
         var ticked = filler.SetChecked(0, fields[CheckBox].Index, true);
         var chosen = filler.SelectOption(0, fields[ComboBox].Index, Blue);
         var filled = new PagePixels(test.Document, 0, RenderFlags.Annotations).CountDark();
-        var unsaved = ((IAnnotationEditor)test.Document).HasUnsavedChanges;
+        var unsaved = ((IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!).HasUnsavedChanges;
         await using var stream = new MemoryStream();
-        var saved = ((IAnnotationEditor)test.Document).Save(stream);
+        var saved = ((IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!).Save(stream);
 
         await Assert.That(fields.Count).IsEqualTo(FieldCount);
         await Assert.That(typed && ticked && chosen).IsTrue();
@@ -234,7 +234,7 @@ public sealed class EngineReadingSuiteTests
         foreach (var reader in TestEngines.All())
         {
             using var reopened = new EngineDocument(reader, stream.ToArray());
-            await AssertFilledAsync(Fields((IFormFiller)reopened.Document));
+            await AssertFilledAsync(Fields((IFormFiller)DocumentFeatures.CastFeature(reopened.Document, typeof(IFormFiller))!));
         }
     }
 
@@ -247,7 +247,7 @@ public sealed class EngineReadingSuiteTests
     {
         using var test = new EngineDocument(engine, TestPdf.CreateWithLayers());
         using var pdfium = new EngineDocument(EngineDocument.Pdfium, TestPdf.CreateWithLayers());
-        var source = (ILayerSource)test.Document;
+        var source = (ILayerSource)DocumentFeatures.CastFeature(test.Document, typeof(ILayerSource))!;
 
         // A copy, because PDFium updates the list it handed out when a layer changes.
         var layers = source.GetLayers().ToArray();
@@ -256,7 +256,7 @@ public sealed class EngineReadingSuiteTests
         var hidden = source.SetLayerVisible(layers[0].Id, false);
         var after = SampleBoxes(test.Document);
 
-        await Assert.That(layers).IsEquivalentTo(((ILayerSource)pdfium.Document).GetLayers());
+        await Assert.That(layers).IsEquivalentTo(((ILayerSource)DocumentFeatures.CastFeature(pdfium.Document, typeof(ILayerSource))!).GetLayers());
         await Assert.That(before.Left && !before.Right).IsTrue();
         await Assert.That(shown && hidden).IsTrue();
         await Assert.That(!after.Left && after.Right).IsTrue();
@@ -268,7 +268,7 @@ public sealed class EngineReadingSuiteTests
     private static List<PageCharacter> Characters(IDocument document)
     {
         var characters = new List<PageCharacter>();
-        ((ITextLayoutSource)document).GetCharacters(0, characters);
+        ((ITextLayoutSource)DocumentFeatures.CastFeature(document, typeof(ITextLayoutSource))!).GetCharacters(0, characters);
         return characters;
     }
 

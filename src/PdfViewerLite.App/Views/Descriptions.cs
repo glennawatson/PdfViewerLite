@@ -623,9 +623,6 @@ public static class Descriptions
     /// <summary>The Read Aloud voice service list.</summary>
     public static readonly string SpeechEngine = "Choose which voice service reads aloud.";
 
-    /// <summary>The PDF engine list, and the note under it.</summary>
-    public static readonly string PdfEngine = "Documents opened after the change use the chosen engine.";
-
     /// <summary>The Azure Speech key box.</summary>
     public static readonly string AzureKey = "Type a key from your Azure Speech resource. Azure voices need it.";
 
@@ -872,7 +869,7 @@ public static class Descriptions
 
     /// <summary>The Save Optimised Copy menu item.</summary>
     public static readonly string OptimizeCopy =
-        "Save a smaller or more accessible copy of this document. Your open file is never changed. Only the HyperPDF engine can do this; the PDFium engine cannot.";
+        "Save a smaller or more accessible copy of this document. Your open file is never changed.";
 
     /// <summary>The size choices of the optimised copy window.</summary>
     public static readonly string OptimizePresets = "Choose how much picture detail may be traded for a smaller file. Use the arrow keys to move between the choices.";
@@ -910,7 +907,7 @@ public static class Descriptions
 
     /// <summary>The apply redactions menu item.</summary>
     public static readonly string ApplyRedactions =
-        "Remove everything under the marks for good and save a redacted copy. Your open file is never changed. Only the HyperPDF engine can do this; the PDFium engine cannot.";
+        "Remove everything under the marks for good and save a redacted copy. Your open file is never changed.";
 
     /// <summary>The pictures choices of the redaction window.</summary>
     public static readonly string RedactImages = "Choose what happens to a picture that a mark touches. Use the arrow keys to move between the choices.";

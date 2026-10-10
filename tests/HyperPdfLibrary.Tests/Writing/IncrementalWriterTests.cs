@@ -32,7 +32,6 @@ public sealed class IncrementalWriterTests
         var original = TestPdf.Create(PageCount);
         var saved = SaveWithMarker(original);
         var text = ReadMarker(saved, out var pages, out var missing);
-
         await Assert.That(saved.AsSpan(0, original.Length).SequenceEqual(original)).IsTrue();
         await Assert.That(text).IsEqualTo(MarkerText);
         await Assert.That(pages).IsEqualTo(PageCount);
@@ -49,7 +48,6 @@ public sealed class IncrementalWriterTests
         var saved = SaveWithMarker(original);
         var text = ReadMarker(saved, out var pages, out _);
         var update = Encoding.Latin1.GetString(saved, original.Length, saved.Length - original.Length);
-
         await Assert.That(saved.AsSpan(0, original.Length).SequenceEqual(original)).IsTrue();
         await Assert.That(text).IsEqualTo(MarkerText);
         await Assert.That(pages).IsEqualTo(1);
@@ -63,7 +61,7 @@ public sealed class IncrementalWriterTests
     public async Task SavesAreDeterministicAcrossOverloads()
     {
         var original = TestPdf.Create(PageCount);
-        using var store = PdfObjectStore.Open(original, null);
+        using var store = StoreOpening.Open(original, null);
         AddMarker(store);
         var first = PdfIncrementalWriter.Save(store);
         var second = PdfIncrementalWriter.Save(store);
@@ -71,7 +69,6 @@ public sealed class IncrementalWriterTests
         PdfIncrementalWriter.Save(store, synchronous);
         await using var asynchronous = new MemoryStream();
         await PdfIncrementalWriter.SaveAsync(store, asynchronous, CancellationToken.None);
-
         await Assert.That(second).IsEquivalentTo(first);
         await Assert.That(synchronous.ToArray()).IsEquivalentTo(first);
         await Assert.That(asynchronous.ToArray()).IsEquivalentTo(first);
@@ -86,7 +83,6 @@ public sealed class IncrementalWriterTests
         var saved = SaveWithMarker(original);
         var text = ReadMarker(saved, out var pages, out _);
         var update = Encoding.Latin1.GetString(saved, original.Length, saved.Length - original.Length);
-
         await Assert.That(text).IsEqualTo(MarkerText);
         await Assert.That(pages).IsEqualTo(PageCount);
         await Assert.That(update).DoesNotContain("incrementally");
@@ -97,7 +93,7 @@ public sealed class IncrementalWriterTests
     /// <returns>The saved file.</returns>
     private static byte[] SaveWithMarker(byte[] original)
     {
-        using var store = PdfObjectStore.Open(original, null);
+        using var store = StoreOpening.Open(original, null);
         AddMarker(store);
         return PdfIncrementalWriter.Save(store);
     }
@@ -108,10 +104,10 @@ public sealed class IncrementalWriterTests
     {
         var marker = new PdfDictionary(store);
         marker.Set(KnownName.Title, PdfValue.FromString(MarkerBytes.ToArray()));
-        var markerId = store.Add(PdfValue.FromDictionary(marker));
+        var markerId = StoreEditing.Add(store, PdfValue.FromDictionary(marker));
         var catalog = store.Catalog.Clone();
         catalog.Set(store.Names.Intern(MarkerKey), PdfValue.FromReference(markerId));
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
     }
 
     /// <summary>Reopens a saved file and reads the marker.</summary>
@@ -121,7 +117,7 @@ public sealed class IncrementalWriterTests
     /// <returns>The marker text, or <see langword="null"/>.</returns>
     private static string? ReadMarker(byte[] saved, out int pages, out int missing)
     {
-        using var reopened = PdfObjectStore.Open(saved, null);
+        using var reopened = StoreOpening.Open(saved, null);
         pages = WritingTestDocuments.PageContents(reopened).Count;
         missing = WritingTestDocuments.CountMissing(reopened);
         return reopened.Catalog.GetDictionary(reopened.Names.Intern(MarkerKey))?.GetText(KnownName.Title);

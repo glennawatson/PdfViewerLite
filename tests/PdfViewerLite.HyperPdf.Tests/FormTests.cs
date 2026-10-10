@@ -54,10 +54,12 @@ public sealed class FormTests
 
     /// <summary>Verifies each kind can be filled, and the edits survive saving through the managed library and through the PDFium copy.</summary>
     /// <returns>A task.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when <c>test.Document</c> is <see langword="null"/>.</exception>
     [Test]
     public async Task FillsAndSaves()
     {
         using var test = new FormDocument();
+        var document = test.Document ?? throw new InvalidOperationException();
         var filler = test.Filler;
         var fields = Read(filler);
 
@@ -65,17 +67,18 @@ public sealed class FormTests
         var ticked = filler.SetChecked(0, fields[1].Index, true);
         var chosen = filler.SelectOption(0, fields[2].Index, Blue);
         var after = Read(filler);
-        var unsaved = test.Document is IAnnotationEditor { HasUnsavedChanges: true } && ((HyperPdfDocument)test.Document).HasManagedEdits;
-        var managed = SaveManaged(test.Document);
-        var copy = SaveThroughCopy(test.Document);
+        var unsaved = (test.Document.GetFeature(typeof(IAnnotationEditor)) as IAnnotationEditor) is { HasUnsavedChanges: true }
+            && PdfViewerLite.HyperPdf.HyperPdfForms.GetHasManagedEdits(((HyperPdfDocument)test.Document));
+        var managed = SaveManaged(document);
+        var copy = SaveThroughCopy(document);
         try
         {
             using var reopened = new HyperPdfEngine().Open(managed, null);
-            var viaManaged = Read((IFormFiller)reopened);
+            var viaManaged = Read((IFormFiller)DocumentFeatures.CastFeature(reopened, typeof(IFormFiller))!);
             using var viaPdfium = new PdfiumEngine().Open(managed, null);
-            var readByPdfium = Read((IFormFiller)viaPdfium);
+            var readByPdfium = Read((IFormFiller)DocumentFeatures.CastFeature(viaPdfium, typeof(IFormFiller))!);
             using var viaCopy = new PdfiumEngine().Open(copy, null);
-            var readFromCopy = Read((IFormFiller)viaCopy);
+            var readFromCopy = Read((IFormFiller)DocumentFeatures.CastFeature(viaCopy, typeof(IFormFiller))!);
 
             await Assert.That(typed).IsTrue();
             await Assert.That(ticked).IsTrue();
@@ -136,7 +139,7 @@ public sealed class FormTests
         await Assert.That(filler.SelectOption(0, ComboIndex, MissingOption)).IsFalse();
         await Assert.That(filler.SetText(0, FieldCount, "x")).IsFalse();
         await Assert.That(filler.SetText(1, 0, "x")).IsFalse();
-        await Assert.That(test.Document is IAnnotationEditor { HasUnsavedChanges: false }).IsTrue();
+        await Assert.That(((test.Document)?.GetFeature(typeof(IAnnotationEditor)) as IAnnotationEditor) is { HasUnsavedChanges: false }).IsTrue();
     }
 
     /// <summary>
@@ -152,7 +155,7 @@ public sealed class FormTests
         try
         {
             using var document = new HyperPdfEngine().Open(path, null);
-            var filler = (IFormFiller)document;
+            var filler = (IFormFiller)DocumentFeatures.CastFeature(document, typeof(IFormFiller))!;
             var changed = filler.SetText(0, FormSamples.LockedIndex, "changed");
 
             await Assert.That(changed).IsFalse();
@@ -203,7 +206,7 @@ public sealed class FormTests
     {
         var path = Path.Combine(Path.GetTempPath(), $"hyperpdf-formcopy-{Guid.NewGuid():N}.pdf");
         using var stream = File.Create(path);
-        _ = ((IAnnotationEditor)document).Save(stream);
+        _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).Save(stream);
         return path;
     }
 
@@ -225,7 +228,7 @@ public sealed class FormTests
         public IDocument Document { get; }
 
         /// <summary>Gets the form filler.</summary>
-        public IFormFiller Filler => (IFormFiller)Document;
+        public IFormFiller Filler => (IFormFiller)DocumentFeatures.CastFeature(Document, typeof(IFormFiller))!;
 
         /// <inheritdoc/>
         public void Dispose()

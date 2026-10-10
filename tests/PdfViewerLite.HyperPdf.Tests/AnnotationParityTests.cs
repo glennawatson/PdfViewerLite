@@ -169,7 +169,7 @@ public sealed class AnnotationParityTests
         using var document = NativeDocument.OpenWithPdfium(TestPdf.Create(PageCount), out var path);
         try
         {
-            var editor = (IAnnotationEditor)document;
+            var editor = (IAnnotationEditor)Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
             Edit(editor);
             return NativeDocument.Save(editor);
         }
@@ -224,6 +224,42 @@ public sealed class AnnotationParityTests
         _ = editor.SetRemoved(Page, removed, true);
     }
 
+    /// <summary>Makes the same edits through either engine.</summary>
+    /// <param name="editor">The editor.</param>
+    private static void Edit(HyperPdfAnnotations editor)
+    {
+        HyperPdfAnnotationReading.SetAuthor(editor, "Parity Tester");
+        var highlight = HyperPdfAnnotationShapes.AddMarkup(editor, Page, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, "Check");
+        _ = HyperPdfAnnotationShapes.AddMarkup(editor, Page, AnnotationKind.StrikeOut, [Line with { Top = Line.Top + Shift }], AnnotationColors.Clay, string.Empty);
+        var ink = HyperPdfAnnotationShapes.AddInk(editor, Page, Stroke, Strokes, AnnotationColors.Ink, Width, AnnotationKind.Ink);
+        var note = HyperPdfAnnotationShapes.AddNote(editor, Page, NoteAt, "Note", AnnotationColors.Sage);
+        var box = HyperPdfAnnotationShapes.AddShape(editor, Page, AnnotationKind.Rectangle, BoxStart, BoxEnd, AnnotationColors.Clay, Width);
+        _ = HyperPdfAnnotationShapes.AddShape(editor, Page, AnnotationKind.Ellipse, OvalStart, OvalEnd, AnnotationColors.Slate, Width);
+        _ = HyperPdfAnnotationShapes.AddShape(editor, Page, AnnotationKind.Arrow, ArrowTail, ArrowTip, AnnotationColors.Ink, Width);
+        _ = HyperPdfAnnotationShapes.AddShape(editor, Page, AnnotationKind.Line, LineStart, LineEnd, AnnotationColors.Sage, Width);
+        _ = HyperPdfAnnotationShapes.AddPolygon(editor, Page, AnnotationKind.Polygon, Triangle, AnnotationColors.Slate, Width);
+        var cloud = HyperPdfAnnotationShapes.AddPolygon(editor, Page, AnnotationKind.Cloud, Square, AnnotationColors.Clay, Width);
+        _ = HyperPdfAnnotationShapes.AddPolygon(editor, Page, AnnotationKind.PolyLine, Stroke, AnnotationColors.Ink, Width);
+        var removed = HyperPdfAnnotationShapes.AddNote(editor, Page, RemovedAt, "Removed", AnnotationColors.Sand);
+        var pixels = new byte[PictureSide * PictureSide * BytesPerPixel];
+        Array.Fill(pixels, Grey);
+        _ = HyperPdfAnnotationImages.AddImageStamp(editor, Page, PictureAt, pixels, PictureSide, PictureSide);
+        var text = HyperPdfAnnotationText.AddText(editor, Page, TextAt, "Typed words\nand more", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
+        _ = HyperPdfAnnotationText.AddText(editor, Page, SignatureAt, "Glenn Watson", LargeFontSize, AnnotationColors.Ink, AnnotationKind.Signature);
+        _ = HyperPdfAnnotationText.AddStamp(editor, Page, StampAt, "APPROVED", AnnotationColors.Clay);
+        _ = HyperPdfAnnotationCallouts.AddCallout(editor, Page, CalloutTarget, CalloutText, "Look here", FontSize, AnnotationColors.Ink);
+        _ = HyperPdfAnnotationReplies.AddReply(editor, Page, note, "Agreed", ReviewState.None);
+        _ = HyperPdfAnnotationReplies.AddReply(editor, Page, note, string.Empty, ReviewState.Rejected);
+        _ = HyperPdfAnnotationEditing.SetColor(editor, Page, highlight, AnnotationColors.Heather);
+        _ = HyperPdfAnnotationReading.SetContents(editor, Page, note, "Changed note");
+        _ = HyperPdfAnnotationEditing.SetLineWidth(editor, Page, ink, ThickWidth);
+        _ = HyperPdfAnnotationEditing.SetLineWidth(editor, Page, box, ThickWidth);
+        _ = HyperPdfAnnotationEditing.SetBounds(editor, Page, box, BoxMoved);
+        _ = HyperPdfAnnotationEditing.SetColor(editor, Page, cloud, AnnotationColors.Peach);
+        _ = HyperPdfAnnotationText.SetFontSize(editor, Page, text, LargeFontSize);
+        _ = HyperPdfAnnotationReading.SetRemoved(editor, Page, removed, true);
+    }
+
     /// <summary>Saves nothing more; reopens a saved file with PDFium and reads the page's annotations and every comment's replies.</summary>
     /// <param name="saved">The saved file.</param>
     /// <returns>What PDFium reads.</returns>
@@ -232,7 +268,7 @@ public sealed class AnnotationParityTests
         using var document = NativeDocument.OpenWithPdfium(saved, out var path);
         try
         {
-            var editor = (IAnnotationEditor)document;
+            var editor = (IAnnotationEditor)Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
             var annotations = NativeDocument.Read(editor, Page);
             var replies = new List<AnnotationReply>();
             foreach (var annotation in annotations)

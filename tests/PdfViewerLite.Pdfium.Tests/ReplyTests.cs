@@ -29,7 +29,7 @@ public sealed class ReplyTests
     public async Task ThreadsRepliesUnderTheirComment()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var note = editor.AddNote(0, NoteAt, "Is this figure right?", AnnotationColors.Sand);
         var other = editor.AddNote(0, OtherAt, "Unrelated", AnnotationColors.Sage);
 
@@ -60,7 +60,7 @@ public sealed class ReplyTests
     public async Task SavesStandardReplies()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var note = editor.AddNote(0, NoteAt, "Please confirm.", AnnotationColors.Sand);
         _ = editor.AddReply(0, note, "Confirmed.", ReviewState.None);
         _ = editor.AddReply(0, note, string.Empty, ReviewState.Completed);
@@ -75,7 +75,7 @@ public sealed class ReplyTests
             var bytes = await File.ReadAllBytesAsync(path);
             var text = Encoding.Latin1.GetString(bytes);
             using var reopened = new PdfiumEngine().Open(path, null);
-            var reopenedEditor = (IAnnotationEditor)reopened;
+            var reopenedEditor = (IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!;
             var annotations = new List<PageAnnotation>();
             reopenedEditor.GetAnnotations(0, annotations);
             var replies = new List<AnnotationReply>();

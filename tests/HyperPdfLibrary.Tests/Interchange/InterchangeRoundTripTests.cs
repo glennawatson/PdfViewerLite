@@ -249,13 +249,13 @@ public sealed class InterchangeRoundTripTests
     private static void FillRichForm(PdfDocument document)
     {
         var form = PdfDocumentForms.GetForm(document);
-        _ = form.SetText(0, FormSamples.NotesIndex, "first\nsecond");
-        _ = form.SetText(0, FormSamples.SecretIndex, "pw");
-        _ = form.SelectOption(0, FormSamples.PickIndex, ListOption);
-        _ = form.SelectOption(0, FormSamples.ColourIndex, 0);
-        _ = form.SetChecked(0, FormSamples.AgreeIndex, true);
-        _ = form.SetText(0, FormSamples.StreetIndex, "Elm Street");
-        _ = form.SetText(0, FormSamples.ZipIndex, "98765");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(form, 0, FormSamples.NotesIndex, "first\nsecond");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(form, 0, FormSamples.SecretIndex, "pw");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SelectOption(form, 0, FormSamples.PickIndex, ListOption);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SelectOption(form, 0, FormSamples.ColourIndex, 0);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetChecked(form, 0, FormSamples.AgreeIndex, true);
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(form, 0, FormSamples.StreetIndex, "Elm Street");
+        _ = HyperPdfLibrary.Forms.PdfFormEditing.SetText(form, 0, FormSamples.ZipIndex, "98765");
     }
 
     /// <summary>Describes every widget of the first page: name, value, state and selection.</summary>
@@ -264,7 +264,7 @@ public sealed class InterchangeRoundTripTests
     private static string Describe(PdfDocument document)
     {
         var widgets = new List<PdfFormWidget>();
-        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
+        HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(PdfDocumentForms.GetForm(document), 0, widgets);
         var text = new StringBuilder();
         foreach (var widget in widgets)
         {

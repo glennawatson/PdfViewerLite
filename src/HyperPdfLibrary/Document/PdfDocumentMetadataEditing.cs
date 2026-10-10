@@ -30,11 +30,19 @@ public static class PdfDocumentMetadataEditing
     {
         ArgumentNullException.ThrowIfNull(edit);
         PdfDocumentEditing.RunEdit(
-document,
-"Edit document properties",
-PdfChangeKinds.Metadata,
-new MetadataEditState(document, edit),
-static (transaction, state) => PdfDocumentMetadataEditing.SetMetadataCore(state.Document, transaction, state.Edit));
+        document,
+        "Edit document properties",
+        PdfChangeKinds.Metadata,
+        new MetadataEditState(
+        document,
+        edit),
+        static (
+        transaction,
+        state) =>
+        PdfDocumentMetadataEditing.SetMetadataCore(
+        state.Document,
+        transaction,
+        state.Edit));
     }
 
     /// <summary>Formats a date as XMP writes it.</summary>
@@ -121,7 +129,7 @@ static (transaction, state) => PdfDocumentMetadataEditing.SetMetadataCore(state.
     private static void SetMetadataCore(PdfDocument document, PdfEditTransaction transaction, PdfMetadataEdit edit)
     {
         var raw = document.Objects.Trailer.GetRaw(KnownName.Info);
-        var info = document.Objects.Resolve(raw).AsDictionary()?.Clone() ?? new PdfDictionary(document.Objects);
+        var info = StoreReading.Resolve(document.Objects, raw).AsDictionary()?.Clone() ?? new PdfDictionary(document.Objects);
         PdfDocumentMetadataEditing.SetInfoText(info, KnownName.Title, edit.Title, document.Objects.Version);
         PdfDocumentMetadataEditing.SetInfoText(info, KnownName.Author, edit.Author, document.Objects.Version);
         PdfDocumentMetadataEditing.SetInfoText(info, KnownName.Subject, edit.Subject, document.Objects.Version);
@@ -149,7 +157,7 @@ static (transaction, state) => PdfDocumentMetadataEditing.SetMetadataCore(state.
     private static void WriteXmp(PdfDocument document, PdfEditTransaction transaction, List<XmpChange> changes)
     {
         var raw = document.Catalog.GetRaw(KnownName.Metadata);
-        if (changes.Count == 0 || !raw.IsReference || document.Objects.Resolve(raw).AsStream() is not { } stream)
+        if (changes.Count == 0 || !raw.IsReference || StoreReading.Resolve(document.Objects, raw).AsStream() is not { } stream)
         {
             return;
         }

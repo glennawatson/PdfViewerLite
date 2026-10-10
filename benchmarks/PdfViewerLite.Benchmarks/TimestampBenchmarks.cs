@@ -64,7 +64,7 @@ public class TimestampBenchmarks
         _path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-timestamp-bench-{Guid.NewGuid():N}.pdf");
         await File.WriteAllBytesAsync(_path, _validated).ConfigureAwait(false);
         using var opened = new PdfiumEngine().Open(_path, null);
-        _signature = ((ISignatureSource)opened).GetSignatures()[0];
+        _signature = ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(opened, typeof(ISignatureSource))!).GetSignatures()[0];
         _store = DocumentSecurityStore.Read(_validated);
     }
 

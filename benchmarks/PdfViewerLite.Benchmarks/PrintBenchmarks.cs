@@ -85,11 +85,11 @@ public class PrintBenchmarks
     public void Setup()
     {
         _document = new(TestPdf.CreateForm());
-        _editor = (IAnnotationEditor)_document.Document;
-        _exporter = (IPageExporter)_document.Document;
+        _editor = (IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_document.Document, typeof(IAnnotationEditor))!;
+        _exporter = (IPageExporter)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_document.Document, typeof(IPageExporter))!;
         _mixed = new(TestPdf.Create(MixedPageCount));
-        _mixedExporter = (IPageExporter)_mixed.Document;
-        var filler = (IFormFiller)_document.Document;
+        _mixedExporter = (IPageExporter)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_mixed.Document, typeof(IPageExporter))!;
+        var filler = (IFormFiller)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_document.Document, typeof(IFormFiller))!;
         List<FormField> fields = [];
         filler.GetFields(0, fields);
         _ = filler.SetText(0, fields[0].Index, "Glenn Watson");

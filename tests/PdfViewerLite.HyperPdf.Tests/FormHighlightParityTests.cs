@@ -77,8 +77,8 @@ public sealed class FormHighlightParityTests
     public async Task CustomTintMatches()
     {
         using var pair = new EnginePair(FormSamples.CreateRichForm());
-        ((IFormHighlight)pair.Pdfium).Highlight = new(CustomColor, CustomAlpha);
-        ((IFormHighlight)pair.HyperPdf).Highlight = new(CustomColor, CustomAlpha);
+        ((IFormHighlight)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IFormHighlight))!).Highlight = new(CustomColor, CustomAlpha);
+        ((IFormHighlight)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IFormHighlight))!).Highlight = new(CustomColor, CustomAlpha);
 
         var pdfium = new PagePixels(pair.Pdfium, 0, RenderFlags.Annotations);
         var hyper = new PagePixels(pair.HyperPdf, 0, RenderFlags.Annotations);
@@ -95,8 +95,8 @@ public sealed class FormHighlightParityTests
     public async Task ZeroOpacityDrawsNothing()
     {
         using var pair = new EnginePair(FormSamples.CreateRichForm());
-        ((IFormHighlight)pair.Pdfium).Highlight = new(CustomColor, 0);
-        ((IFormHighlight)pair.HyperPdf).Highlight = new(CustomColor, 0);
+        ((IFormHighlight)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IFormHighlight))!).Highlight = new(CustomColor, 0);
+        ((IFormHighlight)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IFormHighlight))!).Highlight = new(CustomColor, 0);
 
         var pdfium = new PagePixels(pair.Pdfium, 0, RenderFlags.Annotations);
         var hyper = new PagePixels(pair.HyperPdf, 0, RenderFlags.Annotations);

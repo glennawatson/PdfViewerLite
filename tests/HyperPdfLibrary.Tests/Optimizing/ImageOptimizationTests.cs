@@ -47,7 +47,6 @@ public sealed class ImageOptimizationTests
         var source = OptimizerSamples.Photo(PhotoPixels, TwoInches, string.Empty);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller);
         var image = FirstImage(result.Bytes);
-
         await Assert.That(result.Bytes.Length).IsLessThan(source.Length);
         await Assert.That(image.Dictionary.GetInt32(KnownName.Width)).IsEqualTo(SmallerWidth);
         await Assert.That(image.Dictionary.GetName(KnownName.Filter).Is(KnownName.DCTDecode)).IsTrue();
@@ -63,7 +62,6 @@ public sealed class ImageOptimizationTests
         var source = OptimizerSamples.Photo(PhotoPixels, TwoInches, string.Empty);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.KeepQuality);
         var image = FirstImage(result.Bytes);
-
         await Assert.That(image.Dictionary.GetInt32(KnownName.Width)).IsEqualTo(PhotoPixels);
         await Assert.That(image.Dictionary.GetName(KnownName.Filter).Is(KnownName.DCTDecode)).IsFalse();
         await Assert.That(OptimizerTestKit.MaxDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsEqualTo(0);
@@ -83,7 +81,6 @@ public sealed class ImageOptimizationTests
         var source = OptimizerSamples.ImagePage(OptimizerSamples.ImageObject(samples, BilevelWidth, BilevelHeight, entries), BilevelPoints);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller);
         var image = FirstImage(result.Bytes);
-
         await Assert.That(image.Dictionary.GetInt32(KnownName.BitsPerComponent)).IsEqualTo(1);
         await Assert.That(image.Dictionary.GetInt32(KnownName.Width)).IsEqualTo(BilevelWidth);
         await Assert.That(result.Bytes.Length).IsLessThan(source.Length);
@@ -100,7 +97,6 @@ public sealed class ImageOptimizationTests
         using var document = PdfDocumentReader.Open(result.Bytes, null);
         var image = FirstImage(document);
         var mask = image.Dictionary.GetStream(KnownName.SMask)!;
-
         await Assert.That(image.Dictionary.GetName(KnownName.Filter).Is(KnownName.DCTDecode)).IsTrue();
         await Assert.That(mask.Dictionary.GetName(KnownName.Filter).Is(KnownName.DCTDecode)).IsFalse();
         await Assert.That(mask.Dictionary.GetInt32(KnownName.Width)).IsEqualTo(PhotoPixels);
@@ -115,7 +111,6 @@ public sealed class ImageOptimizationTests
         var source = OptimizerSamples.ColorKeyed(PhotoPixels, TwoInches);
         var result = OptimizerTestKit.Optimize(source, PdfOptimizeOptions.Smaller);
         var image = FirstImage(result.Bytes);
-
         await Assert.That(image.Dictionary.GetName(KnownName.Filter).Is(KnownName.DCTDecode)).IsFalse();
         await Assert.That(OptimizerTestKit.MaxDifference(OptimizerTestKit.Render(source), OptimizerTestKit.Render(result.Bytes))).IsEqualTo(0);
     }
@@ -130,7 +125,6 @@ public sealed class ImageOptimizationTests
         using var document = PdfDocumentReader.Open(result.Bytes, null);
         var pattern = PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.Pattern)!.GetStream(document.Objects.Names.Intern("P1"u8))!;
         var image = pattern.Dictionary.GetDictionary(KnownName.Resources)!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
-
         await Assert.That(image.Dictionary.GetInt32(KnownName.Width)).IsEqualTo(PhotoPixels);
     }
 
@@ -140,9 +134,8 @@ public sealed class ImageOptimizationTests
     public async Task SamplesNumberImagesAsExpected()
     {
         using var document = PdfDocumentReader.Open(OptimizerSamples.Masked(PhotoPixels, TwoInches), null);
-
-        await Assert.That(document.Objects.GetObject(new(ImageNumber, 0)).AsStream()).IsNotNull();
-        await Assert.That(document.Objects.GetObject(new(MaskNumber, 0)).AsStream()).IsNotNull();
+        await Assert.That(StoreReading.GetObject(document.Objects, new(ImageNumber, 0)).AsStream()).IsNotNull();
+        await Assert.That(StoreReading.GetObject(document.Objects, new(MaskNumber, 0)).AsStream()).IsNotNull();
     }
 
     /// <summary>Gets the first page's /Im1.</summary>
@@ -158,6 +151,5 @@ public sealed class ImageOptimizationTests
     /// <summary>Gets the first page's /Im1.</summary>
     /// <param name="document">The document.</param>
     /// <returns>The image stream.</returns>
-    private static PdfStream FirstImage(PdfDocument document) =>
-        PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
+    private static PdfStream FirstImage(PdfDocument document) => PdfDocumentPages.GetPage(document, 0).Resources!.GetDictionary(KnownName.XObject)!.GetStream(document.Objects.Names.Intern("Im1"u8))!;
 }

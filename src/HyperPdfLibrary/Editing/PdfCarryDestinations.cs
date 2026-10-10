@@ -66,7 +66,7 @@ internal sealed class PdfCarryDestinations
     /// <returns>The value to copy, or null when the destination does not lead to a copied page.</returns>
     internal PdfValue Rewrite(PdfValue raw)
     {
-        var value = _context.Source.Resolve(raw);
+        var value = StoreReading.Resolve(_context.Source, raw);
         return value.Kind switch
         {
             PdfKind.Array => IsLive(value.AsArray()!) ? raw : default,
@@ -81,7 +81,7 @@ internal sealed class PdfCarryDestinations
     /// <returns>The value to copy, or null for a go-to action that does not lead to a copied page.</returns>
     internal PdfValue RewriteAction(PdfValue raw)
     {
-        if (_context.Source.Resolve(raw).AsDictionary() is not { } action || !action.IsName(KnownName.S, KnownName.GoTo))
+        if (StoreReading.Resolve(_context.Source, raw).AsDictionary() is not { } action || !action.IsName(KnownName.S, KnownName.GoTo))
         {
             return raw;
         }
@@ -124,7 +124,7 @@ internal sealed class PdfCarryDestinations
     /// <returns>The value to copy.</returns>
     private PdfValue RewriteAdditional(PdfValue raw)
     {
-        if (_context.Source.Resolve(raw).AsDictionary() is not { } triggers)
+        if (StoreReading.Resolve(_context.Source, raw).AsDictionary() is not { } triggers)
         {
             return raw;
         }
@@ -173,7 +173,7 @@ internal sealed class PdfCarryDestinations
     {
         var source = _context.Source;
         var catalog = source.Catalog;
-        var found = source.Resolve(NameTree.Find(catalog.GetDictionary(KnownName.Names)?.GetDictionary(KnownName.Dests), key));
+        var found = StoreReading.Resolve(source, NameTree.Find(catalog.GetDictionary(KnownName.Names)?.GetDictionary(KnownName.Dests), key));
         return found.IsNull && catalog.GetDictionary(KnownName.Dests) is { } dests ? dests.Get(source.Names.Intern(key)) : found;
     }
 

@@ -71,8 +71,8 @@ public sealed class TextParityTests
         var count = pair.Pdfium.GetCharacterCount(0);
 
         await Assert.That(count).IsGreaterThan(0);
-        await Assert.That(document.GetCharacterCountNative(0)).IsEqualTo(count);
-        await Assert.That(document.GetTextNative(0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterCountNative(document, 0)).IsEqualTo(count);
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetTextNative(document, 0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
     }
 
     /// <summary>/ActualText, fake bold, invisible text, run order and duplicate glyphs give PDFium's text. Passes with the stand-in font.</summary>
@@ -83,8 +83,8 @@ public sealed class TextParityTests
         using var pair = Open(SpecialContent, SpecialResources, out var document, out _);
         var count = pair.Pdfium.GetCharacterCount(0);
 
-        await Assert.That(document.GetCharacterCountNative(0)).IsEqualTo(count);
-        await Assert.That(document.GetTextNative(0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterCountNative(document, 0)).IsEqualTo(count);
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetTextNative(document, 0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
     }
 
     /// <summary>Each character's value and generated flag match PDFium's. Passes with the stand-in font.</summary>
@@ -94,9 +94,9 @@ public sealed class TextParityTests
     {
         using var pair = Open(out var document, out _);
         var expected = new List<PageCharacter>();
-        ((ITextLayoutSource)pair.Pdfium).GetCharacters(0, expected);
+        ((ITextLayoutSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(ITextLayoutSource))!).GetCharacters(0, expected);
         var actual = new List<PageCharacter>();
-        document.GetCharactersNative(0, actual);
+        PdfViewerLite.HyperPdf.HyperPdfText.GetCharactersNative(document, 0, actual);
 
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)
@@ -119,7 +119,7 @@ public sealed class TextParityTests
                 var expected = new List<TextMatch>();
                 pair.Pdfium.Find(0, query, options, expected);
                 var actual = new List<TextMatch>();
-                document.FindNative(0, query, options, actual);
+                PdfViewerLite.HyperPdf.HyperPdfText.FindNative(document, 0, query, options, actual);
 
                 await Assert.That(actual).IsEquivalentTo(expected);
             }
@@ -133,7 +133,7 @@ public sealed class TextParityTests
     {
         using var pair = Open(out var document, out _);
         var actual = new List<PageLink>();
-        document.GetWebLinksNative(0, actual);
+        PdfViewerLite.HyperPdf.HyperPdfText.GetWebLinksNative(document, 0, actual);
 
         await Assert.That(Uris(actual)).IsEquivalentTo(Uris(pair.Pdfium.GetLinks(0)));
     }
@@ -153,7 +153,7 @@ public sealed class TextParityTests
         var expected = new List<PageRect>();
         pair.Pdfium.GetTextBounds(0, 0, count, expected);
         var actual = new List<PageRect>();
-        document.GetTextBoundsNative(0, 0, count, actual);
+        PdfViewerLite.HyperPdf.HyperPdfText.GetTextBoundsNative(document, 0, 0, count, actual);
 
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)
@@ -165,7 +165,7 @@ public sealed class TextParityTests
         foreach (var rect in expected)
         {
             var centre = new PagePoint(rect.Left + (rect.Width * Half), rect.Top + (rect.Height * Half));
-            await Assert.That(document.GetCharacterIndexAtNative(0, centre, 0)).IsEqualTo(pair.Pdfium.GetCharacterIndexAt(0, centre, 0));
+            await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterIndexAtNative(document, 0, centre, 0)).IsEqualTo(pair.Pdfium.GetCharacterIndexAt(0, centre, 0));
         }
     }
 
@@ -205,7 +205,7 @@ public sealed class TextParityTests
             var previous = PdfFont.Factory;
             if (previous is not null)
             {
-                _ = document.GetCharacterCountNative(0);
+                _ = PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterCountNative(document, 0);
                 return false;
             }
 
@@ -213,7 +213,7 @@ public sealed class TextParityTests
             PdfFont.Factory = dictionary => ReferenceEquals(dictionary.Owner, owner) ? StandInFont.Create(dictionary) : null;
             try
             {
-                _ = document.GetCharacterCountNative(0);
+                _ = PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterCountNative(document, 0);
             }
             finally
             {

@@ -8,9 +8,8 @@ using System.Runtime.CompilerServices;
 namespace HyperPdfLibrary.Objects;
 
 /// <summary>
-/// One PDF value in 24 bytes. Numbers, booleans, names and references are held inline; strings point at their bytes in
-/// the file or a decoded buffer; arrays, dictionaries and streams are references to their objects. Copying a value never
-/// allocates.
+/// One PDF value in 16 bytes. A shared kind marker tags inline payloads; strings point at their bytes in the file or a
+/// decoded buffer; arrays, dictionaries and streams point at their objects. Copying a value never allocates.
 /// </summary>
 [DebuggerDisplay("PdfValue: {Kind}")]
 public readonly struct PdfValue : IEquatable<PdfValue>
@@ -21,20 +20,33 @@ public readonly struct PdfValue : IEquatable<PdfValue>
     /// <summary>The shift of the high half.</summary>
     private const int HighShift = 32;
 
-    /// <summary>The referenced object or string buffer.</summary>
+    /// <summary>The shared tag for boolean values.</summary>
+    private static readonly object BooleanTag = new KindTag(PdfKind.Boolean);
+
+    /// <summary>The shared tag for integer values.</summary>
+    private static readonly object IntegerTag = new KindTag(PdfKind.Integer);
+
+    /// <summary>The shared tag for real values.</summary>
+    private static readonly object RealTag = new KindTag(PdfKind.Real);
+
+    /// <summary>The shared tag for names.</summary>
+    private static readonly object NameTag = new KindTag(PdfKind.Name);
+
+    /// <summary>The shared tag for indirect references.</summary>
+    private static readonly object ReferenceTag = new KindTag(PdfKind.Reference);
+
+    /// <summary>The referenced object, string buffer or shared inline-kind tag.</summary>
     private readonly object? _object;
 
-    /// <summary>The inline payload.</summary>
+    /// <summary>The inline payload or string range.</summary>
     private readonly long _bits;
 
     /// <summary>Initializes a new instance of the <see cref="PdfValue"/> struct.</summary>
-    /// <param name="kind">The kind.</param>
     /// <param name="bits">The inline payload.</param>
     /// <param name="value">The referenced object.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private PdfValue(PdfKind kind, long bits, object? value)
+    private PdfValue(long bits, object? value)
     {
-        Kind = kind;
         _bits = bits;
         _object = value;
     }
@@ -43,7 +55,20 @@ public readonly struct PdfValue : IEquatable<PdfValue>
     public static PdfValue Null => default;
 
     /// <summary>Gets the kind of value.</summary>
-    public PdfKind Kind { get; }
+    public PdfKind Kind
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _object switch
+        {
+            null => PdfKind.Null,
+            KindTag tag => tag.Kind,
+            byte[] => PdfKind.String,
+            PdfArray => PdfKind.Array,
+            PdfDictionary => PdfKind.Dictionary,
+            PdfStream => PdfKind.Stream,
+            _ => throw new InvalidOperationException("The PDF value has an unknown payload kind."),
+        };
+    }
 
     /// <summary>Gets a value indicating whether this is null or missing.</summary>
     public bool IsNull => Kind == PdfKind.Null;
@@ -58,25 +83,25 @@ public readonly struct PdfValue : IEquatable<PdfValue>
     /// <param name="value">The value.</param>
     /// <returns>The PDF value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfValue FromBoolean(bool value) => new(PdfKind.Boolean, value ? 1 : 0, null);
+    public static PdfValue FromBoolean(bool value) => new(value ? 1 : 0, BooleanTag);
 
     /// <summary>Creates an integer.</summary>
     /// <param name="value">The value.</param>
     /// <returns>The PDF value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfValue FromInteger(long value) => new(PdfKind.Integer, value, null);
+    public static PdfValue FromInteger(long value) => new(value, IntegerTag);
 
     /// <summary>Creates a real number.</summary>
     /// <param name="value">The value.</param>
     /// <returns>The PDF value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfValue FromReal(double value) => new(PdfKind.Real, BitConverter.DoubleToInt64Bits(value), null);
+    public static PdfValue FromReal(double value) => new(BitConverter.DoubleToInt64Bits(value), RealTag);
 
     /// <summary>Creates a name.</summary>
     /// <param name="name">The name.</param>
     /// <returns>The PDF value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfValue FromName(PdfName name) => new(PdfKind.Name, name.Id, null);
+    public static PdfValue FromName(PdfName name) => new(name.Id, NameTag);
 
     /// <summary>Creates a string over decoded bytes, without copying them.</summary>
     /// <param name="buffer">The buffer holding the bytes.</param>
@@ -89,7 +114,7 @@ public readonly struct PdfValue : IEquatable<PdfValue>
     {
         ArgumentNullException.ThrowIfNull(buffer);
         ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)offset + (uint)length, (uint)buffer.Length);
-        return new(PdfKind.String, (uint)offset | ((long)length << HighShift), buffer);
+        return new((uint)offset | ((long)length << HighShift), buffer);
     }
 
     /// <summary>Creates a string that owns its bytes.</summary>
@@ -109,7 +134,7 @@ public readonly struct PdfValue : IEquatable<PdfValue>
     public static PdfValue FromArray(PdfArray array)
     {
         ArgumentNullException.ThrowIfNull(array);
-        return new(PdfKind.Array, 0, array);
+        return new(0, array);
     }
 
     /// <summary>Creates a dictionary value.</summary>
@@ -119,7 +144,7 @@ public readonly struct PdfValue : IEquatable<PdfValue>
     public static PdfValue FromDictionary(PdfDictionary dictionary)
     {
         ArgumentNullException.ThrowIfNull(dictionary);
-        return new(PdfKind.Dictionary, 0, dictionary);
+        return new(0, dictionary);
     }
 
     /// <summary>Creates a stream value.</summary>
@@ -129,14 +154,14 @@ public readonly struct PdfValue : IEquatable<PdfValue>
     public static PdfValue FromStream(PdfStream stream)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        return new(PdfKind.Stream, 0, stream);
+        return new(0, stream);
     }
 
     /// <summary>Creates a reference.</summary>
     /// <param name="id">The referenced object.</param>
     /// <returns>The PDF value.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfValue FromReference(PdfObjectId id) => new(PdfKind.Reference, (uint)id.Number | ((long)id.Generation << HighShift), null);
+    public static PdfValue FromReference(PdfObjectId id) => new((uint)id.Number | ((long)id.Generation << HighShift), ReferenceTag);
 
     /// <summary>Determines whether two values are equal.</summary>
     /// <param name="left">The first value.</param>
@@ -270,11 +295,19 @@ public readonly struct PdfValue : IEquatable<PdfValue>
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Equals(PdfValue other) => Kind == other.Kind && _bits == other._bits && ReferenceEquals(_object, other._object);
+    public bool Equals(PdfValue other) => _bits == other._bits && ReferenceEquals(_object, other._object);
 
     /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is PdfValue other && Equals(other);
 
     /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(Kind, _bits, _object);
+    public override int GetHashCode() => HashCode.Combine(_bits, _object);
+
+    /// <summary>Identifies an inline value kind without boxing each value.</summary>
+    /// <param name="kind">The kind represented by this tag.</param>
+    private sealed class KindTag(PdfKind kind)
+    {
+        /// <summary>Gets the kind represented by this tag.</summary>
+        internal PdfKind Kind { get; } = kind;
+    }
 }

@@ -33,7 +33,7 @@ namespace PdfViewerLite.App.Controls;
 /// <summary>
 /// Draws a document as a continuous strip of pages inside a <see cref="ScrollViewer"/>. Only the tiles intersecting the
 /// viewport are drawn or requested; every frame re-requests what it is missing under a fresh render generation so work
-/// for regions that scrolled away is dropped by the scheduler before it reaches PDFium.
+/// for regions that scrolled away is dropped by the scheduler before it reaches the renderer.
 /// </summary>
 [DebuggerDisplay("PageCanvas: {Tab}")]
 public sealed partial class PageCanvas : Control

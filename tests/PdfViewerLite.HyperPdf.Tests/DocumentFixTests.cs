@@ -65,7 +65,7 @@ public sealed class DocumentFixTests
                 MiniPdf.Stream("/Type /EmbeddedFile /Params << /Size 12345 >>", "hello"),
                 MiniPdf.Stream("/Type /EmbeddedFile /Filter /FlateDecode", "not zlib at all"),
                 MiniPdf.Stream("/Type /EmbeddedFile", "world!")));
-        var attachments = ((IAttachmentSource)pair.HyperPdf).GetAttachments();
+        var attachments = ((IAttachmentSource)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IAttachmentSource))!).GetAttachments();
 
         await Assert.That(attachments.Count).IsEqualTo(AttachmentCount);
         await Assert.That(attachments[0].Size).IsEqualTo(RecordedSize);
@@ -127,8 +127,8 @@ public sealed class DocumentFixTests
     public async Task LayerChangesMatchPdfium()
     {
         using var pair = new EnginePair(TestPdf.CreateWithLayers());
-        var hyper = (ILayerSource)pair.HyperPdf;
-        var pdfium = (ILayerSource)pair.Pdfium;
+        var hyper = (ILayerSource)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(ILayerSource))!;
+        var pdfium = (ILayerSource)DocumentFeatures.CastFeature(pair.Pdfium, typeof(ILayerSource))!;
         var hidden = hyper.GetLayers()[HiddenLayer];
 
         await Assert.That(hidden.IsVisible).IsFalse();

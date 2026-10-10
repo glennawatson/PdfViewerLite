@@ -41,7 +41,7 @@ internal static class XrefRepair
     /// <returns>The table; its trailer is <see langword="null"/> when none was found.</returns>
     internal static XrefTable Rebuild(PdfByteSource file, PdfObjectStore store)
     {
-        var table = new XrefTable { Repaired = true };
+        var table = new XrefTable { Repaired = true, };
         ScanObjects(file, table, store.Context);
         table.Trailer = FindTrailer(file, store, table);
 
@@ -65,7 +65,7 @@ internal static class XrefRepair
         foreach (var offset in table.ObjectStreams)
         {
             PdfOpenContext.ThrowIfCancelled(store.Context);
-            if (!store.TryParseObjectAt(offset, out var id, out var value) || value.AsStream() is not { } stream)
+            if (!StoreParsing.TryParseObjectAt(store, offset, out var id, out var value) || value.AsStream() is not { } stream)
             {
                 continue;
             }
@@ -112,8 +112,7 @@ internal static class XrefRepair
 
             position = keyword + ObjKeyword.Length;
             var after = file.ByteAt(position);
-            if (!TryReadHeaderBefore(file, keyword, out var number, out var generation, out var start)
-                || (after >= 0 && !PdfCharacters.EndsToken((byte)after)))
+            if (!TryReadHeaderBefore(file, keyword, out var number, out var generation, out var start) || (after >= 0 && !PdfCharacters.EndsToken((byte)after)))
             {
                 continue;
             }
@@ -298,9 +297,7 @@ internal static class XrefRepair
 
         var rest = digits[length..];
         var next = rest.IndexOfAnyExcept(PdfCharacters.Whitespace);
-        return next >= 0 && rest[next] is >= (byte)'0' and <= (byte)'9'
-            ? -1
-            : long.Parse(digits[..length], NumberStyles.None, CultureInfo.InvariantCulture);
+        return next >= 0 && rest[next] is >= (byte)'0' and <= (byte)'9' ? -1 : long.Parse(digits[..length], NumberStyles.None, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Reads "number generation" backwards from the end of a window that ends at an <c>obj</c> keyword.</summary>
@@ -383,7 +380,7 @@ internal static class XrefRepair
                 break;
             }
 
-            if (store.ParseValueAt(found + PdfKeywords.Trailer.Length).AsDictionary() is { } trailer && trailer.ContainsKey(KnownName.Root))
+            if (StoreParsing.ParseValueAt(store, found + PdfKeywords.Trailer.Length).AsDictionary() is { } trailer && trailer.ContainsKey(KnownName.Root))
             {
                 return trailer;
             }
@@ -409,7 +406,7 @@ internal static class XrefRepair
         for (var number = table.Size - 1; number > 0; number--)
         {
             PdfOpenContext.ThrowIfCancelled(store.Context);
-            if (table.GetType(number) != XrefEntryType.InFile || !store.TryParseObjectAt(table.GetLocation(number), out var id, out var value))
+            if (table.GetType(number) != XrefEntryType.InFile || !StoreParsing.TryParseObjectAt(store, table.GetLocation(number), out var id, out var value))
             {
                 continue;
             }

@@ -24,7 +24,7 @@ public sealed class FormScriptReadingTests
         {
             using var document = new PdfiumEngine().Open(path, null);
             var scripts = new List<FieldScripts>();
-            ((IFormScriptSource)document).GetScripts(0, scripts);
+            ((IFormScriptSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IFormScriptSource))!).GetScripts(0, scripts);
             var byName = scripts.ToDictionary(static s => s.Name, StringComparer.Ordinal);
 
             await Assert.That(scripts.Count).IsEqualTo(Fields);

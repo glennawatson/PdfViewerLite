@@ -45,7 +45,7 @@ internal sealed class FormEdit
             return existing.Dictionary;
         }
 
-        if (_store.GetDictionary(id) is not { } original)
+        if (StoreReading.GetDictionary(_store, id) is not { } original)
         {
             return null;
         }
@@ -60,7 +60,7 @@ internal sealed class FormEdit
     {
         foreach (var copy in _copies.Values)
         {
-            _store.Replace(copy.Id, PdfValue.FromDictionary(copy.Dictionary));
+            StoreEditing.Replace(_store, copy.Id, PdfValue.FromDictionary(copy.Dictionary));
         }
 
         _copies.Clear();

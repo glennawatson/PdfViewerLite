@@ -48,7 +48,7 @@ public sealed class ImageSignatureTests
             SignaturePixels.RemoveWhitePaper(image);
         }
 
-        var index = ((IImageSignatureEditor)source.Document).AddImageSignature(0, Bounds, image, ImageSize, ImageSize);
+        var index = ((IImageSignatureEditor)DocumentFeatures.CastFeature(source.Document, typeof(IImageSignatureEditor))!).AddImageSignature(0, Bounds, image, ImageSize, ImageSize);
         await Assert.That(index).IsGreaterThanOrEqualTo(0);
         image.AsSpan().Clear();
         var exported = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-image-signature-{Guid.NewGuid():N}.pdf");
@@ -56,12 +56,12 @@ public sealed class ImageSignatureTests
         {
             await using (var stream = File.Create(exported))
             {
-                await Assert.That(((IAnnotationEditor)source.Document).Save(stream)).IsTrue();
+                await Assert.That(((IAnnotationEditor)DocumentFeatures.CastFeature(source.Document, typeof(IAnnotationEditor))!).Save(stream)).IsTrue();
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);
             List<PageAnnotation> annotations = [];
-            ((IAnnotationEditor)copy).GetAnnotations(0, annotations);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(copy, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
             await Assert.That(annotations.Count).IsEqualTo(1);
             await Assert.That(annotations[0].Kind).IsEqualTo(AnnotationKind.Signature);
             await Assert.That(annotations[0].Bounds).IsEqualTo(Bounds);
@@ -87,9 +87,9 @@ public sealed class ImageSignatureTests
     public async Task RejectsMismatchedPixels()
     {
         using var source = new TestDocument(1);
-        var editor = (IImageSignatureEditor)source.Document;
+        var editor = (IImageSignatureEditor)DocumentFeatures.CastFeature(source.Document, typeof(IImageSignatureEditor))!;
         await Assert.That(() => editor.AddImageSignature(0, Bounds, [], ImageSize, ImageSize)).Throws<ArgumentException>();
-        await Assert.That(((IAnnotationEditor)source.Document).HasUnsavedChanges).IsFalse();
+        await Assert.That(((IAnnotationEditor)DocumentFeatures.CastFeature(source.Document, typeof(IAnnotationEditor))!).HasUnsavedChanges).IsFalse();
     }
 
     /// <summary>Invalid image dimensions fail before native code is called.</summary>
@@ -101,9 +101,9 @@ public sealed class ImageSignatureTests
     public async Task RejectsInvalidWidth(int width)
     {
         using var source = new TestDocument(1);
-        var editor = (IImageSignatureEditor)source.Document;
+        var editor = (IImageSignatureEditor)DocumentFeatures.CastFeature(source.Document, typeof(IImageSignatureEditor))!;
         await Assert.That(() => editor.AddImageSignature(0, Bounds, Ink, width, ImageSize)).Throws<ArgumentOutOfRangeException>();
-        await Assert.That(((IAnnotationEditor)source.Document).HasUnsavedChanges).IsFalse();
+        await Assert.That(((IAnnotationEditor)DocumentFeatures.CastFeature(source.Document, typeof(IAnnotationEditor))!).HasUnsavedChanges).IsFalse();
     }
 
     /// <summary>A missing page cannot create a signature or mark the document as changed.</summary>
@@ -115,9 +115,9 @@ public sealed class ImageSignatureTests
     public async Task RejectsMissingPage(int page)
     {
         using var source = new TestDocument(1);
-        var index = ((IImageSignatureEditor)source.Document).AddImageSignature(page, Bounds, Ink, ImageSize, ImageSize);
+        var index = ((IImageSignatureEditor)DocumentFeatures.CastFeature(source.Document, typeof(IImageSignatureEditor))!).AddImageSignature(page, Bounds, Ink, ImageSize, ImageSize);
         await Assert.That(index).IsEqualTo(-1);
-        await Assert.That(((IAnnotationEditor)source.Document).HasUnsavedChanges).IsFalse();
+        await Assert.That(((IAnnotationEditor)DocumentFeatures.CastFeature(source.Document, typeof(IAnnotationEditor))!).HasUnsavedChanges).IsFalse();
     }
 
     /// <summary>Image signatures use the same removal action as other signatures.</summary>
@@ -126,8 +126,8 @@ public sealed class ImageSignatureTests
     public async Task RemovesImageSignature()
     {
         using var source = new TestDocument(1);
-        var index = ((IImageSignatureEditor)source.Document).AddImageSignature(0, Bounds, Ink, ImageSize, ImageSize);
-        var editor = (IAnnotationEditor)source.Document;
+        var index = ((IImageSignatureEditor)DocumentFeatures.CastFeature(source.Document, typeof(IImageSignatureEditor))!).AddImageSignature(0, Bounds, Ink, ImageSize, ImageSize);
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(source.Document, typeof(IAnnotationEditor))!;
         List<PageAnnotation> annotations = [];
         editor.GetAnnotations(0, annotations);
         await Assert.That(annotations.Count).IsEqualTo(1);
@@ -149,7 +149,7 @@ public sealed class ImageSignatureTests
     public async Task PrintsImageSignature(PrintImposition imposition, int pagesPerSheet)
     {
         using var source = new TestDocument(1);
-        var index = ((IImageSignatureEditor)source.Document).AddImageSignature(0, Bounds, Ink, ImageSize, ImageSize);
+        var index = ((IImageSignatureEditor)DocumentFeatures.CastFeature(source.Document, typeof(IImageSignatureEditor))!).AddImageSignature(0, Bounds, Ink, ImageSize, ImageSize);
         await Assert.That(index).IsGreaterThanOrEqualTo(0);
         var exported = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-image-print-{Guid.NewGuid():N}.pdf");
         try
@@ -157,7 +157,7 @@ public sealed class ImageSignatureTests
             await using (var stream = File.Create(exported))
             {
                 var layout = new SheetLayout(pagesPerSheet, PaperSize.A4, true) { Imposition = imposition, PosterTiles = 1, FitToPaper = true };
-                await Assert.That(((IPageExporter)source.Document).ExportPages([0], layout, stream)).IsTrue();
+                await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(source.Document, typeof(IPageExporter))!).ExportPages([0], layout, stream)).IsTrue();
             }
 
             using var copy = new PdfiumEngine().Open(exported, null);

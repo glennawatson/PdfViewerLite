@@ -41,11 +41,14 @@ public static class PdfDocumentActions
             return PdfDocumentActions.ReadActionNode(document, action);
         }
 
-        return !open.IsNull && PdfDocumentNavigation.ResolveDestination(document, open) is { } destination ? new PdfActionNode(
-PdfDocumentActions.GoToSubtype,
-new GoToAction(destination),
-[],
-new(document.Objects)) : null;
+        return !open.IsNull
+        && PdfDocumentNavigation.ResolveDestination(
+        document,
+        open) is { } destination ? new PdfActionNode(
+        PdfDocumentActions.GoToSubtype,
+        new GoToAction(destination),
+        [],
+        new(document.Objects)) : null;
     }
 
     /// <summary>Gets the document's additional actions (the catalog's <c>/AA</c>): will close, will save, did save, will print and did print.</summary>
@@ -81,7 +84,7 @@ new(document.Objects)) : null;
         var triggers = new List<PdfTrigger>(actions.Count);
         for (var i = 0; i < actions.Count; i++)
         {
-            if (document.Objects.Resolve(actions.GetValueAt(i)).AsDictionary() is { } action)
+            if (StoreReading.Resolve(document.Objects, actions.GetValueAt(i)).AsDictionary() is { } action)
             {
                 triggers.Add(new(document.Objects.Names.GetString(actions.GetKeyAt(i)), PdfDocumentActions.ReadActionNode(document, action)));
             }

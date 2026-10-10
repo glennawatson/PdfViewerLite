@@ -7,7 +7,7 @@ using HyperPdfLibrary.Filters;
 namespace HyperPdfLibrary.Tests.Filters;
 
 /// <summary>Checks the bounded pool that keeps large decoder buffers for reuse.</summary>
-[NotInParallel(nameof(ScratchPoolTests))]
+[NotInParallel]
 public sealed class ScratchPoolTests
 {
     /// <summary>A length that uses the bounded pool: 1 MiB of bytes.</summary>

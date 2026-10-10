@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using PdfViewerLite.Core.Platform;
-using PdfViewerLite.Pdfium;
+using PdfViewerLite.HyperPdf;
 using PdfViewerLite.Platform.Linux;
 using PdfViewerLite.Platform.MacOS;
 using PdfViewerLite.Platform.Windows;
@@ -19,7 +19,7 @@ public static class DesktopPlatforms
     {
         if (OperatingSystem.IsWindows())
         {
-            return new WindowsPlatform(new PdfiumEngine());
+            return new WindowsPlatform(new HyperPdfEngine());
         }
 
         if (OperatingSystem.IsMacOS())

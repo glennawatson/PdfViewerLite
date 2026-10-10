@@ -5,6 +5,8 @@
 using PdfViewerLite.App.Services;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Settings;
+using PdfViewerLite.HyperPdf;
+using PdfViewerLite.Pdfium;
 using PdfViewerLite.TestAssets;
 
 namespace PdfViewerLite.App.Tests;
@@ -42,12 +44,12 @@ internal sealed class TestServices : IDisposable
 
     /// <summary>Initializes a new instance of the <see cref="TestServices"/> class that opens documents with one engine.</summary>
     /// <param name="engine">The engine every document opens with.</param>
-    internal TestServices(PdfEngineChoice engine)
-        : this(new FallbackPlatform(), new FakeSpeech(true, false), null, new SelectableDocumentEngine(() => engine))
+    internal TestServices(TestEngineChoice engine)
+        : this(new FallbackPlatform(), new FakeSpeech(true, false), null, EngineFor(engine))
     {
     }
 
-    /// <summary>Initializes a new instance of the <see cref="TestServices"/> class that opens documents with an engine directly, whatever the engine override says.</summary>
+    /// <summary>Initializes a new instance of the <see cref="TestServices"/> class that opens documents with an injected engine.</summary>
     /// <param name="engine">The engine every document opens with.</param>
     internal TestServices(IDocumentEngine engine)
         : this(new FallbackPlatform(), new FakeSpeech(true, false), null, engine)
@@ -62,11 +64,10 @@ internal sealed class TestServices : IDisposable
     /// empty pack folder in the test folder and downloads never fetched from the network.
     /// </param>
     /// <remarks>
-    /// Documents open with PDFium unless <c>PDFVIEWERLITE_ENGINE</c> names another engine, so setting
-    /// <c>PDFVIEWERLITE_ENGINE=hyperpdf</c> runs the whole suite on HyperPDF.
+    /// Documents open with HyperPDF unless a test explicitly injects PDFium as a parity reference.
     /// </remarks>
     private TestServices(PdfViewerLite.Core.Platform.IDesktopPlatform platform, FakeSpeech speech, FakeOcr? ocr)
-        : this(platform, speech, ocr, new SelectableDocumentEngine(static () => PdfEngineChoice.Pdfium))
+        : this(platform, speech, ocr, new HyperPdfEngine())
     {
     }
 
@@ -126,4 +127,15 @@ internal sealed class TestServices : IDisposable
         File.WriteAllBytes(path, bytes);
         return path;
     }
+
+    /// <summary>Creates the requested engine for a test without a production engine selector.</summary>
+    /// <param name="engine">The engine to use.</param>
+    /// <returns>The engine.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="engine"/> is not a supported test engine.</exception>
+    private static IDocumentEngine EngineFor(TestEngineChoice engine) => engine switch
+    {
+        TestEngineChoice.HyperPdf => new HyperPdfEngine(),
+        TestEngineChoice.Pdfium => new PdfiumEngine(),
+        _ => throw new ArgumentOutOfRangeException(nameof(engine)),
+    };
 }

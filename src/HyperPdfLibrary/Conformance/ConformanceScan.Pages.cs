@@ -30,8 +30,7 @@ internal sealed partial class ConformanceScan
     /// <summary>Determines whether a colour space value names a device space.</summary>
     /// <param name="space">The value.</param>
     /// <returns><see langword="true"/> for DeviceGray, DeviceRGB and DeviceCMYK.</returns>
-    private static bool IsDeviceSpace(PdfValue space) =>
-        space.IsName(KnownName.DeviceGray) || space.IsName(KnownName.DeviceRGB) || space.IsName(KnownName.DeviceCMYK);
+    private static bool IsDeviceSpace(PdfValue space) => space.IsName(KnownName.DeviceGray) || space.IsName(KnownName.DeviceRGB) || space.IsName(KnownName.DeviceCMYK);
 
     /// <summary>Determines whether an operator sets a device colour or selects a device colour space.</summary>
     /// <param name="op">The operator.</param>
@@ -39,11 +38,15 @@ internal sealed partial class ConformanceScan
     /// <returns><see langword="true"/> when it does.</returns>
     private static bool IsDeviceColorOperator(ContentOperator op, KnownName firstName) => op switch
     {
-        ContentOperator.SetFillGray or ContentOperator.SetStrokeGray
-            or ContentOperator.SetFillRgb or ContentOperator.SetStrokeRgb
-            or ContentOperator.SetFillCmyk or ContentOperator.SetStrokeCmyk => true,
-        ContentOperator.SetFillColorSpace or ContentOperator.SetStrokeColorSpace
-            => firstName is KnownName.DeviceGray or KnownName.DeviceRGB or KnownName.DeviceCMYK,
+        ContentOperator.SetFillGray or
+        ContentOperator.SetStrokeGray or
+        ContentOperator.SetFillRgb or
+        ContentOperator.SetStrokeRgb or
+        ContentOperator.SetFillCmyk or
+        ContentOperator.SetStrokeCmyk =>
+        true,
+
+        ContentOperator.SetFillColorSpace or ContentOperator.SetStrokeColorSpace => firstName is KnownName.DeviceGray or KnownName.DeviceRGB or KnownName.DeviceCMYK,
         _ => false,
     };
 
@@ -92,7 +95,7 @@ internal sealed partial class ConformanceScan
     {
         for (var i = 0; i < states.Count; i++)
         {
-            if (_document.Objects.Resolve(states.GetValueAt(i)).AsStream() is { } stream)
+            if (StoreReading.Resolve(_document.Objects, states.GetValueAt(i)).AsStream() is { } stream)
             {
                 ScanForm(stream, lookForDeviceColor, 1);
             }
@@ -141,7 +144,7 @@ internal sealed partial class ConformanceScan
     {
         for (var i = 0; category is not null && i < category.Count; i++)
         {
-            if (_document.Objects.Resolve(category.GetValueAt(i)).AsStream() is not { } stream)
+            if (StoreReading.Resolve(_document.Objects, category.GetValueAt(i)).AsStream() is not { } stream)
             {
                 continue;
             }
@@ -163,7 +166,7 @@ internal sealed partial class ConformanceScan
     {
         for (var i = 0; fonts is not null && i < fonts.Count; i++)
         {
-            if (_document.Objects.Resolve(fonts.GetValueAt(i)).AsDictionary() is { } font && _visited.Add(font) && IsNotEmbedded(font))
+            if (StoreReading.Resolve(_document.Objects, fonts.GetValueAt(i)).AsDictionary() is { } font && _visited.Add(font) && IsNotEmbedded(font))
             {
                 _fonts.Add(_document.Objects.Names.GetString(font.GetName(KnownName.BaseFont)) is { Length: > 0 } baseFont ? baseFont : _document.Objects.Names.GetString(fonts.GetKeyAt(i)));
             }
@@ -203,8 +206,14 @@ internal sealed partial class ConformanceScan
             _ = stream.Decode(ref buffer);
             return ReadsDeviceColor(buffer.WrittenSpan);
         }
-        catch (Exception ex) when (ex is InvalidDataException or PdfException or ArgumentException or InvalidOperationException
-            or IndexOutOfRangeException or NotSupportedException or FormatException or OverflowException)
+        catch (Exception ex) when (ex is InvalidDataException or
+        PdfException or
+        ArgumentException or
+        InvalidOperationException or
+        IndexOutOfRangeException or
+        NotSupportedException or
+        FormatException or
+        OverflowException)
         {
             return false;
         }

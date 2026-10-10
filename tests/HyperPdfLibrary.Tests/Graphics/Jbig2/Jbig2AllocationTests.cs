@@ -2,12 +2,14 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using HyperPdfLibrary.Filters;
 using HyperPdfLibrary.Graphics.Images.Jbig2;
 using PdfViewerLite.TestAssets;
 
 namespace HyperPdfLibrary.Tests.Graphics.Jbig2;
 
 /// <summary>Checks that JBIG2 decoding allocates a small fixed amount per stream, not per pixel, symbol or instance.</summary>
+[NotInParallel]
 public sealed class Jbig2AllocationTests
 {
     /// <summary>The decodes made before measuring, so pools fill and tiering settles.</summary>
@@ -43,16 +45,17 @@ public sealed class Jbig2AllocationTests
     /// <returns>The bytes allocated.</returns>
     private static long Measure(Jbig2Sample sample)
     {
+        // The bounded pool retains buffers from earlier fixtures; warm this fixture from a known empty pool.
+        ScratchPools.Trim();
         var rows = new byte[Jbig2Decoder.GetRowBytes(sample.Width) * sample.Height];
         for (var i = 0; i < Warmup; i++)
         {
             _ = Jbig2Decoder.TryDecode(sample.Data, sample.Globals, sample.Width, sample.Height, rows);
         }
 
-        // The decoder rents its buffers from the process-wide ArrayPool. Tests on other threads, and the Gen2 GCs they
-        // trigger, empty that pool or leave a buffer on another core's stack, so a rent can miss and allocate megabytes
-        // for one run. A decode that really allocates per pixel or symbol misses the bound on every run, so the smallest
-        // run decides, and the loop stops at the first run inside the bound.
+        // Large buffers use the process-wide bounded ScratchPool. Document disposal trims it, and pool tests change
+        // its budget, so this fixture runs alone. Small buffers still use ArrayPool, whose Gen2 trimming can cause a
+        // rent miss; the smallest run distinguishes that miss from allocation repeated on every decode.
         var smallest = long.MaxValue;
         for (var i = 0; i < Runs && smallest >= MaxBytes; i++)
         {

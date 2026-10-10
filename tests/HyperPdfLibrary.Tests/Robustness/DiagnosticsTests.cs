@@ -64,7 +64,6 @@ public sealed class DiagnosticsTests
         var found = new ConcurrentQueue<PdfDiagnostic>();
         using var document = PdfDocumentReader.OpenWith(RobustnessSeeds.CreateMini(), new PdfOpenOptions { Diagnostics = found.Enqueue });
         _ = DocumentExerciser.Read(document);
-
         await Assert.That(found).IsEmpty();
     }
 
@@ -74,7 +73,6 @@ public sealed class DiagnosticsTests
     public async Task ScrambledStartXrefReportsRebuild()
     {
         var found = Open(Replace(RobustnessSeeds.CreateMini(), "startxref", "startxxxx"));
-
         await Assert.That(Codes(found)).Contains(PdfDiagnosticCode.XrefRebuilt);
     }
 
@@ -85,7 +83,6 @@ public sealed class DiagnosticsTests
     {
         var found = Open(Encoding.Latin1.GetBytes(Junk + Encoding.Latin1.GetString(RobustnessSeeds.CreateMini())));
         var report = Find(found, PdfDiagnosticCode.HeaderOffset);
-
         await Assert.That(report.Offset).IsEqualTo(Junk.Length);
     }
 
@@ -99,7 +96,6 @@ public sealed class DiagnosticsTests
         var offset = text.IndexOf("\n3 0 obj", StringComparison.Ordinal) + 1;
         var row = string.Create(CultureInfo.InvariantCulture, $"{offset:D10} 00000 n");
         var found = Open(Replace(file, row, "0000000001 00000 n"));
-
         await Assert.That(Find(found, PdfDiagnosticCode.BrokenObject).ObjectNumber).IsEqualTo(PageNumber);
         await Assert.That(Codes(found)).Contains(PdfDiagnosticCode.XrefRebuilt);
     }
@@ -111,7 +107,6 @@ public sealed class DiagnosticsTests
     {
         var file = MiniPdf.Build(Catalog, Pages, ContentPage, "<< /Length 3 >>\nstream\nabcdefgh\nendstream");
         var found = Open(file);
-
         await Assert.That(Find(found, PdfDiagnosticCode.BadStreamLength).ObjectNumber).IsEqualTo(ContentNumber);
     }
 
@@ -122,7 +117,6 @@ public sealed class DiagnosticsTests
     {
         var file = MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /NoSuchDecode", "abc"));
         var found = Open(file);
-
         await Assert.That(Find(found, PdfDiagnosticCode.UnknownFilter).ObjectNumber).IsEqualTo(ContentNumber);
     }
 
@@ -141,9 +135,8 @@ public sealed class DiagnosticsTests
         var file = MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /RunLengthDecode", Encoding.Latin1.GetString(runs)));
         var found = new ConcurrentQueue<PdfDiagnostic>();
         using var document = PdfDocumentReader.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
-        var stream = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!;
+        var stream = StoreReading.GetObject(document.Objects, new(ContentNumber, 0)).AsStream()!;
         var length = stream.DecodeToArray().Length;
-
         await Assert.That(Find(found, PdfDiagnosticCode.DecodeSizeCapped).ObjectNumber).IsEqualTo(ContentNumber);
         await Assert.That(length).IsGreaterThan(0);
     }
@@ -153,7 +146,7 @@ public sealed class DiagnosticsTests
     [Test]
     public async Task DeepPageTreeReportsRecursionLimit()
     {
-        var objects = new List<string> { Catalog };
+        var objects = new List<string> { Catalog, };
         for (var i = 0; i < TooDeep; i++)
         {
             objects.Add(string.Create(CultureInfo.InvariantCulture, $"<< /Type /Pages /Kids [{i + PageNumber} 0 R] /Count 1 >>"));
@@ -161,7 +154,6 @@ public sealed class DiagnosticsTests
 
         objects.Add("<< /Type /Page /MediaBox [0 0 9 9] >>");
         var found = Open(MiniPdf.Build([.. objects]));
-
         await Assert.That(Codes(found)).Contains(PdfDiagnosticCode.RecursionLimit);
     }
 
@@ -173,8 +165,7 @@ public sealed class DiagnosticsTests
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
         var file = RobustnessSeeds.CreateMini();
-        var options = new PdfOpenOptions { CancellationToken = source.Token };
-
+        var options = new PdfOpenOptions { CancellationToken = source.Token, };
         await Assert.That(() => PdfDocumentReader.OpenWith(file, options)).Throws<OperationCanceledException>();
     }
 
@@ -186,8 +177,7 @@ public sealed class DiagnosticsTests
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
         var file = Replace(RobustnessSeeds.CreateMini(), "startxref", "startxxxx");
-        var options = new PdfOpenOptions { CancellationToken = source.Token };
-
+        var options = new PdfOpenOptions { CancellationToken = source.Token, };
         await Assert.That(() => PdfDocumentReader.OpenWith(file, options)).Throws<OperationCanceledException>();
     }
 
@@ -198,10 +188,9 @@ public sealed class DiagnosticsTests
     {
         using var source = new CancellationTokenSource();
         using var document = PdfDocumentReader.OpenWith(RobustnessSeeds.CreateMini(), new PdfOpenOptions { CancellationToken = source.Token });
-        var stream = document.Objects.GetObject(new(MiniStreamNumber, 0)).AsStream()!;
+        var stream = StoreReading.GetObject(document.Objects, new(MiniStreamNumber, 0)).AsStream()!;
         var before = stream.DecodeToArray();
         await source.CancelAsync();
-
         await Assert.That(before.Length).IsGreaterThan(0);
         await Assert.That(() => stream.DecodeToArray()).Throws<OperationCanceledException>();
     }
@@ -214,7 +203,7 @@ public sealed class DiagnosticsTests
         var file = MiniPdf.Build(Catalog, Pages, ContentPage, MiniPdf.Stream("/Filter /NoSuchDecode", "abc"));
         var found = new ConcurrentQueue<PdfDiagnostic>();
         using var document = PdfDocumentReader.OpenWith(file, new PdfOpenOptions { Diagnostics = found.Enqueue });
-        var stream = document.Objects.GetObject(new(ContentNumber, 0)).AsStream()!;
+        var stream = StoreReading.GetObject(document.Objects, new(ContentNumber, 0)).AsStream()!;
         var tasks = new Task[Readers];
         for (var i = 0; i < tasks.Length; i++)
         {
@@ -222,7 +211,6 @@ public sealed class DiagnosticsTests
         }
 
         await Task.WhenAll(tasks);
-
         await Assert.That(found.Count).IsEqualTo(Readers);
     }
 
@@ -273,6 +261,5 @@ public sealed class DiagnosticsTests
     /// <param name="from">The text to find.</param>
     /// <param name="to">The replacement.</param>
     /// <returns>The new file.</returns>
-    private static byte[] Replace(byte[] file, string from, string to) =>
-        Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(file).Replace(from, to, StringComparison.Ordinal));
+    private static byte[] Replace(byte[] file, string from, string to) => Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(file).Replace(from, to, StringComparison.Ordinal));
 }

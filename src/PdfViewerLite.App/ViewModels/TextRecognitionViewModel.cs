@@ -348,7 +348,9 @@ public sealed partial class TextRecognitionViewModel : ReactiveObject, IDisposab
     /// <returns>A task.</returns>
     private async Task RunAsync(bool confirmed)
     {
-        if (_owner.TryGetDocument() is not { } document || document is not ITextLayerWriter writer || !CheckReady())
+        if (_owner.TryGetDocument() is not { } document || ((document)?.GetFeature(typeof(ITextLayerWriter)) as ITextLayerWriter) is not
+            {
+            } writer || !CheckReady())
         {
             return;
         }
@@ -482,33 +484,33 @@ public sealed partial class TextRecognitionViewModel : ReactiveObject, IDisposab
             switch (result.Status)
             {
                 case OcrPageStatus.Recognized:
-                {
-                    checkFirst = false;
-                    run = run with { Recognized = run.Recognized + 1 };
-                    _owner.OnPageEdited(index);
-                    break;
-                }
+                    {
+                        checkFirst = false;
+                        run = run with { Recognized = run.Recognized + 1 };
+                        _owner.OnPageEdited(index);
+                        break;
+                    }
 
                 case OcrPageStatus.AlreadyHasText:
-                {
-                    run = run with { AlreadyText = run.AlreadyText + 1 };
-                    break;
-                }
+                    {
+                        run = run with { AlreadyText = run.AlreadyText + 1 };
+                        break;
+                    }
 
                 case OcrPageStatus.NotRendered:
-                {
-                    return run with { Closed = true };
-                }
+                    {
+                        return run with { Closed = true };
+                    }
 
                 case OcrPageStatus.Unsure:
-                {
-                    return run with { Unsure = true };
-                }
+                    {
+                        return run with { Unsure = true };
+                    }
 
                 default:
-                {
-                    break;
-                }
+                    {
+                        break;
+                    }
             }
         }
 

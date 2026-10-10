@@ -54,14 +54,14 @@ internal sealed class PdfChangeClassifier
         _metadata = catalog.GetRaw(KnownName.Metadata).AsReference().Number;
         var acroForm = catalog.GetRaw(KnownName.AcroForm);
         _acroForm = acroForm.AsReference().Number;
-        _fieldsArray = _store.Resolve(acroForm).AsDictionary()?.GetRaw(KnownName.Fields).AsReference().Number ?? 0;
+        _fieldsArray = StoreReading.Resolve(_store, acroForm).AsDictionary()?.GetRaw(KnownName.Fields).AsReference().Number ?? 0;
         for (var i = 0; i < document.PageCount; i++)
         {
             var page = PdfDocumentPages.GetPage(document, i).Dictionary;
             AddReference(_annotationArrays, page.GetRaw(KnownName.Annots));
             var contents = page.GetRaw(KnownName.Contents);
             AddReference(_contentStreams, contents);
-            var array = _store.Resolve(contents).AsArray();
+            var array = StoreReading.Resolve(_store, contents).AsArray();
             for (var j = 0; array is not null && j < array.Count; j++)
             {
                 AddReference(_contentStreams, array.GetRaw(j));
@@ -93,10 +93,10 @@ internal sealed class PdfChangeClassifier
     internal static PdfChangeClassifier Classify(PdfDocument document)
     {
         var classifier = new PdfChangeClassifier(document);
-        foreach (var edited in document.Objects.GetEditedObjects(out _))
+        foreach (var edited in StoreEditing.GetEditedObjects(document.Objects, out _))
         {
             _ = classifier.ChangedObjects.Add(edited.Number);
-            var original = document.Objects.GetOriginal(edited.Number);
+            var original = StoreTransactions.GetOriginal(document.Objects, edited.Number);
             if (!PdfValueEquality.Equal(original, edited.Value))
             {
                 classifier.Kinds |= classifier.ClassifyObject(edited.Number, original, edited.Value);
@@ -157,27 +157,47 @@ internal sealed class PdfChangeClassifier
     /// <param name="dictionary">The dictionary.</param>
     /// <returns><see langword="true"/> when it is typed /Annot or has a subtype and a rectangle.</returns>
     private static bool IsAnnotation(PdfDictionary dictionary) =>
-        dictionary.IsName(KnownName.Type, KnownName.Annot) || (dictionary.ContainsKey(KnownName.Subtype) && dictionary.ContainsKey(KnownName.Rect));
+        dictionary.IsName(
+        KnownName.Type,
+        KnownName.Annot) || (dictionary.ContainsKey(KnownName.Subtype)
+        && dictionary.ContainsKey(KnownName.Rect));
 
     /// <summary>Determines whether a dictionary is a form field that is not also a widget.</summary>
     /// <param name="dictionary">The dictionary.</param>
     /// <returns><see langword="true"/> when it is.</returns>
     private static bool IsField(PdfDictionary dictionary) =>
-        dictionary.ContainsKey(KnownName.FT) || (dictionary.ContainsKey(KnownName.T) && (dictionary.ContainsKey(KnownName.Kids) || dictionary.ContainsKey(KnownName.Parent)));
+        dictionary.ContainsKey(KnownName.FT)
+        || (dictionary.ContainsKey(KnownName.T)
+        && (dictionary.ContainsKey(KnownName.Kids)
+        || dictionary.ContainsKey(KnownName.Parent)));
 
     /// <summary>Classifies a page dictionary.</summary>
     /// <param name="original">The page in the file.</param>
     /// <param name="current">The page now.</param>
     /// <returns>Annotations when only /Annots changed, otherwise page changes.</returns>
-    private static PdfChangeKinds ClassifyPage(PdfDictionary? original, PdfDictionary? current) =>
-        original is null || current is null || PdfValueEquality.DiffersOutside(original, current, AnnotationKeys) ? PdfChangeKinds.PageChanges : PdfChangeKinds.Annotations;
+    private static PdfChangeKinds ClassifyPage(
+        PdfDictionary? original,
+        PdfDictionary? current) =>
+        original is null
+        || current is null
+        || PdfValueEquality.DiffersOutside(
+        original,
+        current,
+        AnnotationKeys) ? PdfChangeKinds.PageChanges : PdfChangeKinds.Annotations;
 
     /// <summary>Classifies an AcroForm change: form flags only, or the form's structure.</summary>
     /// <param name="original">One side.</param>
     /// <param name="current">The other side.</param>
     /// <returns>The kinds.</returns>
-    private static PdfChangeKinds ClassifyAcroForm(PdfDictionary? original, PdfDictionary? current) =>
-        original is null || current is null || PdfValueEquality.DiffersOutside(original, current, FormFlagKeys) ? PdfChangeKinds.Other : PdfChangeKinds.FormFill;
+    private static PdfChangeKinds ClassifyAcroForm(
+        PdfDictionary? original,
+        PdfDictionary? current) =>
+        original is null
+        || current is null
+        || PdfValueEquality.DiffersOutside(
+        original,
+        current,
+        FormFlagKeys) ? PdfChangeKinds.Other : PdfChangeKinds.FormFill;
 
     /// <summary>Classifies a dictionary that is not a page, annotation or field.</summary>
     /// <param name="type">Its /Type.</param>
@@ -312,7 +332,7 @@ internal sealed class PdfChangeClassifier
                 KnownName.Pages => PdfChangeKinds.PageChanges,
                 KnownName.Metadata => PdfChangeKinds.Metadata,
                 KnownName.DSS => PdfChangeKinds.Signing,
-                KnownName.AcroForm => ClassifyAcroForm(_store.Resolve(source.GetValueAt(i)).AsDictionary(), _store.Resolve(other.GetRaw(key)).AsDictionary()),
+                KnownName.AcroForm => ClassifyAcroForm(StoreReading.Resolve(_store, source.GetValueAt(i)).AsDictionary(), StoreReading.Resolve(_store, other.GetRaw(key)).AsDictionary()),
                 _ => PdfChangeKinds.Other,
             };
         }

@@ -109,7 +109,13 @@ public sealed class PageExportTests
     public async Task PrintLayoutsRespectSignatureChoice(PrintImposition imposition, bool includeAnnotations)
     {
         var source = ExportRun.CreateEditedSource(TestPdf.Create(1), static document =>
-            _ = ((IAnnotationEditor)document).AddText(0, NoteAt, PrintedSignature, SignatureSize, AnnotationColors.Ink, AnnotationKind.Signature));
+            _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).AddText(
+                0,
+                NoteAt,
+                PrintedSignature,
+                SignatureSize,
+                AnnotationColors.Ink,
+                AnnotationKind.Signature));
         try
         {
             var layout = new SheetLayout(GridPages, PaperSize.A4, includeAnnotations) { Imposition = imposition, PosterTiles = 1 };
@@ -137,7 +143,7 @@ public sealed class PageExportTests
     {
         var signed = ExportRun.CreateEditedSource(TestPdf.Create(1), document =>
         {
-            var editor = (IAnnotationEditor)document;
+            var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
             var index = editor.AddInk(0, DrawnSignature, [DrawnSignature.Length], AnnotationColors.Ink, InkWidth, AnnotationKind.Signature);
             _ = !recolour || editor.SetColor(0, index, AnnotationColors.Clay);
         });
@@ -209,21 +215,23 @@ public sealed class PageExportTests
 
     /// <summary>Verifies the chosen pages come out in order, with the annotation added before exporting.</summary>
     /// <returns>A task.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when <c>run.Output</c> is <see langword="null"/>.</exception>
     [Test]
     public async Task ExportsChosenPagesWithAnnotations()
     {
         var source = ExportRun.CreateEditedSource(TestPdf.Create(Pages), static document =>
-            _ = ((IAnnotationEditor)document).AddNote(0, NoteAt, "On the first page", AnnotationColors.Sand));
+            _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).AddNote(0, NoteAt, "On the first page", AnnotationColors.Sand));
         try
         {
             using var run = ExportRun.Create(source, [ThirdPage, 0], SheetLayout.Default, true);
+            var output = run.Output ?? throw new InvalidOperationException();
             List<PageAnnotation> annotations = [];
-            ((IAnnotationEditor)run.Output!).GetAnnotations(1, annotations);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(output!, typeof(IAnnotationEditor))!).GetAnnotations(1, annotations);
 
             await Assert.That(run.Written).IsTrue();
-            await Assert.That(run.Output.PageCount).IsEqualTo(ExportedPages);
-            await Assert.That(run.Output.GetText(0, 0, run.Output.GetCharacterCount(0))).Contains("Page 3");
-            await Assert.That(run.Output.GetText(1, 0, run.Output.GetCharacterCount(1))).Contains("Page 1");
+            await Assert.That(output.PageCount).IsEqualTo(ExportedPages);
+            await Assert.That(output.GetText(0, 0, output.GetCharacterCount(0))).Contains("Page 3");
+            await Assert.That(output.GetText(1, 0, output.GetCharacterCount(1))).Contains("Page 1");
             await Assert.That(annotations.Exists(static a => a.Kind == AnnotationKind.Note)).IsTrue();
         }
         finally
@@ -238,7 +246,7 @@ public sealed class PageExportTests
     public async Task PlainExportLeavesOutMarkupButKeepsWidgets()
     {
         var source = ExportRun.CreateEditedSource(TestPdf.CreateForm(), static document =>
-            _ = ((IAnnotationEditor)document).AddNote(0, NoteAt, "Left out", AnnotationColors.Sand));
+            _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).AddNote(0, NoteAt, "Left out", AnnotationColors.Sand));
         try
         {
             using var run = ExportRun.Create(source, [0], new(1, PaperSize.A4, false), true);
@@ -265,13 +273,13 @@ public sealed class PageExportTests
     public async Task LaysPagesOntoSheets(int perSheet, int sheets, bool landscape)
     {
         var source = ExportRun.CreateEditedSource(TestPdf.Create(Pages), static document =>
-            _ = ((IAnnotationEditor)document).AddNote(0, NoteAt, "Left out", AnnotationColors.Sand));
+            _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).AddNote(0, NoteAt, "Left out", AnnotationColors.Sand));
         try
         {
             using var run = ExportRun.Create(source, [0, 1, ThirdPage, Pages - 1], new(perSheet, PaperSize.A4, false), true);
             var size = run.Output!.GetPageSizes()[0];
             List<PageAnnotation> annotations = [];
-            ((IAnnotationEditor)run.Output).GetAnnotations(0, annotations);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(run.Output, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
 
             await Assert.That(run.Output.PageCount).IsEqualTo(sheets);
             await Assert.That(size.Width > size.Height).IsEqualTo(landscape);
@@ -319,8 +327,8 @@ public sealed class PageExportTests
             using var document = new HyperPdfEngine().Open(source, null);
             await using var stream = new MemoryStream();
 
-            await Assert.That(((IPageExporter)document).ExportPages([Pages], SheetLayout.Default, stream)).IsFalse();
-            await Assert.That(((IPageExporter)document).ExportPages([], SheetLayout.Default, stream)).IsFalse();
+            await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([Pages], SheetLayout.Default, stream)).IsFalse();
+            await Assert.That(((IPageExporter)DocumentFeatures.CastFeature(document, typeof(IPageExporter))!).ExportPages([], SheetLayout.Default, stream)).IsFalse();
             await Assert.That(stream.Length).IsEqualTo(0);
         }
         finally
@@ -367,7 +375,7 @@ public sealed class PageExportTests
     /// <returns>The file path.</returns>
     private static string FilledForm() => ExportRun.CreateEditedSource(TestPdf.CreateForm(), static document =>
     {
-        var filler = (IFormFiller)document;
+        var filler = (IFormFiller)DocumentFeatures.CastFeature(document, typeof(IFormFiller))!;
         List<FormField> fields = [];
         filler.GetFields(0, fields);
         _ = filler.SetText(0, fields[0].Index, PrintedField);

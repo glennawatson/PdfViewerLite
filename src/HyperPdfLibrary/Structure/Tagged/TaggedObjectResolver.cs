@@ -42,7 +42,7 @@ internal sealed class TaggedObjectResolver
     /// <param name="kid">The <c>/OBJR</c> kid.</param>
     internal void Attach(PdfSemanticNode node, in PdfStructureKid kid)
     {
-        if (node.Annotation is not null || _document.Objects.GetObject(kid.Object).AsDictionary() is not { } target)
+        if (node.Annotation is not null || StoreReading.GetObject(_document.Objects, kid.Object).AsDictionary() is not { } target)
         {
             return;
         }
@@ -87,14 +87,12 @@ internal sealed class TaggedObjectResolver
     /// <summary>Reads a link annotation's web address.</summary>
     /// <param name="link">The link annotation.</param>
     /// <returns>The address, or <see langword="null"/>.</returns>
-    private static string? ReadUri(PdfDictionary link) =>
-        link.GetDictionary(KnownName.A) is { } action && action.IsName(KnownName.S, KnownName.URI) ? action.GetText(KnownName.URI) : null;
+    private static string? ReadUri(PdfDictionary link) => link.GetDictionary(KnownName.A) is { } action && action.IsName(KnownName.S, KnownName.URI) ? action.GetText(KnownName.URI) : null;
 
     /// <summary>Reads a widget's partial field name, for a widget the form reader does not list.</summary>
     /// <param name="widget">The widget.</param>
     /// <returns>The name, or <see langword="null"/>.</returns>
-    private static string? ReadPartialName(PdfDictionary widget) =>
-        widget.GetText(KnownName.T) ?? widget.GetDictionary(KnownName.Parent)?.GetText(KnownName.T);
+    private static string? ReadPartialName(PdfDictionary widget) => widget.GetText(KnownName.T) ?? widget.GetDictionary(KnownName.Parent)?.GetText(KnownName.T);
 
     /// <summary>Fills in what a link or form field node needs.</summary>
     /// <param name="node">The node.</param>
@@ -154,7 +152,7 @@ internal sealed class TaggedObjectResolver
         if (_widgets is null)
         {
             _widgets = [];
-            PdfDocumentForms.GetForm(_document).GetWidgets(_page.Index, _widgets);
+            HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(PdfDocumentForms.GetForm(_document), _page.Index, _widgets);
         }
 
         foreach (var widget in _widgets)

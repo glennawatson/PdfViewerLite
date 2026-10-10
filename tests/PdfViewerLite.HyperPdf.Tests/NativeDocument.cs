@@ -24,12 +24,13 @@ internal sealed class NativeDocument : IDisposable
 
     /// <summary>Initializes a new instance of the <see cref="NativeDocument"/> class.</summary>
     /// <param name="bytes">The PDF bytes.</param>
+    /// <exception cref="InvalidOperationException">The document has no text layer writer.</exception>
     internal NativeDocument(byte[] bytes)
     {
         FilePath = Path.Combine(Path.GetTempPath(), $"hyperpdf-annotations-{Guid.NewGuid():N}.pdf");
         File.WriteAllBytes(FilePath, bytes);
         Document = (HyperPdfDocument)new HyperPdfEngine().Open(FilePath, null);
-        Editor = Document.Annotations;
+        Editor = HyperPdfAnnotationStateAccess.GetAnnotations(Document);
     }
 
     /// <summary>Gets the file path.</summary>
@@ -58,6 +59,16 @@ internal sealed class NativeDocument : IDisposable
         return stream.ToArray();
     }
 
+    /// <summary>Saves an editor's document into memory.</summary>
+    /// <param name="editor">The editor.</param>
+    /// <returns>The saved bytes.</returns>
+    internal static byte[] Save(HyperPdfAnnotations editor)
+    {
+        using var stream = new MemoryStream();
+        _ = HyperPdfAnnotationSaving.Save(editor, stream);
+        return stream.ToArray();
+    }
+
     /// <summary>Reads a page's annotations from a file.</summary>
     /// <param name="editor">The editor.</param>
     /// <param name="page">The page.</param>
@@ -66,6 +77,17 @@ internal sealed class NativeDocument : IDisposable
     {
         var annotations = new List<PageAnnotation>();
         editor.GetAnnotations(page, annotations);
+        return annotations;
+    }
+
+    /// <summary>Reads a page's annotations from a file.</summary>
+    /// <param name="editor">The editor.</param>
+    /// <param name="page">The page.</param>
+    /// <returns>The annotations.</returns>
+    internal static List<PageAnnotation> Read(HyperPdfAnnotations editor, int page)
+    {
+        var annotations = new List<PageAnnotation>();
+        HyperPdfAnnotationReading.GetAnnotations(editor, page, annotations);
         return annotations;
     }
 
@@ -78,7 +100,7 @@ internal sealed class NativeDocument : IDisposable
         using var document = OpenWithPdfium(bytes, out var path);
         try
         {
-            return Read((IAnnotationEditor)document, page);
+            return Read((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!, page);
         }
         finally
         {

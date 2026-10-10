@@ -43,9 +43,7 @@ public sealed class XrefBoundsTests
     public async Task ClassicSubsectionLargerThanFileIsRejected(int count)
     {
         var file = ClassicFile(count);
-
-        using var store = PdfObjectStore.Open(file, null);
-
+        using var store = StoreOpening.Open(file, null);
         await Assert.That(store.WasRepaired).IsTrue();
         await Assert.That(store.Size).IsEqualTo(ObjectCount + 1);
         await Assert.That(store.Catalog.IsName(KnownName.Type, KnownName.Catalog)).IsTrue();
@@ -57,9 +55,7 @@ public sealed class XrefBoundsTests
     public async Task StreamSubsectionBeyondLimitIsSkipped()
     {
         var file = StreamFile();
-
-        using var store = PdfObjectStore.Open(file, null);
-
+        using var store = StoreOpening.Open(file, null);
         await Assert.That(store.WasRepaired).IsFalse();
         await Assert.That(store.UsesXrefStreams).IsTrue();
         await Assert.That(store.Size).IsEqualTo(StreamSize);
@@ -85,14 +81,7 @@ public sealed class XrefBoundsTests
     {
         var pdf = new RawPdf().Object(1, Catalog).Object(ObjectCount, Pages);
         var self = pdf.Position;
-        List<RawPdf.XrefStreamEntry> entries =
-        [
-            new(0, 0, FreeGeneration),
-            new(1, pdf.OffsetOf(1), 0),
-            new(1, pdf.OffsetOf(ObjectCount), 0),
-            new(1, self, 0),
-            new(1, 0, 0),
-        ];
+        List<RawPdf.XrefStreamEntry> entries = [new(0, 0, FreeGeneration), new(1, pdf.OffsetOf(1), 0), new(1, pdf.OffsetOf(ObjectCount), 0), new(1, self, 0), new(1, 0, 0),];
         return pdf.XrefStream(XrefObject, StreamSize, $"[0 {StreamSize} {OverLimitCount} 1]", "/Root 1 0 R", entries).ToArray();
     }
 }

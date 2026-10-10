@@ -72,7 +72,10 @@ public sealed class PdfOptionalContent
             var layers = new PdfLayer[_defaults.Length];
             for (var i = 0; i < layers.Length; i++)
             {
-                layers[i] = _defaults[i] with { IsVisible = !hidden.Contains(_defaults[i].Id) };
+                layers[i] = _defaults[i] with
+                {
+                    IsVisible = !hidden.Contains(_defaults[i].Id)
+                };
             }
 
             return layers;
@@ -197,7 +200,7 @@ public sealed class PdfOptionalContent
             return true;
         }
 
-        var dictionary = _objects.Resolve(value).AsDictionary();
+        var dictionary = StoreReading.Resolve(_objects, value).AsDictionary();
         if (dictionary is null)
         {
             return true;
@@ -229,7 +232,7 @@ public sealed class PdfOptionalContent
     private bool EvaluatePolicy(PdfDictionary membership, HashSet<int> hidden)
     {
         var groups = membership.GetRaw(KnownName.OCGs);
-        var resolved = _objects.Resolve(groups);
+        var resolved = StoreReading.Resolve(_objects, groups);
         if (resolved.AsDictionary() is not null)
         {
             return IsGroupShown(groups, hidden);
@@ -245,7 +248,7 @@ public sealed class PdfOptionalContent
         for (var i = 0; i < array.Count; i++)
         {
             var item = array.GetRaw(i);
-            if (_objects.Resolve(item).AsDictionary() is null)
+            if (StoreReading.Resolve(_objects, item).AsDictionary() is null)
             {
                 continue;
             }
@@ -294,8 +297,18 @@ public sealed class PdfOptionalContent
     /// <param name="hidden">The hidden groups.</param>
     /// <param name="depth">The nesting depth.</param>
     /// <returns><see langword="true"/> when shown.</returns>
-    private bool EvaluateOperand(PdfValue operand, HashSet<int> hidden, int depth) =>
-        _objects.Resolve(operand).AsArray() is { } nested && depth <= MaxExpressionDepth
-            ? EvaluateExpression(nested, hidden, depth + 1)
-            : Evaluate(operand, hidden, depth);
+    private bool EvaluateOperand(
+        PdfValue operand,
+        HashSet<int> hidden,
+        int depth) =>
+        StoreReading.Resolve(
+        _objects,
+        operand).AsArray() is { } nested
+        && depth <= MaxExpressionDepth ? EvaluateExpression(
+        nested,
+        hidden,
+        depth + 1) : Evaluate(
+        operand,
+        hidden,
+        depth);
 }

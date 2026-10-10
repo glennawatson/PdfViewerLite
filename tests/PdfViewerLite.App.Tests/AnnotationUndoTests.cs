@@ -312,7 +312,7 @@ public sealed class AnnotationUndoTests
     {
         using var document = test.Services.Engine.Open(path, null);
         var annotations = new List<PageAnnotation>();
-        ((IAnnotationEditor)document).GetAnnotations(0, annotations);
+        ((IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).GetAnnotations(0, annotations);
         return [.. annotations.Select(static a => a.Kind)];
     }
 }

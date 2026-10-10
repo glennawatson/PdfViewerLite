@@ -25,7 +25,7 @@ public sealed class SignatureValidationParityTests
         using var certificate = PdfSigning.CreateCertificate("Parity Signer", null, false, TimeProvider.System);
         var file = SignatureSamples.AddAnnotation(SignatureSamples.FillForm(SignatureSamples.Signed(certificate, FormFill, string.Empty)));
         using var pair = new EnginePair(file);
-        var expected = ((ISignatureSource)pair.Pdfium).GetSignatures();
+        var expected = ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.Pdfium, typeof(ISignatureSource))!).GetSignatures();
         using var document = PdfDocumentReader.Open(file, null);
         var details = PdfDocumentSignatureValidation.GetSignatureDetails(document);
 
@@ -46,8 +46,8 @@ public sealed class SignatureValidationParityTests
     public async Task UnsignedFieldMatches()
     {
         using var pair = new EnginePair(SignatureSamples.Unsigned());
-        var expected = ((ISignatureSource)pair.Pdfium).GetSignatures();
-        var actual = ((ISignatureSource)pair.HyperPdf).GetSignatures();
+        var expected = ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.Pdfium, typeof(ISignatureSource))!).GetSignatures();
+        var actual = ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.HyperPdf, typeof(ISignatureSource))!).GetSignatures();
 
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         await Assert.That(actual[0].Contents).IsEquivalentTo(expected[0].Contents);

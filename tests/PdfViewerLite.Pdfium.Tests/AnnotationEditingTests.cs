@@ -148,7 +148,7 @@ public sealed class AnnotationEditingTests
     public async Task MovesAndResizesAnnotations()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         int[] indexes =
         [
             editor.AddShape(Page, AnnotationKind.Rectangle, BoxStart, BoxEnd, AnnotationColors.Clay, Width),
@@ -197,7 +197,7 @@ public sealed class AnnotationEditingTests
     public async Task RefusesToMoveMarkupAndRemovedAnnotations()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var highlight = editor.AddMarkup(Page, AnnotationKind.Highlight, [MarkedLine], AnnotationColors.Sand, string.Empty);
         var box = editor.AddShape(Page, AnnotationKind.Rectangle, BoxStart, BoxEnd, AnnotationColors.Clay, Width);
         _ = editor.SetRemoved(Page, box, true);
@@ -218,7 +218,7 @@ public sealed class AnnotationEditingTests
     public async Task RemovesAndRestoresWithoutShiftingIndexes()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var box = editor.AddShape(Page, AnnotationKind.Rectangle, BoxStart, BoxEnd, AnnotationColors.Clay, Width);
         var note = editor.AddNote(Page, NoteAt, "Keep me", AnnotationColors.Sand);
         var side = new PagePoint(BoxStart.X, BoxStart.Y + SideProbe);
@@ -248,7 +248,7 @@ public sealed class AnnotationEditingTests
     public async Task RestylesAnnotations()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var ink = editor.AddInk(Page, Stroke, [Stroke.Length], AnnotationColors.Ink, Width, AnnotationKind.Ink);
         var box = editor.AddShape(Page, AnnotationKind.Rectangle, BoxStart, BoxEnd, AnnotationColors.Clay, Width);
         var text = editor.AddText(Page, TextAt, "Bigger", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
@@ -288,7 +288,7 @@ public sealed class AnnotationEditingTests
     public async Task SavesPolygonsCloudsAndCalloutsAsStandardTypes()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         int[] indexes =
         [
             editor.AddPolygon(Page, AnnotationKind.Polygon, Triangle, AnnotationColors.Slate, Width),
@@ -326,14 +326,14 @@ public sealed class AnnotationEditingTests
     public async Task MovesSavedPolygons()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         _ = editor.AddPolygon(Page, AnnotationKind.Cloud, Triangle, AnnotationColors.Clay, Width);
         var path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-polygon-{Guid.NewGuid():N}.pdf");
         try
         {
             await File.WriteAllBytesAsync(path, await SaveAsync(editor));
             using var reopened = new PdfiumEngine().Open(path, null);
-            var reopenedEditor = (IAnnotationEditor)reopened;
+            var reopenedEditor = (IAnnotationEditor)DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!;
             var before = Read(reopenedEditor)[0];
             var moved = reopenedEditor.SetBounds(Page, before.Index, before.Bounds with { Top = before.Bounds.Top + Shift });
             var recoloured = reopenedEditor.SetColor(Page, before.Index, AnnotationColors.Slate);
@@ -357,7 +357,7 @@ public sealed class AnnotationEditingTests
     public async Task PlacesPictureStamps()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var pixels = new byte[PictureSide * PictureSide * BytesPerPixel];
         for (var i = 0; i < pixels.Length; i += BytesPerPixel)
         {
@@ -387,7 +387,7 @@ public sealed class AnnotationEditingTests
     public async Task RecordsTheChosenAuthor()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var defaultAuthor = editor.Author;
         editor.Author = "  Sam Reviewer ";
         var note = editor.AddNote(Page, NoteAt, "Hello", AnnotationColors.Sand);
@@ -439,7 +439,7 @@ public sealed class AnnotationEditingTests
         {
             File.WriteAllBytes(path, bytes);
             using var document = new PdfiumEngine().Open(path, null);
-            return Read((IAnnotationEditor)document);
+            return Read((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!);
         }
         finally
         {

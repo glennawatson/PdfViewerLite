@@ -253,7 +253,7 @@ public static class PdfRedactions
     private static void WriteRegions(PdfObjectStore store, PdfDictionary annotation, ReadOnlySpan<PdfRectangle> regions)
     {
         annotation.Set(KnownName.QuadPoints, PdfValue.FromArray(CreateQuads(store, regions)));
-        var preview = store.Add(PdfValue.FromStream(CreatePreview(store, regions, Union(regions))));
+        var preview = StoreEditing.Add(store, PdfValue.FromStream(CreatePreview(store, regions, Union(regions))));
         var normal = new PdfDictionary(store, 1);
         normal.Set(KnownName.N, PdfValue.FromReference(preview));
         annotation.Set(KnownName.AP, PdfValue.FromDictionary(normal));
@@ -264,8 +264,7 @@ public static class PdfRedactions
     /// <param name="index">The annotation index.</param>
     /// <param name="annotation">The annotation.</param>
     /// <returns>The redaction.</returns>
-    private static PdfRedaction Read(int pageIndex, int index, PdfDictionary annotation) =>
-        new(pageIndex, index, GetRegions(annotation), ReadAppearance(annotation));
+    private static PdfRedaction Read(int pageIndex, int index, PdfDictionary annotation) => new(pageIndex, index, GetRegions(annotation), ReadAppearance(annotation));
 
     /// <summary>Gets the bounds of one quadrilateral of <c>/QuadPoints</c>.</summary>
     /// <param name="quads">The array.</param>

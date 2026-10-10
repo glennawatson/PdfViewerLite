@@ -19,3 +19,39 @@ jobs:
       dotnetVersions: |
         10.x
         11.x
+  rendering-comparison:
+    name: Standards and reference rendering
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Setup .NET
+        uses: glennawatson/actions-common/.github/actions/dotnet-environment@b824c637960b1886a6a30a2526856bbf017661cf
+        with:
+          src-folder: '.'
+          stamp-version: 'false'
+          dotnet-versions: '11.x'
+      - name: Install verified Firefox
+        id: firefox
+        run: dotnet run --file scripts/InstallComparisonFirefox.cs -- "${{ runner.temp }}/comparison-firefox"
+      - name: Fetch verified comparison PDFs
+        run: dotnet run --file scripts/FetchComparisonCorpus.cs -- tests/corpus/corpus.json "${{ runner.temp }}/comparison-corpus" loc-marbury-v-madison ia-us-reports-228 google-us-reports-vol2 pyhanko-ua-and-a
+      - name: Compare renderers against standards
+        env:
+          PVL_FIREFOX_PATH: ${{ steps.firefox.outputs.firefox-path }}
+          PVL_REQUIRE_PDFJS: '1'
+          PVL_REQUIRE_CORPUS: '1'
+          PDFVIEWERLITE_CORPUS_DIR: ${{ runner.temp }}/comparison-corpus
+          PDFVIEWERLITE_COMPARISON_OUTPUT: ${{ runner.temp }}/rendering-comparison
+        run: dotnet run --project "${{ github.workspace }}/tests/PdfViewerLite.HyperPdf.Tests/PdfViewerLite.HyperPdf.Tests.csproj" -c Release -f net11.0 -- --treenode-filter '/*/*RenderingComparison/*/*' --report-trx --results-directory "${{ runner.temp }}/rendering-comparison"
+      - name: Upload rendering comparisons
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: rendering-comparison
+          path: |
+            ${{ runner.temp }}/rendering-comparison
+            ${{ runner.temp }}/comparison-firefox/*.log
+            ${{ runner.temp }}/comparison-firefox/source.txt
+          if-no-files-found: warn

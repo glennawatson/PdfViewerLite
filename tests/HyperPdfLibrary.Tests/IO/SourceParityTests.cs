@@ -108,8 +108,8 @@ public sealed class SourceParityTests
             foreach (var kind in SourceOpener.Kinds)
             {
                 using var document = SourceOpener.Open(kind, file, PdfOpenOptions.Default, directory);
-                var array = document.Objects.GetObject(new(ArrayObject, 0)).AsArray()!;
-                var stream = document.Objects.GetObject(new(StreamObject, 0)).AsStream()!;
+                var array = StoreReading.GetObject(document.Objects, new(ArrayObject, 0)).AsArray()!;
+                var stream = StoreReading.GetObject(document.Objects, new(StreamObject, 0)).AsStream()!;
                 await Assert.That(array.Count).IsEqualTo(LargeArrayCount);
                 await Assert.That(stream.RawLength).IsEqualTo(LongStreamLength);
                 await Assert.That(PdfDocumentMetadata.GetInfo(document).Title!.Length).IsEqualTo(LargeStringLength);
@@ -241,7 +241,7 @@ public sealed class SourceParityTests
         using var document = SourceOpener.Open(kind, file, PdfOpenOptions.Default, directory);
         if (edit)
         {
-            _ = document.Objects.Add(PdfValue.FromInteger(EditedValue));
+            _ = StoreEditing.Add(document.Objects, PdfValue.FromInteger(EditedValue));
         }
 
         using var output = new MemoryStream();
@@ -259,7 +259,7 @@ public sealed class SourceParityTests
     private static async Task<byte[]> SaveAsync(string kind, byte[] file, string directory)
     {
         using var document = SourceOpener.Open(kind, file, PdfOpenOptions.Default, directory);
-        _ = document.Objects.Add(PdfValue.FromInteger(EditedValue));
+        _ = StoreEditing.Add(document.Objects, PdfValue.FromInteger(EditedValue));
         await using var output = new MemoryStream();
         await PdfIncrementalWriter.SaveAsync(document.Objects, output, CancellationToken.None);
         return output.ToArray();
@@ -279,12 +279,16 @@ public sealed class SourceParityTests
         var title = new string('t', LargeStringLength);
         var data = new string('d', LongStreamLength);
         var file = MiniPdf.Build(
-            "<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 5 0 R >>",
-            array.ToString(),
-            string.Create(CultureInfo.InvariantCulture, $"<< /Length 7 >>\nstream\n{data}\nendstream"),
-            string.Create(CultureInfo.InvariantCulture, $"<< /Title ({title}) >>"));
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 5 0 R >>",
+        array.ToString(),
+        string.Create(
+        CultureInfo.InvariantCulture,
+        $"<< /Length 7 >>\nstream\n{data}\nendstream"),
+        string.Create(
+        CultureInfo.InvariantCulture,
+        $"<< /Title ({title}) >>"));
 
         // MiniPdf writes no /Info; the trailer follows the table, so adding it there moves no offsets.
         var text = Encoding.Latin1.GetString(file).Replace("/Root 1 0 R >>", "/Root 1 0 R /Info 6 0 R >>", StringComparison.Ordinal);

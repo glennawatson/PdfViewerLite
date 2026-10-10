@@ -93,24 +93,24 @@ internal static class MarkedContentRewriter
         switch (op)
         {
             case ContentOperator.ShowText or ContentOperator.ShowTextArray or ContentOperator.NextLineShowText or ContentOperator.SetSpacingNextLineShowText:
-            {
-                return TagUnitKind.Text;
-            }
+                {
+                    return TagUnitKind.Text;
+                }
 
             case ContentOperator.BeginInlineImage:
-            {
-                return TagUnitKind.Figure;
-            }
+                {
+                    return TagUnitKind.Figure;
+                }
 
             case ContentOperator.PaintXObject:
-            {
-                return ClassifyXObject(reader.Operand(0).Name, resources, store);
-            }
+                {
+                    return ClassifyXObject(reader.Operand(0).Name, resources, store);
+                }
 
             default:
-            {
-                return null;
-            }
+                {
+                    return null;
+                }
         }
     }
 
@@ -122,7 +122,7 @@ internal static class MarkedContentRewriter
     private static TagUnitKind? ClassifyXObject(PdfName name, PdfDictionary? resources, PdfObjectStore store)
     {
         var raw = resources?.GetDictionary(KnownName.XObject)?.GetRaw(name) ?? default;
-        var subtype = store.Resolve(raw).AsStream()?.Dictionary.GetName(KnownName.Subtype) ?? default;
+        var subtype = StoreReading.Resolve(store, raw).AsStream()?.Dictionary.GetName(KnownName.Subtype) ?? default;
         return subtype.ToKnownName() switch
         {
             KnownName.Image => TagUnitKind.Figure,

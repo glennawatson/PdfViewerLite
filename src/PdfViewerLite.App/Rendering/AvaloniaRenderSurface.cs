@@ -11,7 +11,7 @@ using PdfViewerLite.Core.Rendering;
 
 namespace PdfViewerLite.App.Rendering;
 
-/// <summary>A tile backed by an Avalonia <see cref="WriteableBitmap"/>; PDFium renders straight into its pixels.</summary>
+/// <summary>A tile backed by an Avalonia <see cref="WriteableBitmap"/>; HyperPDF renders straight into its pixels.</summary>
 [DebuggerDisplay("AvaloniaRenderSurface: {Width} x {Height}")]
 internal sealed class AvaloniaRenderSurface : IRenderSurface
 {

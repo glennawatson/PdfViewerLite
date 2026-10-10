@@ -21,14 +21,14 @@ public sealed class ContentCheckTests
         try
         {
             using var document = new PdfiumEngine().Open(path, null);
-            var check = (IContentCheck)document;
+            var check = (IContentCheck)DocumentFeatures.CastFeature(document, typeof(IContentCheck))!;
             await Assert.That(check.CheckDocument()).IsEqualTo(UnsupportedContent.XfaForm | UnsupportedContent.JavaScript);
             await Assert.That(check.CheckPage(0)).IsEqualTo(UnsupportedContent.Multimedia | UnsupportedContent.ThreeD | UnsupportedContent.JavaScript);
             await Assert.That(check.CheckPage(1)).IsEqualTo(UnsupportedContent.None);
 
             using var simple = new PdfiumEngine().Open(plain, null);
-            await Assert.That(((IContentCheck)simple).CheckDocument()).IsEqualTo(UnsupportedContent.None);
-            await Assert.That(((IContentCheck)simple).CheckPage(0)).IsEqualTo(UnsupportedContent.None);
+            await Assert.That(((IContentCheck)DocumentFeatures.CastFeature(simple, typeof(IContentCheck))!).CheckDocument()).IsEqualTo(UnsupportedContent.None);
+            await Assert.That(((IContentCheck)DocumentFeatures.CastFeature(simple, typeof(IContentCheck))!).CheckPage(0)).IsEqualTo(UnsupportedContent.None);
         }
         finally
         {

@@ -62,7 +62,7 @@ public sealed class SignatureTests
         {
             using (var document = new PdfiumEngine().Open(path, null))
             {
-                var editor = (IAnnotationEditor)document;
+                var editor = (IAnnotationEditor)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
                 _ = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, string.Empty);
                 await using var stream = File.Create(annotated);
                 _ = editor.Save(stream);
@@ -119,6 +119,6 @@ public sealed class SignatureTests
     private static IReadOnlyList<RawSignature> Read(string path)
     {
         using var document = new PdfiumEngine().Open(path, null);
-        return ((ISignatureSource)document).GetSignatures();
+        return ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(ISignatureSource))!).GetSignatures();
     }
 }

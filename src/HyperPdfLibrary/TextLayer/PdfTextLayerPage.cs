@@ -53,7 +53,6 @@ internal static class PdfTextLayerPage
                 number++;
             }
             while (existing is not null && existing.ContainsKey(store.Names.Intern(buffer[..length])));
-
             names[i] = buffer[..length].ToArray();
         }
 
@@ -74,7 +73,7 @@ internal static class PdfTextLayerPage
         var copy = current.Clone();
         copy.Set(KnownName.Resources, PdfValue.FromDictionary(WithFonts(store, Resources(store, page), fonts, names, used)));
         copy.Set(KnownName.Contents, PdfValue.FromArray(WrapContents(store, current, content)));
-        store.Replace(page.Id, PdfValue.FromDictionary(copy));
+        StoreEditing.Replace(store, page.Id, PdfValue.FromDictionary(copy));
         return true;
     }
 
@@ -82,8 +81,7 @@ internal static class PdfTextLayerPage
     /// <param name="store">The document.</param>
     /// <param name="page">The page.</param>
     /// <returns>The resources, or <see langword="null"/> when there are none.</returns>
-    private static PdfDictionary? Resources(PdfObjectStore store, PdfPage page) =>
-        PdfPageAnnotations.GetPageDictionary(store, page).GetDictionary(KnownName.Resources) ?? page.Resources;
+    private static PdfDictionary? Resources(PdfObjectStore store, PdfPage page) => PdfPageAnnotations.GetPageDictionary(store, page).GetDictionary(KnownName.Resources) ?? page.Resources;
 
     /// <summary>Copies the resources with the used fonts added.</summary>
     /// <param name="store">The document.</param>
@@ -141,8 +139,16 @@ internal static class PdfTextLayerPage
     /// <param name="content">The content.</param>
     /// <returns>A reference to the stream.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static PdfValue Plain(PdfObjectStore store, ReadOnlySpan<byte> content) =>
-        PdfValue.FromReference(store.Add(PdfValue.FromStream(new(new PdfDictionary(store, 1), content.ToArray()))));
+    private static PdfValue Plain(
+        PdfObjectStore store,
+        ReadOnlySpan<byte> content) =>
+        PdfValue.FromReference(StoreEditing.Add(
+        store,
+        PdfValue.FromStream(new(
+        new PdfDictionary(
+        store,
+        1),
+        content.ToArray()))));
 
     /// <summary>Adds a Flate-compressed stream holding some content.</summary>
     /// <param name="store">The document.</param>
@@ -156,7 +162,7 @@ internal static class PdfTextLayerPage
         try
         {
             FlateFilter.Encode(content, ref compressed);
-            return PdfValue.FromReference(store.Add(PdfValue.FromStream(new(dictionary, compressed.ToArray()))));
+            return PdfValue.FromReference(StoreEditing.Add(store, PdfValue.FromStream(new(dictionary, compressed.ToArray()))));
         }
         finally
         {

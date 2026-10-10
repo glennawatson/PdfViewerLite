@@ -62,7 +62,7 @@ public class HyperPdfStructureBenchmarks
         _path = Path.Combine(Path.GetTempPath(), $"structure-benchmark-{Guid.NewGuid():N}.pdf");
         File.WriteAllBytes(_path, bytes);
         _adapter = (HyperPdfDocument)new HyperPdfEngine().Open(_path, null);
-        _ = _adapter.GetTaggedBlocksNative(0, _blocks);
+        _ = HyperPdfTagged.GetTaggedBlocksNative(_adapter, 0, _blocks);
         _ = PdfDocumentTagged.GetMarkedContent(_article, 0);
     }
 
@@ -108,7 +108,7 @@ public class HyperPdfStructureBenchmarks
     public int NativeTaggedBlocks()
     {
         _blocks.Clear();
-        _ = _adapter.GetTaggedBlocksNative(0, _blocks);
+        _ = HyperPdfTagged.GetTaggedBlocksNative(_adapter, 0, _blocks);
         return _blocks.Count;
     }
 }

@@ -79,7 +79,6 @@ public sealed class TextStringEncodingTests
     public async Task OtherTextIsUtf16BeBeforePdf2()
     {
         var bytes = PdfText.Encode(Omega, Version17);
-
         await Assert.That(bytes.AsSpan().StartsWith(Utf16Mark)).IsTrue();
         await Assert.That(PdfText.Decode(bytes)).IsEqualTo(Omega);
         await Assert.That(PdfText.Encode(Omega)).IsEquivalentTo(bytes);
@@ -91,7 +90,6 @@ public sealed class TextStringEncodingTests
     public async Task OtherTextIsUtf8InPdf2()
     {
         var bytes = PdfText.Encode(Omega, Version20);
-
         await Assert.That(bytes.AsSpan().StartsWith(Utf8Mark)).IsTrue();
         await Assert.That(Encoding.UTF8.GetString(bytes, Utf8Mark.Length, bytes.Length - Utf8Mark.Length)).IsEqualTo(Omega);
         await Assert.That(PdfText.Decode(bytes)).IsEqualTo(Omega);
@@ -134,7 +132,6 @@ public sealed class TextStringEncodingTests
     {
         using var document = PdfDocumentReader.Open(Build(version, CafeUtf16Hex), null);
         var saved = Save(document, compact);
-
         using var reopened = PdfDocumentReader.Open(saved, null);
         await Assert.That(Bytes(Info(reopened), KnownName.Title)).IsEquivalentTo(CafeUtf16);
         await Assert.That(Bytes(Find(reopened, KnownName.Title, KnownName.Parent), KnownName.Title)).IsEquivalentTo(CafeUtf16);
@@ -152,7 +149,6 @@ public sealed class TextStringEncodingTests
     {
         using var document = PdfDocumentReader.Open(Build(Version20, CafeUtf8Hex), null);
         using var reopened = PdfDocumentReader.Open(Save(document, compact), null);
-
         await Assert.That(Bytes(Info(reopened), KnownName.Title)).IsEquivalentTo(CafeUtf8);
         await Assert.That(Bytes(Find(reopened, KnownName.V, KnownName.T), KnownName.V)).IsEquivalentTo(CafeUtf8);
     }
@@ -175,7 +171,6 @@ public sealed class TextStringEncodingTests
     {
         using var document = PdfDocumentReader.Open(Build(version, previousHex), null);
         PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = text });
-
         using var reopened = PdfDocumentReader.Open(PdfIncrementalWriter.Save(document.Objects), null);
         var stored = Bytes(Info(reopened), KnownName.Title);
         await Assert.That(stored[0]).IsEqualTo(first);
@@ -198,8 +193,7 @@ public sealed class TextStringEncodingTests
     public async Task FormEditKeepsEncoding(string version, string previousHex, string text, byte first, bool compact)
     {
         using var document = PdfDocumentReader.Open(Build(version, previousHex), null);
-        await Assert.That(PdfDocumentForms.GetForm(document).SetText(0, FieldIndex, text)).IsTrue();
-
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(document), 0, FieldIndex, text)).IsTrue();
         using var reopened = PdfDocumentReader.Open(Save(document, compact), null);
         var stored = Bytes(Find(reopened, KnownName.V, KnownName.T), KnownName.V);
         await Assert.That(stored[0]).IsEqualTo(first);
@@ -223,7 +217,6 @@ public sealed class TextStringEncodingTests
         using var document = PdfDocumentReader.Open(Build(version, previousHex), null);
         var annotation = Find(document, KnownName.Contents, KnownName.Rect).Clone();
         PdfAnnotations.SetText(annotation, KnownName.Contents, text);
-
         var stored = Bytes(annotation, KnownName.Contents);
         await Assert.That(stored[0]).IsEqualTo(first);
         await Assert.That(PdfText.Decode(stored)).IsEqualTo(text);
@@ -243,7 +236,6 @@ public sealed class TextStringEncodingTests
     {
         using var document = PdfDocumentReader.Open(Build(version, "416263"), null);
         PdfDocumentMetadataEditing.SetMetadata(document, new() { Title = Omega });
-
         using var reopened = PdfDocumentReader.Open(Save(document, compact), null);
         await Assert.That(PdfDocumentMetadata.GetInfo(reopened).Title).IsEqualTo(Omega);
         await Assert.That(Bytes(Info(reopened), KnownName.Title)[0]).IsEqualTo(first);
@@ -253,8 +245,7 @@ public sealed class TextStringEncodingTests
     /// <param name="document">The document.</param>
     /// <param name="compact">Whether to rewrite the file.</param>
     /// <returns>The saved bytes.</returns>
-    private static byte[] Save(PdfDocument document, bool compact) =>
-        compact ? PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default) : PdfIncrementalWriter.Save(document.Objects);
+    private static byte[] Save(PdfDocument document, bool compact) => compact ? PdfCompactWriter.Save(document.Objects, PdfCompactOptions.Default) : PdfIncrementalWriter.Save(document.Objects);
 
     /// <summary>Gets the bytes of a string entry.</summary>
     /// <param name="dictionary">The dictionary.</param>
@@ -265,8 +256,7 @@ public sealed class TextStringEncodingTests
     /// <summary>Gets the information dictionary.</summary>
     /// <param name="document">The document.</param>
     /// <returns>The dictionary.</returns>
-    private static PdfDictionary Info(PdfDocument document) =>
-        document.Objects.Resolve(document.Objects.Trailer.GetRaw(KnownName.Info)).AsDictionary()!;
+    private static PdfDictionary Info(PdfDocument document) => StoreReading.Resolve(document.Objects, document.Objects.Trailer.GetRaw(KnownName.Info)).AsDictionary()!;
 
     /// <summary>Finds the first object dictionary that holds a string under one key and has another key.</summary>
     /// <param name="document">The document.</param>
@@ -278,9 +268,7 @@ public sealed class TextStringEncodingTests
     {
         for (var number = 1; number < document.Objects.Size; number++)
         {
-            if (document.Objects.GetDictionary(new(number, 0)) is { } dictionary
-                && dictionary.Get(text).Kind == PdfKind.String
-                && !dictionary.Get(other).IsNull)
+            if (StoreReading.GetDictionary(document.Objects, new(number, 0)) is { } dictionary && dictionary.Get(text).Kind == PdfKind.String && !dictionary.Get(other).IsNull)
             {
                 return dictionary;
             }

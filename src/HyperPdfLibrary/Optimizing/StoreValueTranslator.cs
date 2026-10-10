@@ -20,16 +20,16 @@ internal sealed class StoreValueTranslator(PdfObjectStore source, PdfObjectStore
     /// <summary>Copies the source's unsaved edits and its trailer's /Root and /Info into the target.</summary>
     internal void ReplayEdits()
     {
-        foreach (var edited in source.GetEditedObjects(out _))
+        foreach (var edited in StoreEditing.GetEditedObjects(source, out _))
         {
             var id = new PdfObjectId(edited.Number, 0);
             if (edited.Deleted)
             {
-                target.Delete(id);
+                StoreEditing.Delete(target, id);
             }
             else
             {
-                target.Replace(id, Copy(edited.Value, 0));
+                StoreEditing.Replace(target, id, Copy(edited.Value, 0));
             }
         }
 
@@ -41,7 +41,7 @@ internal sealed class StoreValueTranslator(PdfObjectStore source, PdfObjectStore
         var encrypt = source.Trailer.GetRaw(KnownName.Encrypt);
         if (encrypt.IsReference)
         {
-            target.Replace(new(encrypt.AsReference().Number, 0), Copy(source.GetObject(encrypt.AsReference()), 0));
+            StoreEditing.Replace(target, new(encrypt.AsReference().Number, 0), Copy(StoreReading.GetObject(source, encrypt.AsReference()), 0));
         }
     }
 
@@ -49,16 +49,14 @@ internal sealed class StoreValueTranslator(PdfObjectStore source, PdfObjectStore
     /// <param name="value">The source value.</param>
     /// <param name="depth">The nesting depth.</param>
     /// <returns>The copy.</returns>
-    private PdfValue Copy(PdfValue value, int depth) => depth > PdfLimits.MaxNesting
-        ? PdfValue.Null
-        : value.Kind switch
-        {
-            PdfKind.Name => PdfValue.FromName(Name(value.AsName())),
-            PdfKind.Array => PdfValue.FromArray(CopyArray(value.AsArray()!, depth + 1)),
-            PdfKind.Dictionary => PdfValue.FromDictionary(CopyDictionary(value.AsDictionary()!, depth + 1)),
-            PdfKind.Stream => PdfValue.FromStream(CopyStream(value.AsStream()!, depth + 1)),
-            _ => value,
-        };
+    private PdfValue Copy(PdfValue value, int depth) => depth > PdfLimits.MaxNesting ? PdfValue.Null : value.Kind switch
+    {
+        PdfKind.Name => PdfValue.FromName(Name(value.AsName())),
+        PdfKind.Array => PdfValue.FromArray(CopyArray(value.AsArray()!, depth + 1)),
+        PdfKind.Dictionary => PdfValue.FromDictionary(CopyDictionary(value.AsDictionary()!, depth + 1)),
+        PdfKind.Stream => PdfValue.FromStream(CopyStream(value.AsStream()!, depth + 1)),
+        _ => value,
+    };
 
     /// <summary>Gets a source name in the target's table.</summary>
     /// <param name="name">The source name.</param>

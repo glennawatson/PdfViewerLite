@@ -14,7 +14,8 @@ internal static class FixTestHelpers
     /// cross-reference table, so the store repairs it.
     /// </summary>
     /// <returns>The store.</returns>
-    internal static PdfObjectStore Store() => PdfObjectStore.Open(
+    internal static PdfObjectStore Store() =>
+        StoreOpening.Open(
         "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\ntrailer\n<< /Root 1 0 R /Size 3 >>\n"u8.ToArray(),
         null);
 

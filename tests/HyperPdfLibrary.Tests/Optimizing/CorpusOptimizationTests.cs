@@ -60,7 +60,7 @@ public sealed class CorpusOptimizationTests
         var text = widgets.FindIndex(static widget => widget.Type == PdfFieldType.Text);
 
         await Assert.That(widgets.Count).IsEqualTo(expected.Count);
-        await Assert.That(PdfDocumentForms.GetForm(after).SetText(0, text, Typed)).IsTrue();
+        await Assert.That(HyperPdfLibrary.Forms.PdfFormEditing.SetText(PdfDocumentForms.GetForm(after), 0, text, Typed)).IsTrue();
 
         using var filled = PdfDocumentReader.Open(PdfIncrementalWriter.Save(after.Objects), null);
         await Assert.That(Widgets(filled)[text].Value).IsEqualTo(Typed);
@@ -89,7 +89,7 @@ public sealed class CorpusOptimizationTests
     private static List<PdfFormWidget> Widgets(PdfDocument document)
     {
         var widgets = new List<PdfFormWidget>();
-        PdfDocumentForms.GetForm(document).GetWidgets(0, widgets);
+        HyperPdfLibrary.Forms.PdfFormReading.GetWidgets(PdfDocumentForms.GetForm(document), 0, widgets);
         return widgets;
     }
 }

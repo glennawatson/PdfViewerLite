@@ -21,11 +21,12 @@ public static class PdfDocumentAssociatedFiles
     /// <param name="document">The document.</param>
     /// <returns>The files.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static IReadOnlyList<PdfAssociatedFile> GetAssociatedFiles(PdfDocument document) => PdfDocumentAssociatedFiles.GetAssociatedFiles(
-document,
-document.Catalog,
-PdfAssociatedOwner.Document,
-null);
+    public static IReadOnlyList<PdfAssociatedFile> GetAssociatedFiles(PdfDocument document) =>
+        PdfDocumentAssociatedFiles.GetAssociatedFiles(
+        document,
+        document.Catalog,
+        PdfAssociatedOwner.Document,
+        null);
 
     /// <summary>Gets the files associated with a page.</summary>
     /// <param name="document">The document.</param>
@@ -129,14 +130,16 @@ null);
         var embedded = spec.GetDictionary(KnownName.EF);
         var data = embedded?.GetStream(KnownName.UF) ?? embedded?.GetStream(KnownName.F);
         files.Add(new(
-kind,
-pageIndex,
-spec.NameText("AFRelationship") ?? PdfDocumentAssociatedFiles.UnspecifiedRelationship,
-PdfDocumentFileSpecs.ReadFileSpec(document, value) ?? string.Empty,
-spec.GetText(KnownName.Desc),
-data?.Dictionary.NameText("Subtype"),
-data,
-spec));
+        kind,
+        pageIndex,
+        spec.NameText("AFRelationship") ?? PdfDocumentAssociatedFiles.UnspecifiedRelationship,
+        PdfDocumentFileSpecs.ReadFileSpec(
+        document,
+        value) ?? string.Empty,
+        spec.GetText(KnownName.Desc),
+        data?.Dictionary.NameText("Subtype"),
+        data,
+        spec));
     }
 
     /// <summary>Adds the files of a page's annotations.</summary>
@@ -164,7 +167,7 @@ spec));
         var xobjects = page.Resources?.GetDictionary(KnownName.XObject);
         for (var i = 0; xobjects is not null && i < xobjects.Count; i++)
         {
-            if (xobjects.GetValueAt(i) is var raw && document.Objects.Resolve(raw).AsDictionary() is { } xobject)
+            if (xobjects.GetValueAt(i) is var raw && StoreReading.Resolve(document.Objects, raw).AsDictionary() is { } xobject)
             {
                 files.AddRange(PdfDocumentAssociatedFiles.GetAssociatedFiles(document, xobject, PdfAssociatedOwner.XObject, page.Index));
             }

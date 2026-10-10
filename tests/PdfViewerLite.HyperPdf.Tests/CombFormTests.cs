@@ -26,7 +26,7 @@ public sealed class CombFormTests
         try
         {
             using var document = new HyperPdfEngine().Open(path, null);
-            var form = (IFormFiller)document;
+            var form = (IFormFiller)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IFormFiller))!;
             var fields = new List<FormField>();
             form.GetFields(0, fields);
             var name = fields.Single(static f => f.Name == "Name");
@@ -63,7 +63,7 @@ public sealed class CombFormTests
         try
         {
             using var document = new HyperPdfEngine().Open(path, null);
-            var form = (IFormFiller)document;
+            var form = (IFormFiller)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IFormFiller))!;
             var radios = Read(form).Where(static f => f.Kind == FormFieldKind.RadioButton).ToArray();
             var offFirst = Read(form).First(static f => f.Kind == FormFieldKind.RadioButton).Value;
             _ = form.SetChecked(0, radios[0].Index, true);

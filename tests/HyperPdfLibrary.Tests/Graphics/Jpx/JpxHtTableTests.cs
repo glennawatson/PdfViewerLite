@@ -2,7 +2,6 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using System.Runtime.CompilerServices;
 using HyperPdfLibrary.Graphics.Images.Jpx;
 using PdfViewerLite.Scripts;
 
@@ -20,11 +19,8 @@ public sealed class JpxHtTableTests
     /// <summary>The rows of CxtVLC_table_1 in Annex C.</summary>
     private const int LaterRowRows = 358;
 
-    /// <summary>The directories from this file up to the repository root.</summary>
-    private const string RepositoryRoot = "../../../..";
-
-    /// <summary>The generated file, relative to the repository root.</summary>
-    private const string GeneratedPath = "src/HyperPdfLibrary/Graphics/Images/Jpx/JpxHtTables.cs";
+    /// <summary>The resource containing the checked-in generated source.</summary>
+    private const string GeneratedResourceName = "JpxHtTables.cs";
 
     /// <summary>Annex C lists the expected number of rows in each table.</summary>
     /// <returns>A task that completes when the check is done.</returns>
@@ -56,17 +52,16 @@ public sealed class JpxHtTableTests
 
     /// <summary>The checked-in source file is exactly what the generator writes for the rows.</summary>
     /// <returns>A task that completes when the check is done.</returns>
+    /// <exception cref="InvalidOperationException">The assembly does not embed the generated source.</exception>
     [Test]
     public async Task CheckedInFileMatchesTheGenerator()
     {
-        var checkedIn = (await File.ReadAllTextAsync(GeneratedFile())).Replace("\r\n", "\n", StringComparison.Ordinal);
+        // Embed the source because deterministic builds map CallerFilePath to a virtual repository path.
+        await using var stream = typeof(JpxHtTableTests).Assembly.GetManifestResourceStream(GeneratedResourceName)
+            ?? throw new InvalidOperationException("The generated HT table source is not embedded.");
+        using var reader = new StreamReader(stream);
+        var checkedIn = (await reader.ReadToEndAsync()).Replace("\r\n", "\n", StringComparison.Ordinal);
 
         await Assert.That(checkedIn).IsEqualTo(JpxHtTableBuilder.Emit(JpxTestHtRows.Load()));
     }
-
-    /// <summary>Finds the generated file from the location of this source file.</summary>
-    /// <param name="file">The path of this source file, filled in by the compiler.</param>
-    /// <returns>The path of <c>JpxHtTables.cs</c>.</returns>
-    private static string GeneratedFile([CallerFilePath] string file = "") =>
-        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(file) ?? string.Empty, RepositoryRoot, GeneratedPath));
 }

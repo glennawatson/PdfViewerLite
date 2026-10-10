@@ -8,6 +8,10 @@
        and the test encoder reads the same rows. -->
   <ItemGroup>
     <Compile Include="..\..\scripts\JpxHtTableBuilder.cs" Link="Graphics\Jpx\JpxHtTableBuilder.cs" />
+    <Compile Include="..\..\scripts\KnownNameTableBuilder.cs" Link="Syntax\KnownNameTableBuilder.cs" />
+    <EmbeddedResource Include="..\..\src\HyperPdfLibrary\Objects\KnownName.cs" LogicalName="KnownName.cs" />
+    <EmbeddedResource Include="..\..\src\HyperPdfLibrary\Objects\KnownNameSpellings.cs" LogicalName="KnownNameSpellings.cs" />
     <EmbeddedResource Include="..\..\src\HyperPdfLibrary\Graphics\Images\Jpx\Data\T814CxtVlc.txt" LogicalName="T814CxtVlc.txt" />
+    <EmbeddedResource Include="..\..\src\HyperPdfLibrary\Graphics\Images\Jpx\JpxHtTables.cs" LogicalName="JpxHtTables.cs" />
   </ItemGroup>
 </Project>

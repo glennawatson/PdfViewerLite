@@ -103,20 +103,20 @@ public sealed class NativeAnnotationTests
     {
         using var test = new NativeDocument(PageCount);
         var editor = test.Editor;
-        var highlight = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sage, "Check this");
-        _ = editor.AddMarkup(0, AnnotationKind.Underline, [Line], AnnotationColors.Slate, string.Empty);
-        _ = editor.AddMarkup(0, AnnotationKind.StrikeOut, [Line], AnnotationColors.Clay, string.Empty);
-        _ = editor.AddMarkup(0, AnnotationKind.Squiggly, [Line], AnnotationColors.Sand, string.Empty);
-        _ = editor.AddInk(0, Stroke, Strokes, AnnotationColors.Ink, InkWidth, AnnotationKind.Ink);
-        _ = editor.AddNote(0, NoteAt, "A sticky note", AnnotationColors.Sand);
-        _ = editor.AddText(0, TextAt, "Written on the page\nSecond line", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
-        _ = editor.AddText(0, SignatureAt, "Glenn Watson", SignatureSize, AnnotationColors.Ink, AnnotationKind.Signature);
-        _ = editor.AddInk(0, Stroke, Strokes, AnnotationColors.Ink, InkWidth, AnnotationKind.Signature);
+        var highlight = HyperPdfAnnotationShapes.AddMarkup(editor, 0, AnnotationKind.Highlight, [Line], AnnotationColors.Sage, "Check this");
+        _ = HyperPdfAnnotationShapes.AddMarkup(editor, 0, AnnotationKind.Underline, [Line], AnnotationColors.Slate, string.Empty);
+        _ = HyperPdfAnnotationShapes.AddMarkup(editor, 0, AnnotationKind.StrikeOut, [Line], AnnotationColors.Clay, string.Empty);
+        _ = HyperPdfAnnotationShapes.AddMarkup(editor, 0, AnnotationKind.Squiggly, [Line], AnnotationColors.Sand, string.Empty);
+        _ = HyperPdfAnnotationShapes.AddInk(editor, 0, Stroke, Strokes, AnnotationColors.Ink, InkWidth, AnnotationKind.Ink);
+        _ = HyperPdfAnnotationShapes.AddNote(editor, 0, NoteAt, "A sticky note", AnnotationColors.Sand);
+        _ = HyperPdfAnnotationText.AddText(editor, 0, TextAt, "Written on the page\nSecond line", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
+        _ = HyperPdfAnnotationText.AddText(editor, 0, SignatureAt, "Glenn Watson", SignatureSize, AnnotationColors.Ink, AnnotationKind.Signature);
+        _ = HyperPdfAnnotationShapes.AddInk(editor, 0, Stroke, Strokes, AnnotationColors.Ink, InkWidth, AnnotationKind.Signature);
 
         var annotations = NativeDocument.Read(editor, 0);
         var first = annotations.First(a => a.Index == highlight);
 
-        await Assert.That(editor.HasUnsavedChanges).IsTrue();
+        await Assert.That(HyperPdfAnnotationReading.GetHasUnsavedChanges(editor)).IsTrue();
         await Assert.That(highlight).IsGreaterThanOrEqualTo(0);
         await Assert.That(annotations.Select(static a => a.Kind).ToArray()).IsEquivalentTo(EachKind);
         await Assert.That(first.Color).IsEqualTo(AnnotationColors.Sage);
@@ -136,15 +136,15 @@ public sealed class NativeAnnotationTests
     {
         using var test = new NativeDocument(PageCount);
         var editor = test.Editor;
-        var index = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, string.Empty);
-        var text = editor.AddText(0, TextAt, "Text", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
+        var index = HyperPdfAnnotationShapes.AddMarkup(editor, 0, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, string.Empty);
+        var text = HyperPdfAnnotationText.AddText(editor, 0, TextAt, "Text", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
 
-        var recoloured = editor.SetColor(0, index, AnnotationColors.Clay);
-        var recolouredText = editor.SetColor(0, text, AnnotationColors.Slate);
-        var noted = editor.SetContents(0, index, "Changed");
+        var recoloured = HyperPdfAnnotationEditing.SetColor(editor, 0, index, AnnotationColors.Clay);
+        var recolouredText = HyperPdfAnnotationEditing.SetColor(editor, 0, text, AnnotationColors.Slate);
+        var noted = HyperPdfAnnotationReading.SetContents(editor, 0, index, "Changed");
         var changed = NativeDocument.Read(editor, 0).Single(a => a.Index == index);
         var textColor = NativeDocument.Read(editor, 0).Single(a => a.Index == text).Color;
-        var removed = editor.Remove(0, index);
+        var removed = HyperPdfAnnotationReading.Remove(editor, 0, index);
         var after = NativeDocument.Read(editor, 0);
 
         await Assert.That(recoloured && recolouredText && noted && removed).IsTrue();
@@ -161,11 +161,11 @@ public sealed class NativeAnnotationTests
     {
         using var test = new NativeDocument(PageCount);
         var editor = test.Editor;
-        _ = editor.AddMarkup(1, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, "Saved note");
+        _ = HyperPdfAnnotationShapes.AddMarkup(editor, 1, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, "Saved note");
         var saved = NativeDocument.Save(editor);
         var annotations = NativeDocument.ReadWithPdfium(saved, 1);
 
-        await Assert.That(editor.HasUnsavedChanges).IsFalse();
+        await Assert.That(HyperPdfAnnotationReading.GetHasUnsavedChanges(editor)).IsFalse();
         await Assert.That(annotations.Count).IsEqualTo(1);
         await Assert.That(annotations[0].Contents).IsEqualTo("Saved note");
         await Assert.That(annotations[0].Color).IsEqualTo(AnnotationColors.Sand);
@@ -179,7 +179,7 @@ public sealed class NativeAnnotationTests
         using var test = new NativeDocument(PageCount);
         var editor = test.Editor;
         var indexes = AddAllShapes(editor);
-        var recoloured = editor.SetColor(ShapePage, indexes[^1], AnnotationColors.Slate);
+        var recoloured = HyperPdfAnnotationEditing.SetColor(editor, ShapePage, indexes[^1], AnnotationColors.Slate);
         var annotations = NativeDocument.Read(editor, ShapePage);
         var reopened = NativeDocument.ReadWithPdfium(NativeDocument.Save(editor), ShapePage);
 
@@ -202,10 +202,10 @@ public sealed class NativeAnnotationTests
         using var test = new NativeDocument(PageCount);
         var editor = test.Editor;
 
-        await Assert.That(editor.AddShape(ShapePage, AnnotationKind.Arrow, Tail, Tail, AnnotationColors.Ink, ShapeWidth)).IsEqualTo(-1);
-        await Assert.That(editor.AddStamp(ShapePage, StampAt, " ", AnnotationColors.Clay)).IsEqualTo(-1);
-        await Assert.That(editor.AddShape(ShapePage, AnnotationKind.Highlight, Tail, Point, AnnotationColors.Ink, ShapeWidth)).IsEqualTo(-1);
-        await Assert.That(editor.HasUnsavedChanges).IsFalse();
+        await Assert.That(HyperPdfAnnotationShapes.AddShape(editor, ShapePage, AnnotationKind.Arrow, Tail, Tail, AnnotationColors.Ink, ShapeWidth)).IsEqualTo(-1);
+        await Assert.That(HyperPdfAnnotationText.AddStamp(editor, ShapePage, StampAt, " ", AnnotationColors.Clay)).IsEqualTo(-1);
+        await Assert.That(HyperPdfAnnotationShapes.AddShape(editor, ShapePage, AnnotationKind.Highlight, Tail, Point, AnnotationColors.Ink, ShapeWidth)).IsEqualTo(-1);
+        await Assert.That(HyperPdfAnnotationReading.GetHasUnsavedChanges(editor)).IsFalse();
     }
 
     /// <summary>Replies and a status are read back under their comment, oldest first, and not listed on their own.</summary>
@@ -215,16 +215,16 @@ public sealed class NativeAnnotationTests
     {
         using var test = new NativeDocument(1);
         var editor = test.Editor;
-        var note = editor.AddNote(0, NoteAt, "Is this figure right?", AnnotationColors.Sand);
-        var other = editor.AddNote(0, OtherAt, "Unrelated", AnnotationColors.Sage);
-        var first = editor.AddReply(0, note, "Yes, checked against the source.", ReviewState.None);
-        var status = editor.AddReply(0, note, string.Empty, ReviewState.Accepted);
-        var empty = editor.AddReply(0, note, " ", ReviewState.None);
+        var note = HyperPdfAnnotationShapes.AddNote(editor, 0, NoteAt, "Is this figure right?", AnnotationColors.Sand);
+        var other = HyperPdfAnnotationShapes.AddNote(editor, 0, OtherAt, "Unrelated", AnnotationColors.Sage);
+        var first = HyperPdfAnnotationReplies.AddReply(editor, 0, note, "Yes, checked against the source.", ReviewState.None);
+        var status = HyperPdfAnnotationReplies.AddReply(editor, 0, note, string.Empty, ReviewState.Accepted);
+        var empty = HyperPdfAnnotationReplies.AddReply(editor, 0, note, " ", ReviewState.None);
         var annotations = NativeDocument.Read(editor, 0);
         var replies = new List<AnnotationReply>();
-        editor.GetReplies(0, note, replies);
+        HyperPdfAnnotationReplies.GetReplies(editor, 0, note, replies);
         var otherReplies = new List<AnnotationReply>();
-        editor.GetReplies(0, other, otherReplies);
+        HyperPdfAnnotationReplies.GetReplies(editor, 0, other, otherReplies);
 
         await Assert.That(first >= 0 && status >= 0).IsTrue();
         await Assert.That(empty).IsEqualTo(-1);
@@ -243,15 +243,15 @@ public sealed class NativeAnnotationTests
     {
         using var test = new NativeDocument(1);
         var editor = test.Editor;
-        var note = editor.AddNote(0, NoteAt, "Please confirm.", AnnotationColors.Sand);
-        _ = editor.AddReply(0, note, "Confirmed.", ReviewState.None);
-        _ = editor.AddReply(0, note, string.Empty, ReviewState.Completed);
+        var note = HyperPdfAnnotationShapes.AddNote(editor, 0, NoteAt, "Please confirm.", AnnotationColors.Sand);
+        _ = HyperPdfAnnotationReplies.AddReply(editor, 0, note, "Confirmed.", ReviewState.None);
+        _ = HyperPdfAnnotationReplies.AddReply(editor, 0, note, string.Empty, ReviewState.Completed);
         var saved = NativeDocument.Save(editor);
         var dictionaries = NativeDocument.Dictionaries(saved, 0);
         using var reopened = NativeDocument.OpenWithPdfium(saved, out var path);
         try
         {
-            var reopenedEditor = (IAnnotationEditor)reopened;
+            var reopenedEditor = (IAnnotationEditor)Core.Documents.DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!;
             var annotations = NativeDocument.Read(reopenedEditor, 0);
             var replies = new List<AnnotationReply>();
             reopenedEditor.GetReplies(0, annotations[0].Index, replies);
@@ -273,10 +273,10 @@ public sealed class NativeAnnotationTests
     /// <returns>The new annotations' indexes.</returns>
     private static int[] AddAllShapes(HyperPdfAnnotations editor) =>
     [
-        editor.AddShape(ShapePage, AnnotationKind.Rectangle, BoxStart, BoxEnd, AnnotationColors.Clay, ShapeWidth),
-        editor.AddShape(ShapePage, AnnotationKind.Ellipse, OvalStart, OvalEnd, AnnotationColors.Slate, ShapeWidth),
-        editor.AddShape(ShapePage, AnnotationKind.Arrow, Tail, Point, AnnotationColors.Ink, ShapeWidth),
-        editor.AddShape(ShapePage, AnnotationKind.Line, LineStart, LineEnd, AnnotationColors.Sage, ShapeWidth),
-        editor.AddStamp(ShapePage, StampAt, "APPROVED", AnnotationColors.Clay),
+        HyperPdfAnnotationShapes.AddShape(editor, ShapePage, AnnotationKind.Rectangle, BoxStart, BoxEnd, AnnotationColors.Clay, ShapeWidth),
+        HyperPdfAnnotationShapes.AddShape(editor, ShapePage, AnnotationKind.Ellipse, OvalStart, OvalEnd, AnnotationColors.Slate, ShapeWidth),
+        HyperPdfAnnotationShapes.AddShape(editor, ShapePage, AnnotationKind.Arrow, Tail, Point, AnnotationColors.Ink, ShapeWidth),
+        HyperPdfAnnotationShapes.AddShape(editor, ShapePage, AnnotationKind.Line, LineStart, LineEnd, AnnotationColors.Sage, ShapeWidth),
+        HyperPdfAnnotationText.AddStamp(editor, ShapePage, StampAt, "APPROVED", AnnotationColors.Clay),
     ];
 }

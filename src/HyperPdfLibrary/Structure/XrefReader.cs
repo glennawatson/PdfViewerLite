@@ -255,9 +255,7 @@ internal static class XrefReader
         var limit = Math.Min(file.Length, position + PdfLimits.MaxXrefWindow);
         var trailer = PdfByteSearch.IndexOf(file, PdfKeywords.Trailer, position, limit);
         using var window = file.Lease(position, (int)((trailer < 0 ? limit : trailer) - position));
-        return ReadEntries(window.Span, table) && trailer >= 0
-            ? store.ParseValueAt(trailer + PdfKeywords.Trailer.Length).AsDictionary()
-            : null;
+        return ReadEntries(window.Span, table) && trailer >= 0 ? StoreParsing.ParseValueAt(store, trailer + PdfKeywords.Trailer.Length).AsDictionary() : null;
     }
 
     /// <summary>Reads the subsections of a classic table.</summary>
@@ -275,9 +273,17 @@ internal static class XrefReader
                 return true;
             }
 
-            if (kind != PdfTokenKind.Number || !PdfNumber.TryParse(lexer.Lexeme, out var startValue)
-                || lexer.Next() != PdfTokenKind.Number || !PdfNumber.TryParse(lexer.Lexeme, out var countValue)
-                || !ReadSubsection(ref lexer, startValue.AsInt32(), countValue.AsInt32(), table))
+            if (kind != PdfTokenKind.Number
+        || !PdfNumber.TryParse(
+        lexer.Lexeme,
+        out var startValue) || lexer.Next() != PdfTokenKind.Number
+        || !PdfNumber.TryParse(
+        lexer.Lexeme,
+        out var countValue) || !ReadSubsection(
+        ref lexer,
+        startValue.AsInt32(),
+        countValue.AsInt32(),
+        table))
             {
                 return false;
             }
@@ -293,8 +299,7 @@ internal static class XrefReader
     private static bool ReadSubsection(ref PdfLexer lexer, int start, int count, XrefTable table)
     {
         // The entries must fit in the rest of the file before the table grows to hold them.
-        if (start < 0 || count < 0 || (long)start + count > PdfLimits.MaxObjectNumber
-            || (long)count * MinEntryLength > lexer.Data.Length - lexer.Position)
+        if (start < 0 || count < 0 || (long)start + count > PdfLimits.MaxObjectNumber || (long)count * MinEntryLength > lexer.Data.Length - lexer.Position)
         {
             return false;
         }
@@ -339,8 +344,17 @@ internal static class XrefReader
         }
 
         var type = data[position + TypePosition];
-        if ((type != 'n' && type != 'f') || !TryParseDigits(data.Slice(position, OffsetDigits), out var offset)
-            || !TryParseDigits(data.Slice(position + GenerationStart, GenerationDigits), out var generation))
+        if ((type != 'n'
+        && type != 'f')
+        || !TryParseDigits(
+        data.Slice(
+        position,
+        OffsetDigits),
+        out var offset) || !TryParseDigits(
+        data.Slice(
+        position + GenerationStart,
+        GenerationDigits),
+        out var generation))
         {
             return false;
         }
@@ -356,9 +370,13 @@ internal static class XrefReader
     private static bool TryReadEntryTokens(ref PdfLexer lexer, out ClassicEntry entry)
     {
         entry = default;
-        if (lexer.Next() != PdfTokenKind.Number || !PdfNumber.TryParse(lexer.Lexeme, out var offset)
-            || lexer.Next() != PdfTokenKind.Number || !PdfNumber.TryParse(lexer.Lexeme, out var generation)
-            || lexer.Next() != PdfTokenKind.Keyword)
+        if (lexer.Next() != PdfTokenKind.Number
+        || !PdfNumber.TryParse(
+        lexer.Lexeme,
+        out var offset) || lexer.Next() != PdfTokenKind.Number
+        || !PdfNumber.TryParse(
+        lexer.Lexeme,
+        out var generation) || lexer.Next() != PdfTokenKind.Keyword)
         {
             return false;
         }
@@ -395,7 +413,7 @@ internal static class XrefReader
     /// <returns>The stream dictionary, which is the section's trailer, or <see langword="null"/> when damaged.</returns>
     private static PdfDictionary? ReadStream(long offset, PdfObjectStore store, XrefTable table)
     {
-        if (!store.TryParseObjectAt(offset, out _, out var value) || value.AsStream() is not { } stream)
+        if (!StoreParsing.TryParseObjectAt(store, offset, out _, out var value) || value.AsStream() is not { } stream)
         {
             return null;
         }

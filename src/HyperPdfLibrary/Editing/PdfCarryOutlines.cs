@@ -128,7 +128,12 @@ internal sealed class PdfCarryOutlines
     /// <param name="raw">The action as stored in the source.</param>
     /// <returns>The value to copy, or null.</returns>
     private PdfValue RewriteGoTo(PdfValue raw) =>
-        _context.Source.Resolve(raw).AsDictionary() is { } action && action.IsName(KnownName.S, KnownName.GoTo) ? _destinations.RewriteAction(raw) : default;
+        StoreReading.Resolve(
+        _context.Source,
+        raw).AsDictionary() is { } action
+        && action.IsName(
+        KnownName.S,
+        KnownName.GoTo) ? _destinations.RewriteAction(raw) : default;
 
     /// <summary>Finds the last top-level entry of the target's outline, following the sibling links when the root lacks /Last.</summary>
     /// <param name="root">The target's outline root.</param>
@@ -145,7 +150,7 @@ internal sealed class PdfCarryOutlines
         for (var i = 0; entry.IsValid && i < MaxEntries; i++)
         {
             last = entry;
-            entry = store.GetDictionary(entry)?.GetRaw(KnownName.Next).AsReference() ?? default;
+            entry = StoreReading.GetDictionary(store, entry)?.GetRaw(KnownName.Next).AsReference() ?? default;
         }
 
         return last;
@@ -232,7 +237,7 @@ internal sealed class PdfCarryOutlines
             total += CountVisible(item);
         }
 
-        if (last.IsValid && _context.TargetStore?.GetDictionary(last)?.Clone() is { } tail)
+        if (last.IsValid && (_context.TargetStore is { } conditionalStore9975 ? StoreReading.GetDictionary(conditionalStore9975, last)?.Clone() : default(PdfDictionary)) is { } tail)
         {
             tail.Set(KnownName.Next, PdfValue.FromReference(items[0].Id));
             sink.Set(last, PdfValue.FromDictionary(tail));

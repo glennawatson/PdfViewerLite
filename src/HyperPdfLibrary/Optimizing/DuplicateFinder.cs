@@ -95,14 +95,20 @@ internal sealed class DuplicateFinder
     private static bool IsMergeableStream(PdfDictionary dictionary) =>
         !dictionary.ContainsKey(KnownName.StructParent)
         && !dictionary.ContainsKey(KnownName.StructParents)
-        && !dictionary.IsName(KnownName.Type, KnownName.XRef)
-        && !dictionary.IsName(KnownName.Type, KnownName.ObjStm);
+        && !dictionary.IsName(
+        KnownName.Type,
+        KnownName.XRef) && !dictionary.IsName(
+        KnownName.Type,
+        KnownName.ObjStm);
 
     /// <summary>Determines whether a dictionary may be merged: a font, descriptor, encoding or graphics state.</summary>
     /// <param name="dictionary">The dictionary.</param>
     /// <returns><see langword="true"/> when it may.</returns>
     private static bool IsMergeableDictionary(PdfDictionary dictionary) =>
-        dictionary.GetName(KnownName.Type).ToKnownName() is KnownName.Font or KnownName.FontDescriptor or KnownName.Encoding or KnownName.ExtGState;
+        dictionary.GetName(KnownName.Type).ToKnownName() is KnownName.Font or
+        KnownName.FontDescriptor or
+        KnownName.Encoding or
+        KnownName.ExtGState;
 
     /// <summary>Determines whether an array may be merged: a colour space or a list of numbers such as /Widths.</summary>
     /// <param name="array">The array.</param>
@@ -121,8 +127,13 @@ internal sealed class DuplicateFinder
     /// <param name="family">The array's first name.</param>
     /// <returns><see langword="true"/> for the colour space families held in arrays.</returns>
     private static bool IsColorSpaceFamily(PdfName family) =>
-        family.ToKnownName() is KnownName.ICCBased or KnownName.Indexed or KnownName.Separation
-            or KnownName.DeviceN or KnownName.CalRGB or KnownName.CalGray or KnownName.Lab;
+        family.ToKnownName() is KnownName.ICCBased or
+        KnownName.Indexed or
+        KnownName.Separation or
+        KnownName.DeviceN or
+        KnownName.CalRGB or
+        KnownName.CalGray or
+        KnownName.Lab;
 
     /// <summary>Determines whether an array holds only numbers.</summary>
     /// <param name="array">The array.</param>
@@ -197,7 +208,7 @@ internal sealed class DuplicateFinder
     /// <returns>The digest.</returns>
     private ContentHash Hash(int number)
     {
-        var value = _store.GetObject(new(number, 0));
+        var value = StoreReading.GetObject(_store, new(number, 0));
         var writer = new PdfObjectWriter(_store.Names);
         try
         {
@@ -252,7 +263,7 @@ internal sealed class DuplicateFinder
                 continue;
             }
 
-            var value = _store.GetObject(new(number, 0));
+            var value = StoreReading.GetObject(_store, new(number, 0));
             var size = value.AsStream() is { } stream ? stream.RawLength + ObjectOverhead : ObjectOverhead;
             report.Measure(PdfOptimizeCategory.Duplicates, size, 0);
         }

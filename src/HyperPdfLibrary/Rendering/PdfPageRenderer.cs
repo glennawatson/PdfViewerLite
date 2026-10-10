@@ -130,6 +130,7 @@ public sealed partial class PdfPageRenderer : IDisposable
     /// <param name="target">The pixel buffer to fill.</param>
     /// <returns><see langword="false"/> when the page does not exist or the target is invalid.</returns>
     /// <exception cref="ObjectDisposedException">The renderer or its document has been disposed, including while the tile was being drawn.</exception>
+    /// <remarks>The target is drawn directly; a drawing exception can leave partial pixels.</remarks>
     public unsafe bool Render(in PdfTileRequest request, PdfTileTarget target)
     {
         ObjectDisposedException.ThrowIf(_disposed || _document.IsDisposed, this);
@@ -145,11 +146,24 @@ public sealed partial class PdfPageRenderer : IDisposable
         {
             var recorded = entry.Recordings;
             var surface = RenderSurface.Current;
-            Draw(surface.GetCanvas(target.Width, target.Height), entry, cache, page, request, target);
-            TrimIfRecorded(entry, recorded);
+            BorrowedPixelDrawing.CheckAvailable(surface);
             fixed (byte* pixels = target.Pixels)
             {
-                return surface.ReadPixels(new(target.Width, target.Height, SKColorType.Bgra8888, SKAlphaType.Premul), (nint)pixels, target.Stride);
+                try
+                {
+                    if (!BorrowedPixelDrawing.Attach(surface, target, (nint)pixels))
+                    {
+                        return false;
+                    }
+
+                    Draw(surface.Canvas, entry, cache, page, request, target);
+                    TrimIfRecorded(entry, recorded);
+                    return true;
+                }
+                finally
+                {
+                    BorrowedPixelDrawing.Detach(surface);
+                }
             }
         }
         finally
@@ -170,6 +184,7 @@ public sealed partial class PdfPageRenderer : IDisposable
     /// <param name="cancellationToken">Cancels and discards the recording between slices.</param>
     /// <returns>The status.</returns>
     /// <exception cref="ObjectDisposedException">The renderer has been disposed.</exception>
+    /// <remarks>The target is drawn directly when ready; a drawing exception can leave partial pixels.</remarks>
     public unsafe PdfRenderStatus RenderProgressive(in PdfTileRequest request, PdfTileTarget target, Func<bool>? shouldPause, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed || _document.IsDisposed, this);
@@ -192,13 +207,24 @@ public sealed partial class PdfPageRenderer : IDisposable
             }
 
             var surface = RenderSurface.Current;
-            Draw(surface.GetCanvas(target.Width, target.Height), entry, cache, page, request, target);
-            TrimIfRecorded(entry, recorded);
+            BorrowedPixelDrawing.CheckAvailable(surface);
             fixed (byte* pixels = target.Pixels)
             {
-                return surface.ReadPixels(new(target.Width, target.Height, SKColorType.Bgra8888, SKAlphaType.Premul), (nint)pixels, target.Stride)
-                    ? PdfRenderStatus.Done
-                    : PdfRenderStatus.Failed;
+                try
+                {
+                    if (!BorrowedPixelDrawing.Attach(surface, target, (nint)pixels))
+                    {
+                        return PdfRenderStatus.Failed;
+                    }
+
+                    Draw(surface.Canvas, entry, cache, page, request, target);
+                    TrimIfRecorded(entry, recorded);
+                    return PdfRenderStatus.Done;
+                }
+                finally
+                {
+                    BorrowedPixelDrawing.Detach(surface);
+                }
             }
         }
         finally

@@ -102,10 +102,10 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
     public static IReadOnlyList<string> Stamps { get; } = ["APPROVED", "REVIEWED", "DRAFT", "CONFIDENTIAL", "FINAL", "NOT APPROVED"];
 
     /// <summary>Gets the line widths offered, by name, in menu order.</summary>
-    public static IReadOnlyList<(string Name, float Width)> LineWidths { get; } = [("Thin", ThinLine), ("Medium", MediumLine), ("Thick", ThickLine)];
+    public static IReadOnlyList<AnnotationValueOption> LineWidths { get; } = [new("Thin", ThinLine), new("Medium", MediumLine), new("Thick", ThickLine)];
 
     /// <summary>Gets the text sizes offered, by name, in menu order.</summary>
-    public static IReadOnlyList<(string Name, float Size)> FontSizes { get; } = [("Small", SmallText), ("Medium", MediumText), ("Large", LargeText), ("Extra large", ExtraLargeText)];
+    public static IReadOnlyList<AnnotationValueOption> FontSizes { get; } = [new("Small", SmallText), new("Medium", MediumText), new("Large", LargeText), new("Extra large", ExtraLargeText)];
 
     /// <summary>Gets the interaction asking the user for text.</summary>
     public Interaction<TextPrompt, string?> PromptInteraction { get; } = new();
@@ -218,7 +218,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
     public bool CanAnnotate => Editor is not null;
 
     /// <summary>Gets the document's editor, or <see langword="null"/> when the document cannot be edited.</summary>
-    private IAnnotationEditor? Editor => _owner.TryGetDocument() as IAnnotationEditor;
+    private IAnnotationEditor? Editor => ((_owner.TryGetDocument())?.GetFeature(typeof(IAnnotationEditor)) as IAnnotationEditor);
 
     /// <summary>Gets the markup kind a tool creates, or <see langword="null"/> when it does not mark text.</summary>
     /// <param name="tool">The tool.</param>
@@ -336,7 +336,9 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
     /// <returns><see langword="true"/> when added.</returns>
     public bool AddInk(int page, ReadOnlySpan<PagePoint> points, ReadOnlySpan<int> strokeLengths, AnnotationKind kind)
     {
-        var (color, width) = kind == AnnotationKind.Signature ? (AnnotationColors.Ink, InkWidth) : (AnnotationColors.Deep(Color), LineWidth);
+        var signature = kind == AnnotationKind.Signature;
+        var color = signature ? AnnotationColors.Ink : AnnotationColors.Deep(Color);
+        var width = signature ? InkWidth : LineWidth;
         return EditorForChange() is { } editor && Added(page, editor.AddInk(page, points, strokeLengths, color, width, kind));
     }
 
@@ -419,16 +421,21 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
     public PageAnnotation? PlaceMark(int page, PageRect bounds, SignatureMark mark)
     {
         ArgumentNullException.ThrowIfNull(mark);
-        if (EditorForChange() is not { } editor || !mark.IsValid)
+        var document = DocumentForChange();
+        if (document is null
+            || ((document.GetFeature(typeof(IAnnotationEditor))) as IAnnotationEditor) is not { } editor
+            || !mark.IsValid)
         {
             return null;
         }
+
+        var imageSignatureEditor = ((document.GetFeature(typeof(IImageSignatureEditor))) as IImageSignatureEditor);
 
         var index = mark.Style switch
         {
             SignatureMarkStyle.Typed => AddTypedMark(editor, page, bounds, mark),
             SignatureMarkStyle.Drawn => AddDrawnMark(editor, page, bounds, mark),
-            SignatureMarkStyle.Image when editor is IImageSignatureEditor images => images.AddImageSignature(page, bounds, mark.Pixels.Span, (int)mark.Width, (int)mark.Height),
+            SignatureMarkStyle.Image when imageSignatureEditor is IImageSignatureEditor images => images.AddImageSignature(page, bounds, mark.Pixels.Span, (int)mark.Width, (int)mark.Height),
             _ => -1,
         };
         if (!Added(page, index))
@@ -531,7 +538,7 @@ public sealed partial class AnnotationsViewModel : ReactiveObject, IDisposable
     /// <param name="choices">The choices.</param>
     /// <param name="value">The value.</param>
     /// <returns>The name, or the value in points when it is not one of the choices.</returns>
-    private static string NameOf(IReadOnlyList<(string Name, float Value)> choices, float value)
+    private static string NameOf(IReadOnlyList<AnnotationValueOption> choices, float value)
     {
         foreach (var (name, choice) in choices)
         {

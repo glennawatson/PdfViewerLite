@@ -76,7 +76,9 @@ public sealed partial class AttachmentsViewModel : ReactiveObject
     {
         Items.Clear();
         Selected = null;
-        if (_owner.TryGetDocument() is IAttachmentSource source)
+        if (((_owner.TryGetDocument())?.GetFeature(typeof(IAttachmentSource)) as IAttachmentSource) is
+            {
+            } source)
         {
             foreach (var attachment in source.GetAttachments())
             {
@@ -142,7 +144,9 @@ public sealed partial class AttachmentsViewModel : ReactiveObject
     /// <returns><see langword="true"/> when written.</returns>
     private bool Write(DocumentAttachment attachment, string path)
     {
-        if (_owner.TryGetDocument() is not IAttachmentSource source)
+        if (((_owner.TryGetDocument())?.GetFeature(typeof(IAttachmentSource)) as IAttachmentSource) is not
+            {
+            } source)
         {
             return false;
         }

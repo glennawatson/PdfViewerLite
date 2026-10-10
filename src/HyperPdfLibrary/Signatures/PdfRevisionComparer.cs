@@ -61,8 +61,7 @@ internal sealed partial class PdfRevisionComparer
     /// <param name="signedEnd">The position after the signed bytes.</param>
     /// <returns>The changes, by object number; none is marked permitted yet.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static List<PdfObjectChange> Compare(PdfObjectStore current, PdfObjectStore signed, long signedEnd) =>
-        new PdfRevisionComparer(current, signed).Run(signedEnd);
+    internal static List<PdfObjectChange> Compare(PdfObjectStore current, PdfObjectStore signed, long signedEnd) => new PdfRevisionComparer(current, signed).Run(signedEnd);
 
     /// <summary>Gets the object number of a reference.</summary>
     /// <param name="value">The value.</param>
@@ -93,8 +92,7 @@ internal sealed partial class PdfRevisionComparer
         var unresolved = new List<int>();
         for (var number = 1; number < _current.XrefSize; number++)
         {
-            if (!TryGetCandidate(number, signedEnd, out var now, out var before)
-                || (!now.IsNull && !before.IsNull && PdfValueComparer.Equal(now, _tables.Left, before, _tables.Right)))
+            if (!TryGetCandidate(number, signedEnd, out var now, out var before) || (!now.IsNull && !before.IsNull && PdfValueComparer.Equal(now, _tables.Left, before, _tables.Right)))
             {
                 continue;
             }
@@ -129,15 +127,15 @@ internal sealed partial class PdfRevisionComparer
     {
         now = default;
         before = default;
-        var offset = _current.GetDefinitionOffset(number);
-        var signedOffset = number < _signed.XrefSize ? _signed.GetDefinitionOffset(number) : -1;
+        var offset = StoreRevisions.GetDefinitionOffset(_current, number);
+        var signedOffset = number < _signed.XrefSize ? StoreRevisions.GetDefinitionOffset(_signed, number) : -1;
         if (offset < signedEnd && (offset >= 0 || signedOffset < 0))
         {
             return false;
         }
 
-        now = offset >= 0 ? _current.GetObject(new(number, 0)) : default;
-        before = signedOffset >= 0 ? _signed.GetObject(new(number, 0)) : default;
+        now = offset >= 0 ? StoreReading.GetObject(_current, new(number, 0)) : default;
+        before = signedOffset >= 0 ? StoreReading.GetObject(_signed, new(number, 0)) : default;
         return !now.IsNull || !before.IsNull;
     }
 
@@ -160,7 +158,10 @@ internal sealed partial class PdfRevisionComparer
 
         if (_owned.TryGetValue(number, out var owner) && owner.Kind == PdfModificationKinds.SecurityStore)
         {
-            return owner with { ObjectNumber = number };
+            return owner with
+            {
+                ObjectNumber = number
+            };
         }
 
         var removed = now.IsNull;

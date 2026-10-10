@@ -7,7 +7,6 @@ using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Annotations;
 using PdfViewerLite.Core.Geometry;
 using PdfViewerLite.Core.Redaction;
-using PdfViewerLite.Core.Settings;
 using PdfViewerLite.TestAssets;
 using ReactiveUI.Primitives;
 
@@ -27,9 +26,6 @@ public sealed class RedactionViewModelTests
 
     /// <summary>The ending of the temporary file a copy is written to.</summary>
     private const string TemporarySuffix = ".redacting";
-
-    /// <summary>The variable naming the default engine.</summary>
-    private const string EngineVariable = "PDFVIEWERLITE_ENGINE";
 
     /// <summary>The page edge used to mark the whole page.</summary>
     private const float PageEdge = 700;
@@ -151,23 +147,22 @@ public sealed class RedactionViewModelTests
         await Assert.That(vm.Error).Contains("Nothing is marked");
     }
 
-    /// <summary>The command is on with HyperPDF and off, with its reason in the menu text, with PDFium.</summary>
+    /// <summary>The command is available with HyperPDF and explains its limit with the PDFium reference engine.</summary>
     /// <returns>A task.</returns>
     [Test]
     public async Task CommandFollowsTheEngine()
     {
-        var hyper = string.Equals(Environment.GetEnvironmentVariable(EngineVariable), "hyperpdf", StringComparison.OrdinalIgnoreCase);
-        using var pdfium = new TestServices(PdfEngineChoice.Pdfium);
+        using var pdfium = new TestServices(TestEngineChoice.Pdfium);
         using var pdfiumMain = new MainViewModel(pdfium.Services);
         pdfiumMain.Open([pdfium.CreateDocument(SourceName, 1)]);
-        using var native = new TestServices(PdfEngineChoice.HyperPdf);
+        using var native = new TestServices(TestEngineChoice.HyperPdf);
         using var nativeMain = new MainViewModel(native.Services);
         nativeMain.Open([native.CreateDocument(SourceName, 1)]);
 
         using (Assert.Multiple())
         {
-            await Assert.That(pdfiumMain.SelectedTab!.CanRedact).IsEqualTo(hyper);
-            await Assert.That(pdfiumMain.SelectedTab.RedactMenuText).Contains(hyper ? "Redactions…" : "needs the HyperPDF engine");
+            await Assert.That(pdfiumMain.SelectedTab!.CanRedact).IsFalse();
+            await Assert.That(pdfiumMain.SelectedTab.RedactMenuText).Contains("needs the HyperPDF engine");
             await Assert.That(nativeMain.SelectedTab!.CanRedact).IsTrue();
         }
     }
@@ -180,7 +175,7 @@ public sealed class RedactionViewModelTests
     [Test]
     public async Task MarkApplySaveAndReopen()
     {
-        using var test = new TestServices(PdfEngineChoice.HyperPdf);
+        using var test = new TestServices(TestEngineChoice.HyperPdf);
         using var main = new MainViewModel(test.Services);
         main.Open([test.CreateDocument(SourceName, 1)]);
         var tab = main.SelectedTab!;

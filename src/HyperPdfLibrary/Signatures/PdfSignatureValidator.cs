@@ -49,7 +49,7 @@ internal static class PdfSignatureValidator
         try
         {
             // The earlier revision shares the document's security handler, so it is not disposed.
-            var signed = document.Objects.OpenRevision(signedEnd);
+            var signed = StoreRevisions.OpenRevision(document.Objects, signedEnd);
             return [.. PdfRevisionComparer.Compare(document.Objects, signed, signedEnd)];
         }
         catch (PdfException)
@@ -87,15 +87,17 @@ internal static class PdfSignatureValidator
         var permission = PdfMdpEvaluator.Effective(certification, locks);
         for (var i = 0; i < changes.Length; i++)
         {
-            changes[i] = changes[i] with { IsPermitted = PdfMdpEvaluator.IsPermitted(changes[i], permission, locks) };
+            changes[i] = changes[i] with
+            {
+                IsPermitted = PdfMdpEvaluator.IsPermitted(changes[i], permission, locks)
+            };
         }
     }
 
     /// <summary>Gets a certification signature's permission; a certification without a DocMDP /P allows form filling and signing.</summary>
     /// <param name="details">The certification signature.</param>
     /// <returns>The permission.</returns>
-    private static PdfMdpPermission CertificationPermission(PdfSignatureDetails details) =>
-        details.DocMdp == PdfMdpPermission.None ? PdfMdpPermission.FormFillAndSign : details.DocMdp;
+    private static PdfMdpPermission CertificationPermission(PdfSignatureDetails details) => details.DocMdp == PdfMdpPermission.None ? PdfMdpPermission.FormFillAndSign : details.DocMdp;
 
     /// <summary>Adds a lock when there is one.</summary>
     /// <param name="locks">The locks.</param>

@@ -58,14 +58,14 @@ public sealed class ContentCheckTests
         try
         {
             using var document = new HyperPdfEngine().Open(path, null);
-            var check = (IContentCheck)document;
+            var check = (IContentCheck)DocumentFeatures.CastFeature(document, typeof(IContentCheck))!;
             await Assert.That(check.CheckDocument()).IsEqualTo(UnsupportedContent.XfaForm | UnsupportedContent.JavaScript);
             await Assert.That(check.CheckPage(0)).IsEqualTo(UnsupportedContent.Multimedia | UnsupportedContent.ThreeD | UnsupportedContent.JavaScript);
             await Assert.That(check.CheckPage(1)).IsEqualTo(UnsupportedContent.None);
 
             using var simple = new HyperPdfEngine().Open(plain, null);
-            await Assert.That(((IContentCheck)simple).CheckDocument()).IsEqualTo(UnsupportedContent.None);
-            await Assert.That(((IContentCheck)simple).CheckPage(0)).IsEqualTo(UnsupportedContent.None);
+            await Assert.That(((IContentCheck)DocumentFeatures.CastFeature(simple, typeof(IContentCheck))!).CheckDocument()).IsEqualTo(UnsupportedContent.None);
+            await Assert.That(((IContentCheck)DocumentFeatures.CastFeature(simple, typeof(IContentCheck))!).CheckPage(0)).IsEqualTo(UnsupportedContent.None);
         }
         finally
         {
@@ -81,8 +81,10 @@ public sealed class ContentCheckTests
     {
         using var pair = new EnginePair(TestPdf.CreateCalculatedForm());
 
-        await Assert.That(((IContentCheck)pair.HyperPdf).CheckPage(0)).IsEqualTo(UnsupportedContent.None);
-        await Assert.That(((IContentCheck)pair.HyperPdf).CheckDocument()).IsEqualTo(((IContentCheck)pair.Pdfium).CheckDocument());
+        await Assert.That(((IContentCheck)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IContentCheck))!).CheckPage(0)).IsEqualTo(UnsupportedContent.None);
+        await Assert.That(((IContentCheck)DocumentFeatures.CastFeature(
+            pair.HyperPdf,
+            typeof(IContentCheck))!).CheckDocument()).IsEqualTo(((IContentCheck)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IContentCheck))!).CheckDocument());
     }
 
     /// <summary>Every sample document is judged the same by HyperPDF and PDFium.</summary>
@@ -102,8 +104,8 @@ public sealed class ContentCheckTests
     public async Task VerdictsMatchPdfium(Sample sample)
     {
         using var pair = new EnginePair(CreateSample(sample));
-        var expected = (IContentCheck)pair.Pdfium;
-        var actual = (IContentCheck)pair.HyperPdf;
+        var expected = (IContentCheck)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IContentCheck))!;
+        var actual = (IContentCheck)DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IContentCheck))!;
 
         await Assert.That(actual.CheckDocument()).IsEqualTo(expected.CheckDocument());
         await Assert.That(actual.CheckPage(0)).IsEqualTo(expected.CheckPage(0));

@@ -63,7 +63,7 @@ public sealed class ShapeAnnotationTests
     public async Task AddsAndReadsEachShape()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
 
         var indexes = AddAll(editor);
         var annotations = new List<PageAnnotation>();
@@ -83,7 +83,7 @@ public sealed class ShapeAnnotationTests
     public async Task RefusesEmptyShapes()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
 
         var arrow = editor.AddShape(Page, AnnotationKind.Arrow, Tail, Tail, AnnotationColors.Ink, Width);
         var stamp = editor.AddStamp(Page, StampAt, " ", AnnotationColors.Clay);
@@ -100,7 +100,7 @@ public sealed class ShapeAnnotationTests
     public async Task DrawsAndSaves()
     {
         using var test = new TestDocument(PageCount);
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var indexes = AddAll(editor);
         var recoloured = editor.SetColor(Page, indexes[^1], AnnotationColors.Slate);
         var path = Path.Combine(Path.GetTempPath(), $"pdfviewerlite-shapes-{Guid.NewGuid():N}.pdf");
@@ -113,7 +113,7 @@ public sealed class ShapeAnnotationTests
 
             using var reopened = new PdfiumEngine().Open(path, null);
             var annotations = new List<PageAnnotation>();
-            ((IAnnotationEditor)reopened).GetAnnotations(Page, annotations);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(reopened, typeof(IAnnotationEditor))!).GetAnnotations(Page, annotations);
             var pixels = Render(reopened, out var width);
 
             await Assert.That(recoloured).IsTrue();

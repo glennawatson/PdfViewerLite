@@ -36,12 +36,12 @@ internal static class PortfolioReader
         var fields = new List<PdfPortfolioField>(schema.Count);
         for (var i = 0; i < schema.Count; i++)
         {
-            if (schema.Owner!.Resolve(schema.GetValueAt(i)).AsDictionary() is not { } field)
+            if (StoreReading.Resolve(schema.Owner!, schema.GetValueAt(i)).AsDictionary() is not { } field)
             {
                 continue;
             }
 
-            var key = schema.Owner.Names.GetString(schema.GetKeyAt(i));
+            var key = schema.Owner!.Names.GetString(schema.GetKeyAt(i));
             fields.Add(new(key, field.NameText("Subtype") ?? string.Empty, field.Text("N") ?? string.Empty, field.Int("O", 0), field.Flag("V", true), field.Flag("E", false)));
         }
 
@@ -59,7 +59,12 @@ internal static class PortfolioReader
             return [];
         }
 
-        var keys = sort.NameText("S") is { } single ? new[] { single } : sort.Array("S").NameTexts();
+        var keys = sort.NameText("S") is { } single
+            ? new[]
+        {
+            single,
+        }
+            : sort.Array("S").NameTexts();
         var directions = sort.Array("A");
         var result = new PdfPortfolioSort[keys.Length];
         for (var i = 0; i < keys.Length; i++)
@@ -74,9 +79,23 @@ internal static class PortfolioReader
     /// <summary>Reads the <c>/Colors</c> dictionary.</summary>
     /// <param name="colors">The dictionary, or null.</param>
     /// <returns>The colours, or null.</returns>
-    internal static PdfPortfolioColors? ReadColors(PdfDictionary? colors) => colors is null
-        ? null
-        : new(Color(colors, "Background"), Color(colors, "CardBackground"), Color(colors, "CardBorder"), Color(colors, "PrimaryText"), Color(colors, "SecondaryText"));
+    internal static PdfPortfolioColors? ReadColors(PdfDictionary? colors) =>
+        colors is null ? null : new(
+        Color(
+        colors,
+        "Background"),
+        Color(
+        colors,
+        "CardBackground"),
+        Color(
+        colors,
+        "CardBorder"),
+        Color(
+        colors,
+        "PrimaryText"),
+        Color(
+        colors,
+        "SecondaryText"));
 
     /// <summary>Reads a folder and the folders below it.</summary>
     /// <param name="folder">The folder dictionary.</param>
@@ -102,13 +121,15 @@ internal static class PortfolioReader
         }
 
         return new(
-            folder.Int("ID", 0),
-            folder.GetText(KnownName.Name),
-            folder.GetText(KnownName.Desc),
-            PdfDate.Parse(folder.GetStringBytes(KnownName.CreationDate)),
-            PdfDate.Parse(folder.GetStringBytes(KnownName.ModDate)),
-            ReadFree(folder.Array("Free")),
-            [.. children]);
+        folder.Int(
+        "ID",
+        0),
+        folder.GetText(KnownName.Name),
+        folder.GetText(KnownName.Desc),
+        PdfDate.Parse(folder.GetStringBytes(KnownName.CreationDate)),
+        PdfDate.Parse(folder.GetStringBytes(KnownName.ModDate)),
+        ReadFree(folder.Array("Free")),
+        [.. children]);
     }
 
     /// <summary>Reads the folder id from an <c>/EmbeddedFiles</c> name-tree key. A file in a folder has a key that starts with the folder's <c>/ID</c> in angle brackets.</summary>
@@ -139,11 +160,11 @@ internal static class PortfolioReader
         for (var i = 0; item is not null && i < item.Count; i++)
         {
             var value = item.GetValueAt(i);
-            var resolved = item.Owner!.Resolve(value);
+            var resolved = StoreReading.Resolve(item.Owner!, value);
             var text = resolved.AsDictionary() is { } sub ? sub.Value("D").ScalarText(item.Owner) : resolved.ScalarText(item.Owner);
             if (text is not null)
             {
-                values[item.Owner.Names.GetString(item.GetKeyAt(i))] = text;
+                values[item.Owner!.Names.GetString(item.GetKeyAt(i))] = text;
             }
         }
 
@@ -155,8 +176,7 @@ internal static class PortfolioReader
     /// <param name="colors">The colours dictionary.</param>
     /// <param name="key">The key.</param>
     /// <returns>The components, or null when the entry is not three numbers.</returns>
-    private static double[]? Color(PdfDictionary colors, string key) =>
-        colors.Array(key).Numbers() is { Length: ColorComponents } components ? components : null;
+    private static double[]? Color(PdfDictionary colors, string key) => colors.Array(key).Numbers() is { Length: ColorComponents } components ? components : null;
 
     /// <summary>Reads the <c>/Free</c> array of id ranges.</summary>
     /// <param name="free">The array, or null.</param>

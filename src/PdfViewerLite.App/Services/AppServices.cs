@@ -156,8 +156,7 @@ public sealed class AppServices : IDisposable
     {
         AppServices? services = null;
 
-        // The engine reads the settings each time a document opens, and the settings exist only once the services do.
-        var engine = new SelectableDocumentEngine(() => services?.Settings.PdfEngine ?? PdfEngineChoice.Pdfium, () => ReadHighlight(services));
+        var engine = new HighlightedHyperPdfEngine(() => ReadHighlight(services));
         services = new(new SettingsStore(), engine, platform);
         return services;
     }

@@ -94,14 +94,14 @@ public static class Jbig2Decoder
     private static bool Decode(ReadOnlySpan<byte> data, ReadOnlySpan<byte> globals, Jbig2Bitmap page)
     {
         using var workspace = new Jbig2Workspace();
-        using var global = globals.IsEmpty ? null : new Jbig2Context(null, workspace, null);
-        if (global is not null && global.DecodeSequential(globals) != Jbig2Status.Success)
+        using var global = globals.IsEmpty ? null : new Jbig2DecodeState(null, workspace, null);
+        if (global is not null && Jbig2Segments.DecodeSequential(global, globals) != Jbig2Status.Success)
         {
             return false;
         }
 
-        using var context = new Jbig2Context(page, workspace, global);
-        return context.DecodeSequential(data) == Jbig2Status.Success || context.PageSeen;
+        using var context = new Jbig2DecodeState(page, workspace, global);
+        return Jbig2Segments.DecodeSequential(context, data) == Jbig2Status.Success || context.PageSeen;
     }
 
     /// <summary>Drops a JBIG2 file header, which PDF forbids but some writers leave in, as pdf.js does.</summary>

@@ -64,7 +64,6 @@ public sealed class PageAnnotationTests
         var replaced = PdfPageAnnotations.Replace(store, page, first, edited);
         var removed = PdfPageAnnotations.RemoveAt(store, page, second);
         var reopened = Reopen(PdfCompactWriter.Save(store, PdfCompactOptions.Default));
-
         await Assert.That(first).IsEqualTo(before);
         await Assert.That(second).IsEqualTo(before + 1);
         await Assert.That(PdfPageAnnotations.GetId(store, page, first).IsValid).IsTrue();
@@ -79,7 +78,7 @@ public sealed class PageAnnotationTests
     [Test]
     public async Task WritesAndRecolorsAppearances()
     {
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         var annotation = PdfAnnotations.Create(store, KnownName.Stamp, Box);
         var form = Draw(store);
         _ = PdfAnnotations.SetNormalAppearance(store, annotation, form);
@@ -88,7 +87,6 @@ public sealed class PageAnnotationTests
         var recolored = PdfAppearanceColors.Recolor(appearance, Ink)!;
         var foundAfter = PdfAppearanceColors.TryReadFirstColor(recolored, store.Names, out var after);
         var content = Encoding.ASCII.GetString(recolored.DecodeToArray());
-
         await Assert.That(foundFirst && first == Clay).IsTrue();
         await Assert.That(foundAfter && after == Ink).IsTrue();
         await Assert.That(content).Contains(" re");
@@ -106,7 +104,6 @@ public sealed class PageAnnotationTests
         var encoded = AppearanceFontMetrics.TryEncode(Euro, out var euro);
         var ink = AppearanceFontMetrics.MeasureInk(AppearanceFont.Helvetica, "AV"u8, Size);
         var advance = AppearanceFontMetrics.MeasureAdvance(AppearanceFont.Helvetica, "AV"u8, Size);
-
         await Assert.That(AppearanceFontMetrics.GetAdvance(AppearanceFont.Helvetica, (byte)'A')).IsEqualTo(HelveticaA);
         await Assert.That(encoded && euro == EuroCode).IsTrue();
         await Assert.That(AppearanceFontMetrics.TryEncode('中', out _)).IsFalse();
@@ -120,13 +117,12 @@ public sealed class PageAnnotationTests
     [Test]
     public async Task AddsImagesWithSoftMasks()
     {
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         var pixels = new byte[Side * Side * PixelBytes];
         Array.Fill(pixels, byte.MaxValue);
-        var opaque = store.GetObject(PdfImages.AddBgraImage(store, pixels, Side, Side)).AsStream()!;
+        var opaque = StoreReading.GetObject(store, PdfImages.AddBgraImage(store, pixels, Side, Side)).AsStream()!;
         pixels[PixelBytes - 1] = HalfAlpha;
-        var soft = store.GetObject(PdfImages.AddBgraImage(store, pixels, Side, Side)).AsStream()!;
-
+        var soft = StoreReading.GetObject(store, PdfImages.AddBgraImage(store, pixels, Side, Side)).AsStream()!;
         await Assert.That(opaque.Dictionary.ContainsKey(KnownName.SMask)).IsFalse();
         await Assert.That(soft.Dictionary.ContainsKey(KnownName.SMask)).IsTrue();
         await Assert.That(soft.DecodeToArray().Length).IsEqualTo(Side * Side * (PixelBytes - 1));
@@ -138,7 +134,6 @@ public sealed class PageAnnotationTests
     public async Task WritesTextMaps()
     {
         var map = Encoding.ASCII.GetString(PdfToUnicodeMaps.Write([string.Empty, "A", null, "fi"]));
-
         await Assert.That(map).Contains("2 beginbfchar");
         await Assert.That(map).Contains("<0001> <0041>");
         await Assert.That(map).Contains("<0003> <00660069>");

@@ -18,11 +18,9 @@ internal static class StructureDocuments
     /// <returns>The file bytes.</returns>
     internal static byte[] Build(string catalogEntries, string pageEntries, params string[] extra)
     {
-        string[] header =
-        [
-            $"<< /Type /Catalog /Pages 2 0 R {catalogEntries} >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] {pageEntries} >>",
+        string[] header = [$"<< /Type /Catalog /Pages 2 0 R {catalogEntries} >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] {pageEntries} >>",
         ];
         return MiniPdf.Build([.. header, .. extra]);
     }
@@ -38,12 +36,11 @@ internal static class StructureDocuments
     /// <param name="pageEntries">Extra page entries.</param>
     /// <param name="extra">The objects numbered from 4.</param>
     /// <returns>The document.</returns>
-    internal static PdfDocument OpenPage(string catalogEntries, string pageEntries, params string[] extra) =>
-        PdfDocumentReader.Open(Build(catalogEntries, pageEntries, extra), null);
+    internal static PdfDocument OpenPage(string catalogEntries, string pageEntries, params string[] extra) => PdfDocumentReader.Open(Build(catalogEntries, pageEntries, extra), null);
 
     /// <summary>Gets an object as a dictionary.</summary>
     /// <param name="document">The document.</param>
     /// <param name="number">The object number.</param>
     /// <returns>The dictionary.</returns>
-    internal static PdfDictionary Dictionary(PdfDocument document, int number) => document.Objects.GetObject(new(number, 0)).AsDictionary()!;
+    internal static PdfDictionary Dictionary(PdfDocument document, int number) => StoreReading.GetObject(document.Objects, new(number, 0)).AsDictionary()!;
 }

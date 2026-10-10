@@ -103,7 +103,7 @@ public sealed class FormScriptViewModelTests
     private static FormField Field(DocumentTabViewModel tab, string name)
     {
         var fields = new List<FormField>();
-        ((IFormFiller)tab.TryGetDocument()!).GetFields(0, fields);
+        ((IFormFiller)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(IFormFiller))!).GetFields(0, fields);
         return fields.Single(field => field.Name == name);
     }
 }

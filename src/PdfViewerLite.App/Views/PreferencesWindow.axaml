@@ -34,11 +34,6 @@
       <CheckBox AutomationProperties.Name="Check spelling in form fields" x:Name="CheckSpellingBox" views:ControlHelp.Text="{x:Static views:Descriptions.CheckSpelling}" Content="Check spelling in form fields" />
       <CheckBox AutomationProperties.Name="Offer fonts that cannot be saved in PDFs" x:Name="PreviewOnlyFontsBox" views:ControlHelp.Text="{x:Static views:Descriptions.PreviewOnlyFonts}" Content="Offer fonts that cannot be saved in PDFs (shown on screen, saved as Helvetica, Times or Courier)" />
     </StackPanel>
-    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="16">
-      <TextBlock x:Name="PdfEngineLabel" Grid.Row="0" VerticalAlignment="Center" Text="PDF engine" />
-      <ComboBox AutomationProperties.Name="PDF engine" x:Name="PdfEngineBox" views:ControlHelp.Text="{x:Static views:Descriptions.PdfEngine}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
-      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="secondary" TextWrapping="Wrap" Text="{x:Static views:Descriptions.PdfEngine}" />
-    </Grid>
     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="16">
       <TextBlock x:Name="SpeechEngineLabel" Grid.Row="0" VerticalAlignment="Center" Text="Read Aloud voice" />
       <ComboBox AutomationProperties.Name="Read Aloud voice" x:Name="SpeechEngineBox" views:ControlHelp.Text="{x:Static views:Descriptions.SpeechEngine}" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />

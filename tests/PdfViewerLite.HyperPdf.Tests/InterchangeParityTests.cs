@@ -45,7 +45,7 @@ public sealed class InterchangeParityTests
     public async Task ImportedFormValuesMatchPdfiumEdits()
     {
         using var pair = new EnginePair(FormSamples.CreateRichForm());
-        var filler = (IFormFiller)pair.Pdfium;
+        var filler = (IFormFiller)DocumentFeatures.CastFeature(pair.Pdfium, typeof(IFormFiller))!;
         _ = filler.SetText(0, FormSamples.NotesIndex, "Hello");
         _ = filler.SetText(0, FormSamples.SecretIndex, "pw2");
         _ = filler.SelectOption(0, FormSamples.ColourIndex, GreenOption);
@@ -95,8 +95,8 @@ public sealed class InterchangeParityTests
             using var hyperPdf = new HyperPdfEngine().Open(saved, null);
             var seenByPdfium = new List<PageAnnotation>();
             var seenByHyperPdf = new List<PageAnnotation>();
-            ((IAnnotationEditor)pdfium).GetAnnotations(HighlightPage, seenByPdfium);
-            ((IAnnotationEditor)hyperPdf).GetAnnotations(HighlightPage, seenByHyperPdf);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(pdfium, typeof(IAnnotationEditor))!).GetAnnotations(HighlightPage, seenByPdfium);
+            ((IAnnotationEditor)DocumentFeatures.CastFeature(hyperPdf, typeof(IAnnotationEditor))!).GetAnnotations(HighlightPage, seenByHyperPdf);
 
             await Assert.That(result.AnnotationsAdded).IsEqualTo(ImportedAnnotations);
             await Assert.That(seenByPdfium.Select(static annotation => annotation.Kind)).Contains(AnnotationKind.Highlight);
@@ -131,7 +131,7 @@ public sealed class InterchangeParityTests
     private static string Describe(IDocument document)
     {
         var fields = new List<FormField>();
-        ((IFormFiller)document).GetFields(0, fields);
+        ((IFormFiller)DocumentFeatures.CastFeature(document, typeof(IFormFiller))!).GetFields(0, fields);
         var text = new StringBuilder();
         foreach (var field in fields)
         {
@@ -148,7 +148,7 @@ public sealed class InterchangeParityTests
     {
         var path = Path.Combine(Path.GetTempPath(), $"hyperpdf-interchange-pdfium-{Guid.NewGuid():N}.pdf");
         using var stream = File.Create(path);
-        _ = ((IAnnotationEditor)document).Save(stream);
+        _ = ((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!).Save(stream);
         return path;
     }
 

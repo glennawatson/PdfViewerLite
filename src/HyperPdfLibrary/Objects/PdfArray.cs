@@ -23,6 +23,7 @@ public sealed class PdfArray
     /// <summary>Initializes a new instance of the <see cref="PdfArray"/> class.</summary>
     /// <param name="owner">The objects references resolve against.</param>
     public PdfArray(PdfObjectStore? owner)
+
         : this(owner, DefaultCapacity)
     {
     }
@@ -84,7 +85,7 @@ public sealed class PdfArray
     public PdfValue Get(int index)
     {
         var value = GetRaw(index);
-        return value.IsReference && Owner is not null ? Owner.Resolve(value) : value;
+        return value.IsReference && Owner is not null ? StoreReading.Resolve(Owner, value) : value;
     }
 
     /// <summary>Gets a number, or zero when missing.</summary>

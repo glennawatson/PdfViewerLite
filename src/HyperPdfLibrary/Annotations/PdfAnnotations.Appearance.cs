@@ -23,7 +23,7 @@ public static partial class PdfAnnotations
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(annotation);
         ArgumentNullException.ThrowIfNull(form);
-        var id = store.Add(PdfValue.FromStream(form));
+        var id = StoreEditing.Add(store, PdfValue.FromStream(form));
         var appearances = new PdfDictionary(annotation.Owner, 1);
         appearances.Set(KnownName.N, PdfValue.FromReference(id));
         annotation.Set(KnownName.AP, PdfValue.FromDictionary(appearances));

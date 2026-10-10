@@ -21,7 +21,7 @@ public static class PdfDocumentCheck
     /// <param name="document">The document.</param>
     /// <returns>True when opening the document repaired its structure.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool WasRepaired(PdfDocument document) => document.Objects.HasRepairs;
+    public static bool WasRepaired(PdfDocument document) => StoreRepairs.HasRepairs(document.Objects);
 
     /// <summary>
     /// Opens bytes with the check's recovery switches and checks them. A file that cannot be opened without recovery gives
@@ -115,7 +115,7 @@ public static class PdfDocumentCheck
     /// <param name="document">The document.</param>
     /// <returns>A copy of the repairs, each with its object number and offset.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfDiagnostic[] GetRepairs(PdfDocument document) => document.Objects.GetRepairs();
+    public static PdfDiagnostic[] GetRepairs(PdfDocument document) => StoreRepairs.GetRepairs(document.Objects);
 
     /// <summary>Checks one object with the token in force, so decoding inside the step stops on it too.</summary>
     /// <param name="checker">The checker.</param>
@@ -140,7 +140,7 @@ public static class PdfDocumentCheck
     /// <summary>Maps a check's switches to open options.</summary>
     /// <param name="options">The check options.</param>
     /// <returns>The open options.</returns>
-    private static PdfOpenOptions OpenOptionsFor(PdfCheckOptions options) => new() { Recovery = options.Recovery, IgnoreXrefStreams = options.IgnoreXrefStreams };
+    private static PdfOpenOptions OpenOptionsFor(PdfCheckOptions options) => new() { Recovery = options.Recovery, IgnoreXrefStreams = options.IgnoreXrefStreams, };
 
     /// <summary>Makes the report for a file that could not be opened.</summary>
     /// <param name="error">The error.</param>

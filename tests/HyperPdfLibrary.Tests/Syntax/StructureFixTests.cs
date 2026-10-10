@@ -26,13 +26,13 @@ public sealed class StructureFixTests
 
     /// <summary>A header, a catalog, a page tree and a stream that holds the text of another object, with no table.</summary>
     private const string StreamHidingObject =
-        "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n"
-        + "3 0 obj\n<< /Length 32 >>\nstream\n9 0 obj\n<< /Fake true >>\nendobj\nendstream\nendobj\ntrailer\n<< /Root 1 0 R /Size 10 >>\n%%EOF";
+            "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n"
+            + "3 0 obj\n<< /Length 32 >>\nstream\n9 0 obj\n<< /Fake true >>\nendobj\nendstream\nendobj\ntrailer\n<< /Root 1 0 R /Size 10 >>\n%%EOF";
 
     /// <summary>A stream with neither /Length nor endstream.</summary>
     private const string StreamWithoutEnd =
-        "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n"
-        + "4 0 obj\n<< >>\nstream\nabc\nendobj\ntrailer\n<< /Root 1 0 R /Size 5 >>\n%%EOF";
+            "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n"
+            + "4 0 obj\n<< >>\nstream\nabc\nendobj\ntrailer\n<< /Root 1 0 R /Size 5 >>\n%%EOF";
 
     /// <summary>Image data that holds a fake end marker, then the real one and a restore operator.</summary>
     private const string InlineImage = "BI /W 4 /H 1 /BPC 8 /CS /G ID x EI\nEI\nQ";
@@ -42,10 +42,9 @@ public sealed class StructureFixTests
     [Test]
     public async Task RepairSkipsStreamBodies()
     {
-        using var store = PdfObjectStore.Open(Encoding.Latin1.GetBytes(StreamHidingObject), null);
-
+        using var store = StoreOpening.Open(Encoding.Latin1.GetBytes(StreamHidingObject), null);
         await Assert.That(store.WasRepaired).IsTrue();
-        await Assert.That(store.GetObject(new(HiddenObject, 0)).IsNull).IsTrue();
+        await Assert.That(StoreReading.GetObject(store, new(HiddenObject, 0)).IsNull).IsTrue();
     }
 
     /// <summary>A stream with neither /Length nor endstream runs to endobj.</summary>
@@ -53,9 +52,8 @@ public sealed class StructureFixTests
     [Test]
     public async Task StreamWithoutLengthOrEndstreamRunsToEndobj()
     {
-        using var store = PdfObjectStore.Open(Encoding.Latin1.GetBytes(StreamWithoutEnd), null);
-
-        await Assert.That(store.GetObject(new(OpenStream, 0)).AsStream()!.RawLength).IsEqualTo(OpenStreamLength);
+        using var store = StoreOpening.Open(Encoding.Latin1.GetBytes(StreamWithoutEnd), null);
+        await Assert.That(StoreReading.GetObject(store, new(OpenStream, 0)).AsStream()!.RawLength).IsEqualTo(OpenStreamLength);
     }
 
     /// <summary>A dictionary key with no value before endobj leaves the keyword for the caller.</summary>
@@ -64,7 +62,6 @@ public sealed class StructureFixTests
     public async Task DictionaryKeyBeforeEndobjRewinds()
     {
         var result = ParseDamagedDictionary();
-
         await Assert.That(result.Value).IsEqualTo(1);
         await Assert.That(result.Next).IsEqualTo(PdfKeyword.EndObj);
     }
@@ -75,7 +72,6 @@ public sealed class StructureFixTests
     public async Task StrayParenthesisIsOneByte()
     {
         var length = LexStrayParenthesis();
-
         await Assert.That(length).IsEqualTo(1);
     }
 
@@ -85,7 +81,6 @@ public sealed class StructureFixTests
     public async Task InlineImageUsesComputedLength()
     {
         var (length, next) = ReadInlineImage();
-
         await Assert.That(length).IsEqualTo(InlineLength);
         await Assert.That(next).IsEqualTo(ContentOperator.Restore);
     }

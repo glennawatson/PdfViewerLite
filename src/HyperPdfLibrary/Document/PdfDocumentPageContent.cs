@@ -17,7 +17,7 @@ public static class PdfDocumentPageContent
     /// <returns>The content.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="pageIndex"/> is not a page.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static PdfPageContent GetPageContent(PdfDocument document, int pageIndex) => PdfPageContent.Read(document, pageIndex);
+    public static PdfPageContent GetPageContent(PdfDocument document, int pageIndex) => PdfPageContentReader.Read(document, pageIndex);
 
     /// <summary>Drops what the document cached about page content and tells renderers to redraw, after an edit changed a page's content.</summary>
     /// <param name="document">The document.</param>
@@ -32,7 +32,7 @@ public static class PdfDocumentPageContent
     /// <param name="content">The page content.</param>
     internal static void ApplyPageContent(PdfDocument document, PdfPageContent content)
     {
-        PdfDocumentEditing.RunEdit(document, "Edit page content", PdfChangeKinds.Other, content, static (_, state) => state.CommitToPage());
+        PdfDocumentEditing.RunEdit(document, "Edit page content", PdfChangeKinds.Other, content, static (_, state) => PdfPageContentApplication.CommitToPage(state));
         _ = Interlocked.Increment(ref document.State.PageContentEdits);
         PdfDocumentPageContent.InvalidatePageContent(document);
     }

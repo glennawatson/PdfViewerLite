@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>Source-generated, allocation-conscious PDFium interop and document engine for PdfViewerLite.</Description>
+    <Description>PDFium reference engine for tests and rendering parity checks.</Description>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

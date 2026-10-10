@@ -65,20 +65,18 @@ public sealed class WriterFixTests
     {
         var original = useStreams ? TestPdf.CreateCompressed() : TestPdf.Create(1);
         var added = SaveWithNewObject(original, out var id);
-
         var deleted = SaveAfterDelete(added, id, out var freedGeneration);
         var update = Encoding.Latin1.GetString(deleted, added.Length, deleted.Length - added.Length);
-        using var reopened = PdfObjectStore.Open(deleted, null);
-        var reusedGeneration = reopened.GetGeneration(id.Number);
-        reopened.Replace(id, PdfValue.FromInteger(TrailerValue));
+        using var reopened = StoreOpening.Open(deleted, null);
+        var reusedGeneration = StoreEditing.GetGeneration(reopened, id.Number);
+        StoreEditing.Replace(reopened, id, PdfValue.FromInteger(TrailerValue));
         var reused = PdfIncrementalWriter.Save(reopened);
-        using var final = PdfObjectStore.Open(reused, null);
-
+        using var final = StoreOpening.Open(reused, null);
         await Assert.That(freedGeneration).IsEqualTo(FreedGeneration);
-        await Assert.That(reopened.GetObject(id).AsInteger()).IsEqualTo(TrailerValue);
+        await Assert.That(StoreReading.GetObject(reopened, id).AsInteger()).IsEqualTo(TrailerValue);
         await Assert.That(reusedGeneration).IsEqualTo(FreedGeneration);
-        await Assert.That(final.GetObject(id).AsInteger()).IsEqualTo(TrailerValue);
-        await Assert.That(final.GetGeneration(id.Number)).IsEqualTo(FreedGeneration);
+        await Assert.That(StoreReading.GetObject(final, id).AsInteger()).IsEqualTo(TrailerValue);
+        await Assert.That(StoreEditing.GetGeneration(final, id.Number)).IsEqualTo(FreedGeneration);
         await Assert.That(Encoding.Latin1.GetString(reused, deleted.Length, reused.Length - deleted.Length)).Contains($"{id.Number} {FreedGeneration} obj");
         if (!useStreams)
         {
@@ -93,11 +91,10 @@ public sealed class WriterFixTests
     {
         var added = SaveWithNewObject(TestPdf.Create(1), out var id);
         var deleted = SaveAfterDelete(added, id, out _);
-        using var before = PdfObjectStore.Open(added, null);
-        using var after = PdfObjectStore.Open(deleted, null);
-
-        await Assert.That(before.GetObject(id).IsNull).IsFalse();
-        await Assert.That(after.GetObject(id).IsNull).IsTrue();
+        using var before = StoreOpening.Open(added, null);
+        using var after = StoreOpening.Open(deleted, null);
+        await Assert.That(StoreReading.GetObject(before, id).IsNull).IsFalse();
+        await Assert.That(StoreReading.GetObject(after, id).IsNull).IsTrue();
         await Assert.That(after.WasRepaired).IsFalse();
     }
 
@@ -107,12 +104,10 @@ public sealed class WriterFixTests
     public async Task EditSnapshotListsEditsAndDeletionsInOrder()
     {
         var added = SaveWithNewObject(TestPdf.Create(1), out var id);
-        using var store = PdfObjectStore.Open(added, null);
-        var fresh = store.Add(PdfValue.FromInteger(TrailerValue));
-        store.Delete(id);
-
-        var snapshot = store.GetEditedObjects(out var size);
-
+        using var store = StoreOpening.Open(added, null);
+        var fresh = StoreEditing.Add(store, PdfValue.FromInteger(TrailerValue));
+        StoreEditing.Delete(store, id);
+        var snapshot = StoreEditing.GetEditedObjects(store, out var size);
         await Assert.That(snapshot.Length).IsEqualTo(SnapshotCount);
         await Assert.That(snapshot[0].Number).IsEqualTo(id.Number);
         await Assert.That(snapshot[0].Deleted).IsTrue();
@@ -132,7 +127,6 @@ public sealed class WriterFixTests
         var plain = new PdfDictionary(null);
         PdfXrefWriter.SetFileId(encrypted, source, "content"u8, true);
         PdfXrefWriter.SetFileId(plain, source, "content"u8, false);
-
         await Assert.That(encrypted.ContainsKey(KnownName.ID)).IsFalse();
         await Assert.That(plain.ContainsKey(KnownName.ID)).IsTrue();
     }
@@ -144,7 +138,6 @@ public sealed class WriterFixTests
     {
         var first = SecondId(TestPdf.Create(1));
         var second = SecondId(TestPdf.Create(PageCount));
-
         await Assert.That(first.Length).IsGreaterThan(0);
         await Assert.That(second).IsNotEquivalentTo(first);
     }
@@ -185,14 +178,12 @@ public sealed class WriterFixTests
     [Test]
     public async Task UpdateKeepsTrailerKeysAndSize()
     {
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         var key = store.Names.Intern(TrailerKey);
         store.Trailer.Set(key, PdfValue.FromInteger(TrailerValue));
         store.Trailer.Set(KnownName.Size, PdfValue.FromInteger(LargeSize));
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(store.Catalog.Clone()));
-
-        using var reopened = PdfObjectStore.Open(PdfIncrementalWriter.Save(store), null);
-
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(store.Catalog.Clone()));
+        using var reopened = StoreOpening.Open(PdfIncrementalWriter.Save(store), null);
         await Assert.That(reopened.Trailer.GetInt32(reopened.Names.Intern(TrailerKey))).IsEqualTo(TrailerValue);
         await Assert.That(reopened.Trailer.GetInt32(KnownName.Size)).IsEqualTo(LargeSize);
     }
@@ -202,10 +193,9 @@ public sealed class WriterFixTests
     [Test]
     public async Task ObjectNumbersAboveTheLimitAreRefused()
     {
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
-
-        await Assert.That(() => store.Replace(new(int.MaxValue, 0), PdfValue.FromInteger(1))).Throws<ArgumentOutOfRangeException>();
-        await Assert.That(() => store.Delete(new(int.MaxValue, 0))).Throws<ArgumentOutOfRangeException>();
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
+        await Assert.That(() => StoreEditing.Replace(store, new(int.MaxValue, 0), PdfValue.FromInteger(1))).Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => StoreEditing.Delete(store, new(int.MaxValue, 0))).Throws<ArgumentOutOfRangeException>();
     }
 
     /// <summary>The compact writer refuses a document whose /Root does not resolve.</summary>
@@ -213,9 +203,8 @@ public sealed class WriterFixTests
     [Test]
     public async Task CompactWriterRefusesUnresolvedRoot()
     {
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         store.Trailer.Set(KnownName.Root, PdfValue.FromReference(new(MissingObject, 0)));
-
         await Assert.That(() => PdfCompactWriter.Save(store, new(true, false))).Throws<PdfException>();
     }
 
@@ -226,13 +215,12 @@ public sealed class WriterFixTests
     {
         var junkLength = Junk.Length;
         byte[] file = [.. Junk, .. TestPdf.Create(PageCount)];
-        using var store = PdfObjectStore.Open(file, null);
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(store.Catalog.Clone()));
+        using var store = StoreOpening.Open(file, null);
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(store.Catalog.Clone()));
         var saved = PdfIncrementalWriter.Save(store);
         var text = Encoding.Latin1.GetString(saved);
         var section = text.LastIndexOf("\nxref", StringComparison.Ordinal) + 1;
-        using var reopened = PdfObjectStore.Open(saved, null);
-
+        using var reopened = StoreOpening.Open(saved, null);
         await Assert.That(store.HeaderOffset).IsEqualTo(junkLength);
         await Assert.That(store.WasRepaired).IsFalse();
         await Assert.That(StartXref(text)).IsEqualTo(section - junkLength);
@@ -248,17 +236,15 @@ public sealed class WriterFixTests
     {
         var data = new byte[MetadataLength];
         Array.Fill(data, MetadataFill);
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         var dictionary = new PdfDictionary(store);
         dictionary.Set(KnownName.Type, PdfValue.FromName(KnownName.Metadata));
-        var id = store.Add(PdfValue.FromStream(new(dictionary, data)));
+        var id = StoreEditing.Add(store, PdfValue.FromStream(new(dictionary, data)));
         var catalog = store.Catalog.Clone();
         catalog.Set(KnownName.Metadata, PdfValue.FromReference(id));
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
-
-        using var reopened = PdfObjectStore.Open(PdfCompactWriter.Save(store, new(false, false)), null);
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
+        using var reopened = StoreOpening.Open(PdfCompactWriter.Save(store, new(false, false)), null);
         var metadata = reopened.Catalog.GetStream(KnownName.Metadata);
-
         await Assert.That(metadata is not null).IsTrue();
         await Assert.That(metadata!.Dictionary.GetRaw(KnownName.Filter).IsNull).IsTrue();
         await Assert.That(metadata.RawLength).IsEqualTo(MetadataLength);
@@ -270,8 +256,8 @@ public sealed class WriterFixTests
     /// <returns>The saved file.</returns>
     private static byte[] SaveWithNewObject(byte[] original, out PdfObjectId id)
     {
-        using var store = PdfObjectStore.Open(original, null);
-        id = store.Add(PdfValue.FromInteger(PageCount));
+        using var store = StoreOpening.Open(original, null);
+        id = StoreEditing.Add(store, PdfValue.FromInteger(PageCount));
         return PdfIncrementalWriter.Save(store);
     }
 
@@ -282,9 +268,9 @@ public sealed class WriterFixTests
     /// <returns>The saved file.</returns>
     private static byte[] SaveAfterDelete(byte[] file, PdfObjectId id, out int generation)
     {
-        using var store = PdfObjectStore.Open(file, null);
-        store.Delete(id);
-        generation = store.GetGeneration(id.Number);
+        using var store = StoreOpening.Open(file, null);
+        StoreEditing.Delete(store, id);
+        generation = StoreEditing.GetGeneration(store, id.Number);
         return PdfIncrementalWriter.Save(store);
     }
 
@@ -293,8 +279,8 @@ public sealed class WriterFixTests
     /// <returns>The second id part.</returns>
     private static byte[] SecondId(byte[] file)
     {
-        using var store = PdfObjectStore.Open(file, null);
-        using var reopened = PdfObjectStore.Open(PdfIncrementalWriter.Save(store), null);
+        using var store = StoreOpening.Open(file, null);
+        using var reopened = StoreOpening.Open(PdfIncrementalWriter.Save(store), null);
         return reopened.Trailer.GetArray(KnownName.ID)?.Get(1).AsStringBytes().ToArray() ?? [];
     }
 

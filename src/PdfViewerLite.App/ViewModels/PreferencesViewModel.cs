@@ -31,9 +31,6 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
     /// <summary>The engines in the order they are offered: MeloTTS first, as the default.</summary>
     private static readonly SpeechEngineChoice[] SpeechEngineChoices = [SpeechEngineChoice.OnDevice, SpeechEngineChoice.Kokoro, SpeechEngineChoice.Azure];
 
-    /// <summary>The PDF engines in the order they are offered: PDFium first, as the default.</summary>
-    private static readonly PdfEngineChoice[] PdfEngineChoices = [PdfEngineChoice.Pdfium, PdfEngineChoice.HyperPdf];
-
     /// <summary>The services.</summary>
     private readonly AppServices _services;
 
@@ -49,7 +46,6 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         OcrLanguages = new(services);
         Load();
         Follow();
-        FollowPdfEngine(services.Settings);
     }
 
     /// <summary>Gets the colour scheme choices.</summary>
@@ -84,19 +80,12 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         "Azure AI Speech with your own key",
     ];
 
-    /// <summary>Gets the PDF engine choices, in the order of <see cref="PdfEngineChoices"/>.</summary>
-    public static IReadOnlyList<string> PdfEngineOptions { get; } = ["PDFium (native)", "HyperPDF (managed)"];
-
     /// <summary>Gets the text recognition languages: which are used, and their packs to download or remove.</summary>
     public OcrLanguagesViewModel OcrLanguages { get; }
 
     /// <summary>Gets or sets the Read Aloud engine index.</summary>
     [Reactive(nameof(UsesAzure))]
     public partial int SpeechEngine { get; set; }
-
-    /// <summary>Gets or sets the PDF engine index, in the order of <see cref="PdfEngineOptions"/>.</summary>
-    [Reactive]
-    public partial int PdfEngine { get; set; }
 
     /// <summary>Gets a value indicating whether Azure AI Speech is chosen, which shows its key and region.</summary>
     public bool UsesAzure => _services.Settings.SpeechEngine == SpeechEngineChoice.Azure;
@@ -185,7 +174,6 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
     {
         var settings = _services.Settings;
         SpeechEngine = Math.Max(0, Array.IndexOf(SpeechEngineChoices, settings.SpeechEngine));
-        PdfEngine = Math.Max(0, Array.IndexOf(PdfEngineChoices, settings.PdfEngine));
         AzureKey = settings.AzureSpeechKey;
         TimestampServer = settings.TimestampServer;
         CommentAuthor = settings.CommentAuthor;
@@ -212,20 +200,6 @@ public sealed partial class PreferencesViewModel : ReactiveObject, IDisposable
         Follow(this.WhenChanged(static x => x.CheckSpelling), check => settings.CheckSpelling = check);
         Follow(this.WhenChanged(static x => x.ShowPreviewOnlyFonts), show => settings.ShowPreviewOnlyFonts = show);
     }
-
-    /// <summary>Writes later changes of the PDF engine to the settings; the next document opened uses the chosen engine.</summary>
-    /// <param name="settings">The settings.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void FollowPdfEngine(AppSettings settings) =>
-        Follow(this.WhenChanged(static x => x.PdfEngine), index =>
-        {
-            var clamped = Math.Clamp(index, 0, PdfEngineChoices.Length - 1);
-            settings.PdfEngine = PdfEngineChoices[clamped];
-            if (clamped != index)
-            {
-                PdfEngine = clamped;
-            }
-        });
 
     /// <summary>Writes each later change of a choice to the settings, re-themes and saves.</summary>
     private void Follow()

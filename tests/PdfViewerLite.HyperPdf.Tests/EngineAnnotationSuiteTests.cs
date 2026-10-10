@@ -140,7 +140,7 @@ public sealed class EngineAnnotationSuiteTests
     public async Task DrawsSavesAndReopens(string engine)
     {
         using var test = new EngineDocument(engine, TestPdf.Create(PageCount));
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var before = IsHighlighted(test.Document);
         var index = editor.AddMarkup(1, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, "Saved note");
         var unsaved = editor.HasUnsavedChanges;
@@ -156,7 +156,7 @@ public sealed class EngineAnnotationSuiteTests
         foreach (var reader in TestEngines.All())
         {
             using var reopened = new EngineDocument(reader, bytes);
-            var annotations = Read((IAnnotationEditor)reopened.Document, 1);
+            var annotations = Read((IAnnotationEditor)DocumentFeatures.CastFeature(reopened.Document, typeof(IAnnotationEditor))!, 1);
 
             await Assert.That(annotations.Count).IsEqualTo(1);
             await Assert.That(annotations[0].Contents).IsEqualTo("Saved note");
@@ -172,7 +172,7 @@ public sealed class EngineAnnotationSuiteTests
     public async Task LeavesRemovedAnnotationsOutOfSaves(string engine)
     {
         using var test = new EngineDocument(engine, TestPdf.Create(PageCount));
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         var index = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, string.Empty);
         var removed = editor.SetRemoved(0, index, true);
         var hidden = Read(editor, 0).Count;
@@ -181,7 +181,7 @@ public sealed class EngineAnnotationSuiteTests
 
         await Assert.That(removed).IsTrue();
         await Assert.That(hidden).IsEqualTo(0);
-        await Assert.That(Read((IAnnotationEditor)reopened.Document, 0).Count).IsEqualTo(0);
+        await Assert.That(Read((IAnnotationEditor)DocumentFeatures.CastFeature(reopened.Document, typeof(IAnnotationEditor))!, 0).Count).IsEqualTo(0);
         await Assert.That(restored).IsTrue();
         await Assert.That(Read(editor, 0).Count).IsEqualTo(1);
         await Assert.That(editor.HasUnsavedChanges).IsTrue();
@@ -195,13 +195,13 @@ public sealed class EngineAnnotationSuiteTests
     public async Task WritesAndReadsTextBoxes(string engine)
     {
         using var test = new EngineDocument(engine, TestPdf.Create(1));
-        var editor = (ITextBoxEditor)test.Document;
+        var editor = (ITextBoxEditor)DocumentFeatures.CastFeature(test.Document, typeof(ITextBoxEditor))!;
         var format = new TextFormat("Helvetica", FontSize, AnnotationColors.Ink);
         var index = editor.AddTextBox(0, TextAt, Wrap, BoxText, format);
         var content = editor.GetTextBox(0, index);
-        var annotations = Read((IAnnotationEditor)test.Document, 0);
+        var annotations = Read((IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!, 0);
         using var baseline = EngineDocument.Open(EngineDocument.Pdfium, test.FilePath);
-        var expectedBaseline = ((ITextBoxEditor)baseline).GetFirstBaseline(BoxText, format);
+        var expectedBaseline = ((ITextBoxEditor)DocumentFeatures.CastFeature(baseline, typeof(ITextBoxEditor))!).GetFirstBaseline(BoxText, format);
 
         await Assert.That(index).IsGreaterThanOrEqualTo(0);
         await Assert.That(annotations[^1].Kind).IsEqualTo(AnnotationKind.TextBox);
@@ -239,10 +239,10 @@ public sealed class EngineAnnotationSuiteTests
         using var test = new EngineDocument(engine, TestPdf.Create(1));
         var document = test.Document;
         var before = document.GetCharacterCount(0);
-        var written = ((ITextLayerWriter)document).AddTextLayer(0, [Word]);
+        var written = ((ITextLayerWriter)DocumentFeatures.CastFeature(document, typeof(ITextLayerWriter))!).AddTextLayer(0, [Word]);
         var matches = new List<TextMatch>();
         document.Find(0, Word.Text, SearchOptions.None, matches);
-        using var reopened = new EngineDocument(EngineDocument.Pdfium, Save((IAnnotationEditor)document));
+        using var reopened = new EngineDocument(EngineDocument.Pdfium, Save((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!));
         var reopenedMatches = new List<TextMatch>();
         reopened.Document.Find(0, Word.Text, SearchOptions.None, reopenedMatches);
 
@@ -260,7 +260,7 @@ public sealed class EngineAnnotationSuiteTests
     public async Task RecordsTheChosenAuthor(string engine)
     {
         using var test = new EngineDocument(engine, TestPdf.Create(1));
-        var editor = (IAnnotationEditor)test.Document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(test.Document, typeof(IAnnotationEditor))!;
         editor.Author = "  Reviewer  ";
         _ = editor.AddNote(0, NoteAt, "Signed off", AnnotationColors.Sand);
         var chosen = editor.Author;
@@ -286,7 +286,7 @@ public sealed class EngineAnnotationSuiteTests
     /// <returns>The annotations.</returns>
     private static List<Observed> AddEachKind(IDocument document)
     {
-        var editor = (IAnnotationEditor)document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
         int[] strokes = [Stroke.Length];
         _ = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sage, "Check this");
         _ = editor.AddMarkup(0, AnnotationKind.Underline, [Line], AnnotationColors.Slate, string.Empty);
@@ -305,7 +305,7 @@ public sealed class EngineAnnotationSuiteTests
     /// <returns>The annotations.</returns>
     private static List<Observed> ChangeAndRemove(IDocument document)
     {
-        var editor = (IAnnotationEditor)document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
         var index = editor.AddMarkup(0, AnnotationKind.Highlight, [Line], AnnotationColors.Sand, string.Empty);
         var text = editor.AddText(0, TextAt, "Text", FontSize, AnnotationColors.Ink, AnnotationKind.TextBox);
         var gone = editor.AddNote(0, NoteAt, "Gone", AnnotationColors.Sage);
@@ -321,7 +321,7 @@ public sealed class EngineAnnotationSuiteTests
     /// <returns>The replies, as observed annotations.</returns>
     private static List<Observed> Replies(IDocument document)
     {
-        var editor = (IAnnotationEditor)document;
+        var editor = (IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!;
         var note = editor.AddNote(0, NoteAt, "Is this right?", AnnotationColors.Sand);
         _ = editor.AddReply(0, note, "Checked.", ReviewState.None);
         _ = editor.AddReply(0, note, "Accepted", ReviewState.Accepted);
@@ -337,8 +337,8 @@ public sealed class EngineAnnotationSuiteTests
     {
         var pixels = new byte[PictureSide * PictureSide * PagePixels.BytesPerPixel];
         pixels.AsSpan().Fill(byte.MaxValue);
-        _ = ((IImageSignatureEditor)document).AddImageSignature(0, PictureAt, pixels, PictureSide, PictureSide);
-        return Observe((IAnnotationEditor)document, 0);
+        _ = ((IImageSignatureEditor)DocumentFeatures.CastFeature(document, typeof(IImageSignatureEditor))!).AddImageSignature(0, PictureAt, pixels, PictureSide, PictureSide);
+        return Observe((IAnnotationEditor)DocumentFeatures.CastFeature(document, typeof(IAnnotationEditor))!, 0);
     }
 
     /// <summary>Reads a page's annotations as observations.</summary>

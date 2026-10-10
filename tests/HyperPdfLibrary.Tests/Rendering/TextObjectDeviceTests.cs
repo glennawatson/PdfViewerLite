@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Glenn Watson. All rights reserved.
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
-
 using System.Diagnostics;
 using System.Numerics;
 using HyperPdfLibrary.Content;
@@ -30,7 +29,7 @@ public sealed class TextObjectDeviceTests
     [Test]
     public async Task TextDeviceSeesShowsPropertiesAndNoImages()
     {
-        var pdf = new RenderTestPdf(Size, Size) { Content = "/Span << /MCID 3 >> BDC BT (A) Tj [(B)] TJ EMC /OC /L1 BDC (C) Tj ET EMC /Im Do BI /W 1 /H 1 /CS /G /BPC 8 ID ÿ EI" };
+        var pdf = new RenderTestPdf(Size, Size) { Content = "/Span << /MCID 3 >> BDC BT (A) Tj [(B)] TJ EMC /OC /L1 BDC (C) Tj ET EMC /Im Do BI /W 1 /H 1 /CS /G /BPC 8 ID ÿ EI", };
         var image = pdf.AddStream("/Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /ASCIIHexDecode", "FF0000>");
         var layer = pdf.AddObject("<< /Type /OCG /Name (Off) >>");
         pdf.Resources = $"/XObject << /Im {image} 0 R >> /Properties << /L1 {layer} 0 R >>";
@@ -39,7 +38,7 @@ public sealed class TextObjectDeviceTests
         var device = new TextDevice();
         using (var interpreter = new ContentInterpreter(PdfDocumentRendering.GetRenderCache(document), device, 0))
         {
-            interpreter.RunPage(PdfDocumentPages.GetPage(document, 0));
+            ContentExecution.RunPage(interpreter, PdfDocumentPages.GetPage(document, 0));
         }
 
         await Assert.That(device.TextObjects).IsEqualTo(Shows);

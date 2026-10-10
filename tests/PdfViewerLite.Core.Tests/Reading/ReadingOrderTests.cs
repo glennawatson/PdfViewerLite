@@ -162,7 +162,7 @@ public sealed class ReadingOrderTests
         var page = builder.Read();
         var text = ReadingDocument.Flatten(page, out var map);
         var start = text.IndexOf("document", StringComparison.Ordinal);
-        List<(int Start, int Count)> runs = [];
+        List<ReadingCharacterRun> runs = [];
         ReadingDocument.GetRuns(map, start, "document".Length, runs);
 
         await Assert.That(page.Blocks[0].Text).IsEqualTo("The document is calm.");

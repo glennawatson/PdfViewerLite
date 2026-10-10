@@ -50,13 +50,13 @@ public class ReadingOrderBenchmarks
     public void Setup()
     {
         _document = new(TestPdf.CreateArticle(Pages));
-        _source = (ITextLayoutSource)_document.Document;
+        _source = (ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_document.Document, typeof(ITextLayoutSource))!;
         _size = _document.Document.GetPageSizes()[0];
         _source.GetCharacters(0, _characters);
         _page = ReadingOrder.Analyze(0, _size, _characters, _repeated);
         _tagged = new(TestPdf.CreateTagged());
-        ((ITextLayoutSource)_tagged.Document).GetCharacters(0, _taggedCharacters);
-        _ = ((ITaggedStructureSource)_tagged.Document).GetTaggedBlocks(0, _taggedBlocks);
+        ((ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_tagged.Document, typeof(ITextLayoutSource))!).GetCharacters(0, _taggedCharacters);
+        _ = ((ITaggedStructureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_tagged.Document, typeof(ITaggedStructureSource))!).GetTaggedBlocks(0, _taggedBlocks);
     }
 
     /// <summary>Closes the document.</summary>
@@ -93,7 +93,7 @@ public class ReadingOrderBenchmarks
     public int ReadTags()
     {
         _taggedBlocks.Clear();
-        _ = ((ITaggedStructureSource)_tagged.Document).GetTaggedBlocks(0, _taggedBlocks);
+        _ = ((ITaggedStructureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(_tagged.Document, typeof(ITaggedStructureSource))!).GetTaggedBlocks(0, _taggedBlocks);
         return _taggedBlocks.Count;
     }
 

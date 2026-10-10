@@ -8,7 +8,6 @@ using Avalonia.VisualTree;
 using PdfViewerLite.App.Controls;
 using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.App.Views;
-using PdfViewerLite.Core.Settings;
 using PdfViewerLite.TestAssets;
 
 namespace PdfViewerLite.App.Tests;
@@ -27,14 +26,14 @@ public sealed class TaggedReadingEngineTests
 
     /// <summary>Gets both engines, for <c>[MethodDataSource]</c>.</summary>
     /// <returns>The engines.</returns>
-    public static IEnumerable<PdfEngineChoice> Engines() => [PdfEngineChoice.Pdfium, PdfEngineChoice.HyperPdf];
+    public static IEnumerable<TestEngineChoice> Engines() => [TestEngineChoice.Pdfium, TestEngineChoice.HyperPdf];
 
     /// <summary>The page's screen reader value reads the tagged heading, then the paragraphs in tag order, and skips the artifact.</summary>
     /// <param name="engine">The engine.</param>
     /// <returns>A task.</returns>
     [Test]
     [MethodDataSource(nameof(Engines))]
-    public async Task PageValueFollowsTheTags(PdfEngineChoice engine)
+    public async Task PageValueFollowsTheTags(TestEngineChoice engine)
     {
         var value = await ReadPageValueAsync(engine);
         var heading = value.IndexOf(TestPdf.TaggedHeading, StringComparison.Ordinal);
@@ -52,8 +51,8 @@ public sealed class TaggedReadingEngineTests
     [Test]
     public async Task HyperPdfReadsLikePdfium()
     {
-        var expected = await ReadPageValueAsync(PdfEngineChoice.Pdfium);
-        var actual = await ReadPageValueAsync(PdfEngineChoice.HyperPdf);
+        var expected = await ReadPageValueAsync(TestEngineChoice.Pdfium);
+        var actual = await ReadPageValueAsync(TestEngineChoice.HyperPdf);
 
         await Assert.That(actual).IsEqualTo(expected);
     }
@@ -61,7 +60,7 @@ public sealed class TaggedReadingEngineTests
     /// <summary>Opens the tagged test document with an engine and reads the page canvas's screen reader value.</summary>
     /// <param name="engine">The engine.</param>
     /// <returns>The value.</returns>
-    private static async Task<string> ReadPageValueAsync(PdfEngineChoice engine)
+    private static async Task<string> ReadPageValueAsync(TestEngineChoice engine)
     {
         using var test = new TestServices(engine);
         var path = test.CreateDocument("tagged.pdf", TestPdf.CreateTagged());

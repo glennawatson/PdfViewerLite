@@ -20,8 +20,8 @@ public sealed class AttachmentSignatureParityTests
     public async Task AttachmentsMatch()
     {
         using var pair = new EnginePair(TestPdf.CreateWithAttachment());
-        var expected = ((IAttachmentSource)pair.Pdfium).GetAttachments();
-        var actual = ((IAttachmentSource)pair.HyperPdf).GetAttachments();
+        var expected = ((IAttachmentSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.Pdfium, typeof(IAttachmentSource))!).GetAttachments();
+        var actual = ((IAttachmentSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.HyperPdf, typeof(IAttachmentSource))!).GetAttachments();
 
         await Assert.That(actual).IsEquivalentTo(expected);
         await Assert.That(Save(pair.HyperPdf, 0)).IsEquivalentTo(Save(pair.Pdfium, 0));
@@ -34,10 +34,12 @@ public sealed class AttachmentSignatureParityTests
     {
         using var certificate = TestSignedPdf.CreateCertificate(TimeProvider.System);
         using var pair = new EnginePair(TestSignedPdf.Create(Pages, certificate));
-        var expected = ((ISignatureSource)pair.Pdfium).GetSignatures();
-        var actual = ((ISignatureSource)pair.HyperPdf).GetSignatures();
+        var expected = ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.Pdfium, typeof(ISignatureSource))!).GetSignatures();
+        var actual = ((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.HyperPdf, typeof(ISignatureSource))!).GetSignatures();
 
-        await Assert.That(((ISignatureSource)pair.HyperPdf).SignatureCount).IsEqualTo(((ISignatureSource)pair.Pdfium).SignatureCount);
+        await Assert.That(((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(
+            pair.HyperPdf,
+            typeof(ISignatureSource))!).SignatureCount).IsEqualTo(((ISignatureSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.Pdfium, typeof(ISignatureSource))!).SignatureCount);
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)
         {
@@ -56,7 +58,7 @@ public sealed class AttachmentSignatureParityTests
     private static byte[] Save(Core.Documents.IDocument document, int index)
     {
         using var stream = new MemoryStream();
-        _ = ((IAttachmentSource)document).SaveAttachment(index, stream);
+        _ = ((IAttachmentSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(document, typeof(IAttachmentSource))!).SaveAttachment(index, stream);
         return stream.ToArray();
     }
 }

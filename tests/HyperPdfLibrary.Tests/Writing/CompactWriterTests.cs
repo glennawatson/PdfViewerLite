@@ -46,7 +46,6 @@ public sealed class CompactWriterTests
         var expected = Contents(original);
         var compacted = Compact(original, new(useObjectStreams, false));
         var actual = Contents(compacted);
-
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)
         {
@@ -63,7 +62,6 @@ public sealed class CompactWriterTests
     public async Task HeaderVersionFollowsLayout()
     {
         var original = Encoding.Latin1.GetBytes(Encoding.Latin1.GetString(TestPdf.Create(1)).Replace("%PDF-1.7", OldHeader, StringComparison.Ordinal));
-
         await Assert.That(Encoding.ASCII.GetString(Compact(original, PdfCompactOptions.Default), 0, ObjectStreamHeader.Length)).IsEqualTo(ObjectStreamHeader);
         await Assert.That(Encoding.ASCII.GetString(Compact(original, PdfCompactOptions.Classic), 0, OldHeader.Length)).IsEqualTo(OldHeader);
     }
@@ -73,11 +71,10 @@ public sealed class CompactWriterTests
     [Test]
     public async Task DropsUnreachableObjects()
     {
-        using var store = PdfObjectStore.Open(TestPdf.Create(PageCount), null);
-        _ = store.Add(PdfValue.FromString("orphan"u8.ToArray()));
+        using var store = StoreOpening.Open(TestPdf.Create(PageCount), null);
+        _ = StoreEditing.Add(store, PdfValue.FromString("orphan"u8.ToArray()));
         var compacted = PdfCompactWriter.Save(store, PdfCompactOptions.Classic);
-        using var reopened = PdfObjectStore.Open(compacted, null);
-
+        using var reopened = StoreOpening.Open(compacted, null);
         await Assert.That(reopened.Size).IsLessThan(store.Size);
         await Assert.That(reopened.Trailer.GetRaw(KnownName.Root).AsReference().Number).IsEqualTo(1);
         await Assert.That(Encoding.Latin1.GetString(compacted)).DoesNotContain("orphan");
@@ -96,7 +93,6 @@ public sealed class CompactWriterTests
         var encrypted = WritingTestDocuments.Encrypt(plain);
         var kept = Compact(encrypted, new(useObjectStreams, false));
         var removed = Compact(encrypted, new(useObjectStreams, true));
-
         await Assert.That(Contents(encrypted)[0]).IsEquivalentTo(expected[0]);
         await Assert.That(IsEncrypted(kept)).IsTrue();
         await Assert.That(IsEncrypted(removed)).IsFalse();
@@ -115,14 +111,12 @@ public sealed class CompactWriterTests
     [Arguments(true)]
     public async Task DanglingReferenceIsWrittenAsNull(bool useObjectStreams)
     {
-        using var store = PdfObjectStore.Open(TestPdf.Create(1), null);
+        using var store = StoreOpening.Open(TestPdf.Create(1), null);
         var catalog = store.Catalog.Clone();
         catalog.Set(store.Names.Intern(DanglingKey), PdfValue.FromReference(new(MissingObject, 0)));
-        store.Replace(store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
-
+        StoreEditing.Replace(store, store.Trailer.GetRaw(KnownName.Root).AsReference(), PdfValue.FromDictionary(catalog));
         var compacted = PdfCompactWriter.Save(store, new(useObjectStreams, false));
-        using var reopened = PdfObjectStore.Open(compacted, null);
-
+        using var reopened = StoreOpening.Open(compacted, null);
         if (!useObjectStreams)
         {
             await Assert.That(Encoding.Latin1.GetString(compacted).Contains("/Dangling null", StringComparison.Ordinal)).IsTrue();
@@ -137,7 +131,7 @@ public sealed class CompactWriterTests
     /// <returns>The author.</returns>
     private static string? ReadAuthor(byte[] file)
     {
-        using var store = PdfObjectStore.Open(file, null);
+        using var store = StoreOpening.Open(file, null);
         return store.Trailer.GetDictionary(KnownName.Info)?.GetText(KnownName.Author);
     }
 
@@ -158,7 +152,7 @@ public sealed class CompactWriterTests
     /// <returns>The compacted file.</returns>
     private static byte[] Compact(byte[] file, PdfCompactOptions options)
     {
-        using var store = PdfObjectStore.Open(file, null);
+        using var store = StoreOpening.Open(file, null);
         return PdfCompactWriter.Save(store, options);
     }
 
@@ -167,7 +161,7 @@ public sealed class CompactWriterTests
     /// <returns>The decoded content of each page.</returns>
     private static List<byte[]> Contents(byte[] file)
     {
-        using var store = PdfObjectStore.Open(file, null);
+        using var store = StoreOpening.Open(file, null);
         return WritingTestDocuments.PageContents(store);
     }
 
@@ -176,7 +170,7 @@ public sealed class CompactWriterTests
     /// <returns>The count.</returns>
     private static int Missing(byte[] file)
     {
-        using var store = PdfObjectStore.Open(file, null);
+        using var store = StoreOpening.Open(file, null);
         return WritingTestDocuments.CountMissing(store);
     }
 
@@ -185,7 +179,7 @@ public sealed class CompactWriterTests
     /// <returns><see langword="true"/> when it is.</returns>
     private static bool IsEncrypted(byte[] file)
     {
-        using var store = PdfObjectStore.Open(file, null);
+        using var store = StoreOpening.Open(file, null);
         return store.Security is not null;
     }
 }

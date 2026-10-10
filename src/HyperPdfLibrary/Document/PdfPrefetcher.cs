@@ -44,9 +44,7 @@ internal static class PdfPrefetcher
             return ValueTask.CompletedTask;
         }
 
-        return source.Length <= source.PrefetchBudget * WholeFileFactor
-            ? source.PrefetchAsync(0, source.Length, cancellationToken)
-            : PrefetchEndsAsync(source, cancellationToken);
+        return source.Length <= source.PrefetchBudget * WholeFileFactor ? source.PrefetchAsync(0, source.Length, cancellationToken) : PrefetchEndsAsync(source, cancellationToken);
     }
 
     /// <summary>Loads the objects a starting dictionary leads to.</summary>
@@ -225,7 +223,7 @@ internal static class PdfPrefetcher
             var found = new List<PdfByteRange>(Frontier.Count);
             foreach (var id in Frontier)
             {
-                if (_objects.TryGetExtent(id.Number, out var offset, out var length) && length <= MaxExtent)
+                if (StoreExtents.TryGetExtent(_objects, id.Number, out var offset, out var length) && length <= MaxExtent)
                 {
                     found.Add(new(offset, length));
                 }
@@ -311,7 +309,7 @@ internal static class PdfPrefetcher
         /// <returns>The dictionary, or <see langword="null"/> when it holds nothing to follow.</returns>
         private PdfDictionary? ReadChildren(PdfObjectId id)
         {
-            var dictionary = _objects.GetObject(id).AsDictionary();
+            var dictionary = StoreReading.GetObject(_objects, id).AsDictionary();
             if (dictionary is null || _kind != PdfPrefetchKind.Page)
             {
                 return dictionary;

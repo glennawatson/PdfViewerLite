@@ -32,7 +32,6 @@ public sealed class RedactionTextTests
         pdf = compressed ? RedactionSamples.Compress(pdf) : pdf;
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.SecretLine);
         var text = RedactionSamples.TextOf(saved);
-
         await Assert.That(RedactionSamples.Contains(pdf, RedactionSamples.Secret)).IsTrue();
         await Assert.That(RedactionSamples.Contains(saved, RedactionSamples.Secret)).IsFalse();
         await Assert.That(RedactionSamples.Contains(saved, RedactionSamples.SecretWord)).IsFalse();
@@ -48,7 +47,6 @@ public sealed class RedactionTextTests
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 20 120 Td <5345435245542D414C504841> Tj ET");
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.SecretLine);
-
         await Assert.That(RedactionSamples.TextOf(saved)).DoesNotContain(RedactionSamples.SecretWord);
         await Assert.That(RedactionSamples.Contains(saved, "5345435245542D414C504841")).IsFalse();
     }
@@ -67,7 +65,6 @@ public sealed class RedactionTextTests
         var pdf = named ? PageObjectSamples.Page(reference, properties) : PageObjectSamples.Page(inline);
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.SecretLine);
         using var document = PdfDocumentReader.Open(saved, null);
-
         await Assert.That(RedactionSamples.Contains(pdf, "ActualText")).IsTrue();
         await Assert.That(RedactionSamples.Contains(saved, RedactionSamples.Secret)).IsFalse();
         await Assert.That(RedactionSamples.Contains(saved, "ActualText")).IsFalse();
@@ -90,7 +87,6 @@ public sealed class RedactionTextTests
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.AlphaArea);
         using var after = PdfDocumentReader.Open(saved, null);
         var kept = (PdfTextObject)PdfDocumentPageContent.GetPageContent(after, 0).Objects[1];
-
         await Assert.That(kept.Text).StartsWith("SECRET-");
         await Assert.That(kept.Text).DoesNotContain("ALPHA");
         await Assert.That(kept.Glyphs[0].Origin.X).IsEqualTo(before[0]).Within(Tolerance);
@@ -113,7 +109,6 @@ public sealed class RedactionTextTests
         var saved = RedactionSamples.Redact(pdf, PdfRedactionOptions.Default, RedactionSamples.PrefixArea);
         using var after = PdfDocumentReader.Open(saved, null);
         var kept = (PdfTextObject)PdfDocumentPageContent.GetPageContent(after, 0).Objects[0];
-
         await Assert.That(kept.Glyphs[^1].Box.Left).IsEqualTo(tailBefore.Left).Within(Tolerance);
         await Assert.That(kept.Text).EndsWith("tail");
     }
@@ -127,9 +122,11 @@ public sealed class RedactionTextTests
     public async Task InvisibleTextFollowsTheOption(bool remove)
     {
         var pdf = PageObjectSamples.Page("BT /F1 20 Tf 3 Tr 20 120 Td (SECRET-ALPHA) Tj ET");
-        var options = PdfRedactionOptions.Default with { RemoveInvisibleText = remove };
+        var options = PdfRedactionOptions.Default with
+        {
+            RemoveInvisibleText = remove
+        };
         var saved = RedactionSamples.Redact(pdf, options, RedactionSamples.SecretLine);
-
         await Assert.That(RedactionSamples.TextOf(saved).Contains(RedactionSamples.SecretWord, StringComparison.Ordinal)).IsEqualTo(!remove);
     }
 
@@ -144,7 +141,6 @@ public sealed class RedactionTextTests
         pdf.Resources = $"/XObject << /Fm1 {form} 0 R >>";
         pdf.Content = "/Fm1 Do";
         var saved = RedactionSamples.Redact(pdf.ToBytes(), PdfRedactionOptions.Default, RedactionSamples.SecretLine);
-
         await Assert.That(RedactionSamples.Contains(saved, RedactionSamples.Secret)).IsFalse();
         await Assert.That(RedactionSamples.TextOf(saved)).DoesNotContain(RedactionSamples.SecretWord);
     }
@@ -158,7 +154,6 @@ public sealed class RedactionTextTests
         var empty = PdfRedactor.Apply(document, PdfRedactionOptions.Default);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         var report = PdfRedactor.Apply(document, PdfRedactionOptions.Default);
-
         await Assert.That(empty.IsEmpty).IsTrue();
         await Assert.That(report.GlyphsRemoved).IsEqualTo(RedactionSamples.Secret.Length);
         await Assert.That(report.Pages).IsEqualTo(1);
@@ -173,8 +168,7 @@ public sealed class RedactionTextTests
         using var document = PdfDocumentReader.Open(PageObjectSamples.Page(RedactionSamples.ThreeLines), null);
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         _ = PdfRedactor.Apply(document, PdfRedactionOptions.Default);
-
-        await Assert.That(document.Objects.RequiresCompactSave).IsTrue();
+        await Assert.That(StoreRedaction.RequiresCompactSave(document.Objects)).IsTrue();
         await Assert.That(() => PdfIncrementalWriter.Save(document.Objects)).Throws<InvalidOperationException>();
         await Assert.That(RedactionSamples.Contains(RedactionSamples.Save(document), RedactionSamples.Secret)).IsFalse();
     }
@@ -188,9 +182,8 @@ public sealed class RedactionTextTests
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
-
         await Assert.That(() => PdfRedactor.Apply(document, PdfRedactionOptions.Default, source.Token)).Throws<OperationCanceledException>();
-        await Assert.That(document.Objects.RequiresCompactSave).IsFalse();
+        await Assert.That(StoreRedaction.RequiresCompactSave(document.Objects)).IsFalse();
         await Assert.That(PdfDocumentText.GetTextPage(document, 0).Text).Contains(RedactionSamples.SecretWord);
     }
 
@@ -203,7 +196,6 @@ public sealed class RedactionTextTests
         RedactionSamples.Mark(document, RedactionSamples.SecretLine);
         await using var output = new MemoryStream();
         var report = await PdfRedactor.ApplyAndSaveAsync(document, output, PdfRedactionOptions.Default, CancellationToken.None);
-
         await Assert.That(report.GlyphsRemoved).IsGreaterThan(0);
         await Assert.That(RedactionSamples.Contains(output.ToArray(), RedactionSamples.Secret)).IsFalse();
     }

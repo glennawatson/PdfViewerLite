@@ -7,7 +7,6 @@ using PdfViewerLite.App.ViewModels;
 using PdfViewerLite.Core.Documents;
 using PdfViewerLite.Core.Forms;
 using PdfViewerLite.Core.Geometry;
-using PdfViewerLite.Core.Settings;
 using PdfViewerLite.HyperPdf;
 using PdfViewerLite.Pdfium;
 using PdfViewerLite.TestAssets;
@@ -84,7 +83,7 @@ public sealed class FormRuntimeUiTests
         using var main = new MainViewModel(test.Services);
         main.Open([test.CreateDocument("runtime.pdf", FormRuntimeSamples.Create(string.Empty))]);
         var tab = main.SelectedTab!;
-        var filler = (IFormFiller)tab.TryGetDocument()!;
+        var filler = (IFormFiller)DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(IFormFiller))!;
         _ = filler.SetText(0, FormRuntimeSamples.PriceIndex, "9");
 
         var reset = await tab.Forms.RunButtonAsync(Field(tab, "Clear"));
@@ -104,7 +103,7 @@ public sealed class FormRuntimeUiTests
     [Test]
     public async Task OpenedDocumentsGetTheSettingsTint()
     {
-        var engine = new SelectableDocumentEngine(static () => PdfEngineChoice.Pdfium, static () => new(TintColor, TintAlpha));
+        var engine = new HighlightedHyperPdfEngine(static () => new(TintColor, TintAlpha));
         var path = Path.Combine(Path.GetTempPath(), $"tint-{Guid.NewGuid():N}.pdf");
         await File.WriteAllBytesAsync(path, FormSamples.CreateRichForm());
         try
@@ -119,7 +118,7 @@ public sealed class FormRuntimeUiTests
 
             await Assert.That(rendered).IsTrue();
             FormHighlight expected = new(TintColor, TintAlpha);
-            await Assert.That(((IFormHighlight)document).Highlight).IsEqualTo(expected);
+            await Assert.That(((IFormHighlight)DocumentFeatures.CastFeature(document, typeof(IFormHighlight))!).Highlight).IsEqualTo(expected);
             await Assert.That(Math.Abs(pixels[offset + RedSlot] - Blend(TintColor >> RedShift))).IsLessThanOrEqualTo(Tolerance);
             await Assert.That(Math.Abs(pixels[offset + BlueSlot] - Blend(TintColor))).IsLessThanOrEqualTo(Tolerance);
         }
@@ -160,7 +159,7 @@ public sealed class FormRuntimeUiTests
     private static FormField Field(DocumentTabViewModel tab, string name)
     {
         var fields = new List<FormField>();
-        ((IFormFiller)tab.TryGetDocument()!).GetFields(0, fields);
+        ((IFormFiller)DocumentFeatures.CastFeature(tab.TryGetDocument()!, typeof(IFormFiller))!).GetFields(0, fields);
         return fields.Single(field => field.Name == name);
     }
 }

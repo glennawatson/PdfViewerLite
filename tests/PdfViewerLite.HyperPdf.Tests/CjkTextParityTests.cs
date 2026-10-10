@@ -36,16 +36,16 @@ public sealed class CjkTextParityTests
     {
         using var pair = new EnginePair(pdf);
         var document = (HyperPdfDocument)pair.HyperPdf;
-        await document.PreparePageAsync(0, CancellationToken.None);
+        await PdfViewerLite.HyperPdf.HyperPdfRendering.PreparePageAsync(document, 0, CancellationToken.None);
         var count = pair.Pdfium.GetCharacterCount(0);
         var expected = new List<PageCharacter>();
-        ((ITextLayoutSource)pair.Pdfium).GetCharacters(0, expected);
+        ((ITextLayoutSource)PdfViewerLite.Core.Documents.DocumentFeatures.CastFeature(pair.Pdfium, typeof(ITextLayoutSource))!).GetCharacters(0, expected);
         var actual = new List<PageCharacter>();
-        document.GetCharactersNative(0, actual);
+        PdfViewerLite.HyperPdf.HyperPdfText.GetCharactersNative(document, 0, actual);
 
         await Assert.That(count).IsGreaterThan(0);
-        await Assert.That(document.GetCharacterCountNative(0)).IsEqualTo(count);
-        await Assert.That(document.GetTextNative(0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetCharacterCountNative(document, 0)).IsEqualTo(count);
+        await Assert.That(PdfViewerLite.HyperPdf.HyperPdfText.GetTextNative(document, 0, 0, count)).IsEqualTo(pair.Pdfium.GetText(0, 0, count));
         await Assert.That(actual.Count).IsEqualTo(expected.Count);
         for (var i = 0; i < expected.Count; i++)
         {

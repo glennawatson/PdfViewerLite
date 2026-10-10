@@ -187,13 +187,28 @@ public sealed partial class AnnotationsViewModel
     /// document was reopened, so the old history no longer applies and is forgotten.
     /// </summary>
     /// <returns>The editor, or <see langword="null"/> when the document cannot be edited.</returns>
-    private IAnnotationEditor? EditorForChange()
+    private IAnnotationEditor? EditorForChange() => ((DocumentForChange()
+        ?.GetFeature(typeof(IAnnotationEditor))) as IAnnotationEditor);
+
+    /// <summary>Gets and prepares the document used for annotation changes.</summary>
+    /// <returns>The prepared document, or <see langword="null"/> when it cannot be edited.</returns>
+    private global::PdfViewerLite.Core.Documents.IDocument? DocumentForChange()
     {
-        if (Editor is not { } editor)
+        if (_owner.TryGetDocument() is not { } document
+            || ((document.GetFeature(typeof(IAnnotationEditor))) as IAnnotationEditor) is not { } editor)
         {
             return null;
         }
 
+        _ = PrepareEditorForChange(editor);
+        return document;
+    }
+
+    /// <summary>Prepares an editor and resets history when its document changes.</summary>
+    /// <param name="editor">The editor.</param>
+    /// <returns>The prepared editor.</returns>
+    private IAnnotationEditor PrepareEditorForChange(IAnnotationEditor editor)
+    {
         if (!ReferenceEquals(editor, _historyEditor))
         {
             _history.Clear();
