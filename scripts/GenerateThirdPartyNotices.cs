@@ -9,6 +9,8 @@
 // Writes THIRD-PARTY-NOTICES.md from the resolved NuGet graph (project.assets.json files plus the local package cache,
 // with no network access) and the components listed in licenses/components.json that are bundled with the app or
 // downloaded by it. Every shipped package appears with its licence text, transitive packages included.
+// Shared app notices require --assets inputs for every supported runtime, including each native OCR package;
+// one host's restore graph omits the other platforms. Repeated --assets inputs are merged by package and version.
 // Usage: dotnet run --file scripts/GenerateThirdPartyNotices.cs -- --out <file> --licences <licenses folder>
 //        --project-licence <LICENSE file> [--assets <project.assets.json>]... [--component <id>]...
 using System.Text;
