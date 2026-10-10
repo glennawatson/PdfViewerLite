@@ -3,11 +3,8 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-
 using System.Numerics;
-
 using HyperPdfLibrary.Document;
-
 using HyperPdfLibrary.Objects;
 
 namespace HyperPdfLibrary.PageObjects;

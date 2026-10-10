@@ -39,5 +39,17 @@ public readonly ref struct PdfTileTarget
     public int Stride { get; }
 
     /// <summary>Gets a value indicating whether the buffer is large enough for its size.</summary>
-    public bool IsValid => Width > 0 && Height > 0 && Stride >= Width * BytesPerPixel && Pixels.Length >= ((long)Stride * (Height - 1)) + (Width * BytesPerPixel);
+    public bool IsValid
+    {
+        get
+        {
+            if (Width <= 0 || Height <= 0)
+            {
+                return false;
+            }
+
+            var rowBytes = (long)Width * BytesPerPixel;
+            return Stride >= rowBytes && Pixels.Length >= ((long)Stride * (Height - 1)) + rowBytes;
+        }
+    }
 }

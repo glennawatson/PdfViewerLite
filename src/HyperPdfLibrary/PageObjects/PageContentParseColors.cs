@@ -3,9 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Runtime.CompilerServices;
-
 using HyperPdfLibrary.Content;
-
 using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.PageObjects;
 

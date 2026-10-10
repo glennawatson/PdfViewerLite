@@ -3,12 +3,11 @@
 // See the LICENSE file in the project root for full license information.
 using System.Numerics;
 using HyperPdfLibrary.Content;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Colors;
 using HyperPdfLibrary.Graphics.Functions;
 using HyperPdfLibrary.Objects;
-using HyperPdfLibrary.Rendering;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Content;
 
@@ -282,9 +281,9 @@ internal static class ContentExtendedGraphics
     /// <summary>Gets a soft mask recorded with the current transform.</summary>
     /// <param name = "self">The owned interpreter state.</param>
     /// <param name = "mask">The soft mask dictionary.</param>
-    /// <returns>The mask, or null when it is damaged.</returns>
+    /// <returns>The mask, or null when it is damaged or no drawing backend is registered.</returns>
     internal static PdfSoftMask? GetSoftMask(ContentInterpreter self, PdfDictionary mask) =>
-        mask.GetStream(KnownName.G) is null ? null : self.Cache.SoftMasks.GetOrCreate(
+        PdfDrawingServices.ConfiguredBackend is null || mask.GetStream(KnownName.G) is null ? null : self.Cache.SoftMasks.GetOrCreate(
             new(mask, self.State.Ctm),
             new SoftMaskRequest(self, mask),
             static (key, request) => ContentExtendedGraphics.RecordSoftMask(request.Owner, request.Mask, key.Ctm));
@@ -297,19 +296,11 @@ internal static class ContentExtendedGraphics
     internal static PdfSoftMask RecordSoftMask(ContentInterpreter self, PdfDictionary mask, Matrix3x2 ctm)
     {
         var group = mask.GetStream(KnownName.G)!;
-        var bounds = group.Dictionary.TryGetRectangle(
-            KnownName.BBox,
-            out var box) ? SkiaConversions.ToSkMatrix(ctm).MapRect(new(
-                box.Left,
-                box.Bottom,
-                box.Right,
-                box.Top)) : SKRect.Create(
-            -ContentExtendedGraphics.UnboundedExtent,
-            -ContentExtendedGraphics.UnboundedExtent,
-            ContentExtendedGraphics.UnboundedSize,
-            ContentExtendedGraphics.UnboundedSize);
+        var bounds = group.Dictionary.TryGetRectangle(KnownName.BBox, out var box)
+            ? ctm.MapRect(new(box.Left, box.Bottom, box.Right, box.Top))
+            : PdfRect.Create(-UnboundedExtent, -UnboundedExtent, UnboundedSize, UnboundedSize);
         using var recorder = self.Device.CreatePictureDevice(bounds);
-        using var child = new ContentInterpreter(self.Cache, recorder, self.Depth + 1) { Printing = self.Printing, };
+        using var child = new ContentInterpreter(self.Cache, recorder, self.Depth + 1) { Printing = self.Printing };
         ContentExecution.RunForm(child, group, ctm, ContentExecution.CurrentResources(self));
         var picture = recorder.Finish();
         var luminosity = mask.IsName(KnownName.S, KnownName.Luminosity);
@@ -321,12 +312,12 @@ internal static class ContentExtendedGraphics
     /// <param name = "mask">The soft mask dictionary.</param>
     /// <param name = "group">The mask group.</param>
     /// <returns>The backdrop; black when none is given.</returns>
-    internal static SKColor ReadBackdrop(ContentInterpreter self, PdfDictionary mask, PdfStream group)
+    internal static PdfColor ReadBackdrop(ContentInterpreter self, PdfDictionary mask, PdfStream group)
     {
         var colors = mask.GetArray(KnownName.BC);
         if (colors is null)
         {
-            return SKColors.Black;
+            return PdfColor.Black;
         }
 
         var groupDictionary = group.Dictionary.GetDictionary(KnownName.Group);

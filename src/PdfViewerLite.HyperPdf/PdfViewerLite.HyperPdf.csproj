@@ -5,6 +5,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HyperPdfLibrary\HyperPdfLibrary.csproj" />
+    <ProjectReference Include="..\HyperPdfLibrary.Render.Skia\HyperPdfLibrary.Render.Skia.csproj" />
     <ProjectReference Include="..\PdfViewerLite.Core\PdfViewerLite.Core.csproj" />
   </ItemGroup>
 

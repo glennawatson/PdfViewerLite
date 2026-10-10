@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\src\HyperPdfLibrary\HyperPdfLibrary.csproj" />
+    <ProjectReference Include="..\..\src\HyperPdfLibrary.Render.Skia\HyperPdfLibrary.Render.Skia.csproj" />
     <ProjectReference Include="..\PdfViewerLite.TestAssets\PdfViewerLite.TestAssets.csproj" />
   </ItemGroup>
 

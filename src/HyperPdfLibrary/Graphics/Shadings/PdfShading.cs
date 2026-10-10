@@ -3,19 +3,19 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics.Colors;
 using HyperPdfLibrary.Graphics.Functions;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Graphics.Shadings;
 
 /// <summary>
-/// A parsed shading dictionary. Gradient and function shadings build one immutable <see cref="SKShader"/>; mesh shadings
+/// A parsed shading dictionary. Gradient and function shadings build one immutable <see cref="IPdfRenderShader"/>; mesh shadings
 /// build triangles. Both are made on first use and shared by every thread.
 /// </summary>
 [DebuggerDisplay("PdfShading: {Kind}")]
-internal sealed class PdfShading
+public sealed class PdfShading
 {
     /// <summary>The smallest power-of-two scale a patch mesh is cut for.</summary>
     private const int MinScaleExponent = -6;
@@ -29,14 +29,14 @@ internal sealed class PdfShading
     /// <summary>The number of scale buckets.</summary>
     private const int ScaleBuckets = MaxScaleExponent - MinScaleExponent + 1;
 
-    /// <summary>Guards building the Skia objects.</summary>
+    /// <summary>Guards building the backend resources.</summary>
     private readonly Lock _gate = new();
 
     /// <summary>Whether the shader has been built.</summary>
     private bool _shaderBuilt;
 
     /// <summary>The built shader, or null when the shading cannot be drawn with one.</summary>
-    private SKShader? _shader;
+    private IPdfRenderShader? _shader;
 
     /// <summary>Whether the mesh of each scale bucket has been built.</summary>
     private bool[]? _meshBuilt;
@@ -62,34 +62,34 @@ internal sealed class PdfShading
     }
 
     /// <summary>Gets the shading type.</summary>
-    internal PdfShadingKind Kind { get; }
+    public PdfShadingKind Kind { get; }
 
     /// <summary>Gets the shading dictionary.</summary>
-    internal PdfDictionary Dictionary { get; }
+    public PdfDictionary Dictionary { get; }
 
     /// <summary>Gets the shading stream for mesh types, otherwise null.</summary>
-    internal PdfStream? Stream { get; }
+    public PdfStream? Stream { get; }
 
     /// <summary>Gets the colour space.</summary>
-    internal PdfColorSpace ColorSpace { get; }
+    public PdfColorSpace ColorSpace { get; }
 
     /// <summary>Gets the colour function, or null when colours are given directly (meshes only).</summary>
-    internal PdfFunction? Function { get; }
+    public PdfFunction? Function { get; }
 
     /// <summary>Gets the bounding box in shading space, or null.</summary>
-    internal PdfRectangle? BBox { get; }
+    public PdfRectangle? BBox { get; }
 
     /// <summary>Gets the background colour as 0xRRGGBB, or null.</summary>
-    internal uint? Background { get; }
+    public uint? Background { get; }
 
     /// <summary>Gets a value indicating whether the shading is drawn as triangles.</summary>
-    internal bool IsMesh => Kind >= PdfShadingKind.FreeForm;
+    public bool IsMesh => Kind >= PdfShadingKind.FreeForm;
 
     /// <summary>Parses a shading.</summary>
     /// <param name="value">The shading dictionary or stream, resolved.</param>
     /// <param name="colorSpaceResources">The /ColorSpace resource dictionary for named spaces, or null.</param>
     /// <returns>The shading, or null when it is damaged.</returns>
-    internal static PdfShading? Parse(PdfValue value, PdfDictionary? colorSpaceResources)
+    public static PdfShading? Parse(PdfValue value, PdfDictionary? colorSpaceResources)
     {
         var dictionary = value.AsDictionary();
         if (dictionary is null)
@@ -111,11 +111,11 @@ internal sealed class PdfShading
         return kind >= PdfShadingKind.FreeForm && stream is null ? null : new(kind, dictionary, stream, space, function);
     }
 
-    /// <summary>Converts a colour to a Skia colour.</summary>
+    /// <summary>Converts PDF colour components to a managed drawing colour.</summary>
     /// <param name="space">The colour space.</param>
     /// <param name="components">The components.</param>
     /// <returns>The opaque colour.</returns>
-    internal static SKColor ToSkColor(PdfColorSpace space, ReadOnlySpan<float> components)
+    public static PdfColor ToColor(PdfColorSpace space, ReadOnlySpan<float> components)
     {
         var colour = ColorState.Resolve(space, components);
         return new(colour.Red, colour.Green, colour.Blue);
@@ -123,7 +123,7 @@ internal sealed class PdfShading
 
     /// <summary>Gets the shader for gradient and function shadings, building it on first use.</summary>
     /// <returns>The shader, or null when it cannot be built or the shading is a mesh.</returns>
-    internal SKShader? GetShader()
+    public IPdfRenderShader? GetShader()
     {
         lock (_gate)
         {
@@ -143,7 +143,7 @@ internal sealed class PdfShading
     /// </summary>
     /// <param name="scale">The device units one unit of shading space spans when drawn.</param>
     /// <returns>The mesh, or null when it is empty or the shading is not a mesh.</returns>
-    internal ShadingMesh? GetMesh(float scale)
+    public ShadingMesh? GetMesh(float scale)
     {
         var bucket = Kind >= PdfShadingKind.Coons ? ScaleBucket(scale) : 0;
         lock (_gate)

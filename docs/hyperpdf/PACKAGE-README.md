@@ -1,6 +1,6 @@
 # HyperPdfLibrary
 
-A managed PDF engine for .NET 10 and .NET 11. It reads, renders, searches and annotates PDF files. It draws pages through SkiaSharp and works on Linux, Windows and macOS. It is trim and Native AOT safe.
+A managed PDF engine for .NET 10 and .NET 11. It reads, searches and annotates PDF files, and renders through a drawing backend you choose. It works on Linux, Windows and macOS and is trim and Native AOT safe. Reading and editing with the core package needs no native drawing library.
 
 HyperPdfLibrary is the engine behind [Hyper PDF Viewer](https://github.com/glennawatson/PdfViewerLite).
 
@@ -16,10 +16,18 @@ Console.WriteLine((await PdfDocumentText.GetTextPageAsync(document, 0, Cancellat
 
 ## Render a page
 
+Install `HyperPdfLibrary.Render.Skia` to use the Skia backend. Register it once before opening documents. You can supply your own drawing backend through the contracts in `HyperPdfLibrary.Drawing`.
+
 The renderer writes premultiplied BGRA pixels into a buffer you own. `Scale` is device pixels per PDF point.
 
 ```csharp
+using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
+using HyperPdfLibrary.Render.Skia;
 using HyperPdfLibrary.Rendering;
+
+PdfDrawingServices.Register(new PdfRenderBackendRegistration().UseSkia());
+using var document = await PdfDocumentReader.OpenAsync("input.pdf", password: null, CancellationToken.None);
 
 const float scale = 2f;
 var page = PdfDocumentPages.GetPage(document, 0);

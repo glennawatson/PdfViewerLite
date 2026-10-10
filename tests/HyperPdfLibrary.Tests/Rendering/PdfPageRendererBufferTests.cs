@@ -182,10 +182,10 @@ public sealed class PdfPageRendererBufferTests
         }
 
         var matrix = SkiaConversions.ToSkMatrix(PdfPageRenderer.GetMatrix(page, request));
-        canvas.DrawPicture(content, in matrix);
+        canvas.DrawPicture(SkiaResources.Picture(content), in matrix);
         if (annotations is not null)
         {
-            canvas.DrawPicture(annotations, in matrix);
+            canvas.DrawPicture(SkiaResources.Picture(annotations), in matrix);
         }
 
         canvas.RestoreToCount(saved);

@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+
 using HyperPdfLibrary.Graphics.Colors;
 
 namespace HyperPdfLibrary.Graphics;
@@ -16,7 +17,7 @@ namespace HyperPdfLibrary.Graphics;
 /// <param name="Pattern">The pattern, when the space is a pattern space and a pattern is selected.</param>
 /// <param name="PaintsNothing">Whether the colour marks nothing, as the Separation colourant /None does.</param>
 [DebuggerDisplay("ColorState: {Rgb:X6}")]
-internal readonly record struct ColorState(PdfColorSpace Space, uint Rgb, PdfPatternPaint? Pattern, bool PaintsNothing)
+public readonly record struct ColorState(PdfColorSpace Space, uint Rgb, PdfPatternPaint? Pattern, bool PaintsNothing)
 {
     /// <summary>The bits per RGB channel.</summary>
     private const int ChannelBits = 8;
@@ -31,22 +32,22 @@ internal readonly record struct ColorState(PdfColorSpace Space, uint Rgb, PdfPat
     private const int BlueIndex = 2;
 
     /// <summary>Gets black in DeviceGray, the initial colour.</summary>
-    internal static ColorState Black => new(PdfColorSpace.DeviceGray, 0, null, false);
+    public static ColorState Black => new(PdfColorSpace.DeviceGray, 0, null, false);
 
     /// <summary>Gets the red channel, 0 to 255.</summary>
-    internal byte Red => (byte)(Rgb >>> RedShift);
+    public byte Red => (byte)(Rgb >>> RedShift);
 
     /// <summary>Gets the green channel, 0 to 255.</summary>
-    internal byte Green => (byte)(Rgb >>> ChannelBits);
+    public byte Green => (byte)(Rgb >>> ChannelBits);
 
     /// <summary>Gets the blue channel, 0 to 255.</summary>
-    internal byte Blue => (byte)Rgb;
+    public byte Blue => (byte)Rgb;
 
     /// <summary>Resolves components in a colour space.</summary>
     /// <param name="space">The colour space.</param>
     /// <param name="components">The components.</param>
     /// <returns>The colour.</returns>
-    internal static ColorState Resolve(PdfColorSpace space, ReadOnlySpan<float> components)
+    public static ColorState Resolve(PdfColorSpace space, ReadOnlySpan<float> components)
     {
         Span<float> rgb = stackalloc float[PdfColorSpace.RgbComponents];
         space.ToRgb(components, rgb);
@@ -56,7 +57,7 @@ internal readonly record struct ColorState(PdfColorSpace Space, uint Rgb, PdfPat
     /// <summary>Packs RGB components into 0xRRGGBB.</summary>
     /// <param name="rgb">Red, green and blue from 0 to 1.</param>
     /// <returns>The packed colour.</returns>
-    internal static uint Pack(ReadOnlySpan<float> rgb) =>
+    public static uint Pack(ReadOnlySpan<float> rgb) =>
         (Channel(rgb[0]) << RedShift) | (Channel(rgb[1]) << ChannelBits) | Channel(rgb[BlueIndex]);
 
     /// <summary>Converts one channel to a byte.</summary>

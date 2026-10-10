@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Graphics.Shadings;
 
@@ -11,4 +11,4 @@ namespace HyperPdfLibrary.Graphics.Shadings;
 /// <param name="Colors">The colours.</param>
 /// <param name="Positions">The position of each colour, from 0 to 1.</param>
 [DebuggerDisplay("GradientStops: {Colors.Length} stops")]
-internal sealed record GradientStops(SKColor[] Colors, float[] Positions);
+internal sealed record GradientStops(PdfColor[] Colors, float[] Positions);

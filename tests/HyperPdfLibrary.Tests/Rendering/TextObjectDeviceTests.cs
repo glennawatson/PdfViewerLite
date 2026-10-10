@@ -5,10 +5,10 @@ using System.Diagnostics;
 using System.Numerics;
 using HyperPdfLibrary.Content;
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Tests.Rendering;
 
@@ -72,7 +72,7 @@ public sealed class TextObjectDeviceTests
         }
 
         /// <inheritdoc/>
-        public void DrawImage(SKImage image, bool isMask, bool smooth, ref GraphicsState state) => Images++;
+        public void DrawImage(IPdfRenderImage image, bool isMask, bool smooth, ref GraphicsState state) => Images++;
 
         /// <inheritdoc/>
         public void Save()
@@ -87,19 +87,19 @@ public sealed class TextObjectDeviceTests
         }
 
         /// <inheritdoc/>
-        public void Fill(SKPath path, bool evenOdd, ref GraphicsState state)
+        public void Fill(PdfPath path, bool evenOdd, ref GraphicsState state)
         {
             // Not needed to collect text.
         }
 
         /// <inheritdoc/>
-        public void Stroke(SKPath path, ref GraphicsState state)
+        public void Stroke(PdfPath path, ref GraphicsState state)
         {
             // Not needed to collect text.
         }
 
         /// <inheritdoc/>
-        public void Clip(SKPath path, bool evenOdd, Matrix3x2 ctm)
+        public void Clip(PdfPath path, bool evenOdd, Matrix3x2 ctm)
         {
             // Not needed to collect text.
         }
@@ -135,6 +135,6 @@ public sealed class TextObjectDeviceTests
         }
 
         /// <inheritdoc/>
-        public IPictureDevice CreatePictureDevice(SKRect cull) => throw new NotSupportedException("Text collection records no pictures.");
+        public IPictureDevice CreatePictureDevice(PdfRect cull) => throw new NotSupportedException("Text collection records no pictures.");
     }
 }

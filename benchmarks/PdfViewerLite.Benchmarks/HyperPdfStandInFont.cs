@@ -3,10 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Fonts.Data;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace PdfViewerLite.Benchmarks;
 
@@ -30,7 +30,7 @@ internal sealed class HyperPdfStandInFont : PdfFont
     private readonly StandardFontMetrics _metrics;
 
     /// <summary>The box outline of each printable code.</summary>
-    private readonly SKPath?[] _boxes = new SKPath?[LastPrintable + 1];
+    private readonly PdfPath?[] _boxes = new PdfPath?[LastPrintable + 1];
 
     /// <summary>Initializes a new instance of the <see cref="HyperPdfStandInFont"/> class.</summary>
     /// <param name="dictionary">The font dictionary.</param>
@@ -41,7 +41,7 @@ internal sealed class HyperPdfStandInFont : PdfFont
         _metrics = metrics;
         for (var code = FirstPrintable + 1; code <= LastPrintable; code++)
         {
-            using var builder = new SKPathBuilder();
+            var builder = new PdfPathBuilder();
             builder.AddRect(new(0, 0, GetWidth(code) * Em, metrics.CapHeight));
             _boxes[code] = builder.Detach();
         }
@@ -64,7 +64,7 @@ internal sealed class HyperPdfStandInFont : PdfFont
     public override float GetWidth(int code) => _metrics.TryGetWidth(code, out var width) ? width / Em : 0;
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code) => code is > FirstPrintable and <= LastPrintable ? _boxes[code] : null;
+    public override PdfPath? GetOutline(int code) => code is > FirstPrintable and <= LastPrintable ? _boxes[code] : null;
 
     /// <inheritdoc/>
     public override int GetUnicode(int code, Span<char> destination)

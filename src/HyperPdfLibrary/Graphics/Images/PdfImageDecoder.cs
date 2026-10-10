@@ -15,7 +15,7 @@ namespace HyperPdfLibrary.Graphics.Images;
 /// <summary>
 /// Decodes image XObjects and inline images (PDF 32000 section 8.9) to premultiplied BGRA, or to coverage for stencil
 /// masks. Handles 1 to 16-bit samples, /Decode arrays, colour-key, stencil and soft masks (an image smaller than its
-/// mask is enlarged to the mask), soft-mask /Matte, JPEG (SkiaSharp, with a managed decoder for CMYK and progressive
+/// mask is enlarged to the mask), soft-mask /Matte, JPEG (an optional image codec, with a managed decoder for CMYK and progressive
 /// cases), JPEG 2000, JBIG2 and CCITT fax. High-throughput JPEG 2000 is reported, not decoded. Damaged images, images over a 512 MB byte budget, and tiny streams that declare far more data
 /// than they hold give <see langword="null"/>.
 /// </summary>
@@ -141,7 +141,7 @@ public static class PdfImageDecoder
 
     /// <summary>
     /// Decodes an image XObject for drawing: greyscale and bilevel images come out as one gray byte per pixel when their
-    /// colours are all opaque grays, and the pixels are placed so Skia can use them without a copy.
+    /// colours are all opaque grays, and pinned pixel arrays let a drawing backend retain them without a copy.
     /// </summary>
     /// <param name="image">The image stream.</param>
     /// <returns>The image, or <see langword="null"/> when it cannot be decoded.</returns>

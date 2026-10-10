@@ -3,9 +3,10 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Numerics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts.Data;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
@@ -66,7 +67,7 @@ internal sealed class PdfSimpleFont : PdfFont
     public override float GetWidth(int code) => _data.Widths[(uint)code < FontEncodings.CodeCount ? code : 0];
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code) =>
+    public override PdfPath? GetOutline(int code) =>
         (uint)code < FontEncodings.CodeCount ? _outlines.GetOrBuild(code, this, static (font, slot) => font.BuildOutline(slot)) : null;
 
     /// <inheritdoc/>
@@ -90,27 +91,19 @@ internal sealed class PdfSimpleFont : PdfFont
     /// <param name="path">The outline.</param>
     /// <param name="fontWidth">The glyph's own advance in glyph units.</param>
     /// <param name="pdfWidth">The PDF width in glyph units.</param>
-    private static void FitToWidth(SKPath path, float fontWidth, float pdfWidth)
+    /// <returns>The adjusted outline.</returns>
+    private static PdfPath FitToWidth(PdfPath path, float fontWidth, float pdfWidth) => pdfWidth switch
     {
-        if (fontWidth <= 0 || pdfWidth <= 0)
-        {
-            return;
-        }
-
-        if (pdfWidth > fontWidth + SpacingSlack)
-        {
-            path.Transform(SKMatrix.CreateTranslation((pdfWidth - fontWidth) * Half, 0));
-        }
-        else if (pdfWidth < fontWidth)
-        {
-            path.Transform(SKMatrix.CreateScale(pdfWidth / fontWidth, 1));
-        }
-    }
+        _ when fontWidth <= 0 || pdfWidth <= 0 => path,
+        _ when pdfWidth > fontWidth + SpacingSlack => path.Transform(Matrix3x2.CreateTranslation((pdfWidth - fontWidth) * Half, 0)),
+        _ when pdfWidth < fontWidth => path.Transform(Matrix3x2.CreateScale(pdfWidth / fontWidth, 1)),
+        _ => path,
+    };
 
     /// <summary>Builds a code's outline: its glyph, or a system fallback for a substituted font's missing character.</summary>
     /// <param name="code">The code.</param>
     /// <returns>The outline, or <see langword="null"/>.</returns>
-    private SKPath? BuildOutline(int code)
+    private PdfPath? BuildOutline(int code)
     {
         var glyph = _data.Glyphs[code];
         var source = _data.Source;
@@ -129,7 +122,7 @@ internal sealed class PdfSimpleFont : PdfFont
         var path = source.BuildOutline(glyph);
         if (path is not null && _data.Metrics.AdjustSpacing)
         {
-            FitToWidth(path, source.GetAdvance(glyph), _data.Widths[code] * GlyphUnits);
+            path = FitToWidth(path, source.GetAdvance(glyph), _data.Widths[code] * GlyphUnits);
         }
 
         return path;

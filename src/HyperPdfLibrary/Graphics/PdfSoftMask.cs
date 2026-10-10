@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Graphics;
 
@@ -13,4 +13,4 @@ namespace HyperPdfLibrary.Graphics;
 /// <param name="Backdrop">The backdrop colour a luminosity mask is composited over.</param>
 /// <param name="Transfer">The 256-entry transfer function applied to coverage, or null for identity.</param>
 [DebuggerDisplay("PdfSoftMask: luminosity {IsLuminosity}")]
-internal sealed record PdfSoftMask(SKPicture Picture, bool IsLuminosity, SKColor Backdrop, byte[]? Transfer);
+public sealed record PdfSoftMask(IPdfRenderPicture Picture, bool IsLuminosity, PdfColor Backdrop, byte[]? Transfer);

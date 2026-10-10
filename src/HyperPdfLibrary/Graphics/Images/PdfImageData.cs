@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+
 using HyperPdfLibrary.Filters;
 
 namespace HyperPdfLibrary.Graphics.Images;
@@ -22,7 +23,7 @@ public sealed class PdfImageData
     /// <param name="isStencilMask">Whether the pixels are a coverage mask.</param>
     /// <param name="interpolate">Whether the image asks for smoothing when scaled.</param>
     /// <param name="unsupportedCodec">The codec that was not decoded, or none.</param>
-    internal PdfImageData(int width, int height, byte[] pixels, bool isStencilMask, bool interpolate, PdfImageCodec unsupportedCodec)
+    public PdfImageData(int width, int height, byte[] pixels, bool isStencilMask, bool interpolate, PdfImageCodec unsupportedCodec)
     {
         Width = width;
         Height = height;
@@ -61,8 +62,8 @@ public sealed class PdfImageData
     public PdfImageCodec UnsupportedCodec { get; }
 
     /// <summary>
-    /// Gets a value indicating whether <see cref="Pixels"/> lives on the pinned object heap, so Skia can use the array as
+    /// Gets a value indicating whether <see cref="Pixels"/> lives on the pinned object heap, so a backend can use the array as
     /// its pixel memory without a copy.
     /// </summary>
-    internal bool IsPinned { get; init; }
+    public bool IsPinned { get; internal init; }
 }

@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Fonts;
 
@@ -29,7 +29,7 @@ internal abstract class GlyphSource
     /// <summary>Builds a glyph's outline in glyph space.</summary>
     /// <param name="glyph">The glyph id.</param>
     /// <returns>A new path the caller owns, or <see langword="null"/> when the glyph has no outline.</returns>
-    internal abstract SKPath? BuildOutline(int glyph);
+    internal abstract PdfPath? BuildOutline(int glyph);
 
     /// <summary>Gets a glyph's advance width in glyph space units.</summary>
     /// <param name="glyph">The glyph id.</param>

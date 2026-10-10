@@ -2,8 +2,8 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Tests.Fonts;
 
@@ -24,7 +24,7 @@ internal static class FontProbe
     /// <param name="font">The font.</param>
     /// <param name="code">The code.</param>
     /// <returns>The bounds, or an empty rectangle when the code has no outline.</returns>
-    internal static SKRect Bounds(PdfFont font, int code) => font.GetOutline(code)?.Bounds ?? SKRect.Empty;
+    internal static PdfRect Bounds(PdfFont font, int code) => font.GetOutline(code)?.Bounds ?? PdfRect.Empty;
 
     /// <summary>Reads every code of a byte string.</summary>
     /// <param name="font">The font.</param>

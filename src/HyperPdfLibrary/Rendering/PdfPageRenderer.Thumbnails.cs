@@ -3,9 +3,9 @@
 // See the LICENSE file in the project root for full license information.
 
 using HyperPdfLibrary.Document;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Filters;
 using HyperPdfLibrary.Graphics.Images;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Rendering;
 
@@ -32,7 +32,7 @@ public sealed partial class PdfPageRenderer
     /// <param name="pageIndex">The zero based page index.</param>
     /// <returns>The thumbnail as premultiplied BGRA, which the caller owns; <see langword="null"/> when the page has none or it is damaged.</returns>
     /// <exception cref="ObjectDisposedException">The renderer has been disposed.</exception>
-    public SKImage? GetEmbeddedThumbnail(int pageIndex)
+    public IPdfRenderImage? GetEmbeddedThumbnail(int pageIndex)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if ((uint)pageIndex >= (uint)_document.PageCount)
@@ -47,7 +47,7 @@ public sealed partial class PdfPageRenderer
         }
 
         var data = PdfImageDecoder.Decode(thumb, page.Resources);
-        return data is null || data.IsStencilMask || data.UnsupportedCodec != PdfImageCodec.None ? null : PdfRenderCache.ToSkImage(data);
+        return data is null || data.IsStencilMask || data.UnsupportedCodec != PdfImageCodec.None ? null : PdfRenderCache.ToRenderImage(data);
     }
 
     /// <summary>
@@ -62,7 +62,7 @@ public sealed partial class PdfPageRenderer
     /// <exception cref="ObjectDisposedException">The renderer has been disposed.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxEdge"/> is not positive.</exception>
     /// <remarks>The target is drawn directly; a drawing exception can leave partial pixels.</remarks>
-    public unsafe bool RenderThumbnail(int pageIndex, int maxEdge, PdfTileTarget target)
+    public bool RenderThumbnail(int pageIndex, int maxEdge, PdfTileTarget target)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxEdge);
         using var embedded = GetEmbeddedThumbnail(pageIndex);
@@ -72,36 +72,7 @@ public sealed partial class PdfPageRenderer
             return page is not null && Render(new(pageIndex, ThumbnailScale(page, maxEdge), 0, 0, 0, PdfRenderFlags.None), target);
         }
 
-        if (!target.IsValid)
-        {
-            return false;
-        }
-
-        var surface = RenderSurface.Current;
-        BorrowedPixelDrawing.CheckAvailable(surface);
-        fixed (byte* pixels = target.Pixels)
-        {
-            try
-            {
-                if (!BorrowedPixelDrawing.Attach(surface, target, (nint)pixels))
-                {
-                    return false;
-                }
-
-                var canvas = surface.Canvas;
-                var saved = canvas.Save();
-                canvas.ResetMatrix();
-                canvas.ClipRect(new(0, 0, target.Width, target.Height));
-                canvas.Clear(SKColors.White);
-                canvas.DrawImage(embedded, new SKRect(0, 0, target.Width, target.Height), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
-                canvas.RestoreToCount(saved);
-                return true;
-            }
-            finally
-            {
-                BorrowedPixelDrawing.Detach(surface);
-            }
-        }
+        return target.IsValid && PdfDrawingServices.Backend.GetDrawingSession().DrawImage(embedded, target);
     }
 
     /// <summary>Gets the scale that fits a page into a square.</summary>

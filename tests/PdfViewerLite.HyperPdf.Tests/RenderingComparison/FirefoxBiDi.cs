@@ -23,6 +23,9 @@ internal sealed class FirefoxBiDi : IAsyncDisposable
     /// <summary>The maximum retained browser diagnostic lines.</summary>
     private const int DiagnosticLines = 32;
 
+    /// <summary>The protocol property that names a browsing context.</summary>
+    private const string ContextProperty = "context";
+
     /// <summary>Protects the bounded browser diagnostics.</summary>
     private readonly Lock _diagnosticGate = new();
 
@@ -168,7 +171,7 @@ internal sealed class FirefoxBiDi : IAsyncDisposable
             "browsingContext.navigate",
             writer =>
         {
-            writer.WriteString("context", Context);
+            writer.WriteString(ContextProperty, Context);
             writer.WriteString(nameof(url), url);
             writer.WriteString("wait", "complete");
         },
@@ -232,15 +235,19 @@ internal sealed class FirefoxBiDi : IAsyncDisposable
         var capabilities = session.GetProperty("result").GetProperty("capabilities");
         Version = capabilities.GetProperty("browserVersion").GetString()!;
         Build = capabilities.GetProperty("moz:buildID").GetString()!;
+
+        // pdf.js schedules display renders on requestAnimationFrame, which Firefox throttles or pauses in background
+        // tabs, so the render page must be the visible, selected tab.
         var created = await CommandAsync(
             "browsingContext.create",
             static writer =>
         {
             writer.WriteString("type", "tab");
-            writer.WriteBoolean("background", true);
+            writer.WriteBoolean("background", false);
         },
             startup.Token);
-        Context = created.GetProperty("result").GetProperty("context").GetString()!;
+        Context = created.GetProperty("result").GetProperty(ContextProperty).GetString()!;
+        _ = await CommandAsync("browsingContext.activate", writer => writer.WriteString(ContextProperty, Context), startup.Token);
     }
 
     /// <summary>Sends one protocol command and awaits its matching response.</summary>

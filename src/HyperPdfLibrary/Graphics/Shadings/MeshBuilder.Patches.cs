@@ -2,7 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Graphics.Shadings;
 
@@ -28,10 +28,10 @@ internal sealed partial class MeshBuilder
     private const int FlagMask = 3;
 
     /// <summary>The control points of the current patch, as p[i * 4 + j].</summary>
-    private readonly SKPoint[] _points = new SKPoint[TensorPoints];
+    private readonly PdfPoint[] _points = new PdfPoint[TensorPoints];
 
     /// <summary>The control points of the previous patch.</summary>
-    private readonly SKPoint[] _previousPoints = new SKPoint[TensorPoints];
+    private readonly PdfPoint[] _previousPoints = new PdfPoint[TensorPoints];
 
     /// <summary>The corner colours of the current patch: c00, c03, c33, c30.</summary>
     private readonly MeshVertex[] _corners = new MeshVertex[CornerColors];

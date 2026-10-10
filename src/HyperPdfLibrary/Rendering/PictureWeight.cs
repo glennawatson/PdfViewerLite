@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Rendering;
 
@@ -14,7 +14,7 @@ namespace HyperPdfLibrary.Rendering;
 /// uses an instance, so it is not thread-safe.
 /// </summary>
 [DebuggerDisplay("PictureWeight: {_images.Count} images")]
-internal sealed class PictureWeight
+public sealed class PictureWeight
 {
     /// <summary>The unique ids of the images already listed.</summary>
     private readonly HashSet<uint> _seen = [];
@@ -24,15 +24,15 @@ internal sealed class PictureWeight
 
     /// <summary>Lists an image the first time it is drawn.</summary>
     /// <param name="image">The image.</param>
-    internal void Add(SKImage image)
+    public void Add(IPdfRenderImage image)
     {
-        if (_seen.Add(image.UniqueId))
+        if (_seen.Add(image.ImageId))
         {
-            _images.Add(new(image.UniqueId, (long)image.Width * image.Height * image.Info.BytesPerPixel));
+            _images.Add(new(image.ImageId, image.PixelBytes));
         }
     }
 
     /// <summary>Gets the distinct images drawn so far.</summary>
     /// <returns>A copy of the list; empty when no image was drawn.</returns>
-    internal ImageWeight[] ToArray() => _images.Count == 0 ? [] : [.. _images];
+    public ImageWeight[] ToArray() => _images.Count == 0 ? [] : [.. _images];
 }

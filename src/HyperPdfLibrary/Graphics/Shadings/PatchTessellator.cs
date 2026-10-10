@@ -2,7 +2,7 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
-using SkiaSharp;
+using HyperPdfLibrary.Drawing;
 
 namespace HyperPdfLibrary.Graphics.Shadings;
 
@@ -72,7 +72,7 @@ internal static class PatchTessellator
     /// <param name="points">The 16 control points, p[i * 4 + j].</param>
     /// <param name="corners">The corner colours: c00, c03, c33, c30.</param>
     /// <param name="scale">The device units one unit of shading space spans.</param>
-    internal static void Emit(MeshBuilder builder, ReadOnlySpan<SKPoint> points, ReadOnlySpan<MeshVertex> corners, float scale)
+    internal static void Emit(MeshBuilder builder, ReadOnlySpan<PdfPoint> points, ReadOnlySpan<MeshVertex> corners, float scale)
     {
         var colorCells = ColorSteps(corners) / ColorStepPerCell;
         var cellsU = CellCount(PolygonLength(points, Control, 1) * scale, colorCells);
@@ -108,7 +108,7 @@ internal static class PatchTessellator
 
     /// <summary>Fills the four interior control points of a Coons patch from its boundary (PDF 32000 §8.7.4.5.8).</summary>
     /// <param name="p">The control points; the boundary is set, the interior is written.</param>
-    internal static void FillCoonsInterior(Span<SKPoint> p)
+    internal static void FillCoonsInterior(Span<PdfPoint> p)
     {
         for (var row = 0; row < InteriorPoints; row++)
         {
@@ -131,7 +131,7 @@ internal static class PatchTessellator
     /// <param name="step">The index step between points along the direction.</param>
     /// <param name="across">The index step between the polygons.</param>
     /// <returns>The length in shading space.</returns>
-    private static float PolygonLength(ReadOnlySpan<SKPoint> p, int step, int across)
+    private static float PolygonLength(ReadOnlySpan<PdfPoint> p, int step, int across)
     {
         var longest = 0F;
         for (var k = 0; k < Control; k++)
@@ -141,7 +141,7 @@ internal static class PatchTessellator
             {
                 var from = p[(k * across) + (i * step)];
                 var to = p[(k * across) + ((i + 1) * step)];
-                length += SKPoint.Distance(from, to);
+                length += PdfPoint.Distance(from, to);
             }
 
             longest = Math.Max(longest, length);
@@ -174,7 +174,7 @@ internal static class PatchTessellator
     /// <param name="u">The parameter along i.</param>
     /// <param name="v">The parameter along j.</param>
     /// <returns>The point.</returns>
-    private static SKPoint Evaluate(ReadOnlySpan<SKPoint> p, float u, float v)
+    private static PdfPoint Evaluate(ReadOnlySpan<PdfPoint> p, float u, float v)
     {
         Span<float> bu = stackalloc float[Control];
         Span<float> bv = stackalloc float[Control];
@@ -211,7 +211,7 @@ internal static class PatchTessellator
     /// <param name="p">The control points.</param>
     /// <param name="row">The row of <see cref="InteriorTerms"/> that names the points used.</param>
     /// <returns>The interior point.</returns>
-    private static SKPoint Interior(ReadOnlySpan<SKPoint> p, int row)
+    private static PdfPoint Interior(ReadOnlySpan<PdfPoint> p, int row)
     {
         var terms = InteriorTerms.Slice(row * TermsPerPoint, TermsPerPoint);
         var corner = p[terms[0]];

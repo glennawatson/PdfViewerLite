@@ -3,15 +3,15 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Rendering;
 
 /// <summary>
 /// A decoded image ready to draw, shared through the <see cref="ImageCache"/>. Each user acquires it and releases it when
-/// done; the Skia image is disposed only once the cache has evicted it and no user holds it. Pictures that drew the image
-/// keep their own native reference, so disposing it never invalidates a recorded page.
+/// done; the backend image is disposed only once the cache has evicted it and no user holds it. Recorded pictures retain
+/// the resources they need, so disposing the image never invalidates a recorded page.
 /// </summary>
 [DebuggerDisplay("ImageEntry: {Image.Width}x{Image.Height} mask {IsMask}")]
 internal sealed class ImageEntry
@@ -26,19 +26,19 @@ internal sealed class ImageEntry
     private bool _evicted;
 
     /// <summary>Initializes a new instance of the <see cref="ImageEntry"/> class.</summary>
-    /// <param name="image">The Skia image, which the entry owns.</param>
+    /// <param name="image">The backend image, which the entry owns.</param>
     /// <param name="isMask">Whether the image is a stencil mask painted with the fill colour.</param>
     /// <param name="interpolate">Whether the image asks for smoothing when scaled up.</param>
-    internal ImageEntry(SKImage image, bool isMask, bool interpolate)
+    internal ImageEntry(IPdfRenderImage image, bool isMask, bool interpolate)
     {
         Image = image;
         IsMask = isMask;
         Interpolate = interpolate;
-        Bytes = (long)image.Width * image.Height * (isMask ? 1 : image.Info.BytesPerPixel);
+        Bytes = image.PixelBytes;
     }
 
-    /// <summary>Gets the Skia image.</summary>
-    internal SKImage Image { get; }
+    /// <summary>Gets the owned backend image.</summary>
+    internal IPdfRenderImage Image { get; }
 
     /// <summary>Gets a value indicating whether the image is a stencil mask painted with the fill colour.</summary>
     internal bool IsMask { get; }
@@ -55,7 +55,7 @@ internal sealed class ImageEntry
     /// <summary>Gets or sets the stream the cache holds the entry under; only the cache touches it, under its lock.</summary>
     internal PdfStream? Key { get; set; }
 
-    /// <summary>Gets a value indicating whether the Skia image has been disposed.</summary>
+    /// <summary>Gets a value indicating whether the backend image has been disposed.</summary>
     internal bool IsDisposed
     {
         get

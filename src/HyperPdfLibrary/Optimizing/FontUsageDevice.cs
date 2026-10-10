@@ -7,12 +7,12 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using HyperPdfLibrary.Content;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts;
 using HyperPdfLibrary.Graphics;
 using HyperPdfLibrary.Graphics.Shadings;
 using HyperPdfLibrary.Objects;
 using HyperPdfLibrary.Structure.Tagged;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Optimizing;
 
@@ -50,22 +50,22 @@ internal sealed class FontUsageDevice : ITextObjectDevice
     }
 
     /// <inheritdoc/>
-    public void Fill(SKPath path, bool evenOdd, ref GraphicsState state)
+    public void Fill(PdfPath path, bool evenOdd, ref GraphicsState state)
     {
     }
 
     /// <inheritdoc/>
-    public void Stroke(SKPath path, ref GraphicsState state)
+    public void Stroke(PdfPath path, ref GraphicsState state)
     {
     }
 
     /// <inheritdoc/>
-    public void Clip(SKPath path, bool evenOdd, Matrix3x2 ctm)
+    public void Clip(PdfPath path, bool evenOdd, Matrix3x2 ctm)
     {
     }
 
     /// <inheritdoc/>
-    public void DrawImage(SKImage image, bool isMask, bool smooth, ref GraphicsState state)
+    public void DrawImage(IPdfRenderImage image, bool isMask, bool smooth, ref GraphicsState state)
     {
     }
 
@@ -96,5 +96,5 @@ internal sealed class FontUsageDevice : ITextObjectDevice
 
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IPictureDevice CreatePictureDevice(SKRect cull) => new NullPictureDevice(cull);
+    public IPictureDevice CreatePictureDevice(PdfRect cull) => new NullPictureDevice(cull);
 }

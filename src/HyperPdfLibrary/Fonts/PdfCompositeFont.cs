@@ -5,8 +5,8 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Objects;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
@@ -74,7 +74,7 @@ internal sealed class PdfCompositeFont : PdfFont
     }
 
     /// <inheritdoc/>
-    public override SKPath? GetOutline(int code)
+    public override PdfPath? GetOutline(int code)
     {
         if (_data.Source.IsSubstitute)
         {
@@ -135,7 +135,7 @@ internal sealed class PdfCompositeFont : PdfFont
     /// <summary>Builds the outline of a code in a system font, falling back to another system font for a missing character.</summary>
     /// <param name="code">The code.</param>
     /// <returns>The outline, or <see langword="null"/>.</returns>
-    private SKPath? BuildSubstituteOutline(int code)
+    private PdfPath? BuildSubstituteOutline(int code)
     {
         var codePoint = GetCodePoint(code);
         if (codePoint == 0 || _data.Source is not SubstituteFace face)

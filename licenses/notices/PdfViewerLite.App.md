@@ -34,7 +34,7 @@ SOFTWARE.
 ````
 
 ### Avalonia
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -64,7 +64,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.FreeDesktop
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -94,7 +94,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.FreeDesktop.AtSpi
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -124,7 +124,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.Native
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -154,7 +154,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.Remote.Protocol
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -184,7 +184,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.Themes.Fluent
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -214,7 +214,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.Wayland
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -244,7 +244,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.Win32
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -274,7 +274,7 @@ SOFTWARE.
 ````
 
 ### Avalonia.X11
-- Version: 12.1.3
+- Version: 12.1.4
 - Origin: NuGet package
 - Copyright: Copyright 2013-2026 © The AvaloniaUI Project
 - Link: https://avaloniaui.net/?utm_source=nuget&utm_medium=referral&utm_content=project_homepage_link
@@ -304,7 +304,7 @@ SOFTWARE.
 ````
 
 ### HarfBuzzSharp
-- Version: 14.2.1.202
+- Version: 14.2.1.301
 - Origin: NuGet package
 - Copyright: © Microsoft Corporation. All rights reserved.
 - Link: https://go.microsoft.com/fwlink/?linkid=868515
@@ -332,7 +332,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
 ### HarfBuzzSharp.NativeAssets.Linux
-- Version: 14.2.1.202
+- Version: 14.2.1.301
 - Origin: NuGet package
 - Copyright: © Microsoft Corporation. All rights reserved.
 - Link: https://go.microsoft.com/fwlink/?linkid=868515
@@ -360,7 +360,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
 ### HarfBuzzSharp.NativeAssets.macOS
-- Version: 14.2.1.202
+- Version: 14.2.1.301
 - Origin: NuGet package
 - Copyright: © Microsoft Corporation. All rights reserved.
 - Link: https://go.microsoft.com/fwlink/?linkid=868515
@@ -388,7 +388,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
 ### HarfBuzzSharp.NativeAssets.Win32
-- Version: 14.2.1.202
+- Version: 14.2.1.301
 - Origin: NuGet package
 - Copyright: © Microsoft Corporation. All rights reserved.
 - Link: https://go.microsoft.com/fwlink/?linkid=868515
@@ -1123,18 +1123,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### System.Numerics.Tensors
-- Version: 9.0.0
+### System.Formats.Asn1
+- Version: 11.0.0-rc.1.26425.128
 - Origin: NuGet package
 - Copyright: © Microsoft Corporation. All rights reserved.
 - Link: https://dot.net/
 
 ````text
-The MIT License (MIT)
+MIT License
 
-Copyright (c) .NET Foundation and Contributors
-
-All rights reserved.
+Copyright (c) <year> <copyright holders>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1155,16 +1153,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### System.Security.Cryptography.Pkcs
-- Version: 10.0.12
+### System.Numerics.Tensors
+- Version: 9.0.0
 - Origin: NuGet package
 - Copyright: © Microsoft Corporation. All rights reserved.
 - Link: https://dot.net/
 
 ````text
-MIT License
+The MIT License (MIT)
 
-Copyright (c) <year> <copyright holders>
+Copyright (c) .NET Foundation and Contributors
+
+All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -2,13 +2,15 @@
 // Glenn Watson licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for full license information.
 
+using System.Diagnostics;
 using System.Numerics;
 using HyperPdfLibrary.Fonts;
 
 namespace HyperPdfLibrary.Content;
 
 /// <summary>One shown glyph, as the interpreter reports it to a device.</summary>
-internal readonly ref struct GlyphEvent
+[DebuggerDisplay("{Font}, code {Code}")]
+public readonly ref struct GlyphEvent
 {
     /// <summary>Initializes a new instance of the <see cref="GlyphEvent"/> struct.</summary>
     /// <param name="font">The font.</param>
@@ -28,10 +30,13 @@ internal readonly ref struct GlyphEvent
     }
 
     /// <summary>Gets the font.</summary>
-    internal PdfFont Font { get; }
+    public PdfFont Font { get; }
 
     /// <summary>Gets the character code.</summary>
-    internal int Code { get; }
+    public int Code { get; }
+
+    /// <summary>Gets the matrix from glyph space to user space: font matrix, font size, scaling, rise and text matrix.</summary>
+    public Matrix3x2 GlyphMatrix => Placement.GlyphMatrix;
 
     /// <summary>Gets the Unicode text of the code; empty when unknown.</summary>
     internal ReadOnlySpan<char> Unicode { get; }
@@ -44,9 +49,6 @@ internal readonly ref struct GlyphEvent
 
     /// <summary>Gets a value indicating whether word spacing applied to the glyph.</summary>
     internal bool IsWordSpace { get; }
-
-    /// <summary>Gets the matrix from glyph space to user space: font matrix, font size, scaling, rise and text matrix.</summary>
-    internal Matrix3x2 GlyphMatrix => Placement.GlyphMatrix;
 
     /// <summary>Gets the text matrix at the glyph's origin, from text space to user space.</summary>
     internal Matrix3x2 TextMatrix => Placement.TextMatrix;

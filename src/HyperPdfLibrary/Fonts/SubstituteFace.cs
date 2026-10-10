@@ -3,54 +3,42 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Fonts.Programs;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Fonts;
 
 /// <summary>
 /// A system font standing in for a font the PDF does not embed. Faces are shared by every document and live for the
-/// process, so the cache never disposes them. Skia calls are serialised by a lock; they run only while a glyph is first
-/// loaded.
+/// process, so the cache never disposes them. Backend calls run only while a glyph is first loaded.
 /// </summary>
 [DebuggerDisplay("SubstituteFace: {FamilyName}")]
 internal sealed class SubstituteFace : GlyphSource, IDisposable
 {
-    /// <summary>The glyph space units per em, used as the Skia font size so paths come out in glyph space.</summary>
-    private const float GlyphUnits = 1000F;
-
     /// <summary>The page of private-use code points Microsoft symbol fonts map their codes into.</summary>
     private const int SymbolPage = 0xF000;
 
     /// <summary>The largest single-byte code.</summary>
     private const int MaxByteCode = 0xFF;
 
-    /// <summary>The horizontal skew of a synthetic italic, about 11 degrees; negative leans right in Skia's y-down space.</summary>
-    private const float SyntheticSkew = -0.2F;
-
-    /// <summary>Guards the Skia font.</summary>
-    private readonly Lock _gate = new();
-
-    /// <summary>The Skia font at 1000 units per em, unhinted; null for a bundled face.</summary>
-    private readonly SKFont? _font;
+    /// <summary>The backend font face, or null for a bundled face.</summary>
+    private readonly IPdfFontFace? _font;
 
     /// <summary>The managed glyph source of a bundled face; null for a system face.</summary>
     private readonly ProgramGlyphSource? _bundled;
 
     /// <summary>Initializes a new instance of the <see cref="SubstituteFace"/> class from a system font.</summary>
-    /// <param name="typeface">The typeface; the face owns it.</param>
+    /// <param name="font">The backend face; this source owns it.</param>
     /// <param name="isRequestedFamily">Whether the typeface is the family the PDF asked for rather than a stand-in.</param>
-    /// <param name="style">The synthetic bold and slant to add when the typeface lacks them.</param>
-    internal SubstituteFace(SKTypeface typeface, bool isRequestedFamily, SyntheticStyle style)
+    internal SubstituteFace(IPdfFontFace font, bool isRequestedFamily)
     {
-        Typeface = typeface;
+        _font = font;
         IsRequestedFamily = isRequestedFamily;
-        FamilyName = typeface.FamilyName ?? string.Empty;
-        _font = new(typeface, GlyphUnits) { Hinting = SKFontHinting.None, LinearMetrics = true, Subpixel = true, Embolden = style.Bold, SkewX = style.Slant ? SyntheticSkew : 0 };
-        _ = _font.GetFontMetrics(out var metrics);
-        Ascent = -metrics.Ascent;
-        Descent = -metrics.Descent;
-        GlyphCount = typeface.GlyphCount;
+        FamilyName = font.FamilyName;
+        Ascent = font.Ascent;
+        Descent = font.Descent;
+        GlyphCount = font.GlyphCount;
     }
 
     /// <summary>Initializes a new instance of the <see cref="SubstituteFace"/> class from a bundled font program.</summary>
@@ -64,9 +52,6 @@ internal sealed class SubstituteFace : GlyphSource, IDisposable
         Descent = _bundled.Descent;
         GlyphCount = program.GlyphCount;
     }
-
-    /// <summary>Gets the system typeface, or <see langword="null"/> for a bundled face.</summary>
-    internal SKTypeface? Typeface { get; }
 
     /// <summary>Gets a value indicating whether the face is one of the fonts bundled with the library.</summary>
     internal bool IsBundled => _bundled is not null;
@@ -90,11 +75,8 @@ internal sealed class SubstituteFace : GlyphSource, IDisposable
     internal override bool IsSubstitute => true;
 
     /// <inheritdoc/>
-    public void Dispose()
-    {
-        _font?.Dispose();
-        Typeface?.Dispose();
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Dispose() => _font?.Dispose();
 
     /// <summary>Finds the glyph of a Unicode code point.</summary>
     /// <param name="codePoint">The code point.</param>
@@ -106,15 +88,7 @@ internal sealed class SubstituteFace : GlyphSource, IDisposable
             return 0;
         }
 
-        if (_bundled is not null)
-        {
-            return Math.Max(_bundled.Program.GetGlyphByUnicode(codePoint), 0);
-        }
-
-        lock (_gate)
-        {
-            return _font!.GetGlyph(codePoint);
-        }
+        return _bundled is null ? _font!.GetGlyph(codePoint) : Math.Max(_bundled.Program.GetGlyphByUnicode(codePoint), 0);
     }
 
     /// <summary>Finds a glyph by its PostScript name; only a bundled face keeps names.</summary>
@@ -142,27 +116,14 @@ internal sealed class SubstituteFace : GlyphSource, IDisposable
     }
 
     /// <inheritdoc/>
-    internal override SKPath? BuildOutline(int glyph)
+    internal override PdfPath? BuildOutline(int glyph)
     {
         if (_bundled is not null)
         {
             return _bundled.BuildOutline(glyph);
         }
 
-        if ((uint)glyph >= (uint)GlyphCount)
-        {
-            return null;
-        }
-
-        SKPath? path;
-        lock (_gate)
-        {
-            path = _font!.GetGlyphPath((ushort)glyph);
-        }
-
-        // Skia paths have y pointing down; glyph space has it pointing up.
-        path?.Transform(SKMatrix.CreateScale(1, -1));
-        return path;
+        return (uint)glyph >= (uint)GlyphCount ? null : _font!.BuildOutline(glyph);
     }
 
     /// <inheritdoc/>
@@ -173,18 +134,6 @@ internal sealed class SubstituteFace : GlyphSource, IDisposable
             return 0;
         }
 
-        if (_bundled is not null)
-        {
-            return _bundled.GetAdvance(glyph);
-        }
-
-        ReadOnlySpan<ushort> glyphs = [(ushort)glyph];
-        Span<float> widths = stackalloc float[1];
-        lock (_gate)
-        {
-            _font!.GetGlyphWidths(glyphs, widths, []);
-        }
-
-        return widths[0];
+        return _bundled is null ? _font!.GetAdvance(glyph) : _bundled.GetAdvance(glyph);
     }
 }

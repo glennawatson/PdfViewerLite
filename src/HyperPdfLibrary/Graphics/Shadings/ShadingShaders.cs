@@ -3,15 +3,14 @@
 // See the LICENSE file in the project root for full license information.
 
 using System.Numerics;
+using HyperPdfLibrary.Drawing;
 using HyperPdfLibrary.Graphics.Colors;
 using HyperPdfLibrary.Graphics.Functions;
 using HyperPdfLibrary.Objects;
-using HyperPdfLibrary.Rendering;
-using SkiaSharp;
 
 namespace HyperPdfLibrary.Graphics.Shadings;
 
-/// <summary>Builds Skia shaders for the function, axial and radial shadings.</summary>
+/// <summary>Builds backend shaders for function, axial and radial shadings.</summary>
 internal static class ShadingShaders
 {
     /// <summary>The colours sampled along a gradient.</summary>
@@ -50,7 +49,7 @@ internal static class ShadingShaders
     /// <summary>Creates the shader for a shading.</summary>
     /// <param name="shading">The shading.</param>
     /// <returns>The shader, or null when the shading is damaged.</returns>
-    internal static SKShader? Create(PdfShading shading) => shading.Kind switch
+    internal static IPdfRenderShader? Create(PdfShading shading) => shading.Kind switch
     {
         PdfShadingKind.Axial => CreateAxial(shading),
         PdfShadingKind.Radial => CreateRadial(shading),
@@ -63,7 +62,7 @@ internal static class ShadingShaders
     /// <param name="start">The first input.</param>
     /// <param name="end">The last input.</param>
     /// <param name="colors">Receives one colour per sample.</param>
-    internal static void SampleColors(PdfShading shading, float start, float end, Span<SKColor> colors)
+    internal static void SampleColors(PdfShading shading, float start, float end, Span<PdfColor> colors)
     {
         var function = shading.Function;
         Span<float> output = stackalloc float[PdfFunction.MaxComponents];
@@ -75,35 +74,35 @@ internal static class ShadingShaders
             components.Clear();
             function!.Evaluate(input, output);
             output[..Math.Min(function.OutputCount, components.Length)].CopyTo(components);
-            colors[i] = PdfShading.ToSkColor(shading.ColorSpace, components);
+            colors[i] = PdfShading.ToColor(shading.ColorSpace, components);
         }
     }
 
     /// <summary>Creates a linear gradient for an axial shading.</summary>
     /// <param name="shading">The shading.</param>
     /// <returns>The shader.</returns>
-    private static SKShader? CreateAxial(PdfShading shading)
+    private static IPdfRenderShader? CreateAxial(PdfShading shading)
     {
         if (shading.Function is null || !TryReadGradient(shading, AxialCoords, out var coords, out var domain))
         {
             return null;
         }
 
-        var start = new SKPoint(coords[0], coords[1]);
-        var end = new SKPoint(coords[2], coords[3]);
+        var start = new PdfPoint(coords[0], coords[1]);
+        var end = new PdfPoint(coords[2], coords[3]);
         if (start == end)
         {
             return null;
         }
 
         var stops = CreateStops(shading, domain);
-        return SKShader.CreateLinearGradient(start, end, stops.Colors, stops.Positions, SKShaderTileMode.Clamp);
+        return PdfDrawingServices.Backend.CreateLinearGradient(start, end, stops.Colors, stops.Positions, PdfShaderTileMode.Clamp);
     }
 
     /// <summary>Creates a two-point conical gradient for a radial shading.</summary>
     /// <param name="shading">The shading.</param>
     /// <returns>The shader.</returns>
-    private static SKShader? CreateRadial(PdfShading shading)
+    private static IPdfRenderShader? CreateRadial(PdfShading shading)
     {
         if (shading.Function is null || !TryReadGradient(shading, RadialCoords, out var coords, out var domain))
         {
@@ -111,9 +110,9 @@ internal static class ShadingShaders
         }
 
         var stops = CreateStops(shading, domain);
-        var start = new SKPoint(coords[0], coords[1]);
-        var end = new SKPoint(coords[AxialCoords - 1], coords[AxialCoords]);
-        return SKShader.CreateTwoPointConicalGradient(start, coords[2], end, coords[SecondRadius], stops.Colors, stops.Positions, SKShaderTileMode.Clamp);
+        var start = new PdfPoint(coords[0], coords[1]);
+        var end = new PdfPoint(coords[AxialCoords - 1], coords[AxialCoords]);
+        return PdfDrawingServices.Backend.CreateTwoPointConicalGradient(start, coords[2], end, coords[SecondRadius], stops.Colors, stops.Positions, PdfShaderTileMode.Clamp);
     }
 
     /// <summary>Reads the coordinates and domain of a gradient.</summary>
@@ -143,7 +142,7 @@ internal static class ShadingShaders
     }
 
     /// <summary>
-    /// Samples a gradient's colour stops. Skia has one tile mode for both ends, so the shader clamps and each end that
+    /// Samples a gradient's colour stops. The backend contract uses one tile mode for both ends, so each end that
     /// /Extend does not extend gets a transparent hard stop: beyond it the gradient paints nothing, as PDF requires.
     /// </summary>
     /// <param name="shading">The shading.</param>
@@ -154,7 +153,7 @@ internal static class ShadingShaders
         var extend = shading.Dictionary.GetArray(KnownName.Extend);
         var before = extend is not null && extend.Get(0).AsBoolean() ? 0 : 1;
         var after = extend is not null && extend.Get(1).AsBoolean() ? 0 : 1;
-        var colors = new SKColor[GradientSamples + before + after];
+        var colors = new PdfColor[GradientSamples + before + after];
         var positions = new float[colors.Length];
         SampleColors(shading, domain.X, domain.Y, colors.AsSpan(before, GradientSamples));
         for (var i = 0; i < GradientSamples; i++)
@@ -174,7 +173,7 @@ internal static class ShadingShaders
     /// <summary>Rasterises a function-based shading to a bitmap shader.</summary>
     /// <param name="shading">The shading.</param>
     /// <returns>The shader.</returns>
-    private static SKShader? CreateFunctionBased(PdfShading shading)
+    private static IPdfRenderShader? CreateFunctionBased(PdfShading shading)
     {
         var function = shading.Function;
         if (function is null || function.InputCount < FunctionInputs)
@@ -183,18 +182,19 @@ internal static class ShadingShaders
         }
 
         Span<float> domain = [0, 1, 0, 1];
-        if (shading.Dictionary.GetArray(KnownName.Domain) is { Count: >= FunctionDomain } array)
+        if (shading.Dictionary.GetArray(KnownName.Domain)is { Count: >= FunctionDomain } array)
         {
             _ = array.ReadNumbers(domain);
         }
 
         var pixels = new byte[FunctionRaster * FunctionRaster * BytesPerPixel];
         Fill(shading, function, domain, pixels);
-        using var image = SKImage.FromPixelCopy(new(FunctionRaster, FunctionRaster, SKColorType.Bgra8888, SKAlphaType.Premul), pixels, FunctionRaster * BytesPerPixel);
-        var cell = Matrix3x2.CreateScale((domain[1] - domain[0]) / FunctionRaster, (domain[FunctionInputs + 1] - domain[FunctionInputs]) / FunctionRaster)
-            * Matrix3x2.CreateTranslation(domain[0], domain[FunctionInputs]);
+        using var image = PdfDrawingServices.Backend.CreateImage(new(FunctionRaster, FunctionRaster, PdfImagePixelFormat.Bgra8888), pixels, FunctionRaster * BytesPerPixel);
+        var cell = Matrix3x2.CreateScale(
+            (domain[1] - domain[0]) / FunctionRaster,
+            (domain[FunctionInputs + 1] - domain[FunctionInputs]) / FunctionRaster) * Matrix3x2.CreateTranslation(domain[0], domain[FunctionInputs]);
         var local = cell * ReadMatrix(shading.Dictionary);
-        return SKShader.CreateImage(image, SKShaderTileMode.Decal, SKShaderTileMode.Decal, new(SKFilterMode.Linear), SkiaConversions.ToSkMatrix(local));
+        return PdfDrawingServices.Backend.CreateImageShader(image, PdfShaderTileMode.Decal, PdfShaderTileMode.Decal, true, local);
     }
 
     /// <summary>Evaluates a two-input function for every pixel of the raster.</summary>
@@ -216,7 +216,7 @@ internal static class ShadingShaders
                 components.Clear();
                 function.Evaluate(input, output);
                 output[..Math.Min(function.OutputCount, components.Length)].CopyTo(components);
-                var colour = PdfShading.ToSkColor(shading.ColorSpace, components);
+                var colour = PdfShading.ToColor(shading.ColorSpace, components);
                 var offset = ((y * FunctionRaster) + x) * BytesPerPixel;
                 pixels[offset] = colour.Blue;
                 pixels[offset + 1] = colour.Green;
