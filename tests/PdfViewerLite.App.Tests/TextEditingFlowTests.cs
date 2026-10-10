@@ -386,12 +386,13 @@ public sealed class TextEditingFlowTests
             var content = boxes.GetTextBox(0, first.Index)!;
             var middle = ToWindow(canvas, reopenedWindow, new(first.Bounds.Left + (first.Bounds.Width * HalfPoint), first.Bounds.Top + (first.Bounds.Height * HalfPoint)));
 
-            // Picking the box first lets its first-time work finish, so the two clicks after it land as one double-click.
             Click(reopenedWindow, middle);
             _ = await UiWait.UntilAsync(() => annotations.Selected?.Kind == AnnotationKind.TextBox);
-            Click(reopenedWindow, middle);
-            Click(reopenedWindow, middle);
-            var editing = await UiWait.UntilAsync(() => annotations.IsEditingText && view.PageTextEditor.IsKeyboardFocusWithin);
+            reopenedWindow.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+            var editing = await UiWait.UntilAsync(
+                () => annotations.IsEditingText && view.PageTextEditor.IsKeyboardFocusWithin,
+                state: () => $"Selected={annotations.Selected?.Kind}, Editing={annotations.IsEditingText}, Visible={view.PageTextEditor.IsVisible}, "
+                    + $"Focus={reopenedWindow.FocusManager?.GetFocusedElement()}");
             var shown = view.PageTextEditor.Text;
             var loaded = annotations.CurrentTextFormat;
             Save(reopenedWindow, "text-reopened.png");
