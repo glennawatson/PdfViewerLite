@@ -192,6 +192,27 @@ public sealed class InterchangeRoundTripTests
         await Assert.That(read.Annotations[0].RichContents).Contains("<p>kept</p>");
     }
 
+    /// <summary>Rich-text indentation stays stable while explicit carriage returns remain part of plain text.</summary>
+    /// <returns>A task.</returns>
+    [Test]
+    public async Task RichTextAndCarriageReturnsSurviveRoundTrip()
+    {
+        const string contents = "first\r\nsecond\rlast";
+        var data = new PdfInterchangeData();
+        var text = new PdfInterchangeAnnotation("FreeText") { Rect = InterchangeSamples.Rect(Corner), Contents = contents };
+        text.RichContents = "<body xmlns=\"http://www.w3.org/1999/xhtml\"><p>Rich <b>text</b></p></body>";
+        data.Annotations.Add(text);
+        data.Fields.Add(new("Field", [contents]) { RichText = text.RichContents });
+
+        var first = XfdfWriter.Write(data);
+        var read = XfdfReader.Read(first);
+
+        await Assert.That(read.Annotations[0].Contents).IsEqualTo(contents);
+        await Assert.That(read.Fields[0].Value).IsEqualTo(contents);
+        await Assert.That(Encoding.UTF8.GetString(first)).DoesNotContain("\r");
+        await Assert.That(Encoding.UTF8.GetString(XfdfWriter.Write(read))).IsEqualTo(Encoding.UTF8.GetString(first));
+    }
+
     /// <summary>Forms in the pdf.js corpus export and import again without change, when the file is available.</summary>
     /// <returns>A task.</returns>
     [Test]

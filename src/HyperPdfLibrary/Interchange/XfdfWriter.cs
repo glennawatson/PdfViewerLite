@@ -29,7 +29,9 @@ public static class XfdfWriter
     {
         ArgumentNullException.ThrowIfNull(data);
         ArgumentNullException.ThrowIfNull(destination);
-        var settings = new XmlWriterSettings { Encoding = new UTF8Encoding(false), Indent = true, NewLineHandling = NewLineHandling.Entitize, CloseOutput = false, };
+
+        // XML readers normalize line endings, including indentation inside rich-text fragments.
+        var settings = new XmlWriterSettings { Encoding = new UTF8Encoding(false), Indent = true, NewLineHandling = NewLineHandling.Entitize, NewLineChars = "\n", CloseOutput = false, };
         using var writer = XmlWriter.Create(destination, settings);
         writer.WriteStartDocument();
         writer.WriteStartElement(XfdfNames.Root, XfdfNames.Namespace);
