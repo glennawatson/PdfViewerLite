@@ -41,6 +41,12 @@ internal static class FetchComparisonCorpus
     /// <summary>The overall download timeout in minutes.</summary>
     private const int TimeoutMinutes = 10;
 
+    /// <summary>The number of attempts for a transient corpus-host failure.</summary>
+    private const int MaximumDownloadAttempts = 3;
+
+    /// <summary>The base backoff in milliseconds between transient failures.</summary>
+    private const int RetryDelayMilliseconds = 500;
+
     /// <summary>The extension used for downloaded PDF documents.</summary>
     private const string DocumentExtension = ".pdf";
 
@@ -287,7 +293,7 @@ internal static class FetchComparisonCorpus
         var temporaryPath = Path.Combine(destination, $".{entry.Id}.{Guid.NewGuid():N}.part");
         try
         {
-            await DownloadAsync(client, entry, temporaryPath, cancellationToken);
+            await DownloadWithRetryAsync(client, entry, temporaryPath, cancellationToken);
             File.Move(temporaryPath, path, overwrite: true);
             Console.WriteLine($"Downloaded and verified {entry.Id}: {path}");
         }
@@ -348,6 +354,42 @@ internal static class FetchComparisonCorpus
             File.Delete(path);
         }
     }
+
+    /// <summary>Retries transient network failures without accepting changed or corrupt fixture bytes.</summary>
+    /// <param name="client">The HTTP client.</param>
+    /// <param name="entry">The expected corpus entry.</param>
+    /// <param name="temporaryPath">The temporary output path.</param>
+    /// <param name="cancellationToken">Cancels the attempts and backoff.</param>
+    /// <returns>A task for a verified download.</returns>
+    private static async Task DownloadWithRetryAsync(HttpClient client, CorpusEntry entry, string temporaryPath, CancellationToken cancellationToken)
+    {
+        var attempt = 1;
+        while (true)
+        {
+            try
+            {
+                await DownloadAsync(client, entry, temporaryPath, cancellationToken);
+                return;
+            }
+            catch (HttpRequestException error) when (attempt < MaximumDownloadAttempts && IsTransient(error) && !cancellationToken.IsCancellationRequested)
+            {
+                DeleteTemporaryFile(temporaryPath);
+            }
+            catch (IOException) when (attempt < MaximumDownloadAttempts && !cancellationToken.IsCancellationRequested)
+            {
+                DeleteTemporaryFile(temporaryPath);
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(RetryDelayMilliseconds * attempt), cancellationToken);
+            attempt++;
+        }
+    }
+
+    /// <summary>Distinguishes connection and server failures from a permanent HTTP rejection.</summary>
+    /// <param name="error">The failed request.</param>
+    /// <returns>Whether another attempt may succeed.</returns>
+    private static bool IsTransient(HttpRequestException error) => error.StatusCode is null or HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests
+        || error.StatusCode >= HttpStatusCode.InternalServerError;
 
     /// <summary>Follows bounded HTTPS redirects and streams the response into a temporary file.</summary>
     /// <param name="client">The HTTP client.</param>
