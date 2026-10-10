@@ -319,10 +319,11 @@ public sealed class PageToolTests
             window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.ArrowUp, null);
             var faster = tab.AutoScrollSpeed;
             window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
-            var stopped = await UiWait.UntilAsync(() => !tab.IsAutoScrolling && !canvas.IsAutoScrollRunning);
+            var stopped = await UiWait.UntilAsync(() => !tab.IsAutoScrolling && !canvas.IsAutoScrollRunning && !view.AutoScrollBar.IsVisible);
 
             _ = await tab.ToggleAutoScrollCommand.Execute().ToTask();
-            var restarted = await UiWait.UntilAsync(() => canvas.IsAutoScrollRunning);
+            var restarted = await UiWait.UntilAsync(() => canvas.IsAutoScrollRunning && view.AutoScrollBar.IsVisible);
+            window.UpdateLayout();
             window.MouseDown(Start(scroller, window), MouseButton.Left);
             window.MouseUp(Start(scroller, window), MouseButton.Left);
             var clickStopped = await UiWait.UntilAsync(() => !tab.IsAutoScrolling && !view.AutoScrollBar.IsVisible);
