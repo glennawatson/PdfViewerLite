@@ -43,7 +43,7 @@ public sealed class TaggedPageLeaseTests
         using var progress = new SemaphoreSlim(0, 1);
         var failure = new FirstFailure();
         var running = 1;
-        var reader = Task.Run(() => ReadRepeatedly(document, tagged, progress, failure, () => Volatile.Read(ref running) != 0, timeout.Token), timeout.Token);
+        var reader = StartReader(() => ReadRepeatedly(document, tagged, progress, failure, () => Volatile.Read(ref running) != 0, timeout.Token), timeout.Token);
 
         try
         {
@@ -75,6 +75,13 @@ public sealed class TaggedPageLeaseTests
         await Assert.That(afterClose.Count).IsEqualTo(0);
         await Assert.That(() => HyperPdfTagged.ReadReadingStructure(document, 0)).Throws<ObjectDisposedException>();
     }
+
+    /// <summary>Runs the synchronous reader without occupying the worker needed by edit continuations.</summary>
+    /// <param name="read">The bounded reader loop.</param>
+    /// <param name="cancellationToken">Cancels queued execution.</param>
+    /// <returns>The reader's completion task.</returns>
+    private static Task StartReader(Action read, CancellationToken cancellationToken) =>
+        Task.Factory.StartNew(static state => ((Action)state!)(), read, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
     /// <summary>Reads the stable page until the editing thread finishes.</summary>
     /// <param name="document">The document whose reading structure is parsed.</param>

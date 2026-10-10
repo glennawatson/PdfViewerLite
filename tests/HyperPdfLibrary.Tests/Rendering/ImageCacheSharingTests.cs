@@ -126,21 +126,36 @@ public sealed class ImageCacheSharingTests
     }
 
     /// <summary>Different images decode at the same time: a slow decode does not hold up another stream.</summary>
+    /// <param name="testToken">Cancels the test operation.</param>
     /// <returns>A task.</returns>
     [Test]
-    public async Task DifferentImagesDecodeInParallel()
+    public async Task DifferentImagesDecodeInParallel(CancellationToken testToken)
     {
         var cache = new ImageCache();
         using var both = new CountdownEvent(FailedThenRetried);
-        var first = Task.Run(() => cache.Acquire(Stream(), both, MeetThenCreate));
-        var second = Task.Run(() => cache.Acquire(Stream(), both, MeetThenCreate));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(testToken);
+        timeout.CancelAfter(Limit);
 
-        var finished = Task.WhenAll(first, second);
-        var winner = await Task.WhenAny(finished, Task.Delay(Limit));
+        // The synchronous decoder rendezvous needs dedicated workers rather than occupied ThreadPool threads.
+        var first = StartDecode(() => cache.Acquire(Stream(), both, MeetThenCreate), timeout.Token);
+        var second = StartDecode(() => cache.Acquire(Stream(), both, MeetThenCreate), timeout.Token);
+        var entries = await Task.WhenAll(first, second).WaitAsync(timeout.Token);
+        try
+        {
+            await Assert.That(entries[0]).IsNotNull();
+            await Assert.That(entries[1]).IsNotNull();
+            await Assert.That(entries[0]).IsNotSameReferenceAs(entries[1]);
+            await Assert.That(cache.Count).IsEqualTo(FailedThenRetried);
+        }
+        finally
+        {
+            foreach (var entry in entries)
+            {
+                entry?.Release();
+            }
 
-        await Assert.That(winner).IsSameReferenceAs(finished);
-        (await first)!.Release();
-        (await second)!.Release();
+            cache.Close();
+        }
     }
 
     /// <summary>Async callers wait without holding a thread, share the decode, and can cancel alone.</summary>
@@ -207,6 +222,13 @@ public sealed class ImageCacheSharingTests
         (await decode)?.Release();
     }
 
+    /// <summary>Starts a synchronous decoder on a dedicated worker.</summary>
+    /// <param name="decode">The bounded decode callback.</param>
+    /// <param name="cancellationToken">Cancels queued execution.</param>
+    /// <returns>The decoder's completion task.</returns>
+    private static Task<ImageEntry?> StartDecode(Func<ImageEntry?> decode, CancellationToken cancellationToken) =>
+        Task.Factory.StartNew(static state => ((Func<ImageEntry?>)state!)(), decode, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
     /// <summary>Decodes an image whose decode asks the cache for the same image, as a self-referencing mask does.</summary>
     /// <param name="stream">The stream.</param>
     /// <param name="cache">The cache.</param>
@@ -221,10 +243,16 @@ public sealed class ImageCacheSharingTests
     /// <param name="stream">The stream.</param>
     /// <param name="both">Signalled by each decode.</param>
     /// <returns>The entry.</returns>
+    /// <exception cref="TimeoutException">The two independent decoders did not overlap.</exception>
     private static ImageEntry? MeetThenCreate(PdfStream stream, CountdownEvent both)
     {
         _ = both.Signal();
-        return both.Wait(Limit) ? Create() : null;
+        if (!both.Wait(Limit))
+        {
+            throw new TimeoutException("The independent image decoders did not overlap.");
+        }
+
+        return Create();
     }
 
     /// <summary>Awaits a task and reports whether it ended as cancelled.</summary>
